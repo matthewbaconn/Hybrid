@@ -39,7 +39,14 @@ jobs:
           call POST /api/food "{\"date\":\"$(date +%F)\",\"meal\":\"Lunch\",\"items\":$(echo "$r" | jq -c .items)}" > /dev/null
           n=$(call GET /api/me | jq '.food | length'); [ "$n" -ge 1 ] || { echo "::error::food not saved"; exit 1; }
           echo "saved and loaded back: $n item(s)"
+          d=$(date +%F)
+          call PUT /api/checkin "{\"date\":\"$d\",\"sleep_h\":7,\"sleep_q\":4,\"soreness\":2,\"energy\":4,\"stress\":2}" | jq -e .ok > /dev/null
+          call PUT /api/weight "{\"date\":\"$d\",\"lb\":181.4}" | jq -e .ok > /dev/null
+          call POST /api/activity "{\"date\":\"$d\",\"type\":\"run\",\"mi\":3.1,\"minutes\":26}" | jq -e .activity.id > /dev/null
+          me=$(call GET /api/me)
+          [ "$(echo "$me" | jq '.checkins | length')" = 1 ] && [ "$(echo "$me" | jq '.weights | length')" = 1 ] && [ "$(echo "$me" | jq '.activities | length')" = 1 ] || { echo "::error::tracking not saved: $me"; exit 1; }
+          echo "check-in, weigh-in and workout saved; strava: $(echo "$me" | jq -c .strava)"
           call DELETE /api/account | jq -e .ok > /dev/null
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API/api/login" -H "Origin: $ORIGIN" -H "Content-Type: application/json" -d "{\"email\":\"$email\",\"password\":\"smoke-test-123\"}")
           [ "$code" = 401 ] || { echo "::error::account not deleted ($code)"; exit 1; }
-          echo "::notice::All checks passed: sign-up, AI typed meal, AI photo, save, load, delete."
+          echo "::notice::All checks passed: sign-up, AI typed meal, AI photo, food, check-in, weigh-in, workout, delete."

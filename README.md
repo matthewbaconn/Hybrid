@@ -11,6 +11,23 @@ On Android, Chrome offers "Install app".
 This is an early demo. Plans come from fixed training rules, and answers are saved only on your own
 device. Connecting Strava and Garmin is planned.
 
+## Tracking
+
+- **Morning check-in:** five taps (sleep, sleep quality, soreness, energy, stress) give a readiness score.
+  Green trains as planned, amber trims the session, red makes the day easy and moves the workout.
+- **Workouts:** connect Strava (Garmin, COROS and Apple Watch can upload to Strava) or log them by hand.
+  A logged workout checks off the planned session and adds its calories to the day.
+- **Calories:** base target from the 7-day average weight (about 13 cal/lb, minus 400 when cutting) plus
+  logged training (75% of it when cutting). Food can be logged for any of the last 30 days.
+- **Weight:** morning weigh-ins, 7-day average, weekly change and distance to goal on the Training tab.
+
+## Connect Strava
+
+New Strava API apps allow 1 connected athlete until Strava approves more (submit the review form on
+strava.com/settings/api). To switch the button on: set the Strava app's Authorization Callback Domain to
+`hybrid-api.hybridapp.workers.dev`, add repository secrets `STRAVA_CLIENT_ID` and `STRAVA_CLIENT_SECRET`,
+then run "Deploy API".
+
 ## Accounts and backend
 
 People sign up with email and password. Their plan, checked-off sessions and food log are saved on the

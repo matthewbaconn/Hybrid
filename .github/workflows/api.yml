@@ -4,6 +4,8 @@ name: Deploy API
 #   CLOUDFLARE_API_TOKEN   ("Edit Cloudflare Workers" template + Account → D1 → Edit)
 #   CLOUDFLARE_ACCOUNT_ID
 #   ANTHROPIC_API_KEY      (console.anthropic.com; set a monthly spend limit there)
+# Optional, for Connect Strava: STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET (strava.com/settings/api;
+# set its Authorization Callback Domain to hybrid-api.hybridapp.workers.dev)
 on:
   push:
     branches: [main]
@@ -75,6 +77,15 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: printf '%s' "$ANTHROPIC_API_KEY" | npx wrangler secret put ANTHROPIC_API_KEY
+
+      - name: Save the Strava keys (optional)
+        env:
+          SID: ${{ secrets.STRAVA_CLIENT_ID }}
+          SSEC: ${{ secrets.STRAVA_CLIENT_SECRET }}
+        run: |
+          if [ -z "$SID" ] || [ -z "$SSEC" ]; then echo "::warning::Strava keys not added yet (STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET). Connect Strava stays off."; exit 0; fi
+          printf '%s' "$SID" | npx wrangler secret put STRAVA_CLIENT_ID
+          printf '%s' "$SSEC" | npx wrangler secret put STRAVA_CLIENT_SECRET
 
       - name: Check the API answers
         run: |

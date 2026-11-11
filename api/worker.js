@@ -91,6 +91,40 @@ async function analyze(env, user, b){
   return {items, note: typeof parsed.note === "string" ? parsed.note.slice(0, 200) : ""};
 }
 
+/* ---------- Strava ----------
+   Secrets STRAVA_CLIENT_ID / STRAVA_CLIENT_SECRET; var APP_URL. The Strava app's Authorization Callback
+   Domain must be this Worker's host. New Strava apps allow 1 connected athlete until Strava approves more. */
+const STRAVA = "https://www.strava.com";
+const TYPE_MAP = t => /Run/.test(t) ? "run" : /Ride|Cycl|Bike/.test(t) ? "bike" : /Swim/.test(t) ? "swim" : /Weight|Workout|Crossfit|HIIT|Strength/.test(t) ? "lift" : "other";
+function appUrl(env, q){ return (env.APP_URL || "https://matthewbaconn.github.io/Hybrid/") + "?strava=" + q + "#today"; }
+async function stravaToken(env, link){
+  if (link.expires_at > Date.now() / 1000 + 120) return link.access_token;
+  const r = await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/token", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({client_id: env.STRAVA_CLIENT_ID, client_secret: env.STRAVA_CLIENT_SECRET, grant_type: "refresh_token", refresh_token: link.refresh_token})});
+  if (!r.ok) throw new HttpError(502, "Strava needs you to reconnect. Open Settings and connect Strava again.");
+  const j = await r.json();
+  await env.DB.prepare("UPDATE strava_links SET access_token = ?, refresh_token = ?, expires_at = ? WHERE user_id = ?").bind(j.access_token, j.refresh_token, j.expires_at, link.user_id).run();
+  return j.access_token;
+}
+async function stravaSync(env, user){
+  const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
+  if (!link) throw new HttpError(400, "Strava isn't connected.");
+  const tok = await stravaToken(env, link);
+  const since = link.last_sync ? Math.floor(Date.parse(link.last_sync) / 1000) - 3 * 86400 : Math.floor(Date.now() / 1000) - 30 * 86400;
+  const r = await fetch((env.STRAVA_BASE || STRAVA) + "/api/v3/athlete/activities?per_page=100&after=" + since, {headers: {Authorization: "Bearer " + tok}});
+  if (r.status === 429) throw new HttpError(429, "Strava is busy. Try again in a few minutes.");
+  if (!r.ok) throw new HttpError(502, "Couldn't reach Strava right now.");
+  const list = await r.json(), t = now();
+  const ops = list.slice(0, 100).map(a => env.DB.prepare(
+    "INSERT INTO activities (id, user_id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, created) VALUES (?, ?, 'strava', ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+    "ON CONFLICT (user_id, source, ext_id) DO UPDATE SET date = excluded.date, type = excluded.type, name = excluded.name, mi = excluded.mi, minutes = excluded.minutes, cal = CASE WHEN excluded.cal > 0 THEN excluded.cal ELSE activities.cal END, avg_hr = excluded.avg_hr")
+    .bind(rand(10), user.id, String(a.id), String(a.start_date_local || "").slice(0, 10), TYPE_MAP(a.sport_type || a.type || ""), String(a.name || "Activity").slice(0, 80),
+      Math.round((a.distance || 0) / 1609.34 * 100) / 100, Math.round((a.moving_time || 0) / 60), n0(a.calories || (a.kilojoules ? a.kilojoules * 1.1 : 0)), n0(a.average_heartrate), t));
+  ops.push(env.DB.prepare("UPDATE strava_links SET last_sync = ? WHERE user_id = ?").bind(t, user.id));
+  await env.DB.batch(ops);
+  return {synced: list.length, last_sync: t};
+}
+
 /* ---------- routes ---------- */
 async function route(req, env, path){
   const M = req.method;
@@ -106,6 +140,24 @@ async function route(req, env, path){
     const id = rand(12), salt = rand(16);
     await env.DB.prepare("INSERT INTO users (id, email, name, pass_hash, salt, created) VALUES (?, ?, ?, ?, ?, ?)").bind(id, email, name, await hashPassword(password, salt), salt, now()).run();
     return {token: await newSession(env, id), user: {id, email, name}};
+  }
+  if (M === "GET" && path === "/api/strava/callback"){
+    const q = new URL(req.url).searchParams, st = q.get("state") || "";
+    const row = await env.DB.prepare("SELECT user_id, created FROM oauth_states WHERE state = ?").bind(st).first();
+    await env.DB.prepare("DELETE FROM oauth_states WHERE state = ? OR created < ?").bind(st, new Date(Date.now() - 3600e3).toISOString()).run();
+    const go = code => Response.redirect(appUrl(env, code), 302);
+    if (!row || Date.parse(row.created) < Date.now() - 1800e3) return go("expired");
+    if (q.get("error") || !q.get("code")) return go("cancelled");
+    if (!/activity:read/.test(q.get("scope") || "")) return go("noscope");
+    const r = await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/token", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({client_id: env.STRAVA_CLIENT_ID, client_secret: env.STRAVA_CLIENT_SECRET, code: q.get("code"), grant_type: "authorization_code"})});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok){ console.log("strava token error", r.status, JSON.stringify(j).slice(0, 300)); return go(/limit|exceed/i.test(JSON.stringify(j)) || r.status === 403 ? "limit" : "failed"); }
+    const a = j.athlete || {};
+    await env.DB.prepare("INSERT INTO strava_links (user_id, athlete_id, athlete_name, access_token, refresh_token, expires_at, last_sync) VALUES (?, ?, ?, ?, ?, ?, NULL) " +
+      "ON CONFLICT (user_id) DO UPDATE SET athlete_id = excluded.athlete_id, athlete_name = excluded.athlete_name, access_token = excluded.access_token, refresh_token = excluded.refresh_token, expires_at = excluded.expires_at")
+      .bind(row.user_id, String(a.id || ""), ((a.firstname || "") + " " + (a.lastname || "")).trim().slice(0, 60), j.access_token, j.refresh_token, j.expires_at).run();
+    return go("connected");
   }
   if (M === "POST" && path === "/api/login"){
     await limit(env, "auth:" + (req.headers.get("CF-Connecting-IP") || "x"));
@@ -130,8 +182,16 @@ async function route(req, env, path){
       env.DB.prepare("SELECT key FROM done WHERE user_id = ?").bind(user.id),
       env.DB.prepare("SELECT id, date, meal, name, cal, protein, carbs, fat FROM food WHERE user_id = ? AND date >= ? ORDER BY created").bind(user.id, since)
     ]);
+    const since120 = new Date(Date.now() - 120 * 864e5).toISOString().slice(0, 10);
+    const [c, w, a, s] = await env.DB.batch([
+      env.DB.prepare("SELECT date, sleep_h, sleep_q, soreness, energy, stress FROM checkins WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since),
+      env.DB.prepare("SELECT date, lb FROM weights WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since120),
+      env.DB.prepare("SELECT id, source, date, type, name, mi, minutes, cal, avg_hr FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(user.id, since),
+      env.DB.prepare("SELECT athlete_name, last_sync FROM strava_links WHERE user_id = ?").bind(user.id)
+    ]);
     const prof = p.results[0] ? JSON.parse(p.results[0].data) : null;
-    return {user: userOut(user), profile: prof, done: d.results.map(r => r.key), food: f.results};
+    return {user: userOut(user), profile: prof, done: d.results.map(r => r.key), food: f.results, checkins: c.results, weights: w.results, activities: a.results,
+      strava: {available: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!s.results[0], name: s.results[0] ? s.results[0].athlete_name : "", last_sync: s.results[0] ? s.results[0].last_sync : null}};
   }
   if (M === "PUT" && path === "/api/profile"){
     const b = await body(req), s = JSON.stringify(b.profile || null);
@@ -162,8 +222,51 @@ async function route(req, env, path){
   let m = path.match(/^\/api\/food\/([a-f0-9]{20})$/);
   if (M === "DELETE" && m){ await env.DB.prepare("DELETE FROM food WHERE id = ? AND user_id = ?").bind(m[1], user.id).run(); return {ok: true}; }
   if (M === "POST" && path === "/api/food/analyze"){ await limit(env, "ai:" + user.id); return analyze(env, user, await body(req)); }
+  if (M === "PUT" && path === "/api/checkin"){
+    const b = await body(req), k = x => { x = Math.round(Number(x)); return x >= 1 && x <= 5 ? x : null; }, h = Number(b.sleep_h);
+    if (!isDate(b.date) || !(h >= 0 && h <= 16) || [b.sleep_q, b.soreness, b.energy, b.stress].some(x => k(x) == null)) throw new HttpError(400, "Answer every question.");
+    await env.DB.prepare("INSERT INTO checkins (user_id, date, sleep_h, sleep_q, soreness, energy, stress) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, date) DO UPDATE SET sleep_h = excluded.sleep_h, sleep_q = excluded.sleep_q, soreness = excluded.soreness, energy = excluded.energy, stress = excluded.stress")
+      .bind(user.id, b.date, Math.round(h * 4) / 4, k(b.sleep_q), k(b.soreness), k(b.energy), k(b.stress)).run();
+    return {ok: true};
+  }
+  if (M === "PUT" && path === "/api/weight"){
+    const b = await body(req), lb = Number(b.lb);
+    if (!isDate(b.date)) throw new HttpError(400, "Bad date.");
+    if (b.lb === null){ await env.DB.prepare("DELETE FROM weights WHERE user_id = ? AND date = ?").bind(user.id, b.date).run(); return {ok: true}; }
+    if (!(lb >= 70 && lb <= 500)) throw new HttpError(400, "Enter your weight in pounds.");
+    await env.DB.prepare("INSERT INTO weights (user_id, date, lb) VALUES (?, ?, ?) ON CONFLICT (user_id, date) DO UPDATE SET lb = excluded.lb").bind(user.id, b.date, Math.round(lb * 10) / 10).run();
+    return {ok: true};
+  }
+  if (M === "POST" && path === "/api/activity"){
+    const b = await body(req), type = ["run", "lift", "bike", "swim", "other"].includes(b.type) ? b.type : "other";
+    const mi = Math.max(0, Math.min(200, Number(b.mi) || 0)), minutes = n0(b.minutes);
+    if (!isDate(b.date) || (!mi && !minutes)) throw new HttpError(400, "Add a distance or a time.");
+    const x = {id: rand(10), source: "manual", date: b.date, type, name: String(b.name || "").trim().slice(0, 80) || ({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Workout"})[type],
+      mi: Math.round(mi * 100) / 100, minutes, cal: n0(b.cal), avg_hr: n0(b.avg_hr)};
+    await env.DB.prepare("INSERT INTO activities (id, user_id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, created) VALUES (?, ?, 'manual', NULL, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(x.id, user.id, x.date, x.type, x.name, x.mi, x.minutes, x.cal, x.avg_hr, now()).run();
+    return {activity: x};
+  }
+  m = path.match(/^\/api\/activity\/([a-f0-9]{20})$/);
+  if (M === "DELETE" && m){ await env.DB.prepare("DELETE FROM activities WHERE id = ? AND user_id = ?").bind(m[1], user.id).run(); return {ok: true}; }
+  if (M === "POST" && path === "/api/strava/start"){
+    if (!env.STRAVA_CLIENT_ID) throw new HttpError(503, "Strava connection isn't set up yet.");
+    const st = rand(16);
+    await env.DB.prepare("INSERT INTO oauth_states (state, user_id, created) VALUES (?, ?, ?)").bind(st, user.id, now()).run();
+    const cb = new URL(req.url).origin + "/api/strava/callback";
+    return {url: (env.STRAVA_BASE || STRAVA) + "/oauth/mobile/authorize?client_id=" + encodeURIComponent(env.STRAVA_CLIENT_ID) + "&response_type=code&approval_prompt=auto&scope=activity:read_all&redirect_uri=" + encodeURIComponent(cb) + "&state=" + st};
+  }
+  if (M === "POST" && path === "/api/strava/sync"){ await limit(env, "strava:" + user.id); return stravaSync(env, user); }
+  if (M === "POST" && path === "/api/strava/disconnect"){
+    const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
+    if (link){ try { const tok = await stravaToken(env, link); await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/deauthorize", {method: "POST", headers: {Authorization: "Bearer " + tok}}); } catch(e){} }
+    await env.DB.batch([env.DB.prepare("DELETE FROM strava_links WHERE user_id = ?").bind(user.id), env.DB.prepare("DELETE FROM activities WHERE user_id = ? AND source = 'strava'").bind(user.id)]);
+    return {ok: true};
+  }
   if (M === "DELETE" && path === "/api/account"){
-    await env.DB.batch(["sessions", "profiles", "done", "food", "ai_usage"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
+    const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
+    if (link){ try { const tok = await stravaToken(env, link); await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/deauthorize", {method: "POST", headers: {Authorization: "Bearer " + tok}}); } catch(e){} }
+    await env.DB.batch(["sessions", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
       .concat([env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id)]));
     return {ok: true};
   }
@@ -174,7 +277,7 @@ export default {
   async fetch(req, env){
     const h = corsFor(req), path = new URL(req.url).pathname.replace(/\/+$/, "");
     if (req.method === "OPTIONS") return new Response(null, {status: 204, headers: h});
-    try { return reply(h, await route(req, env, path)); }
+    try { const out = await route(req, env, path); return out instanceof Response ? out : reply(h, out); }
     catch (e){
       if (e instanceof HttpError) return reply(h, {error: e.message}, e.status);
       console.log("server error", e && e.stack || e);
