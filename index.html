@@ -715,7 +715,7 @@ function stravaReturn(){
   let q; try { q = new URLSearchParams(location.search).get("strava"); } catch(e){ q = null; }
   if (!q) return;
   try { history.replaceState(null, "", location.pathname + "#today"); } catch(e){}
-  const msg = {connected: "Strava connected. Pulling in your recent workouts…", limit: "Strava hasn't approved this app for more athletes yet. Log workouts by hand for now.", cancelled: "Strava wasn't connected.",
+  const msg = {connected: "Strava connected. Pulling in your recent workouts…", limit: "Strava is full for now: this app can connect 10 athletes. Log workouts by hand, and ask Matthew to open more spots.", cancelled: "Strava wasn't connected.",
     expired: "That took too long. Tap Connect Strava again.", noscope: "Strava needs permission to read your activities. Tap Connect Strava and keep that box checked.", failed: "Couldn't connect Strava. Try again in a minute."}[q];
   if (msg) setTimeout(() => toast(msg), 300);
   if (q === "connected") setTimeout(() => stravaSync(true), 500);

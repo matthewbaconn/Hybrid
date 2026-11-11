@@ -23,8 +23,8 @@ device. Connecting Strava and Garmin is planned.
 
 ## Connect Strava
 
-New Strava API apps allow 1 connected athlete until Strava approves more (submit the review form on
-strava.com/settings/api). To switch the button on: set the Strava app's Authorization Callback Domain to
+The Strava app currently allows 10 connected athletes (raise it on strava.com/settings/api; past that,
+Strava's review form). To switch the button on: set the Strava app's Authorization Callback Domain to
 `hybrid-api.hybridapp.workers.dev`, add repository secrets `STRAVA_CLIENT_ID` and `STRAVA_CLIENT_SECRET`,
 then run "Deploy API".
 
