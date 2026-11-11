@@ -46,6 +46,12 @@ jobs:
           me=$(call GET /api/me)
           [ "$(echo "$me" | jq '.checkins | length')" = 1 ] && [ "$(echo "$me" | jq '.weights | length')" = 1 ] && [ "$(echo "$me" | jq '.activities | length')" = 1 ] || { echo "::error::tracking not saved: $me"; exit 1; }
           echo "check-in, weigh-in and workout saved; strava: $(echo "$me" | jq -c .strava)"
+          if [ "$(echo "$me" | jq .strava.available)" = true ]; then
+            u=$(call POST /api/strava/start | jq -r .url)
+            echo "$u" | grep -q "redirect_uri=https%3A%2F%2Fhybrid-api.hybridapp.workers.dev%2Fapi%2Fstrava%2Fcallback" || { echo "::error::Strava start URL looks wrong: $u"; exit 1; }
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$u"); echo "Strava authorize page answered HTTP $code"
+            echo "::notice::Connect Strava is on."
+          fi
           call DELETE /api/account | jq -e .ok > /dev/null
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API/api/login" -H "Origin: $ORIGIN" -H "Content-Type: application/json" -d "{\"email\":\"$email\",\"password\":\"smoke-test-123\"}")
           [ "$code" = 401 ] || { echo "::error::account not deleted ($code)"; exit 1; }
