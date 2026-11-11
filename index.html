@@ -334,7 +334,10 @@ const r5 = x => Math.round(x / 5) * 5;
 const half = x => Math.round(x * 2) / 2;
 const fmtPace = s => { s = Math.round(s); return Math.floor(s / 60) + ":" + pad(s % 60); };
 const fmtTime = s => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? h + ":" + pad(m) + ":" + pad(x) : m + ":" + pad(x); };
-const parseTime = t => { if (!t) return null; const p = String(t).trim().split(":").map(x => x.trim()); if (p.some(x => !/^\d+$/.test(x))) return null;
+// "2410" -> "24:10", "14500" -> "1:45:00": colons fill in from the right (seconds, minutes, hours)
+const fmtDigits = v => { const d = String(v).replace(/\D/g, "").replace(/^0+(?=\d{3})/, "").slice(0, 6); if (d.length <= 2) return d;
+  const sec = d.slice(-2), rest = d.slice(0, -2); return rest.length <= 2 ? rest + ":" + sec : rest.slice(0, -2) + ":" + rest.slice(-2) + ":" + sec; };
+const parseTime = t => { if (!t) return null; t = String(t).trim(); if (/^\d+$/.test(t)) t = fmtDigits(t); const p = t.split(/[:.]/).map(x => x.trim()); if (p.some(x => !/^\d+$/.test(x))) return null;
   const n = p.map(Number); if (n.length === 2) return n[0] * 60 + n[1]; if (n.length === 3) return n[0] * 3600 + n[1] * 60 + n[2]; return null; };
 const comma = n => Math.round(n).toLocaleString("en-US");
 const store = { get(){ try { return JSON.parse(localStorage.getItem("hp-demo-v1") || "null"); } catch(e){ return null; } },
@@ -831,7 +834,7 @@ function renderSetup(){
       '<div class="q"><label for="s-name">First name</label><input id="s-name" autocomplete="given-name" placeholder="Optional" value="' + esc(p.name) + '"></div>' +
       '<div class="q"><span class="ql">Goal</span>' + optList("goal", [["5k","5K"],["10k","10K"],["half","Half marathon"],["marathon","Marathon"],["fitness","Just get fitter"]], p.goal) + '</div>' +
       (p.goal !== "fitness" ? '<div class="two"><div class="q"><label for="s-date">Race date</label><input id="s-date" type="date" min="' + addDays(TODAY, 14) + '" value="' + esc(p.raceDate) + '"></div>' +
-        '<div class="q"><label for="s-goal">Goal time</label><input id="s-goal" inputmode="numeric" placeholder="' + ({"5k":"22:00","10k":"48:00","half":"1:45:00","marathon":"3:45:00"}[p.goal]) + '" value="' + (p.goalSec ? fmtTime(p.goalSec) : '') + '"></div></div><p class="hint">Goal time is optional. Leave it blank and the plan uses your current fitness.</p>' : '<p class="sub">You\'ll get a 12-week plan that ends with a 5K time trial to see your progress.</p>');
+        '<div class="q"><label for="s-goal">Goal time</label><input id="s-goal" inputmode="numeric" placeholder="' + ({"5k":"22:00","10k":"48:00","half":"1:45:00","marathon":"3:45:00"}[p.goal]) + '" value="' + (p.goalSec ? fmtTime(p.goalSec) : '') + '"></div></div><p class="hint">Goal time is optional. Just type the numbers; the colons fill in. Leave it blank to use your current fitness.</p>' : '<p class="sub">You\'ll get a 12-week plan that ends with a 5K time trial to see your progress.</p>');
   } else if (st.step === 1){
     body = '<h2 class="sec-t">Where is your running now?</h2>' +
       '<div class="two"><div class="q"><label for="s-weekly">Miles per week</label><input id="s-weekly" inputmode="decimal" placeholder="15" value="' + (p.weekly ?? '') + '"></div>' +
@@ -858,14 +861,14 @@ function readStep(){
   if (st.step === 0){
     p.name = v("s-name").slice(0, 20); p.goal = radio("goal") || p.goal;
     if (p.goal !== "fitness" && document.getElementById("s-date")){ p.raceDate = v("s-date") || p.raceDate; const g = v("s-goal"); p.goalSec = g ? parseTime(g) : null;
-      if (g && !p.goalSec) return "Write the goal time like 1:45:00 or 48:00.";
+      if (g && !p.goalSec) return "Type the goal time as numbers, like 14500 for 1:45:00.";
       if (!p.raceDate || p.raceDate < addDays(TODAY, 14)) return "Pick a race date at least 2 weeks away."; }
   } else if (st.step === 1){
     p.weekly = num("s-weekly"); p.longest = num("s-longest"); p.prDist = radio("prDist") || p.prDist;
     if (p.weekly == null || p.weekly < 0 || p.weekly > 120) return "Enter your miles per week (0 is fine).";
     if (p.longest == null) p.longest = Math.max(2, Math.round(p.weekly * .3));
-    if (document.getElementById("s-pr")){ const t = parseTime(v("s-pr")); if (v("s-pr") && !t) return "Write your time like 24:30 or 1:55:00."; p.prSec = t; if (!t) return "Add your race time, or pick None yet."; p.easyPace = null; }
-    if (document.getElementById("s-easy")){ const t = parseTime(v("s-easy")); if (!t || t < 300 || t > 1200) return "Write your easy pace like 10:30."; p.easyPace = t; p.prSec = null; p.prDist = "none"; }
+    if (document.getElementById("s-pr")){ const t = parseTime(v("s-pr")); if (v("s-pr") && !t) return "Type your time as numbers, like 2430 for 24:30."; p.prSec = t; if (!t) return "Add your race time, or pick None yet."; p.easyPace = null; }
+    if (document.getElementById("s-easy")){ const t = parseTime(v("s-easy")); if (!t || t < 300 || t > 1200) return "Type your easy pace as numbers, like 1030 for 10:30."; p.easyPace = t; p.prSec = null; p.prDist = "none"; }
   } else if (st.step === 2){
     p.lifts = +(radio("lifts") || 0); p.liftExp = radio("liftExp") || p.liftExp; p.weight = num("s-w"); p.goalWeight = num("s-gw");
     if (p.weight != null && (p.weight < 80 || p.weight > 400)) return "Weight should be in pounds.";
@@ -1010,6 +1013,11 @@ document.addEventListener("click", ev => {
   if (act === "close"){ closeMenu(); return; }
   if (act === "edit"){ closeMenu(); const p = plan.profile.sample ? blankProfile() : {...plan.profile}; delete p.sample; delete p.start; setup = {step: 0, p}; render(); window.scrollTo(0, 0); return; }
   if (act === "reset"){ closeMenu(); plan = null; for (const k in done) delete done[k]; for (const k in food) delete food[k]; store.set(null); setup = {step: -1, p: blankProfile()}; render(); window.scrollTo(0, 0); return; }
+});
+document.addEventListener("input", ev => {
+  if (!["s-goal", "s-pr", "s-easy"].includes(ev.target.id)) return;
+  const el = ev.target, f = fmtDigits(el.value);
+  if (el.value !== f) el.value = f;
 });
 document.addEventListener("change", ev => {
   if (ev.target.id === "food-photo"){
