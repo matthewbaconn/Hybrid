@@ -1,0 +1,45 @@
+name: Test the live API
+
+# Signs up a throwaway account, reads a typed meal and a label photo with the real AI,
+# saves food, loads it back, then deletes the account. Run it from the Actions tab any time.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      API: https://hybrid-api.hybridapp.workers.dev
+      ORIGIN: https://matthewbaconn.github.io
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run
+        run: |
+          set -euo pipefail
+          call(){ curl -sS -X "$1" "$API$2" -H "Origin: $ORIGIN" -H "Content-Type: application/json" ${TOKEN:+-H "Authorization: Bearer $TOKEN"} ${3:+--data-binary "$3"}; }
+          email="test-$(date +%s)-$RANDOM@example.com"
+          TOKEN=""
+          r=$(call POST /api/signup "{\"email\":\"$email\",\"password\":\"smoke-test-123\",\"name\":\"Test\"}")
+          TOKEN=$(echo "$r" | jq -r .token); [ "$TOKEN" != "null" ] || { echo "::error::signup failed: $r"; exit 1; }
+          echo "signup ok"
+          r=$(call POST /api/food/analyze '{"text":"3 scrambled eggs and 2 slices of whole wheat toast"}')
+          echo "typed meal: $(echo "$r" | jq -c .)"
+          [ "$(echo "$r" | jq '.items | length')" -ge 1 ] || { echo "::error::typed meal failed: $r"; exit 1; }
+          img=$(base64 -w0 tests/label.jpg)
+          printf '{"text":"","image":"%s","mediaType":"image/jpeg"}' "$img" > body.json
+          r=$(curl -sS -X POST "$API/api/food/analyze" -H "Origin: $ORIGIN" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" --data-binary @body.json)
+          echo "label photo: $(echo "$r" | jq -c .)"
+          [ "$(echo "$r" | jq '.items | length')" -ge 1 ] || { echo "::error::photo failed: $r"; exit 1; }
+          cal=$(echo "$r" | jq '[.items[].cal] | add'); pro=$(echo "$r" | jq '[.items[].protein] | add')
+          echo "::notice::Photo read: $cal cal, $pro g protein (label says 100 cal, 18 g protein)"
+          call POST /api/food "{\"date\":\"$(date +%F)\",\"meal\":\"Lunch\",\"items\":$(echo "$r" | jq -c .items)}" > /dev/null
+          n=$(call GET /api/me | jq '.food | length'); [ "$n" -ge 1 ] || { echo "::error::food not saved"; exit 1; }
+          echo "saved and loaded back: $n item(s)"
+          call DELETE /api/account | jq -e .ok > /dev/null
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API/api/login" -H "Origin: $ORIGIN" -H "Content-Type: application/json" -d "{\"email\":\"$email\",\"password\":\"smoke-test-123\"}")
+          [ "$code" = 401 ] || { echo "::error::account not deleted ($code)"; exit 1; }
+          echo "::notice::All checks passed: sign-up, AI typed meal, AI photo, save, load, delete."

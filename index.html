@@ -517,7 +517,7 @@ const SAMPLE = {name:"Jordan", sample:true, goal:"half", raceDate: addDays(monda
 /* Backend. API = the deployed Hybrid API (Cloudflare Worker). Empty = no backend yet: the app keeps
    everything in this browser ("local" mode). With a backend: "account" mode saves to the server,
    "sample" mode shows the sample runner without saving anything. */
-const API = "";
+const API = "https://hybrid-api.hybridapp.workers.dev";
 const tokenStore = { get(){ try { return localStorage.getItem("hp-token"); } catch(e){ return null; } },
   set(t){ try { t ? localStorage.setItem("hp-token", t) : localStorage.removeItem("hp-token"); } catch(e){} } };
 let token = API ? tokenStore.get() : null, me = null, mode = API ? "none" : "local", loading = !!token, authv = null;
