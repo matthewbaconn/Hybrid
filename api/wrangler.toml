@@ -1,0 +1,19 @@
+name = "hybrid-api"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hybrid"
+database_id = "REPLACED_BY_DEPLOY_WORKFLOW"
+migrations_dir = "migrations"
+
+# Login/sign-up tries and food reads: 10 per minute per person (approximate, per Cloudflare location)
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1101"
+
+  [ratelimits.simple]
+  limit = 10
+  period = 60

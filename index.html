@@ -31,6 +31,7 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{background:var(--bg);-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html,body{overflow-x:clip;max-width:100%}
 body{margin:0;color:var(--ink);font:15px/1.55 var(--f-body);font-variant-numeric:tabular-nums;
@@ -376,7 +377,7 @@ function buildPlan(p){
   const goal = p.goal, fit = fitnessFrom(p), P = {...fit.pace};
   const goalSec = p.goal !== "fitness" && p.goalSec ? p.goalSec : null;
   P.G = goalSec ? goalSec / RACES[goal].mi : (goal !== "fitness" ? fit.pred[goal] / RACES[goal].mi : P.T);
-  let start = mondayOf(TODAY), N, raceDate = null;
+  let start = p.start || mondayOf(TODAY), N, raceDate = null;
   if (goal !== "fitness" && p.raceDate){
     raceDate = p.raceDate;
     N = Math.floor(daysBetween(start, raceDate) / 7) + 1;
@@ -513,17 +514,42 @@ function fuelFor(p, day){
 /* ============ state ============ */
 const SAMPLE = {name:"Jordan", sample:true, goal:"half", raceDate: addDays(mondayOf(TODAY), 11 * 7 + 6), goalSec: 1 * 3600 + 44 * 60,
   weekly: 20, longest: 8, prDist:"10k", prSec: 48 * 60 + 30, easyPace: null, weight: 178, goalWeight: 172, lifts: 3, liftExp:"Some", days:[1,2,3,5,6], longDay: 6};
-let S = store.get() || {};
+/* Backend. API = the deployed Hybrid API (Cloudflare Worker). Empty = no backend yet: the app keeps
+   everything in this browser ("local" mode). With a backend: "account" mode saves to the server,
+   "sample" mode shows the sample runner without saving anything. */
+const API = "";
+const tokenStore = { get(){ try { return localStorage.getItem("hp-token"); } catch(e){ return null; } },
+  set(t){ try { t ? localStorage.setItem("hp-token", t) : localStorage.removeItem("hp-token"); } catch(e){} } };
+let token = API ? tokenStore.get() : null, me = null, mode = API ? "none" : "local", loading = !!token, authv = null;
+let S = API ? {} : (store.get() || {});
 let plan = S.profile ? buildPlan(S.profile) : null;
 let tab = "today", wkSel = null, setup = null, toastT = null;
 const done = S.done || {};
 const food = S.food || {};      // date -> [{id, meal, name, cal, protein, carbs, fat}]
-const save = () => store.set({profile: plan ? plan.profile : null, done, food});
+const save = () => { if (mode === "local") store.set({profile: plan ? plan.profile : null, done, food}); };
+const clearObj = o => { for (const k in o) delete o[k]; };
+async function api(method, path, data){
+  let r;
+  try { r = await fetch(API + path, {method, headers: {"Content-Type": "application/json", ...(token ? {Authorization: "Bearer " + token} : {})}, body: data === undefined ? undefined : JSON.stringify(data)}); }
+  catch(e){ throw new Error("Couldn't reach the server. Check your signal and try again."); }
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401 && token){ signedOut(); toast(j.error || "Please log in again."); }
+  if (!r.ok) throw new Error(j.error || "Something went wrong. Try again.");
+  return j;
+}
+function loadAccount(j){
+  me = j.user; mode = "account"; clearObj(done); clearObj(food);
+  (j.done || []).forEach(k => done[k] = 1);
+  (j.food || []).forEach(x => (food[x.date] = food[x.date] || []).push(x));
+  plan = j.profile ? buildPlan(j.profile) : null;
+  setup = plan ? null : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
+}
+function signedOut(){ token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); render(); }
 
 /* ============ food log ============
    Photo and text logging go through the food relay (a small Cloudflare Worker that holds the AI key;
-   the key never reaches this page). Empty FOOD_API = relay not set up yet: manual entry only. */
-const FOOD_API = "";
+   the key never reaches this page). Only signed-in accounts can use photo reading; otherwise manual entry. */
+const aiOn = () => mode === "account";
 const MEALS = ["Breakfast","Lunch","Dinner","Snack"];
 let fs = {busy:false, photo:null, text:"", meal:null, err:"", manual:false, note:""};
 function mealNow(){ const h = new Date().getHours(); return h < 11 ? "Breakfast" : h < 15 ? "Lunch" : h < 21 ? "Dinner" : "Snack"; }
@@ -545,7 +571,9 @@ async function askFood(text, photo){
   try {
     const body = {text: text || ""};
     if (photo){ body.image = photo.split(",")[1]; body.mediaType = "image/jpeg"; }
-    const r = await fetch(FOOD_API, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body), signal: ctl.signal});
+    let r;
+    try { r = await fetch(API + "/api/food/analyze", {method:"POST", headers:{"Content-Type":"application/json", Authorization: "Bearer " + token}, body: JSON.stringify(body), signal: ctl.signal}); }
+    catch(e){ if (e.name === "AbortError") throw e; throw new Error("Couldn't reach the server. Check your signal and try again."); }
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || (r.status === 429 ? "Too many requests. Wait a minute and try again." : "Couldn't read that right now."));
     const items = (Array.isArray(j.items) ? j.items : []).filter(x => x && x.name).slice(0, 12);
@@ -553,6 +581,12 @@ async function askFood(text, photo){
     return {items, note: j.note || ""};
   } catch(e){ throw e.name === "AbortError" ? new Error("That took too long. Check your signal and try again.") : e; }
   finally { clearTimeout(timer); }
+}
+async function addFood(meal, items){
+  const list = food[TODAY] = food[TODAY] || [];
+  if (mode === "account"){ const j = await api("POST", "/api/food", {date: TODAY, meal, items}); j.items.forEach(x => list.push(x)); return; }
+  items.forEach((x, i) => list.push({id: Date.now().toString(36) + i, meal, name: String(x.name).slice(0, 80), cal: n0(x.cal), protein: n0(x.protein), carbs: n0(x.carbs), fat: n0(x.fat)}));
+  save();
 }
 function fuelCard(f){
   const e = eaten(TODAY), left = f.cal - e.cal, pc = (a, b) => b ? Math.min(100, a / b * 100) : 0;
@@ -564,7 +598,7 @@ function fuelCard(f){
     '<p class="sub">' + (f.cut ? 'Hard days get more food so training stays strong; easy days carry the deficit.' : 'Food matches training: more on long and hard days.') + '</p></section>';
 }
 function foodCard(){
-  const list = food[TODAY] || [], ai = !!FOOD_API, meal = fs.meal || mealNow();
+  const list = food[TODAY] || [], ai = aiOn(), meal = fs.meal || mealNow();
   let rows = '';
   MEALS.forEach(m => { const xs = list.filter(x => x.meal === m); if (!xs.length) return;
     rows += '<div class="mealh">' + m + '</div><ul class="fl">' + xs.map(x => '<li><div class="fi"><b>' + esc(x.name) + '</b><span>P ' + n0(x.protein) + ' · C ' + n0(x.carbs) + ' · F ' + n0(x.fat) + '</span></div><span class="fc">' + comma(n0(x.cal)) + '</span><button class="x" type="button" data-act="fdel" data-id="' + esc(x.id) + '" aria-label="Remove ' + esc(x.name) + '">✕</button></li>').join("") + '</ul>'; });
@@ -580,7 +614,7 @@ function foodCard(){
       '<p class="err" role="alert">' + esc(fs.err) + '</p>' + (fs.note ? '<p class="fnote">' + esc(fs.note) + '</p>' : '') +
       '<button class="linkbtn" type="button" data-act="fmanual">' + (fs.manual ? 'Hide manual entry' : 'Enter the numbers myself') + '</button>' + (fs.manual ? manual : '');
   } else {
-    form += '<p class="fnote">Photo logging is being set up. Enter the numbers for now.</p>' + manual + '<p class="err" role="alert">' + esc(fs.err) + '</p>';
+    form += '<p class="fnote">' + (mode === "sample" ? 'Create an account to log food with a photo. Sample entries aren\'t saved.' : 'Photo logging is being set up. Enter the numbers for now.') + '</p>' + manual + '<p class="err" role="alert">' + esc(fs.err) + '</p>';
   }
   form += '</div>';
   return '<section class="card" style="--tone:var(--long)"><div class="card-h">' + ic("camera") + '<span class="lbl">Food log</span><span class="r">' + (list.length ? list.length + ' item' + (list.length === 1 ? '' : 's') : 'nothing yet') + '</span></div>' + rows + form + '</section>';
@@ -609,7 +643,7 @@ const dayType = day => { const t = day.sessions.map(s => s.type); return t.inclu
 /* ============ rendering ============ */
 const app = $("#app"), bar = $("#tabbar");
 function header(){
-  return '<header class="top"><div class="brand"><span class="logo">' + ic("bolt") + '</span><b>Hybrid</b></div><span class="pill demo">Demo</span>' +
+  return '<header class="top"><div class="brand"><span class="logo">' + ic("bolt") + '</span><b>Hybrid</b></div>' + (mode === "sample" ? '<span class="pill demo">Sample</span>' : mode === "account" || API ? '' : '<span class="pill demo">Demo</span>') +
     (plan ? '<button class="iconbtn" type="button" data-act="menu" aria-label="Settings">' + ic("gear") + '</button>' : '') + '</header>';
 }
 function weekOf(date){ return plan.weeks.findIndex(w => date >= w.start && date <= addDays(w.start, 6)); }
@@ -735,7 +769,10 @@ function renderSetup(){
       '<li><i style="--c:var(--work)">' + ic("gauge") + '</i><div><b>Paces from your fitness</b><span>Every run has a target pace from a recent race.</span></div></li>' +
       '<li><i style="--c:var(--lift)">' + ic("dumbbell") + '</i><div><b>Strength built in</b><span>Lifting days that don\'t wreck your runs.</span></div></li>' +
       '<li><i style="--c:var(--long)">' + ic("heart") + '</i><div><b>Adapts to recovery</b><span>Connect Garmin or Strava in the full app.</span></div></li></ul>' +
-      '<div class="nav" style="flex-direction:column"><button class="btn primary block" type="button" data-act="next">Build my plan</button><button class="btn block" type="button" data-act="sample">Look around with a sample runner</button></div></section>';
+      '<div class="nav" style="flex-direction:column">' + (API && mode !== "account"
+        ? '<button class="btn primary block" type="button" data-act="authsignup">Create a free account</button><button class="btn block" type="button" data-act="authlogin">Log in</button>'
+        : '<button class="btn primary block" type="button" data-act="next">Build my plan</button>') +
+      '<button class="btn block" type="button" data-act="sample" style="background:transparent">Look around with a sample runner</button></div></section>';
   }
   if (st.step === 4) return header() + '<section class="building view"><div class="spin" aria-hidden="true"></div><h2 class="sec-t">Building your plan…</h2><p class="sub">Setting paces, weeks and strength days.</p></section>';
   const bars = '<div class="steps-bar" aria-hidden="true">' + [0,1,2,3].map(i => '<i class="' + (i <= st.step ? 'on' : '') + '"></i>').join("") + '</div>';
@@ -793,7 +830,34 @@ function readStep(){
 }
 
 /* ============ main render ============ */
+function renderAuth(){
+  const a = authv, up = a.view === "signup";
+  return header() + '<form class="setup view" id="authform" novalidate><h2 class="sec-t">' + (up ? 'Create your account' : 'Welcome back') + '</h2>' +
+    (up ? '<div class="q"><label for="a-name">First name</label><input id="a-name" autocomplete="given-name" maxlength="30" value="' + esc(a.name || "") + '"></div>' : '') +
+    '<div class="q"><label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" value="' + esc(a.email || "") + '"></div>' +
+    '<div class="q"><label for="a-pass">Password</label><input id="a-pass" type="password" autocomplete="' + (up ? 'new-password' : 'current-password') + '" minlength="8">' + (up ? '<p class="hint" style="margin-top:0">At least 8 characters.</p>' : '') + '</div>' +
+    '<p class="err" role="alert">' + esc(a.err || "") + '</p>' +
+    '<button class="btn primary block" type="submit"' + (a.busy ? ' disabled aria-busy="true"' : '') + '>' + (a.busy ? 'One moment…' : up ? 'Create account' : 'Log in') + '</button>' +
+    '<button class="linkbtn" type="button" data-act="' + (up ? 'authlogin' : 'authsignup') + '" style="justify-self:center">' + (up ? 'Already have an account? Log in' : 'New here? Create an account') + '</button>' +
+    (up ? '<p class="sub" style="text-align:center">Your plan and food log are saved to your account so they follow you to any phone. You can delete your account and everything in it from Settings.</p>' : '') +
+    '<button class="linkbtn" type="button" data-act="authback" style="justify-self:center;color:var(--muted)">Back</button></form>';
+}
+async function submitAuth(){
+  const a = authv, up = a.view === "signup", v = id => (document.getElementById(id) || {}).value || "";
+  a.name = v("a-name").trim(); a.email = v("a-email").trim(); const pw = v("a-pass");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email)){ a.err = "Enter a valid email."; render(); return; }
+  if (pw.length < 8){ a.err = up ? "Use a password of at least 8 characters." : "Enter your password."; render(); return; }
+  a.busy = true; a.err = ""; render();
+  try {
+    const j = await api("POST", up ? "/api/signup" : "/api/login", up ? {email: a.email, password: pw, name: a.name} : {email: a.email, password: pw});
+    token = j.token; tokenStore.set(token); authv = null; loading = true; render();
+    loadAccount(await api("GET", "/api/me")); loading = false; tab = "today"; render(); window.scrollTo(0, 0);
+    if (!up) toast("Welcome back" + (me.name ? ", " + me.name.split(" ")[0] : "") + ".");
+  } catch(e){ loading = false; if (authv){ authv.busy = false; authv.err = e.message; } else authv = {view: a.view, email: a.email, err: e.message}; render(); }
+}
 function render(){
+  if (loading){ bar.hidden = true; app.innerHTML = header() + '<section class="building"><div class="spin" aria-hidden="true"></div><p class="sub">Loading your plan…</p></section>'; return; }
+  if (authv){ bar.hidden = true; app.innerHTML = renderAuth(); return; }
   if (setup){ bar.hidden = true; app.innerHTML = renderSetup(); return; }
   if (!plan){ setup = {step: -1, p: blankProfile()}; return render(); }
   bar.hidden = false;
@@ -806,9 +870,13 @@ function toast(msg){
 }
 function openMenu(){
   const b = document.createElement("div"); b.className = "back";
-  b.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-label="Settings"><h2 class="sec-t" style="font-size:20px">Settings</h2>' +
-    '<button class="btn block" type="button" data-act="edit">Edit goals and rebuild plan</button><button class="btn block" type="button" data-act="reset">Start over</button>' +
-    '<p class="sub">This is a demo. Your answers stay in this browser only.</p><button class="btn block" type="button" data-act="close">Close</button></div>';
+  const body = mode === "account"
+    ? '<p class="sub">Signed in as <b style="color:var(--ink)">' + esc(me.email) + '</b></p><button class="btn block" type="button" data-act="edit">Edit goals and rebuild plan</button>' +
+      '<button class="btn block" type="button" data-act="logout">Log out</button><button class="btn block" type="button" data-act="delacct" style="color:var(--crit)">Delete my account</button>'
+    : mode === "sample"
+    ? '<p class="sub">You\'re looking at a sample runner. Nothing here is saved.</p><button class="btn primary block" type="button" data-act="authsignup">Create a free account</button><button class="btn block" type="button" data-act="authlogin">Log in</button>'
+    : '<button class="btn block" type="button" data-act="edit">Edit goals and rebuild plan</button><button class="btn block" type="button" data-act="reset">Start over</button><p class="sub">Your answers stay in this browser only.</p>';
+  b.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-label="Settings"><h2 class="sec-t" style="font-size:20px">Settings</h2>' + body + '<button class="btn block" type="button" data-act="close">Close</button></div>';
   document.body.appendChild(b); b.querySelector("button").focus();
 }
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); }
@@ -827,12 +895,27 @@ document.addEventListener("click", ev => {
   if (act === "next"){
     if (setup.step >= 0){ const e = readStep(); if (e){ setup.err = e; render(); const el = $("#s-err"); if (el) el.scrollIntoView({block:"center"}); return; } }
     setup.err = ""; setup.step++;
-    if (setup.step === 4){ render(); setTimeout(() => { plan = buildPlan(setup.p); setup = null; save(); setTab("today", true); }, 900); return; }
+    if (setup.step === 4){
+      const prof = {...setup.p, start: mondayOf(TODAY)}; delete prof.sample;
+      render();
+      const wait = new Promise(r => setTimeout(r, 900));
+      const saving = mode === "account" ? api("PUT", "/api/profile", {profile: prof, resetFrom: TODAY}) : Promise.resolve();
+      Promise.all([wait, saving]).then(() => {
+        if (mode === "account") Object.keys(done).forEach(k => { if (k >= TODAY) delete done[k]; });
+        plan = buildPlan(prof); setup = null; save(); setTab("today", true);
+      }).catch(e => { setup.step = 3; setup.err = e.message; render(); });
+      return;
+    }
     render(); window.scrollTo(0, 0); return;
   }
   if (act === "prev"){ setup.err = ""; if (setup.step === 0 && plan){ setup = null; render(); return; } setup.step = Math.max(-1, setup.step - 1); render(); window.scrollTo(0, 0); return; }
-  if (act === "sample"){ plan = buildPlan({...SAMPLE}); setup = null; save(); setTab("today", true); toast("Showing a sample runner. Tap the gear to build your own plan."); return; }
-  if (act === "done"){ const k = a.dataset.key; if (done[k]) delete done[k]; else done[k] = 1; save(); render(); return; }
+  if (act === "sample"){ if (API) mode = "sample"; plan = buildPlan({...SAMPLE}); setup = null; save(); setTab("today", true); toast("Showing a sample runner. Tap the gear to build your own plan."); return; }
+  if (act === "done"){
+    const k = a.dataset.key, on = !done[k];
+    if (on) done[k] = 1; else delete done[k]; save(); render();
+    if (mode === "account") api("PUT", "/api/done", {key: k, done: on}).catch(e => { if (on) delete done[k]; else done[k] = 1; render(); toast(e.message); });
+    return;
+  }
   if (act === "wk"){ const cur = wkSel != null ? wkSel : Math.max(0, weekOf(TODAY)); wkSel = Math.max(0, Math.min(plan.weeks.length - 1, cur + +a.dataset.dir)); render(); return; }
   if (act === "goday"){ const el = document.getElementById("d-" + a.dataset.date); if (el) el.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"start"}); return; }
   if (act === "fadd"){
@@ -840,9 +923,8 @@ document.addEventListener("click", ev => {
     if (!fs.text.trim() && !fs.photo){ fs.err = "Type what you ate or add a photo."; render(); return; }
     fs.busy = true; fs.err = ""; fs.note = ""; render();
     askFood(fs.text.trim(), fs.photo).then(r => {
-      const meal = fs.meal || mealNow(), list = food[TODAY] = food[TODAY] || [];
-      r.items.forEach((x, i) => list.push({id: Date.now().toString(36) + i, meal, name: String(x.name).slice(0, 80), cal: n0(x.cal), protein: n0(x.protein), carbs: n0(x.carbs), fat: n0(x.fat)}));
-      fs = {busy:false, photo:null, text:"", meal, err:"", manual:false, note: r.note}; save(); render();
+      const meal = fs.meal || mealNow();
+      return addFood(meal, r.items).then(() => { fs = {busy:false, photo:null, text:"", meal, err:"", manual:false, note: r.note}; render(); });
     }).catch(e => { fs.busy = false; fs.err = e.message || "Couldn't read that. Try again, or enter the numbers yourself."; render(); });
     return;
   }
@@ -852,14 +934,27 @@ document.addEventListener("click", ev => {
     captureFood();
     const v = id => (document.getElementById(id) || {}).value || "", name = v("m-name").trim(), cal = n0(v("m-cal"));
     if (!name || !cal){ fs.err = "Add a food name and its calories."; render(); return; }
-    (food[TODAY] = food[TODAY] || []).push({id: Date.now().toString(36), meal: fs.meal || mealNow(), name: name.slice(0, 80), cal, protein: n0(v("m-protein")), carbs: n0(v("m-carbs")), fat: n0(v("m-fat"))});
-    fs.err = ""; fs.manual = false; save(); render(); return;
+    addFood(fs.meal || mealNow(), [{name, cal, protein: n0(v("m-protein")), carbs: n0(v("m-carbs")), fat: n0(v("m-fat"))}])
+      .then(() => { fs.err = ""; fs.manual = false; render(); }).catch(e => { fs.err = e.message; render(); });
+    return;
   }
-  if (act === "fdel"){ captureFood(); const L = food[TODAY] || []; const i = L.findIndex(x => x.id === a.dataset.id); if (i > -1){ L.splice(i, 1); save(); render(); } return; }
+  if (act === "fdel"){
+    captureFood(); const L = food[TODAY] || [], i = L.findIndex(x => x.id === a.dataset.id); if (i < 0) return;
+    const [gone] = L.splice(i, 1); save(); render();
+    if (mode === "account") api("DELETE", "/api/food/" + gone.id).catch(e => { L.splice(i, 0, gone); render(); toast(e.message); });
+    return;
+  }
+  if (act === "authsignup" || act === "authlogin"){ closeMenu(); authv = {view: act === "authsignup" ? "signup" : "login", email: authv ? authv.email : ""}; render(); window.scrollTo(0, 0); return; }
+  if (act === "authback"){ authv = null; render(); return; }
+  if (act === "logout"){ closeMenu(); const t = token; api("POST", "/api/logout").catch(() => {}).finally(() => { if (token === t) signedOut(); }); return; }
+  if (act === "delacct"){
+    if (a.dataset.sure !== "1"){ a.dataset.sure = "1"; a.textContent = "Tap again to delete everything"; return; }
+    closeMenu(); api("DELETE", "/api/account").then(() => { signedOut(); toast("Your account and data are deleted."); }).catch(e => toast(e.message)); return;
+  }
   if (act === "connect"){ toast("Connecting Strava and Garmin comes with the full app. This demo uses your answers only."); return; }
   if (act === "menu"){ openMenu(); return; }
   if (act === "close"){ closeMenu(); return; }
-  if (act === "edit"){ closeMenu(); const p = plan.profile.sample ? blankProfile() : {...plan.profile}; delete p.sample; setup = {step: 0, p}; render(); window.scrollTo(0, 0); return; }
+  if (act === "edit"){ closeMenu(); const p = plan.profile.sample ? blankProfile() : {...plan.profile}; delete p.sample; delete p.start; setup = {step: 0, p}; render(); window.scrollTo(0, 0); return; }
   if (act === "reset"){ closeMenu(); plan = null; for (const k in done) delete done[k]; for (const k in food) delete food[k]; store.set(null); setup = {step: -1, p: blankProfile()}; render(); window.scrollTo(0, 0); return; }
 });
 document.addEventListener("change", ev => {
@@ -877,10 +972,13 @@ document.addEventListener("change", ev => {
 });
 function readStepSoft(){ const keep = setup.err; readStep(); setup.err = keep && ""; }
 document.addEventListener("keydown", ev => { if (ev.key === "Escape") closeMenu(); });
+document.addEventListener("submit", ev => { if (ev.target.id === "authform"){ ev.preventDefault(); if (!authv.busy) submitAuth(); } });
 window.addEventListener("hashchange", () => { if (!setup && plan) setTab(location.hash.slice(1), true); });
 
 tab = ["today","plan","recovery","training"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "today";
 render();
+if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); })
+  .catch(e => { loading = false; if (token){ mode = "none"; plan = null; } render(); toast(e.message); });
 })();
 </script>
 <script>if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));</script>
