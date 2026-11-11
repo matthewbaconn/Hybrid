@@ -706,10 +706,24 @@ function workoutCard(){
   else if (mode !== "account") h += '<p class="fnote">' + (mode === "sample" ? 'Create an account to connect Strava.' : 'Log workouts by hand here.') + '</p>';
   return h + '</section>';
 }
+/* Strava sync, same rhythm as Strong at 180: when the app opens, whenever you come back to it
+   (at most every 45 s), and every 10 min while it's open. A sync never redraws over something
+   you're typing: it waits until you leave the field. */
+let syncing = false, pendingRender = false;
+function typing(){ const a = document.activeElement; return (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) || aw.open || !!$(".back"); }
+function safeRender(){ if (typing()){ pendingRender = true; return; } pendingRender = false; captureFood(); render(); }
+document.addEventListener("focusout", () => setTimeout(() => { if (pendingRender && !typing()) safeRender(); }, 150));
 async function stravaSync(quiet){
-  if (!strava.connected) return;
-  try { const j = await api("POST", "/api/strava/sync"); const me2 = await api("GET", "/api/me"); acts = me2.activities || []; strava = me2.strava || strava; render(); if (!quiet) toast(j.synced ? "Strava is up to date." : "No new Strava activities."); }
-  catch(e){ if (!quiet) toast(e.message); }
+  if (!strava.connected || syncing) return;
+  syncing = true;
+  try {
+    const j = await api("POST", "/api/strava/sync"), me2 = await api("GET", "/api/me");
+    const before = JSON.stringify(acts); acts = me2.activities || []; strava = me2.strava || strava;
+    if (JSON.stringify(acts) !== before || !quiet) safeRender();
+    else { const r = $(".card-h .r"); if (r && /^Strava/.test(r.textContent)) r.textContent = "Strava · " + agoText(strava.last_sync); }
+    if (!quiet) toast(j.synced ? "Strava is up to date." : "No new Strava activities.");
+  } catch(e){ if (!quiet) toast(e.message); }
+  finally { syncing = false; }
 }
 function stravaReturn(){
   let q; try { q = new URLSearchParams(location.search).get("strava"); } catch(e){ q = null; }
@@ -718,11 +732,18 @@ function stravaReturn(){
   const msg = {connected: "Strava connected. Pulling in your recent workouts…", limit: "Strava is full for now: this app can connect 10 athletes. Log workouts by hand, and ask Matthew to open more spots.", cancelled: "Strava wasn't connected.",
     expired: "That took too long. Tap Connect Strava again.", noscope: "Strava needs permission to read your activities. Tap Connect Strava and keep that box checked.", failed: "Couldn't connect Strava. Try again in a minute."}[q];
   if (msg) setTimeout(() => toast(msg), 300);
-  if (q === "connected") setTimeout(() => stravaSync(true), 500);
+  if (q === "connected") setTimeout(() => autoSync(), 300);
 }
 let lastAutoSync = 0;
-function autoSync(){ if (mode === "account" && strava.connected && Date.now() - lastAutoSync > 10 * 60e3 && (!strava.last_sync || Date.now() - Date.parse(strava.last_sync) > 10 * 60e3)){ lastAutoSync = Date.now(); stravaSync(true); } }
+function autoSync(force){
+  if (mode !== "account" || !strava.connected || document.visibilityState === "hidden") return;
+  if (!force && Date.now() - lastAutoSync < 45e3) return;
+  lastAutoSync = Date.now(); stravaSync(true);
+}
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") autoSync(); });
+addEventListener("focus", () => autoSync());
+addEventListener("pageshow", () => autoSync());
+setInterval(() => autoSync(true), 10 * 60e3);
 
 /* ---------- charts ---------- */
 function barChart(vals, labels, color, goal, fmt, aria){
@@ -1125,7 +1146,7 @@ async function submitAuth(){
   try {
     const j = await api("POST", up ? "/api/signup" : "/api/login", up ? {email: a.email, password: pw, name: a.name} : {email: a.email, password: pw});
     token = j.token; tokenStore.set(token); authv = null; loading = true; render();
-    loadAccount(await api("GET", "/api/me")); loading = false; tab = "today"; render(); window.scrollTo(0, 0);
+    loadAccount(await api("GET", "/api/me")); loading = false; tab = "today"; render(); window.scrollTo(0, 0); autoSync(true);
     if (!up) toast("Welcome back" + (me.name ? ", " + me.name.split(" ")[0] : "") + ".");
   } catch(e){ loading = false; if (authv){ authv.busy = false; authv.err = e.message; } else authv = {view: a.view, email: a.email, err: e.message}; render(); }
 }
@@ -1303,7 +1324,7 @@ window.addEventListener("hashchange", () => { if (!setup && plan) setTab(locatio
 
 tab = ["today","plan","recovery","training"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "today";
 render();
-if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); stravaReturn(); autoSync(); })
+if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); stravaReturn(); autoSync(true); })
   .catch(e => { loading = false; if (token){ mode = "none"; plan = null; } render(); toast(e.message); });
 })();
 </script>
