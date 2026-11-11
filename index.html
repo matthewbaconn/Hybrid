@@ -229,6 +229,48 @@ input::placeholder{color:var(--muted);opacity:.8}
 .spin{width:44px;height:44px;border-radius:50%;border:4px solid var(--sunk);border-top-color:var(--accent);animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+
+/* food log */
+.left{display:grid;gap:6px}
+.left .big{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.left .big b{font:800 40px/1 var(--f-display);letter-spacing:-.04em;color:var(--accent-2)}
+.left .big b.over{color:var(--crit)}
+.left .big span{color:var(--muted);font-weight:500}
+.left .bar{height:12px}
+.macs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.mac{display:grid;gap:6px;min-width:0}
+.mac span{font-size:12.5px;color:var(--muted)}
+.mac b{font:700 17px/1.2 var(--f-display);color:var(--mc)}
+.mac b small{font:500 12px var(--f-body);color:var(--muted)}
+.mac .bar{height:7px} .mac .bar i{background:var(--mc)}
+.fl{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.fl li{display:flex;align-items:center;gap:12px;background:var(--sunk);border-radius:14px;padding:10px 8px 10px 14px;min-width:0}
+.fl .fi{flex:1;min-width:0}
+.fl .fi b{display:block;font-weight:600;overflow-wrap:anywhere}
+.fl .fi span{font-size:12.5px;color:var(--muted)}
+.fl .fc{font:700 15px/1 var(--f-display);white-space:nowrap}
+.fl .x{width:36px;height:36px;border-radius:11px;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;flex:none}
+.mealh{font:700 12px/1.2 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.fform{display:grid;gap:10px}
+textarea{width:100%;min-height:88px;border-radius:14px;border:1px solid transparent;background:var(--sunk);padding:12px 14px;font-size:16px;color:var(--ink);resize:vertical}
+textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(61,123,255,.3)}
+textarea::placeholder{color:var(--muted);opacity:.8}
+.cam{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;background:var(--sunk);font-weight:600;cursor:pointer;flex:none}
+.cam input{position:absolute;inset:0;opacity:0;width:100%;height:100%;min-height:0;cursor:pointer}
+.cam:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.fbtns{display:flex;gap:10px}
+.fbtns .btn.primary{flex:1}
+.thumb{position:relative;width:84px;height:84px;border-radius:14px;overflow:hidden;background:var(--sunk)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb button{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:999px;border:0;background:rgba(0,0,0,.7);color:#fff;font-size:15px;line-height:1}
+.manual{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.manual .nm{grid-column:1/-1}
+.manual input{min-height:44px;padding:0 10px}
+.manual label{display:grid;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.linkbtn{border:0;background:none;padding:0;color:var(--accent-2);font-weight:600;justify-self:start}
+.fnote{font-size:13px;color:var(--muted)}
+.btn[aria-busy="true"]{opacity:.75}
+
 /* sheet + toast */
 .back{position:fixed;inset:0;background:rgba(0,0,0,.66);z-index:40;display:grid;align-items:end;justify-items:center;padding:12px}
 .sheet{width:100%;max-width:480px;background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:20px;display:grid;gap:12px;margin-bottom:env(safe-area-inset-bottom,0px)}
@@ -475,7 +517,74 @@ let S = store.get() || {};
 let plan = S.profile ? buildPlan(S.profile) : null;
 let tab = "today", wkSel = null, setup = null, toastT = null;
 const done = S.done || {};
-const save = () => store.set({profile: plan ? plan.profile : null, done});
+const food = S.food || {};      // date -> [{id, meal, name, cal, protein, carbs, fat}]
+const save = () => store.set({profile: plan ? plan.profile : null, done, food});
+
+/* ============ food log ============
+   Photo and text logging go through the food relay (a small Cloudflare Worker that holds the AI key;
+   the key never reaches this page). Empty FOOD_API = relay not set up yet: manual entry only. */
+const FOOD_API = "";
+const MEALS = ["Breakfast","Lunch","Dinner","Snack"];
+let fs = {busy:false, photo:null, text:"", meal:null, err:"", manual:false, note:""};
+function mealNow(){ const h = new Date().getHours(); return h < 11 ? "Breakfast" : h < 15 ? "Lunch" : h < 21 ? "Dinner" : "Snack"; }
+const n0 = x => { x = +x; return isFinite(x) && x >= 0 ? Math.round(x) : 0; };
+function eaten(date){ return (food[date] || []).reduce((a, x) => ({cal: a.cal + n0(x.cal), protein: a.protein + n0(x.protein), carbs: a.carbs + n0(x.carbs), fat: a.fat + n0(x.fat)}), {cal:0, protein:0, carbs:0, fat:0}); }
+function captureFood(){ const t = document.getElementById("food-text"), m = document.getElementById("food-meal"); if (t) fs.text = t.value; if (m) fs.meal = m.value; }
+async function shrink(file){
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("That file isn't a photo this phone can read.")); i.src = url; });
+    const k = Math.min(1, 1024 / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL("image/jpeg", .8);
+  } finally { URL.revokeObjectURL(url); }
+}
+async function askFood(text, photo){
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 45000);
+  try {
+    const body = {text: text || ""};
+    if (photo){ body.image = photo.split(",")[1]; body.mediaType = "image/jpeg"; }
+    const r = await fetch(FOOD_API, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body), signal: ctl.signal});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || (r.status === 429 ? "Too many requests. Wait a minute and try again." : "Couldn't read that right now."));
+    const items = (Array.isArray(j.items) ? j.items : []).filter(x => x && x.name).slice(0, 12);
+    if (!items.length) throw new Error(j.note || "Couldn't find any food in that. Try a clearer photo or add a few words.");
+    return {items, note: j.note || ""};
+  } catch(e){ throw e.name === "AbortError" ? new Error("That took too long. Check your signal and try again.") : e; }
+  finally { clearTimeout(timer); }
+}
+function fuelCard(f){
+  const e = eaten(TODAY), left = f.cal - e.cal, pc = (a, b) => b ? Math.min(100, a / b * 100) : 0;
+  const mac = (k, a, b, c) => '<div class="mac" style="--mc:var(--' + c + ')"><span>' + k + '</span><b>' + a + '<small> / ' + b + ' g</small></b><div class="bar"><i style="width:' + pc(a, b) + '%"></i></div></div>';
+  return '<section class="card" style="--tone:var(--accent-2)"><div class="card-h">' + ic("fork") + '<span class="lbl">Fuel today</span><span class="r">' + (f.cut ? 'Small deficit' : 'Maintenance') + '</span></div>' +
+    '<div class="left"><div class="big"><b class="' + (left < 0 ? 'over' : '') + '">' + comma(Math.abs(left)) + '</b><span>' + (left < 0 ? 'calories over' : 'calories left') + '</span></div>' +
+    '<span class="sub">' + comma(e.cal) + ' eaten of ' + comma(f.cal) + ' (estimate)</span><div class="bar"><i style="width:' + pc(e.cal, f.cal) + '%' + (left < 0 ? ';background:var(--crit)' : '') + '"></i></div></div>' +
+    '<div class="macs">' + mac("Protein", e.protein, f.pro, "lift") + mac("Carbs", e.carbs, f.carb, "work") + mac("Fat", e.fat, f.fat, "easy") + '</div>' +
+    '<p class="sub">' + (f.cut ? 'Hard days get more food so training stays strong; easy days carry the deficit.' : 'Food matches training: more on long and hard days.') + '</p></section>';
+}
+function foodCard(){
+  const list = food[TODAY] || [], ai = !!FOOD_API, meal = fs.meal || mealNow();
+  let rows = '';
+  MEALS.forEach(m => { const xs = list.filter(x => x.meal === m); if (!xs.length) return;
+    rows += '<div class="mealh">' + m + '</div><ul class="fl">' + xs.map(x => '<li><div class="fi"><b>' + esc(x.name) + '</b><span>P ' + n0(x.protein) + ' · C ' + n0(x.carbs) + ' · F ' + n0(x.fat) + '</span></div><span class="fc">' + comma(n0(x.cal)) + '</span><button class="x" type="button" data-act="fdel" data-id="' + esc(x.id) + '" aria-label="Remove ' + esc(x.name) + '">✕</button></li>').join("") + '</ul>'; });
+  const manual = '<div class="manual"><label class="nm">Food<input id="m-name" placeholder="Chicken burrito bowl"></label>' +
+    ['cal:Calories','protein:Protein g','carbs:Carbs g','fat:Fat g'].map(x => { const [k, l] = x.split(":"); return '<label>' + l + '<input id="m-' + k + '" inputmode="numeric"></label>'; }).join("") + '</div>' +
+    '<button class="btn" type="button" data-act="fsave">Save food</button>';
+  let form = '<div class="fform"><label class="sub" for="food-meal" style="margin-bottom:-4px">Meal</label><select id="food-meal">' + MEALS.map(m => '<option' + (m === meal ? ' selected' : '') + '>' + m + '</option>').join("") + '</select>';
+  if (ai){
+    form += '<textarea id="food-text" aria-label="What did you eat?" placeholder="What did you eat? e.g. 3 eggs and 2 slices of toast">' + esc(fs.text) + '</textarea>' +
+      (fs.photo ? '<div class="thumb"><img src="' + fs.photo + '" alt="Your food photo"><button type="button" data-act="fnophoto" aria-label="Remove photo">✕</button></div>' : '') +
+      '<div class="fbtns"><label class="cam">' + ic("camera") + '<span>' + (fs.photo ? 'Retake' : 'Photo') + '</span><input type="file" id="food-photo" accept="image/*" aria-label="Take or choose a food photo"></label>' +
+      '<button class="btn primary" type="button" data-act="fadd"' + (fs.busy ? ' disabled aria-busy="true"' : '') + '>' + (fs.busy ? 'Reading your food…' : 'Add food') + '</button></div>' +
+      '<p class="err" role="alert">' + esc(fs.err) + '</p>' + (fs.note ? '<p class="fnote">' + esc(fs.note) + '</p>' : '') +
+      '<button class="linkbtn" type="button" data-act="fmanual">' + (fs.manual ? 'Hide manual entry' : 'Enter the numbers myself') + '</button>' + (fs.manual ? manual : '');
+  } else {
+    form += '<p class="fnote">Photo logging is being set up. Enter the numbers for now.</p>' + manual + '<p class="err" role="alert">' + esc(fs.err) + '</p>';
+  }
+  form += '</div>';
+  return '<section class="card" style="--tone:var(--long)"><div class="card-h">' + ic("camera") + '<span class="lbl">Food log</span><span class="r">' + (list.length ? list.length + ' item' + (list.length === 1 ? '' : 's') : 'nothing yet') + '</span></div>' + rows + form + '</section>';
+}
 
 /* ============ icons ============ */
 const IC = {
@@ -488,6 +597,7 @@ const IC = {
   link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   heart:'<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
   check:'<path d="M20 6 9 17l-5-5"/>',
+  camera:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
   cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
   moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
   dumbbell:'<path d="M14.4 14.4 9.6 9.6"/><path d="M18.66 21.49a2 2 0 1 1-2.83-2.83l-1.77 1.77a2 2 0 1 1-2.83-2.83l6.37-6.36a2 2 0 1 1 2.83 2.83l-1.77 1.77a2 2 0 1 1 2.83 2.83z"/><path d="m21.5 21.5-1.4-1.4M3.9 3.9 2.5 2.5"/><path d="M6.4 12.77a2 2 0 1 1-2.83-2.83l1.77-1.77a2 2 0 1 1-2.83-2.83l2.83-2.83a2 2 0 1 1 2.83 2.83l1.77-1.77a2 2 0 1 1 2.83 2.83z"/>'
@@ -538,10 +648,7 @@ function renderToday(){
   h += '<article class="card hero t-' + t + '"><header class="hero-h"><div><div class="d">Today</div><div class="dd">' + DAYF[dow(TODAY)] + ', ' + fmtD(TODAY) + '</div></div><span class="chip">' + TYPE[t] + '</span></header><div class="hero-b">' +
     (day.sessions.length ? day.sessions.map((s, i) => sessHtml(s, TODAY + "-" + i, true)).join("") : '<div class="sess"><h3 class="sess-t">Rest day</h3><p class="muted">An easy walk or mobility is plenty. Sleep and food do the work today.</p></div>') + '</div></article>';
   const f = fuelFor(p, day);
-  h += '<section class="card" style="--tone:var(--accent-2)"><div class="card-h">' + ic("fork") + '<span class="lbl">Fuel today</span><span class="r">' + (f.cut ? 'Small deficit' : 'Maintenance') + '</span></div>' +
-    '<div class="tiles"><div class="tile c-cal"><span>Calories</span><b>' + comma(f.cal) + '</b><small>estimate</small></div><div class="tile c-pro"><span>Protein</span><b>' + f.pro + ' g</b><small>keeps muscle</small></div>' +
-    '<div class="tile c-carb"><span>Carbs</span><b>' + f.carb + ' g</b><small>fuels running</small></div><div class="tile c-fat"><span>Fat</span><b>' + f.fat + ' g</b><small>hormones, recovery</small></div></div>' +
-    '<p class="sub">' + (f.cut ? 'Hard days get more food so training stays strong; easy days carry the deficit.' : 'Food matches training: more on long and hard days.') + '</p></section>';
+  h += fuelCard(f) + foodCard();
   const tm = dayOf(addDays(TODAY, 1));
   if (tm){ const tt = dayType(tm); h += '<section class="card"><div class="card-h" style="--tone:var(--muted)">' + ic("cal") + '<span class="lbl">Tomorrow</span></div><div class="mini t-' + tt + '"><div><b>' + esc(tm.sessions.length ? tm.sessions.map(s => s.title).join(" + ") : "Rest day") + '</b><span>' + DAYF[dow(addDays(TODAY, 1))] + '</span></div></div></section>'; }
   if (w){
@@ -728,13 +835,41 @@ document.addEventListener("click", ev => {
   if (act === "done"){ const k = a.dataset.key; if (done[k]) delete done[k]; else done[k] = 1; save(); render(); return; }
   if (act === "wk"){ const cur = wkSel != null ? wkSel : Math.max(0, weekOf(TODAY)); wkSel = Math.max(0, Math.min(plan.weeks.length - 1, cur + +a.dataset.dir)); render(); return; }
   if (act === "goday"){ const el = document.getElementById("d-" + a.dataset.date); if (el) el.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"start"}); return; }
+  if (act === "fadd"){
+    captureFood();
+    if (!fs.text.trim() && !fs.photo){ fs.err = "Type what you ate or add a photo."; render(); return; }
+    fs.busy = true; fs.err = ""; fs.note = ""; render();
+    askFood(fs.text.trim(), fs.photo).then(r => {
+      const meal = fs.meal || mealNow(), list = food[TODAY] = food[TODAY] || [];
+      r.items.forEach((x, i) => list.push({id: Date.now().toString(36) + i, meal, name: String(x.name).slice(0, 80), cal: n0(x.cal), protein: n0(x.protein), carbs: n0(x.carbs), fat: n0(x.fat)}));
+      fs = {busy:false, photo:null, text:"", meal, err:"", manual:false, note: r.note}; save(); render();
+    }).catch(e => { fs.busy = false; fs.err = e.message || "Couldn't read that. Try again, or enter the numbers yourself."; render(); });
+    return;
+  }
+  if (act === "fnophoto"){ captureFood(); fs.photo = null; render(); return; }
+  if (act === "fmanual"){ captureFood(); fs.manual = !fs.manual; render(); return; }
+  if (act === "fsave"){
+    captureFood();
+    const v = id => (document.getElementById(id) || {}).value || "", name = v("m-name").trim(), cal = n0(v("m-cal"));
+    if (!name || !cal){ fs.err = "Add a food name and its calories."; render(); return; }
+    (food[TODAY] = food[TODAY] || []).push({id: Date.now().toString(36), meal: fs.meal || mealNow(), name: name.slice(0, 80), cal, protein: n0(v("m-protein")), carbs: n0(v("m-carbs")), fat: n0(v("m-fat"))});
+    fs.err = ""; fs.manual = false; save(); render(); return;
+  }
+  if (act === "fdel"){ captureFood(); const L = food[TODAY] || []; const i = L.findIndex(x => x.id === a.dataset.id); if (i > -1){ L.splice(i, 1); save(); render(); } return; }
   if (act === "connect"){ toast("Connecting Strava and Garmin comes with the full app. This demo uses your answers only."); return; }
   if (act === "menu"){ openMenu(); return; }
   if (act === "close"){ closeMenu(); return; }
   if (act === "edit"){ closeMenu(); const p = plan.profile.sample ? blankProfile() : {...plan.profile}; delete p.sample; setup = {step: 0, p}; render(); window.scrollTo(0, 0); return; }
-  if (act === "reset"){ closeMenu(); plan = null; for (const k in done) delete done[k]; store.set(null); setup = {step: -1, p: blankProfile()}; render(); window.scrollTo(0, 0); return; }
+  if (act === "reset"){ closeMenu(); plan = null; for (const k in done) delete done[k]; for (const k in food) delete food[k]; store.set(null); setup = {step: -1, p: blankProfile()}; render(); window.scrollTo(0, 0); return; }
 });
 document.addEventListener("change", ev => {
+  if (ev.target.id === "food-photo"){
+    const file = ev.target.files && ev.target.files[0]; if (!file) return;
+    captureFood();
+    shrink(file).then(d => { fs.photo = d; fs.err = ""; render(); }).catch(e => { fs.err = e.message; render(); });
+    return;
+  }
+  if (ev.target.id === "food-meal"){ fs.meal = ev.target.value; return; }
   if (!setup) return;
   const n = ev.target.name;
   if (n === "goal" || n === "prDist"){ readStepSoft(); render(); }

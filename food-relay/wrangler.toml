@@ -1,0 +1,13 @@
+name = "hybrid-food"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+workers_dev = true
+
+# 6 food requests per minute per person (approximate, per Cloudflare location)
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1101"
+
+  [ratelimits.simple]
+  limit = 6
+  period = 60
