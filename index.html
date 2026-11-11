@@ -272,6 +272,25 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 .fnote{font-size:13px;color:var(--muted)}
 .btn[aria-busy="true"]{opacity:.75}
 
+/* get app button */
+.getapp{margin-left:auto;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 14px;border-radius:999px;border:0;background:linear-gradient(135deg,var(--accent-2),var(--accent));color:#fff;font-weight:600;font-size:14px;box-shadow:0 6px 16px rgba(61,123,255,.35);flex:none}
+.getapp + .iconbtn{margin-left:0}
+/* install sheet */
+
+.inst{background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 26%,#14161C),#14161C 80%);border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:22px;padding:18px;display:grid;gap:12px}
+.inst-h{display:flex;align-items:center;gap:12px}
+.inst-h .logo{width:44px;height:44px;border-radius:13px}
+.inst-h b{display:block;font:700 18px/1.2 var(--f-display)} .inst-h span{font-size:13px;color:var(--muted)}
+.inst ol{margin:0;padding:0;list-style:none;display:grid;gap:10px;counter-reset:st}
+.inst li{display:flex;align-items:center;gap:12px;font-size:15px;counter-increment:st}
+.inst li::before{content:counter(st);flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#fff;font:700 14px/1 var(--f-body)}
+.inst li .ic{display:inline-block;vertical-align:-3px;width:18px;height:18px;color:var(--accent-2)}
+.inst .row{justify-content:space-between}
+.inst .later{background:transparent;color:var(--muted);min-height:40px;padding:0 6px}
+.inst-arrow{position:fixed;left:50%;bottom:calc(8px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:45;background:var(--accent);color:#fff;border-radius:999px;padding:8px 14px;font:600 13px/1 var(--f-body);box-shadow:0 8px 20px rgba(61,123,255,.5);display:flex;align-items:center;gap:6px;animation:bob 1.2s ease-in-out infinite;pointer-events:none}
+@keyframes bob{50%{transform:translate(-50%,6px)}}
+@media (prefers-reduced-motion:reduce){.inst-arrow{animation:none}}
+
 /* sheet + toast */
 .back{position:fixed;inset:0;background:rgba(0,0,0,.66);z-index:40;display:grid;align-items:end;justify-items:center;padding:12px}
 .sheet{width:100%;max-width:480px;background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:20px;display:grid;gap:12px;margin-bottom:env(safe-area-inset-bottom,0px)}
@@ -631,6 +650,8 @@ const IC = {
   link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   heart:'<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
   check:'<path d="M20 6 9 17l-5-5"/>',
+  download:'<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+  share:'<path d="M12 3v13"/><path d="m7 8 5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',
   camera:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
   cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
   moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
@@ -642,8 +663,36 @@ const dayType = day => { const t = day.sessions.map(s => s.type); return t.inclu
 
 /* ============ rendering ============ */
 const app = $("#app"), bar = $("#tabbar");
+/* ---------- install to home screen ----------
+   Android/Chrome: a real one-tap install (beforeinstallprompt). iPhone: Safari can't be prompted by a
+   website, so the card walks people through Share → Add to Home Screen. Hidden once installed, on
+   computers, or for 7 days after "Not now". */
+const ua = navigator.userAgent || "";
+const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const inApp = /Instagram|FBAN|FBAV|TikTok|musical_ly|Snapchat|Line\/|GSA\//.test(ua);
+const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+let installEvt = null, guideOpen = false;
+addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; render(); });
+addEventListener("appinstalled", () => { installEvt = null; toast("Hybrid is on your home screen."); render(); });
+const isPhone = isIOS || /Android/.test(ua);
+const showGetApp = () => !standalone() && (!!installEvt || isPhone);
+function openInstall(){
+  const b = document.createElement("div"); b.className = "back";
+  const steps = inApp
+    ? '<p class="sub">This page is open inside another app. Tap the <b style="color:var(--ink)">•••</b> or compass button and choose <b style="color:var(--ink)">Open in Safari</b>' + (isIOS ? '' : ' (or Chrome)') + ', then tap <b style="color:var(--ink)">Get app</b> again.</p>'
+    : isIOS
+    ? '<ol><li><span>Tap the <b>Share</b> button ' + ic("share") + ' in Safari\'s toolbar. On newer iPhones it\'s inside the <b>•••</b> button.</span></li>' +
+      '<li><span>Scroll down and tap <b>Add to Home Screen</b>.</span></li><li><span>Tap <b>Add</b>. Then open Hybrid from your home screen.</span></li></ol>' +
+      '<p class="sub">Apple only lets you add apps from Safari\'s Share menu, so this one takes 3 taps.</p>'
+    : '<ol><li><span>Open your browser\'s menu <b>⋮</b>.</span></li><li><span>Tap <b>Install app</b> or <b>Add to Home screen</b>.</span></li></ol>';
+  b.innerHTML = '<div class="sheet inst" role="dialog" aria-modal="true" aria-label="Get the Hybrid app"><div class="inst-h"><span class="logo">' + ic("bolt") + '</span><div><b>Add Hybrid to your home screen</b><span>Opens full screen, like any app.</span></div></div>' + steps +
+    '<button class="btn block" type="button" data-act="close">Got it</button></div>';
+  document.body.appendChild(b); b.querySelector("button").focus();
+  if (isIOS && !inApp){ b.style.paddingBottom = "56px"; const ar = document.createElement("div"); ar.className = "inst-arrow"; ar.setAttribute("aria-hidden", "true"); ar.textContent = "Share is down here ↓"; document.body.appendChild(ar); setTimeout(() => ar.remove(), 9000); }
+}
 function header(){
   return '<header class="top"><div class="brand"><span class="logo">' + ic("bolt") + '</span><b>Hybrid</b></div>' + (mode === "sample" ? '<span class="pill demo">Sample</span>' : mode === "account" || API ? '' : '<span class="pill demo">Demo</span>') +
+    (showGetApp() ? '<button class="getapp" type="button" data-act="getapp">' + ic("download") + '<span>Get app</span></button>' : '') +
     (plan ? '<button class="iconbtn" type="button" data-act="menu" aria-label="Settings">' + ic("gear") + '</button>' : '') + '</header>';
 }
 function weekOf(date){ return plan.weeks.findIndex(w => date >= w.start && date <= addDays(w.start, 6)); }
@@ -879,7 +928,7 @@ function openMenu(){
   b.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-label="Settings"><h2 class="sec-t" style="font-size:20px">Settings</h2>' + body + '<button class="btn block" type="button" data-act="close">Close</button></div>';
   document.body.appendChild(b); b.querySelector("button").focus();
 }
-function closeMenu(){ const b = $(".back"); if (b) b.remove(); }
+function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 function setTab(t, scroll){
   if (!["today","plan","recovery","training"].includes(t)) t = "today";
   tab = t; if (t !== "plan") wkSel = null;
@@ -950,6 +999,11 @@ document.addEventListener("click", ev => {
   if (act === "delacct"){
     if (a.dataset.sure !== "1"){ a.dataset.sure = "1"; a.textContent = "Tap again to delete everything"; return; }
     closeMenu(); api("DELETE", "/api/account").then(() => { signedOut(); toast("Your account and data are deleted."); }).catch(e => toast(e.message)); return;
+  }
+  if (act === "getapp"){
+    if (installEvt){ const e = installEvt; installEvt = null; e.prompt(); e.userChoice.then(c => { if (c.outcome !== "accepted") toast("No problem. Tap Get app any time."); render(); }).catch(() => render()); }
+    else openInstall();
+    return;
   }
   if (act === "connect"){ toast("Connecting Strava and Garmin comes with the full app. This demo uses your answers only."); return; }
   if (act === "menu"){ openMenu(); return; }
