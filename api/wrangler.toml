@@ -20,3 +20,6 @@ namespace_id = "1101"
 
 [vars]
 APP_URL = "https://matthewbaconn.github.io/Hybrid/"
+
+[triggers]
+crons = ["*/15 * * * *"]

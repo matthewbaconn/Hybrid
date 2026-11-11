@@ -311,6 +311,20 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 .fdate{display:flex;align-items:center;gap:10px;background:var(--sunk);border-radius:16px;padding:6px}
 .fdate > div{flex:1;text-align:center;min-width:0} .fdate b{display:block;font-weight:700} .fdate span{font-size:12.5px;color:var(--muted)}
 .fdate .arrow{background:var(--surface)}
+.coach{display:flex;gap:12px;align-items:flex-start;background:color-mix(in srgb,var(--accent) 12%,var(--sunk));border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:14px;padding:12px 14px}
+.coach > .ic{color:var(--accent-2);margin-top:2px}
+.coach b{display:block;font-weight:700} .coach .num{display:block;font-size:13px;color:var(--muted);margin:2px 0}
+.coach p{margin:4px 0 0;font-size:14px;line-height:1.5} .coach strong{color:var(--ink)}
+.assess{display:grid;gap:2px;border-radius:12px;padding:10px 12px;background:var(--sunk);border-left:4px solid var(--vc)}
+.assess b{font-size:13.5px;color:var(--vc)} .assess span{font-size:13.5px;color:var(--muted)}
+.assess.v-good{--vc:var(--good)} .assess.v-easy{--vc:var(--easy)} .assess.v-warn{--vc:var(--warn)} .assess.v-muted{--vc:var(--muted)}
+.fbnote{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;color:var(--ink);background:color-mix(in srgb,var(--easy) 12%,transparent);border-radius:12px;padding:10px 12px}
+.fbnote .ic{color:var(--easy);margin-top:1px;flex:none}
+.nset{display:grid;gap:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 0}
+.tgl{display:flex;align-items:center;gap:10px;font-size:15px;min-height:36px}
+.tgl input{width:22px;height:22px;min-height:0;accent-color:var(--accent)}
+.tm{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);margin:-4px 0 4px 32px}
+.tm input{width:auto;min-height:38px}
 /* get app button */
 .getapp{margin-left:auto;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 14px;border-radius:999px;border:0;background:linear-gradient(135deg,var(--accent-2),var(--accent));color:#fff;font-weight:600;font-size:14px;box-shadow:0 6px 16px rgba(61,123,255,.35);flex:none}
 .getapp + .iconbtn{margin-left:0}
@@ -351,215 +365,19 @@ textarea::placeholder{color:var(--muted);opacity:.8}
   <button type="button" data-tab="training"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg><span>Training</span></button>
 </nav>
 
+<script src="plan.js"></script>
 <script>
 (function(){
 "use strict";
-/* ============ helpers ============ */
+/* ============ helpers (shared plan logic lives in plan.js) ============ */
+const {pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma} = HP;
+const {RACES, pace} = HP;
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const pad = n => String(n).padStart(2, "0");
-const isoLocal = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
 const TODAY = isoLocal(new Date());
-const parseD = s => { const [y, m, d] = s.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
-const addDays = (s, n) => { const d = parseD(s); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-const daysBetween = (a, b) => Math.round((parseD(b) - parseD(a)) / 864e5);
-const dow = s => (parseD(s).getUTCDay() + 6) % 7;            // 0 = Monday
-const mondayOf = s => addDays(s, -dow(s));
-const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-const DAYF = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const fmtD = s => { const d = parseD(s); return MON[d.getUTCMonth()] + " " + d.getUTCDate(); };
-const r5 = x => Math.round(x / 5) * 5;
-const half = x => Math.round(x * 2) / 2;
-const fmtPace = s => { s = Math.round(s); return Math.floor(s / 60) + ":" + pad(s % 60); };
-const fmtTime = s => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? h + ":" + pad(m) + ":" + pad(x) : m + ":" + pad(x); };
-// "2410" -> "24:10", "14500" -> "1:45:00": colons fill in from the right (seconds, minutes, hours)
-const fmtDigits = v => { const d = String(v).replace(/\D/g, "").replace(/^0+(?=\d{3})/, "").slice(0, 6); if (d.length <= 2) return d;
-  const sec = d.slice(-2), rest = d.slice(0, -2); return rest.length <= 2 ? rest + ":" + sec : rest.slice(0, -2) + ":" + rest.slice(-2) + ":" + sec; };
-const parseTime = t => { if (!t) return null; t = String(t).trim(); if (/^\d+$/.test(t)) t = fmtDigits(t); const p = t.split(/[:.]/).map(x => x.trim()); if (p.some(x => !/^\d+$/.test(x))) return null;
-  const n = p.map(Number); if (n.length === 2) return n[0] * 60 + n[1]; if (n.length === 3) return n[0] * 3600 + n[1] * 60 + n[2]; return null; };
-const comma = n => Math.round(n).toLocaleString("en-US");
 const store = { get(){ try { return JSON.parse(localStorage.getItem("hp-demo-v1") || "null"); } catch(e){ return null; } },
                 set(v){ try { localStorage.setItem("hp-demo-v1", JSON.stringify(v)); } catch(e){} } };
-
-/* ============ plan builder (rule-based) ============ */
-const RACES = { "5k": {name:"5K", mi:3.107}, "10k": {name:"10K", mi:6.214}, "half": {name:"Half marathon", mi:13.109}, "marathon": {name:"Marathon", mi:26.219}, "fitness": {name:"General fitness", mi:null} };
-const LONG_CAP = {"5k":9, "10k":11, "half":13, "marathon":20, "fitness":10};
-const LONG_GOAL = {"5k":7, "10k":9, "half":12, "marathon":20, "fitness":7};   // longest run reached at peak
-const PEAK = {"5k":[1.25,18,40], "10k":[1.3,22,45], "half":[1.35,28,50], "marathon":[1.4,35,55], "fitness":[1.2,15,35]};
-const TAPER = {"5k":[.65], "10k":[.65], "half":[.75,.55], "marathon":[.75,.6,.45], "fitness":[.7]};
-const riegel = (t, d1, d2) => t * Math.pow(d2 / d1, 1.06);
-
-function fitnessFrom(p){
-  // seconds per mile at each effort, from a recent race (Riegel) or a typical easy pace
-  let base;
-  if (p.prDist && p.prSec) base = {d: RACES[p.prDist].mi, t: p.prSec};
-  else { const easy = p.easyPace || 600; base = {d: 26.219, t: (easy - 80) * 26.219}; }
-  const T = d => riegel(base.t, base.d, d);
-  const pred = {"5k": T(3.107), "10k": T(6.214), "half": T(13.109), "marathon": T(26.219)};
-  const p5 = pred["5k"] / 3.107, p10 = pred["10k"] / 6.214, pH = pred.half / 13.109, pM = pred.marathon / 26.219;
-  return {pred, pace: {E: [pM + 60, pM + 110], L: [pM + 45, pM + 100], M: pM, H: pH, T: (p10 + pH) / 2, I: p5 - 5, R: p5 - 25}};
-}
-
-const LIFTS = {
-  lower: {title:"Strength · lower body", steps:["Back squat 4 × 5","Romanian deadlift 3 × 8","Walking lunge 3 × 10 / leg","Calf raise 3 × 15","Plank 3 × 45 s"]},
-  upper: {title:"Strength · upper body", steps:["Bench press 4 × 6","Pull-ups 4 × max (leave 1–2 in the tank)","Overhead press 3 × 8","Dumbbell row 3 × 10","Curls + triceps 3 × 12"]},
-  full:  {title:"Strength · full body", steps:["Trap-bar deadlift 4 × 5","Push-ups 3 × 12","Goblet squat 3 × 10","Single-arm row 3 × 10","Side plank 3 × 30 s / side"]},
-  dura:  {title:"Strength · running legs", steps:["Step-ups 3 × 8 / leg","Single-leg RDL 3 × 8 / leg","Bulgarian split squat 3 × 8 / leg","Hip thrust 3 × 10","Copenhagen plank 3 × 20 s / side"]},
-  size:  {title:"Strength · upper size", steps:["Incline dumbbell press 4 × 10","Lat pulldown 4 × 10","Lateral raise 3 × 15","Cable row 3 × 12","Arms superset 3 × 12"]}
-};
-const LIFT_SETS = {1:["full"], 2:["lower","upper"], 3:["lower","upper","full"], 4:["lower","upper","dura","size"]};
-
-function pace(P, k){ return k === "E" || k === "L" ? fmtPace(P[k][0]) + "–" + fmtPace(P[k][1]) : fmtPace(P[k] - 5) + "–" + fmtPace(P[k] + 5); }
-const PNAME = {E:"easy", L:"easy", M:"marathon pace", H:"half pace", T:"threshold", I:"interval", R:"fast", G:"goal pace"};
-
-function workoutFor(goal, phase, i, P){
-  // work is in miles; reps measured in metres
-  const lib = {
-    base: [
-      {name:"Hill sprints", k:"E", work:0, steps:[["Easy", null, "E"], ["8 × 15 s hill sprints, walk back down", null, null]]},
-      {name:"Progression run", k:"T", work:1.5, steps:[["Easy", null, "E"], ["Last 1.5 mi steady", null, "T", 15]]},
-      {name:"Fartlek", k:"I", work:1.5, steps:[["Easy", null, "E"], ["8 × 1 min quick / 1 min easy", null, "I"]]}
-    ],
-    "5k":    [{name:"800s", reps:6, m:800, k:"I", rest:"400 m jog"}, {name:"Mile repeats", reps:3, m:1609, k:"T", rest:"1 min jog"}, {name:"1K repeats", reps:5, m:1000, k:"I", rest:"2 min jog"}, {name:"400s", reps:10, m:400, k:"R", rest:"200 m jog"}],
-    "10k":   [{name:"1K repeats", reps:5, m:1000, k:"I", rest:"2 min jog"}, {name:"Threshold miles", reps:4, m:1609, k:"T", rest:"1 min jog"}, {name:"2K repeats", reps:3, m:2000, k:"I", rest:"3 min jog"}, {name:"Tempo", cont:4, k:"T"}],
-    "half":  [{name:"Threshold 2s", reps:3, m:3218, k:"T", rest:"2 min jog"}, {name:"Tempo", cont:5, k:"T"}, {name:"Mile repeats", reps:5, m:1609, k:"T", rest:"1 min jog"}, {name:"Half-pace run", cont:6, k:"H"}],
-    "marathon": [{name:"Threshold 3s", reps:2, m:4828, k:"T", rest:"3 min jog"}, {name:"Marathon-pace run", cont:7, k:"M"}, {name:"Mile repeats", reps:5, m:1609, k:"T", rest:"1 min jog"}, {name:"Marathon-pace run", cont:9, k:"M"}],
-    "fitness": [{name:"Tempo", cont:3, k:"T"}, {name:"Fartlek", reps:8, m:400, k:"I", rest:"1 min easy"}, {name:"Mile repeats", reps:3, m:1609, k:"T", rest:"2 min jog"}]
-  };
-  if (phase === "Base"){ const w = lib.base[i % lib.base.length]; return {kind:"base", ...w}; }
-  const L = lib[goal]; let w = {...L[i % L.length]};
-  if (phase === "Taper") w = w.cont ? {...w, cont: Math.max(2, Math.round(w.cont * .5))} : {...w, reps: Math.max(2, Math.round(w.reps * .6))};
-  if (phase === "Peak" && w.reps) w.reps += 1;
-  return w;
-}
-
-function buildPlan(p){
-  const goal = p.goal, fit = fitnessFrom(p), P = {...fit.pace};
-  const goalSec = p.goal !== "fitness" && p.goalSec ? p.goalSec : null;
-  P.G = goalSec ? goalSec / RACES[goal].mi : (goal !== "fitness" ? fit.pred[goal] / RACES[goal].mi : P.T);
-  let start = p.start || mondayOf(TODAY), N, raceDate = null;
-  if (goal !== "fitness" && p.raceDate){
-    raceDate = p.raceDate;
-    N = Math.floor(daysBetween(start, raceDate) / 7) + 1;
-    if (N > 24){ start = addDays(mondayOf(raceDate), -23 * 7); N = 24; }
-  } else N = 12;
-  const tw = TAPER[goal].length, B = Math.max(1, N - tw);
-  const m0 = Math.max(8, p.weekly || 0), [mul, floorM, cap] = PEAK[goal];
-  let peak = Math.min(cap, Math.max(m0 * mul, Math.min(floorM, m0 * 1.6)));
-  peak = Math.min(peak, m0 * Math.pow(1.1, Math.max(1, B - 1)));
-  const runDays = p.days.slice().sort((a, b) => a - b), longDay = p.longDay;
-  // quality days: furthest from the long run, 2+ days away
-  const gap = (a, b) => Math.min(Math.abs(a - b), 7 - Math.abs(a - b));
-  const cands = runDays.filter(d => d !== longDay && gap(d, longDay) >= 2).sort((a, b) => (Math.abs(a - 2) - Math.abs(b - 2)) || (gap(b, longDay) - gap(a, longDay)));
-  const q1 = cands.length ? cands[0] : runDays.find(d => d !== longDay);
-  const q2c = cands.filter(d => d !== q1 && gap(d, q1) >= 2);
-  const q2 = runDays.length >= 5 && q2c.length ? q2c[0] : null;
-  const weeks = []; let prevLong = Math.max(3, p.longest || 3), wIdx = {q:0, b:0};
-  for (let i = 0; i < N; i++){
-    const ws = addDays(start, i * 7);
-    let phase, miles;
-    if (i < B){
-      phase = i < B * .4 ? "Base" : i < B * .85 ? "Build" : "Peak";
-      miles = m0 + (peak - m0) * (B === 1 ? 1 : i / (B - 1));
-      if (i % 4 === 3 && i < B - 1) { miles *= .8; phase = phase + " · lighter"; }
-    } else { phase = i === N - 1 && goal !== "fitness" ? "Race week" : "Taper"; miles = peak * TAPER[goal][i - B]; }
-    miles = half(miles);
-    const isLight = /lighter/.test(phase), ph = phase.split(" ·")[0];
-    const days = Array.from({length: 7}, (_, d) => ({date: addDays(ws, d), sessions: []}));
-    const raceIdx = raceDate && raceDate >= ws && raceDate <= addDays(ws, 6) ? dow(raceDate) : null;
-    const lastFit = goal === "fitness" && i === N - 1;
-    let used = 0;
-    // long run (or the race)
-    if (raceIdx != null){
-      const r = RACES[goal];
-      days[raceIdx].sessions.push({type:"race", title:"Race day · " + r.name, mi: r.mi, k:"G",
-        steps:[["Warm up 10–15 min easy + 4 strides", null, null], [r.name + (goalSec ? " · goal " + fmtTime(goalSec) : ""), null, "G"], ["Start 5 s/mi slower than goal for the first mile, then settle in", null, null]],
-        why:"Everything in the plan builds to this. Trust the taper; you will feel fresh."});
-      used += r.mi;
-    } else if (lastFit){
-      days[longDay].sessions.push({type:"race", title:"5K time trial", mi:5, k:"I", steps:[["Warm up 1.5 mi easy + 4 strides", 1.5, "E"], ["5K all-out, even effort", 3.1, null], ["Cool down easy", 0.5, "E"]], why:"See how far you have come. The result sets your next plan's paces."});
-      used += 5;
-    } else {
-      const capL = LONG_CAP[goal];
-      const l0 = Math.max(3, p.longest || 3), lg = Math.max(l0, LONG_GOAL[goal]);
-      const ramp = l0 + (lg - l0) * Math.min(1, B === 1 ? 1 : i / Math.max(1, B - 1 - (goal === "marathon" ? 1 : 0)));
-      let L = Math.min(capL, Math.max(Math.round(miles * .28), Math.round(ramp)), prevLong + 2, Math.max(4, Math.round(miles * (goal === "marathon" ? .5 : .45))));
-      if (ph === "Taper") L = Math.max(3, Math.round(prevLong * [.65, .45, .35][Math.min(2, i - B)]));
-      if (isLight) L = Math.max(3, Math.round(L * .8));
-      L = half(L); if (!isLight && ph !== "Taper") prevLong = Math.max(prevLong, L);
-      const mpFinish = goal === "marathon" && (ph === "Build" || ph === "Peak") && i % 2 === 1;
-      const halfFinish = goal === "half" && ph === "Peak";
-      const steps = mpFinish ? [["Easy " + half(L - 4) + " mi", L - 4, "L"], ["Last 4 mi at marathon pace", 4, "M"]]
-        : halfFinish ? [["Easy " + half(L - 3) + " mi", L - 3, "L"], ["Last 3 mi at half pace", 3, "H"]]
-        : [["Easy, conversational the whole way", L, "L"]];
-      days[longDay].sessions.push({type:"long", title:"Long run · " + L + " mi", mi: L, k:"L", steps,
-        why: mpFinish || halfFinish ? "Practising race pace on tired legs is the most race-specific thing you can do." : "Builds the aerobic engine and leg durability. Slow is correct here."});
-      used += L;
-    }
-    // quality sessions
-    const qDays = [];
-    if (!lastFit && runDays.length >= 3 && q1 != null && !(raceIdx != null && Math.abs(q1 - raceIdx) < 3) && q1 !== raceIdx) qDays.push(q1);
-    if (q2 != null && (ph === "Build" || ph === "Peak") && !isLight && raceIdx == null) qDays.push(q2);
-    if (raceIdx != null && qDays.length === 0){ const sh = runDays.find(d => d <= raceIdx - 3) ?? null; if (sh != null) qDays.push(sh); }
-    qDays.forEach((d, qi) => {
-      let w;
-      if (qi === 1) w = {name:"Tempo", cont: Math.min(5, Math.max(2, Math.round(miles * .1))), k:"T"};
-      else if (raceIdx != null) w = {name:"Sharpener", reps:4, m:400, k:"G", rest:"2 min easy"};
-      else w = workoutFor(goal, ph, wIdx[ph === "Base" ? "b" : "q"]++, P);
-      if (isLight && w.reps) w = {...w, reps: Math.max(2, w.reps - 2)};
-      let steps, mi;
-      if (w.kind === "base"){
-        const e = Math.max(3, half(miles * .15));
-        steps = w.steps.map(s => s[0] === "Easy" ? ["Easy " + e + " mi", e, "E"] : s);
-        mi = e + (w.work || 0);
-        if (w.work) steps = [["Easy " + half(e) + " mi", e, "E"], [w.steps[1][0], w.work, w.steps[1][2], w.steps[1][3]]];
-        if (w.name === "Fartlek") steps = [["Warm up 1 mi easy", 1, "E"], ["8 × 1 min quick / 1 min easy", 2, "I"], ["Easy to finish", Math.max(1, e - 2), "E"]], mi = Math.max(4, e + 1);
-      } else {
-        const capW = Math.max(2.5, Math.min(goal === "marathon" ? 9 : 6, miles * (w.k === "M" || w.k === "H" ? .3 : .18)));
-        if (w.reps){ while (w.reps > 2 && w.reps * w.m / 1609.34 > capW) w = {...w, reps: w.reps - 1}; }
-        else if (w.cont > capW) w = {...w, cont: Math.max(2, Math.floor(capW))};
-        const work = w.cont ? w.cont : w.reps * w.m / 1609.34;
-        mi = half(1.5 + work + 1);
-        steps = [["Warm up 1.5 mi easy + 4 strides", 1.5, "E"],
-                 [w.cont ? w.cont + " mi at " + PNAME[w.k] : w.reps + " × " + (w.m >= 1600 ? (w.m === 1609 ? "1 mi" : half(w.m / 1609.34) + " mi") : w.m + " m") + " at " + PNAME[w.k] + (w.rest ? ", " + w.rest + " between" : ""), work, w.k],
-                 ["Cool down 1 mi easy", 1, "E"]];
-      }
-      mi = half(mi);
-      days[d].sessions.push({type:"workout", title: w.name + " · " + mi + " mi", mi, k: w.k || "T", steps,
-        why: w.kind === "base" ? "Base weeks build strength and form before the harder work starts." : w.k === "T" ? "Threshold work raises the pace you can hold for a long time." : w.k === "M" || w.k === "H" || w.k === "G" ? "Locks in the rhythm of race pace." : "Short, fast reps build speed and running economy."});
-      used += mi;
-    });
-    // easy runs fill the rest
-    const easyDays = runDays.filter(d => !days[d].sessions.some(s => s.type !== "lift"));
-    const left = Math.max(0, miles - used);
-    easyDays.forEach((d, k) => {
-      let e = raceIdx != null ? (d === raceIdx - 1 ? 2 : (d > raceIdx ? 0 : 3)) : Math.max(3, half(left / Math.max(1, easyDays.length)));
-      if (!e) return;
-      const strides = k === 0 && ph !== "Race week" && !lastFit;
-      days[d].sessions.push({type:"easy", title:(raceIdx != null && d === raceIdx - 1 ? "Shakeout · " : "Easy run · ") + e + " mi", mi: e, k:"E",
-        steps:[["Easy, you should be able to talk", e, "E"]].concat(strides ? [["Finish with 6 × 20 s strides, full recovery", null, null]] : []),
-        why: "Easy miles build your base without adding fatigue. Most runs should feel this easy."});
-    });
-    // lifts
-    const nL = Math.min(4, p.lifts || 0);
-    if (nL){
-      const names = LIFT_SETS[nL], order = [];
-      qDays.forEach(d => order.push(d));
-      for (let d = 0; d < 7; d++) if (!order.includes(d) && d !== longDay && d !== raceIdx && (raceIdx == null || d < raceIdx - 1)) order.push(d);
-      const picks = order.slice(0, nL).sort((a, b) => a - b);
-      picks.forEach((d, k) => {
-        let key = names[k];
-        if ((key === "lower" || key === "dura") && (d + 1) % 7 === longDay){ const sw = names.findIndex(n => n === "upper" || n === "size"); if (sw > -1){ key = names[sw]; names[sw] = names[k]; } }
-        const L = LIFTS[key], taper = ph === "Taper" || ph === "Race week" || isLight;
-        days[d].sessions.push({type:"lift", title: L.title + (taper ? " · light" : ""), mi: 0, steps: L.steps.map(s => [taper ? s.replace(/^(.*?)(\d) ×/, (m, a, n) => a + Math.max(2, n - 1) + " ×") : s, null, null]),
-          why: days[d].sessions.some(s => s.type === "workout") ? "Lift after the run, same day, so your easy days stay easy." : "Strength keeps you durable and holds on to muscle while running volume climbs."});
-      });
-    }
-    weeks.push({n: i + 1, start: ws, phase, miles: half(days.reduce((a, d) => a + d.sessions.reduce((b, s) => b + (s.mi || 0), 0), 0)), days});
-  }
-  return {profile: p, P, pred: fit.pred, weeks, start, raceDate, created: TODAY};
-}
+const buildPlan = p => HP.buildPlan(p, TODAY);
 
 /* ============ state ============ */
 const SAMPLE = {name:"Jordan", sample:true, goal:"half", raceDate: addDays(mondayOf(TODAY), 11 * 7 + 6), goalSec: 1 * 3600 + 44 * 60,
@@ -594,55 +412,32 @@ function loadAccount(j){
   clearObj(checkins); (j.checkins || []).forEach(c => checkins[c.date] = c);
   clearObj(weights); (j.weights || []).forEach(w => weights[w.date] = w.lb);
   acts = j.activities || []; strava = j.strava || strava;
+  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach;
   plan = j.profile ? buildPlan(j.profile) : null;
   setup = plan ? null : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
 }
-function signedOut(){ token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
+function signedOut(){ token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
 const checkins = S.checkins || {};          // date -> {sleep_h, sleep_q, soreness, energy, stress}
 const weights = S.weights || {};            // date -> lb
 let acts = S.acts || [];                    // [{id, source, date, type, name, mi, minutes, cal, avg_hr}]
 let strava = {available: false, connected: false, name: "", last_sync: null};
-let ci = null, wf = null, aw = {open: false, err: "", busy: false};   // check-in draft, weigh-in edit, workout form
+let ci = null, wf = null, aw = {open: false, err: "", busy: false};
+let reviews = {}, notes = [], uset = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", n_morning: true, n_run: true, n_weekly: true, n_bed: true}, pushInfo = {key: null, devices: 0}, coachOn = false;
+const reviewFor = a => reviews[a.id] || null;
+const VCLS = {ok: "good", easy: "easy", hard: "warn", unknown: "muted", extra: "good"};
+function reviewHtml(rv){ return '<div class="coach">' + ic("spark") + '<div><b>' + esc(rv.headline) + '</b>' + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + '</div></div>'; }
+let notePending = false;
+const morningNote = () => notes.find(n => n.date === TODAY && n.kind === "morning");   // check-in draft, weigh-in edit, workout form
 const actsOn = d => acts.filter(a => a.date === d);
 const weightNow = () => { const a = avgWeight(TODAY); return a || (plan && plan.profile.weight) || 170; };
-function avgWeight(end){ const v = []; for (let i = 0; i < 7; i++){ const x = weights[addDays(end, -i)]; if (x) v.push(x); } return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }
-
-function readiness(c){
-  if (!c) return null;
-  const score = Math.round(Math.min(1, c.sleep_h / 8) * 30 + (c.sleep_q - 1) / 4 * 20 + (5 - c.soreness) / 4 * 20 + (c.energy - 1) / 4 * 20 + (5 - c.stress) / 4 * 10);
-  const level = c.sleep_h < 5 || score < 50 ? 2 : score < 70 ? 1 : 0;
-  return {score, level, word: ["Ready to train", "Go easier today", "Recovery day"][level], tone: ["long", "work", "race"][level]};
-}
-const ADJ = {
-  1: {workout: "Easier today: do one rep fewer and run the reps at the slow end of the range.", long: "Easier today: cut 2 mi and keep every mile easy.", race: "", easy: "Keep it strictly conversational. Slow is fine.", lift: "Drop one set from each exercise."},
-  2: {workout: "Recovery day: swap this for 30–40 min very easy, or rest. Move the workout to a later day this week.", long: "Recovery day: make it half the distance, all easy, or move it.", race: "", easy: "Make it 20–30 min very easy, or rest.", lift: "Skip it, or keep it light and short."}
-};
-function dayMatches(date){
-  const day = dayOf(date); if (!day) return {};
-  const as = actsOn(date), runs = as.filter(a => a.type === "run"), lifts = as.filter(a => a.type === "lift"), m = {}; let ri = 0, li = 0;
-  day.sessions.forEach((s, i) => { if (s.type === "lift"){ if (lifts[li]) m[i] = lifts[li++]; } else if (runs[ri]) m[i] = runs[ri++]; });
-  return m;
-}
+const avgWeight = end => HP.avgW(weights, end);
+const {readiness, ADJ} = HP;
+const dayMatches = date => plan ? HP.dayMatches(plan, acts, date) : {};
 const sessDone = (date, i, m) => !!done[date + "-" + i] || !!(m || dayMatches(date))[i];
-
-/* calories: base (from 7-day average weight) + logged training; a cut takes 450 off the base */
-function burnOf(a, W){
-  const restPerMin = W * 11 / 1440;
-  if (a.cal > 0) return Math.max(0, a.cal - (a.minutes || 0) * restPerMin);
-  if (a.type === "run") return (a.mi || 0) * W * .72 || (a.minutes || 0) * 10;
-  return (a.minutes || 0) * ({bike: 8, swim: 9, lift: 5, other: 5})[a.type];
-}
-function plannedBurn(day, W){ return day ? day.sessions.reduce((t, s) => t + (s.type === "lift" ? 50 * 5 : (s.mi || 0) * W * .72), 0) : 0; }
-function fuelFor(p, day, date){
-  date = date || TODAY;
-  const W = weightNow(), G = p.goalWeight && p.goalWeight < W ? p.goalWeight : null;
-  let base = W * 13; if (G) base = Math.max(W * 10.5, base - 400);   // ~13 cal/lb covers an active day before training
-  const train = actsOn(date).reduce((t, a) => t + burnOf(a, W), 0) * (G ? .75 : 1);
-  const cal = Math.round((base + train) / 10) * 10;
-  const pro = r5(W * .9), fat = r5(Math.max(55, W * .3)), carb = r5(Math.max(100, (cal - pro * 4 - fat * 9) / 4));
-  return {cal, pro, carb, fat, cut: !!G, base: Math.round(base / 10) * 10, train: Math.round(train / 10) * 10, planned: Math.round(plannedBurn(day, W) * (G ? .75 : 1) / 10) * 10, logged: actsOn(date).length > 0};
-}
+const fuelFor = (p, day, date) => HP.fuel(plan, weights, acts, date || TODAY);
+let fbCache = null, fbKey = "";
+function fb(){ const k = acts.length + "|" + (acts[acts.length - 1] || {}).id + "|" + (plan && plan.start); if (!fbCache || k !== fbKey){ fbKey = k; fbCache = HP.feedback(plan, acts, TODAY); } return fbCache; }
 
 /* persistence: account -> server, local -> this browser, sample -> memory */
 async function saveRemote(method, path, data){ if (mode === "account") return api(method, path, data); save(); return {}; }
@@ -658,7 +453,8 @@ const CIQ = [
 function checkinCard(){
   const c = checkins[TODAY], r = readiness(c);
   if (c && !ci) return '<section class="card ci-done" style="--tone:var(--' + r.tone + ')"><div class="card-h">' + ic("heart") + '<span class="lbl">Today\'s readiness</span><button class="linkbtn r" type="button" data-act="ciedit">Edit</button></div>' +
-    '<div class="ready"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>' + c.sleep_h + ' h sleep · ' + ["", "very low", "low", "OK", "good", "great"][c.energy] + ' energy · ' + ["", "no", "light", "some", "sore", "very sore"][c.soreness] + (c.soreness <= 1 ? ' soreness' : ' legs') + '</span></div></div></section>';
+    '<div class="ready"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>' + c.sleep_h + ' h sleep · ' + ["", "very low", "low", "OK", "good", "great"][c.energy] + ' energy · ' + ["", "no", "light", "some", "sore", "very sore"][c.soreness] + (c.soreness <= 1 ? ' soreness' : ' legs') + '</span></div></div>' +
+    (morningNote() ? reviewHtml({headline: morningNote().headline, meaning: (morningNote().lines || []).join(" ")}) : ci === null && coachOn && mode === "account" && notePending ? '<p class="sub">Your coach note is on its way…</p>' : '') + '</section>';
   const d = ci || {};
   return '<section class="card" style="--tone:var(--long)"><div class="card-h">' + ic("heart") + '<span class="lbl">Morning check-in</span><span class="r">20 seconds</span></div>' +
     '<p class="sub" style="margin-top:-6px">How did you sleep and how do you feel? Today\'s session adjusts to your answers.</p>' +
@@ -697,7 +493,7 @@ function workoutCard(){
     h += '<div class="aform"><div class="two"><label>Type<select id="a-type">' + [["run","Run"],["lift","Strength"],["bike","Bike"],["swim","Swim"],["other","Other"]].map(([v, l]) => '<option value="' + v + '">' + l + '</option>').join("") + '</select></label>' +
       '<label>Name<input id="a-name" placeholder="Optional"></label></div>' +
       '<div class="three"><label>Miles<input id="a-mi" inputmode="decimal" placeholder="0"></label><label>Minutes<input id="a-min" inputmode="numeric" placeholder="0"></label><label>Calories<input id="a-cal" inputmode="numeric" placeholder="watch"></label></div>' +
-      '<div class="two"><label>Avg heart rate<input id="a-hr" inputmode="numeric" placeholder="optional"></label><label>Date<input id="a-date" type="date" max="' + TODAY + '" value="' + TODAY + '"></label></div>' +
+      '<div class="two"><label>Rep pace (/mi)<input id="a-wp" inputmode="numeric" placeholder="workouts"></label><label>Avg heart rate<input id="a-hr" inputmode="numeric" placeholder="optional"></label></div><div class="two"><label>Date<input id="a-date" type="date" max="' + TODAY + '" value="' + TODAY + '"></label><span></span></div>' +
       '<p class="err" role="alert">' + esc(aw.err) + '</p><div class="fbtns"><button class="btn" type="button" data-act="atoggle">Cancel</button><button class="btn primary" type="button" data-act="asave"' + (aw.busy ? ' disabled' : '') + '>Save workout</button></div></div>';
   } else h += '<button class="btn block" type="button" data-act="atoggle">' + ic("plus") + 'Log a workout</button>';
   if (mode === "account" && strava.available && !strava.connected)
@@ -713,13 +509,18 @@ let syncing = false, pendingRender = false;
 function typing(){ const a = document.activeElement; return (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) || aw.open || !!$(".back"); }
 function safeRender(){ if (typing()){ pendingRender = true; return; } pendingRender = false; captureFood(); render(); }
 document.addEventListener("focusout", () => setTimeout(() => { if (pendingRender && !typing()) safeRender(); }, 150));
+async function refreshMe(){
+  try { const j = await api("GET", "/api/me"); const before = JSON.stringify([acts, reviews]); acts = j.activities || acts; reviews = j.reviews || reviews; notes = j.notes || notes; strava = j.strava || strava; pushInfo = j.push || pushInfo;
+    if (JSON.stringify([acts, reviews]) !== before) safeRender(); } catch(e){}
+}
 async function stravaSync(quiet){
   if (!strava.connected || syncing) return;
   syncing = true;
   try {
     const j = await api("POST", "/api/strava/sync"), me2 = await api("GET", "/api/me");
-    const before = JSON.stringify(acts); acts = me2.activities || []; strava = me2.strava || strava;
-    if (JSON.stringify(acts) !== before || !quiet) safeRender();
+    const before = JSON.stringify([acts, reviews]); acts = me2.activities || []; strava = me2.strava || strava; reviews = me2.reviews || reviews; notes = me2.notes || notes;
+    if (JSON.stringify([acts, reviews]) !== before || !quiet) safeRender();
+    if (j.fresh && coachOn) setTimeout(refreshMe, 6000);
     else { const r = $(".card-h .r"); if (r && /^Strava/.test(r.textContent)) r.textContent = "Strava · " + agoText(strava.last_sync); }
     if (!quiet) toast(j.synced ? "Strava is up to date." : "No new Strava activities.");
   } catch(e){ if (!quiet) toast(e.message); }
@@ -864,12 +665,12 @@ async function addFood(meal, items){
 function fuelCard(f){
   const e = eaten(TODAY), left = f.cal - e.cal, pc = (a, b) => b ? Math.min(100, a / b * 100) : 0;
   const mac = (k, a, b, c) => '<div class="mac" style="--mc:var(--' + c + ')"><span>' + k + '</span><b>' + a + '<small> / ' + b + ' g</small></b><div class="bar"><i style="width:' + pc(a, b) + '%"></i></div></div>';
-  return '<section class="card" style="--tone:var(--accent-2)"><div class="card-h">' + ic("fork") + '<span class="lbl">Fuel today</span><span class="r">' + (f.cut ? 'Small deficit' : 'Maintenance') + '</span></div>' +
+  return '<section class="card" style="--tone:var(--accent-2)"><div class="card-h">' + ic("fork") + '<span class="lbl">Fuel today</span><span class="r">' + (f.brk ? 'Diet break' : f.cut ? f.deficit + ' cal deficit' : 'Maintenance') + '</span></div>' +
     '<div class="left"><div class="big"><b class="' + (left < 0 ? 'over' : '') + '">' + comma(Math.abs(left)) + '</b><span>' + (left < 0 ? 'calories over' : 'calories left') + '</span></div>' +
     '<span class="sub">' + comma(e.cal) + ' eaten of ' + comma(f.cal) + ' (estimate)</span><div class="bar"><i style="width:' + pc(e.cal, f.cal) + '%' + (left < 0 ? ';background:var(--crit)' : '') + '"></i></div></div>' +
     '<div class="macs">' + mac("Protein", e.protein, f.pro, "lift") + mac("Carbs", e.carbs, f.carb, "work") + mac("Fat", e.fat, f.fat, "easy") + '</div>' +
     '<p class="sub">' + (f.logged ? 'Base ' + comma(f.base) + ' + training ' + comma(f.train) + ' = ' + comma(f.cal) + '.' : f.planned ? 'Base ' + comma(f.base) + '. Today\'s training adds about +' + comma(f.planned) + ' once you log it.' : 'Base ' + comma(f.base) + ' on a rest day.') +
-      (f.cut ? ' Includes a small deficit toward your goal weight.' : '') + '</p></section>';
+      (f.brk ? ' ' + esc(f.why) : f.cut ? ' Includes a ' + f.deficit + '-calorie deficit toward your goal weight.' + (f.why ? ' ' + esc(f.why) : '') : f.why ? ' ' + esc(f.why) : '') + '</p></section>';
 }
 function foodCard(){
   const list = food[fdate] || [], ai = aiOn(), meal = fs.meal || mealNow();
@@ -911,6 +712,8 @@ const IC = {
   scale:'<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 9a4 4 0 0 1 8 0"/><path d="m12 9 1.5-2"/>',
   watch:'<circle cx="12" cy="12" r="6"/><path d="M12 10v2l1 1"/><path d="m16.13 7.66-.81-4.05a2 2 0 0 0-2-1.61h-2.68a2 2 0 0 0-2 1.61l-.78 4.05M7.88 16.36l.8 4a2 2 0 0 0 2 1.61h2.72a2 2 0 0 0 2-1.61l.81-4.05"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
+  spark:'<path d="M9.94 14.06 4 20M14 4l1.5 4.5L20 10l-4.5 1.5L14 16l-1.5-4.5L8 10l4.5-1.5z"/>',
+  bell:'<path d="M10.27 21a2 2 0 0 0 3.46 0"/><path d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33"/>',
   download:'<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
   share:'<path d="M12 3v13"/><path d="m7 8 5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',
   camera:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
@@ -958,9 +761,9 @@ function header(){
 }
 function weekOf(date){ return plan.weeks.findIndex(w => date >= w.start && date <= addDays(w.start, 6)); }
 function dayOf(date){ const wi = weekOf(date); return wi < 0 ? null : plan.weeks[wi].days[dow(date)]; }
-function stepHtml(st){
-  const [text, , k, plus] = st;
-  return '<li><span>' + esc(text) + (k ? ' <b class="pc">' + (k === "E" || k === "L" ? pace(plan.P, k) : fmtPace(plan.P[k] + (plus || 0) - (k === "G" ? 0 : 0))) + '/mi</b>' : '') + '</span></li>';
+function stepHtml(st, offs){
+  const [text, , k, plus] = st, off = (offs && offs[k]) || 0;
+  return '<li><span>' + esc(text) + (k ? ' <b class="pc">' + (k === "E" || k === "L" ? pace(plan.P, k) : fmtPace(plan.P[k] + off + (plus || 0))) + '/mi</b>' : '') + '</span></li>';
 }
 function estTime(s){
   if (!s.mi) return null;
@@ -968,17 +771,25 @@ function estTime(s){
   const avg = s.type === "workout" ? (plan.P.E[0] + k) / 2 : k;
   return s.mi * avg;
 }
+const VERDICT = {ok: ["On target", "good"], easy: ["Came in fast", "easy"], hard: ["Too hard", "warn"], unknown: ["Couldn't check", "muted"]};
 function sessHtml(s, key, big){
-  const t = estTime(s), date = key.slice(0, 10), idx = +key.slice(11), match = dayMatches(date)[idx], manualDone = !!done[key], isDone = manualDone || !!match;
+  const date = key.slice(0, 10), idx = +key.slice(11), match = dayMatches(date)[idx], manualDone = !!done[key], isDone = manualDone || !!match;
+  const F = fb(), future = !match && date >= TODAY, offs = future ? F.offs : (F.assess[key] || {}).offsBefore, note = future ? F.notes[key] : null;
+  if (future && F.extra[key]) s = {...s, steps: HP.withExtraRep(s.steps)};
+  const as = match ? F.assess[key] : null, rv = match ? reviewFor(match) : null, t = estTime(s);
   const r = date === TODAY ? readiness(checkins[TODAY]) : null, adj = r && r.level && ADJ[r.level][s.type];
   const stats = s.type === "lift" ? '<div><b>' + s.steps.length + '</b><span>exercises</span></div><div><b>~50 min</b><span>time</span></div>'
     : '<div><b>' + s.mi + ' mi</b><span>distance</span></div>' + (t ? '<div><b>' + fmtTime(t).replace(/:\d\d$/, "") + (t >= 3600 ? '' : ' min') + '</b><span>about</span></div>' : '') +
-      '<div><b>' + (s.type === "race" ? fmtPace(plan.P.G) : s.k === "E" || s.k === "L" ? fmtPace(plan.P[s.k][0]) + '+' : fmtPace(plan.P[s.k] || plan.P.T)) + '</b><span>' + (s.type === "race" ? "goal pace" : "key pace") + '</span></div>';
+      '<div><b>' + (s.type === "race" ? fmtPace(plan.P.G) : s.k === "E" || s.k === "L" ? fmtPace(plan.P[s.k][0]) + '+' : fmtPace((plan.P[s.k] || plan.P.T) + ((offs && offs[s.k]) || 0))) + '</b><span>' + (s.type === "race" ? "goal pace" : "key pace") + '</span></div>';
   return '<div class="sess t-' + s.type + '">' + (big ? '<span class="chip">' + TYPE[s.type] + '</span>' : '') +
-    '<h3 class="sess-t">' + esc(s.title) + '</h3><div class="stats">' + stats + '</div><ul class="steps">' + s.steps.map(stepHtml).join("") + '</ul>' +
+    '<h3 class="sess-t">' + esc(s.title) + '</h3><div class="stats">' + stats + '</div><ul class="steps">' + s.steps.map(st => stepHtml(st, offs)).join("") + '</ul>' +
+    (future && offs && s.k && offs[s.k] ? '<p class="fbnote">' + ic("gauge") + '<span>Reps ' + Math.abs(offs[s.k]) + ' s/mi ' + (offs[s.k] < 0 ? 'faster' : 'slower') + ' than the original plan, from how your last workouts went.</span></p>' : '') +
+    (note ? '<p class="fbnote">' + ic("gauge") + '<span>' + esc(note) + '</span></p>' : '') +
     (adj ? '<p class="adj a' + r.level + '">' + esc(adj) + '</p>' : '') +
     (big ? '<p class="why">' + esc(s.why) + '</p>' : '') +
-    (match ? '<p class="matched">' + ic("check") + '<span>Done · ' + esc(match.name) + (actLine(match) ? ' · ' + actLine(match) : '') + '</span></p>'
+    (match ? '<p class="matched">' + ic("check") + '<span>Done · ' + esc(match.name) + (actLine(match) ? ' · ' + actLine(match) : '') + '</span></p>' +
+        (as && s.type !== "lift" ? '<div class="assess v-' + VERDICT[as.verdict][1] + '"><b>' + VERDICT[as.verdict][0] + '</b><span>' + esc(as.why) + '</span></div>' : '') +
+        (rv ? reviewHtml(rv) : '')
       : '<div class="row"><button class="btn ' + (isDone ? 'done' : big ? 'primary' : '') + '" type="button" data-act="done" data-key="' + key + '">' + (isDone ? ic("check") + 'Done' : 'Mark as done') + '</button></div>') + '</div>';
 }
 function renderToday(){
@@ -1164,9 +975,11 @@ function toast(msg){
   t.textContent = msg; clearTimeout(toastT); toastT = setTimeout(() => t.remove(), 3200);
 }
 function openMenu(){
+  if (mode === "account" && pushOK() && !pushState.checked){ checkPush().then(() => { if (!$(".back")) openMenu(); }); return; }
   const b = document.createElement("div"); b.className = "back";
   const body = mode === "account"
     ? '<p class="sub">Signed in as <b style="color:var(--ink)">' + esc(me.email) + '</b></p><button class="btn block" type="button" data-act="edit">Edit goals and rebuild plan</button>' +
+      notifHtml() +
       (strava.connected ? '<button class="btn block" type="button" data-act="stdisc">Disconnect Strava' + (strava.name ? ' (' + esc(strava.name) + ')' : '') + '</button>' : '') +
       '<button class="btn block" type="button" data-act="logout">Log out</button><button class="btn block" type="button" data-act="delacct" style="color:var(--crit)">Delete my account</button>'
     : mode === "sample"
@@ -1174,6 +987,32 @@ function openMenu(){
     : '<button class="btn block" type="button" data-act="edit">Edit goals and rebuild plan</button><button class="btn block" type="button" data-act="reset">Start over</button><p class="sub">Your answers stay in this browser only.</p>';
   b.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-label="Settings"><h2 class="sec-t" style="font-size:20px">Settings</h2>' + body + '<button class="btn block" type="button" data-act="close">Close</button></div>';
   document.body.appendChild(b); b.querySelector("button").focus();
+}
+/* ---------- notifications (web push) ---------- */
+const pushOK = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+let pushState = {on: false, checked: false};
+async function checkPush(){ try { const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((_, no) => setTimeout(() => no(new Error("no worker")), 1500))]), sub = await reg.pushManager.getSubscription(); pushState = {on: !!sub && Notification.permission === "granted", checked: true}; } catch(e){ pushState = {on: false, checked: true}; } }
+function notifHtml(){
+  let h = '<div class="nset"><div class="card-h" style="--tone:var(--accent-2)">' + ic("bell") + '<span class="lbl">Notifications</span></div>';
+  if (!pushInfo.key) return h + '<p class="sub">Notifications are being set up.</p></div>';
+  if (!pushOK()) return h + '<p class="sub">' + (isIOS && !standalone() ? 'On iPhone, add Hybrid to your home screen first (tap <b style="color:var(--ink)">Get app</b>), open it from there, then turn notifications on here.' : 'This browser can\'t show notifications.') + '</p></div>';
+  if (Notification.permission === "denied") return h + '<p class="sub">Notifications are blocked for Hybrid. Turn them on in your phone\'s Settings → Notifications, then come back.</p></div>';
+  if (!pushState.on) return h + '<p class="sub">Morning check-in reminder, a summary after every workout, a Monday recap and a bedtime reminder.</p><button class="btn primary block" type="button" data-act="pushon">Turn on notifications</button></div>';
+  const tg = (k, label) => '<label class="tgl"><input type="checkbox" data-set="' + k + '"' + (uset[k] ? ' checked' : '') + '><span>' + label + '</span></label>';
+  return h + tg("n_morning", "Morning check-in reminder") + '<label class="tm">at<input type="time" data-set="morning" value="' + esc(uset.morning) + '"></label>' +
+    tg("n_run", "Summary after each workout") + tg("n_weekly", "Monday weekly recap") + tg("n_bed", "Bedtime reminder") + '<label class="tm">at<input type="time" data-set="bedtime" value="' + esc(uset.bedtime) + '"></label>' +
+    '<div class="fbtns"><button class="btn" type="button" data-act="pushtest">Send a test</button><button class="btn" type="button" data-act="pushoff">Turn off here</button></div></div>';
+}
+function b64uToBytes(s){ s = s.replace(/-/g, "+").replace(/_/g, "/"); const raw = atob(s + "===".slice((s.length + 3) % 4)); return Uint8Array.from(raw, c => c.charCodeAt(0)); }
+async function pushOn(){
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted"){ toast("Notifications weren't allowed. You can turn them on later in your phone's Settings."); return; }
+  const reg = await navigator.serviceWorker.ready;
+  const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64uToBytes(pushInfo.key)});
+  await api("POST", "/api/push/subscribe", {subscription: sub.toJSON()});
+  let tz = "America/New_York"; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || tz; } catch(e){}
+  const j = await api("PUT", "/api/settings", {tz}); uset = j.settings || uset;
+  pushState.on = true; pushInfo.devices = (pushInfo.devices || 0) + 1;
 }
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 function setTab(t, scroll){
@@ -1258,7 +1097,8 @@ document.addEventListener("click", ev => {
     const d = ci || {}; if (CIQ.some(([k]) => d[k] == null)){ ci = {...d, err: "Answer all five so the plan can adjust."}; render(); return; }
     const c = {date: TODAY, sleep_h: d.sleep_h, sleep_q: d.sleep_q, soreness: d.soreness, energy: d.energy, stress: d.stress};
     ci.busy = true; render();
-    saveRemote("PUT", "/api/checkin", c).then(() => { checkins[TODAY] = c; ci = null; save(); render(); const r = readiness(c); toast(r.word + (r.level ? ". Today's session is adjusted." : ".")); })
+    notePending = true;
+    saveRemote("PUT", "/api/checkin", c).then(j => { notePending = false; if (j && j.note){ notes = notes.filter(n => !(n.date === TODAY && n.kind === "morning")).concat([{date: TODAY, kind: "morning", ...j.note}]); } checkins[TODAY] = c; ci = null; save(); render(); const r = readiness(c); toast(r.word + (r.level ? ". Today's session is adjusted." : ".")); })
       .catch(e => { ci.busy = false; ci.err = e.message; render(); });
     return;
   }
@@ -1271,12 +1111,12 @@ document.addEventListener("click", ev => {
   }
   if (act === "atoggle"){ aw = {open: !aw.open, err: "", busy: false}; render(); return; }
   if (act === "asave"){
-    const v = id => ((document.getElementById(id) || {}).value || "").trim(), x = {type: v("a-type") || "run", name: v("a-name"), mi: parseFloat(v("a-mi")) || 0, minutes: n0(v("a-min")), cal: n0(v("a-cal")), avg_hr: n0(v("a-hr")), date: v("a-date") || TODAY};
+    const v = id => ((document.getElementById(id) || {}).value || "").trim(), x = {work_pace: parseTime(v("a-wp")) || 0, type: v("a-type") || "run", name: v("a-name"), mi: parseFloat(v("a-mi")) || 0, minutes: n0(v("a-min")), cal: n0(v("a-cal")), avg_hr: n0(v("a-hr")), date: v("a-date") || TODAY};
     if (!x.mi && !x.minutes){ aw.err = "Add a distance or a time."; render(); return; }
     if (x.date > TODAY){ aw.err = "Pick today or an earlier day."; render(); return; }
     aw.busy = true; render();
     (mode === "account" ? api("POST", "/api/activity", x).then(j => j.activity) : Promise.resolve({...x, id: Date.now().toString(36), source: "manual", name: x.name || ({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Workout"})[x.type]}))
-      .then(saved => { acts.push(saved); aw = {open: false, err: "", busy: false}; save(); render(); toast("Workout saved."); })
+      .then(saved => { acts.push(saved); aw = {open: false, err: "", busy: false}; save(); render(); toast("Workout saved."); if (mode === "account" && coachOn) setTimeout(refreshMe, 5000); })
       .catch(e => { aw.busy = false; aw.err = e.message; render(); });
     return;
   }
@@ -1293,6 +1133,10 @@ document.addEventListener("click", ev => {
     closeMenu(); api("POST", "/api/strava/disconnect").then(() => { strava.connected = false; acts = acts.filter(x => x.source !== "strava"); render(); toast("Strava disconnected."); }).catch(e => toast(e.message)); return;
   }
   if (act === "fday"){ captureFood(); fdate = addDays(fdate, +a.dataset.dir); if (fdate > TODAY) fdate = TODAY; fs.err = ""; fs.note = ""; render(); return; }
+  if (act === "pushon"){ a.disabled = true; a.textContent = "One moment…"; pushOn().then(() => { closeMenu(); openMenu(); toast("Notifications are on."); }).catch(e => { a.disabled = false; a.textContent = "Turn on notifications"; toast(e.message || "Couldn't turn on notifications."); }); return; }
+  if (act === "pushtest"){ api("POST", "/api/push/test").then(j => toast(j.sent ? "Test sent. It should arrive in a few seconds." : "Couldn't reach this phone. Turn notifications off and on again.")).catch(e => toast(e.message)); return; }
+  if (act === "pushoff"){ navigator.serviceWorker.ready.then(reg => reg.pushManager.getSubscription()).then(sub => sub ? api("POST", "/api/push/unsubscribe", {endpoint: sub.endpoint}).then(() => sub.unsubscribe()) : null)
+      .then(() => { pushState.on = false; closeMenu(); openMenu(); toast("Notifications are off on this phone."); }).catch(e => toast(e.message)); return; }
   if (act === "gotoday"){ setTab("today", true); return; }
   if (act === "menu"){ openMenu(); return; }
   if (act === "close"){ closeMenu(); return; }
@@ -1300,11 +1144,13 @@ document.addEventListener("click", ev => {
   if (act === "reset"){ closeMenu(); plan = null; for (const k in done) delete done[k]; for (const k in food) delete food[k]; store.set(null); setup = {step: -1, p: blankProfile()}; render(); window.scrollTo(0, 0); return; }
 });
 document.addEventListener("input", ev => {
-  if (!["s-goal", "s-pr", "s-easy"].includes(ev.target.id)) return;
+  if (!["s-goal", "s-pr", "s-easy", "a-wp"].includes(ev.target.id)) return;
   const el = ev.target, f = fmtDigits(el.value);
   if (el.value !== f) el.value = f;
 });
 document.addEventListener("change", ev => {
+  const sk = ev.target.dataset && ev.target.dataset.set;
+  if (sk && mode === "account"){ const v = ev.target.type === "checkbox" ? ev.target.checked : ev.target.value; api("PUT", "/api/settings", {[sk]: v}).then(j => { uset = j.settings || uset; }).catch(e => toast(e.message)); return; }
   if (ev.target.id === "food-photo"){
     const file = ev.target.files && ev.target.files[0]; if (!file) return;
     captureFood();

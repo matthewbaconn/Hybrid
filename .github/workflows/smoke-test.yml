@@ -44,6 +44,7 @@ jobs:
           call PUT /api/weight "{\"date\":\"$d\",\"lb\":181.4}" | jq -e .ok > /dev/null
           call POST /api/activity "{\"date\":\"$d\",\"type\":\"run\",\"mi\":3.1,\"minutes\":26}" | jq -e .activity.id > /dev/null
           me=$(call GET /api/me)
+          echo "coach: $(echo "$me" | jq -c '{coach, push: .push.key != null, notes: (.notes | length), settings: .settings.tz}')"
           [ "$(echo "$me" | jq '.checkins | length')" = 1 ] && [ "$(echo "$me" | jq '.weights | length')" = 1 ] && [ "$(echo "$me" | jq '.activities | length')" = 1 ] || { echo "::error::tracking not saved: $me"; exit 1; }
           echo "check-in, weigh-in and workout saved; strava: $(echo "$me" | jq -c .strava)"
           if [ "$(echo "$me" | jq .strava.available)" = true ]; then

@@ -46,8 +46,10 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install wrangler
-        run: npm install --no-save --no-audit --no-fund wrangler@4
+      - name: Install
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save --no-audit --no-fund wrangler@4
 
       - name: Find or create the database
         run: |
@@ -86,6 +88,32 @@ jobs:
           if [ -z "$SID" ] || [ -z "$SSEC" ]; then echo "::warning::Strava keys not added yet (STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET). Connect Strava stays off."; exit 0; fi
           printf '%s' "$SID" | npx wrangler secret put STRAVA_CLIENT_ID
           printf '%s' "$SSEC" | npx wrangler secret put STRAVA_CLIENT_SECRET
+
+      - name: Notification keys (made once, kept on Cloudflare)
+        run: |
+          have=$(npx wrangler secret list 2>/dev/null || true)
+          if echo "$have" | grep -q VAPID_PRIVATE; then echo "Notification keys already set."; exit 0; fi
+          node -e 'crypto.subtle.generateKey({name:"ECDSA",namedCurve:"P-256"},true,["sign"]).then(async k=>{const raw=new Uint8Array(await crypto.subtle.exportKey("raw",k.publicKey));const j=await crypto.subtle.exportKey("jwk",k.privateKey);require("fs").writeFileSync("pub.txt",Buffer.from(raw).toString("base64url"));require("fs").writeFileSync("priv.txt",j.d)})'
+          npx wrangler secret put VAPID_PUBLIC < pub.txt
+          npx wrangler secret put VAPID_PRIVATE < priv.txt
+          rm -f pub.txt priv.txt
+          echo "::notice::Made new notification keys."
+
+      - name: Register for Strava activity notices (webhook)
+        env:
+          SID: ${{ secrets.STRAVA_CLIENT_ID }}
+          SSEC: ${{ secrets.STRAVA_CLIENT_SECRET }}
+        run: |
+          if [ -z "$SID" ] || [ -z "$SSEC" ] || [ -z "$url" ]; then echo "Strava keys not set; skipping."; exit 0; fi
+          cb="$url/api/strava/webhook"
+          subs=$(curl -sS "https://www.strava.com/api/v3/push_subscriptions?client_id=$SID&client_secret=$SSEC")
+          if echo "$subs" | grep -q "$cb"; then echo "::notice::Strava notices already registered."; exit 0; fi
+          if echo "$subs" | grep -q '"id"'; then echo "::warning::This Strava app already sends notices somewhere else: $subs"; exit 0; fi
+          tok=$(node -e 'console.log(require("crypto").randomBytes(16).toString("hex"))')
+          printf '%s' "$tok" | npx wrangler secret put STRAVA_VERIFY
+          sleep 10
+          r=$(curl -sS -X POST https://www.strava.com/api/v3/push_subscriptions -F client_id="$SID" -F client_secret="$SSEC" -F callback_url="$cb" -F verify_token="$tok")
+          if echo "$r" | grep -q '"id"'; then echo "::notice::Strava will now notify Hybrid of new activities."; else echo "::warning::Strava notice registration failed: $r (runs still sync when the app opens and hourly)"; fi
 
       - name: Check the API answers
         run: |

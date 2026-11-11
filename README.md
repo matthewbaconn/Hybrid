@@ -21,6 +21,19 @@ device. Connecting Strava and Garmin is planned.
   logged training (75% of it when cutting). Food can be logged for any of the last 30 days.
 - **Weight:** morning weigh-ins, 7-day average, weekly change and distance to goal on the Training tab.
 
+## Coaching and notifications
+
+- **Runs adjust from how the last ones went:** workout reps (Strava laps, or the rep pace typed in) vs target move
+  the next workouts' paces 5 s/mi (max ±15) and add a rep after a too-easy workout; easy runs that are too fast
+  get a note; an on-target long run makes the next one's last mile steady.
+- **Weekly calorie rules:** deficit starts at 400, then ±150 a week from the weight trend (250–750), every 8th
+  week a diet break, maintenance at the goal weight. Hard days are at most 250 under.
+- **AI coach notes:** a short review after each workout and a note after the morning check-in (12 a day max).
+- **Notifications** (Settings → Notifications; on iPhone, install to the home screen first): morning check-in
+  reminder, a summary after each workout, Monday recap, bedtime reminder. A Cloudflare schedule runs every
+  15 minutes; Strava tells the server about new activities, with an hourly backup sync.
+- The plan logic is in `plan.js`, shared by the app and the server.
+
 ## Connect Strava
 
 The Strava app currently allows 10 connected athletes (raise it on strava.com/settings/api; past that,
