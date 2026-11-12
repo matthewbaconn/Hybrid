@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#800000">
 <title>Hybrid</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -32,7 +32,9 @@
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html{background:var(--bg);-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html{background:var(--bg);-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:pan-x pan-y;overscroll-behavior-y:none}
+body{touch-action:pan-x pan-y}
+@media (pointer:coarse){input,select,textarea{font-size:16px!important}}
 html,body{overflow-x:clip;max-width:100%}
 body{margin:0;color:var(--ink);font:15px/1.55 var(--f-body);font-variant-numeric:tabular-nums;
   background:var(--bg);
@@ -243,6 +245,14 @@ button{cursor:pointer}
 .wl em.ok{font-style:normal;font-size:13px;font-weight:600;color:var(--long);flex:none}
 .steps-plain{margin:0;padding-left:20px;display:grid;gap:14px;font-size:14.5px}
 .steps-plain li{padding-left:4px} .steps-plain input{margin:10px 0 8px;font-size:13px}
+
+/* pull down to refresh */
+#ptr{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 6px);z-index:30;width:38px;height:38px;margin-left:-19px;border-radius:50%;background:var(--surface);border:1px solid rgba(255,255,255,.08);
+  display:grid;place-items:center;opacity:0;transform:translateY(-50px);will-change:transform,opacity;pointer-events:none}
+#ptr svg{width:20px;height:20px;fill:none;stroke:var(--accent-2);stroke-width:2.4;stroke-linecap:round}
+#ptr.go svg{animation:spin .7s linear infinite}
+#ptr.back{transition:transform .25s ease,opacity .25s ease}
+#app.pulling{will-change:transform} #app.settle{transition:transform .25s ease}
 
 /* opening animation: the logo draws itself, then fills (transform/opacity/stroke only, so it stays smooth) */
 #splash{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-content:center;justify-items:center;gap:18px;will-change:opacity,transform}
@@ -489,6 +499,7 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 <body>
 <div id="splash" aria-hidden="true"><div class="sp-logo"><svg viewBox="0 0 24 24"><path pathLength="1" d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg></div><b>Hybrid</b></div>
 <script>window.__splashAt = performance.now();</script>
+<div id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></div>
 <div class="wrap" id="app" aria-live="polite"></div>
 <nav class="tabbar" id="tabbar" aria-label="Sections" hidden>
   <button type="button" data-tab="today"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg><span>Today</span></button>
@@ -834,6 +845,37 @@ function autoSync(force){
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") autoSync(); });
 addEventListener("focus", () => autoSync());
+/* pull down from the top to refresh: reloads your data, Strava and the forecast */
+(function(){
+  const ptr = document.getElementById("ptr"), appEl = document.getElementById("app"), MAX = 120, GO = 72;
+  let y0 = null, d = 0, busy = false;
+  const blocked = () => !plan || setup || authv || loading || $(".back") || window.scrollY > 0;
+  const show = (dist, spin) => { const p = Math.min(1, dist / GO); ptr.style.opacity = p; ptr.style.transform = "translateY(" + (Math.min(dist, MAX) * .6 - 50 + 50 * p) + "px) rotate(" + dist * 3 + "deg)"; appEl.style.transform = dist ? "translateY(" + Math.min(dist, MAX) * .4 + "px)" : ""; if (spin) ptr.classList.add("go"); };
+  const reset = () => { ptr.classList.add("back"); appEl.classList.add("settle"); ptr.style.opacity = 0; ptr.style.transform = "translateY(-50px)"; appEl.style.transform = ""; ptr.classList.remove("go");
+    setTimeout(() => { ptr.classList.remove("back"); appEl.classList.remove("settle"); }, 260); };
+  addEventListener("touchstart", e => { if (busy || blocked() || e.touches.length !== 1) { y0 = null; return; } y0 = e.touches[0].clientY; d = 0; appEl.classList.add("pulling"); }, {passive: true});
+  addEventListener("touchmove", e => {
+    if (y0 == null) return;
+    const dy = e.touches[0].clientY - y0;
+    if (dy <= 0 || window.scrollY > 0){ if (d) show(0); d = 0; return; }
+    d = dy * .55; show(d);
+    if (e.cancelable) e.preventDefault();
+  }, {passive: false});
+  addEventListener("touchend", async () => {
+    if (y0 == null) return; y0 = null; appEl.classList.remove("pulling");
+    if (d < GO){ reset(); return; }
+    busy = true; show(GO, true);
+    try {
+      if (mode === "account"){
+        const j = await api("GET", "/api/me"); loadAccount(j);
+        if (strava.connected) await stravaSync(true);
+      }
+      if (wxLoc()){ wxState = "idle"; await loadWeather(true); }
+      render();
+    } catch(e){ toast(e.message); }
+    busy = false; reset();
+  });
+})();
 addEventListener("pageshow", () => autoSync());
 setInterval(() => autoSync(true), 10 * 60e3);
 
@@ -1490,7 +1532,7 @@ function hrRead(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "25";
+const APP_VERSION = "26";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -1799,6 +1841,7 @@ document.addEventListener("change", ev => {
 });
 function readStepSoft(){ const keep = setup.err; readStep(); setup.err = keep && ""; }
 document.addEventListener("keydown", ev => { if (ev.key === "Escape") closeMenu(); });
+["gesturestart", "gesturechange", "gestureend"].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
 document.addEventListener("submit", ev => { if (ev.target.id === "authform"){ ev.preventDefault(); if (!authv.busy) submitAuth(); } });
 window.addEventListener("hashchange", () => { if (!setup && plan) setTab(location.hash.slice(1), true); });
 
