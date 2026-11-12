@@ -542,6 +542,28 @@ async function tellOwnerSignup(env, name, email){
     await logEvent(env, "signup_notice", !!(r && r.ok), r ? "HTTP " + r.status : "net");
   }
 }
+/* email header: the HYBRD profile picture + name (hosted with the app; alt text shows if images are off) */
+const MAIL_HEAD = '<table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:22px"><tr><td style="padding-right:12px"><img src="https://app.hybrdrunning.com/brand/profile-240.png" width="52" height="52" alt="HYBRD" style="display:block;border-radius:12px;border:0"></td>' +
+  '<td style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-weight:800;font-size:20px;letter-spacing:-.02em;color:#111">HYBRD Running</td></tr></table>';
+/* welcome email to each new member, signed by Matthew */
+async function welcomeMail(env, id, name, email){
+  if (!env.RESEND_API_KEY) return;
+  const first = String(name || "").trim().split(/\s+/)[0] || "there", esc2 = x => String(x).replace(/[<>&"]/g, "");
+  const unsub = API_BASE(env) + "/api/unsubscribe?u=" + id + "&s=" + (await mailSig(env, id));
+  const paras = ["Hey " + first + ",", "Welcome to HYBRD Running. I'm really glad you're here.", "A few things to get the most out of it:"];
+  const steps = ["Build your plan: pick a race, or everyday fitness if you just want to get fitter.", "Connect Strava or Garmin in Settings so your workouts come in on their own.", "Do the 20-second morning check-in. Your day adjusts to how you slept and feel.", "On iPhone, add HYBRD to your home screen so it opens like an app."];
+  const end = ["Follow along on Instagram @hybrdrunning for tips and early looks at what's coming.", "If you have a question or an idea, just reply to this email. I read every one."];
+  const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;font-size:16px;line-height:1.55">' + MAIL_HEAD +
+    paras.map(t => '<p style="margin:0 0 14px">' + esc2(t) + '</p>').join("") + '<ul style="margin:0 0 16px;padding-left:20px">' + steps.map(t => '<li style="margin:0 0 6px">' + esc2(t) + '</li>').join("") + '</ul>' +
+    '<p style="margin:0 0 14px">Follow along on Instagram <a href="https://www.instagram.com/hybrdrunning/" style="color:#800000">@hybrdrunning</a> for tips and early looks at what\'s coming.</p><p style="margin:0 0 14px">' + esc2(end[1]) + '</p>' +
+    '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Open HYBRD</a></p>' +
+    '<p style="margin:0">Matthew<br><span style="color:#666">HYBRD Running</span></p>' +
+    '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this because you just made a HYBRD Running account.' + (env.MAIL_ADDRESS ? ' ' + esc2(env.MAIL_ADDRESS) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe from updates</a></p></div>';
+  const text = paras.join("\n\n") + "\n\n" + steps.map(t => "- " + t).join("\n") + "\n\n" + end.join("\n\n") + "\n\nOpen HYBRD: https://app.hybrdrunning.com/\n\nMatthew\nHYBRD Running\n\nUnsubscribe from updates: " + unsub;
+  const r = await fetch(env.RESEND_URL || "https://api.resend.com/emails", {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"},
+    body: JSON.stringify({from: env.MAIL_FROM || "HYBRD Running <no-reply@hybrdrunning.com>", to: [email], reply_to: "hybridrunning@gmail.com", subject: "Welcome to HYBRD, " + first, html, text, headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}})}).catch(() => null);
+  await logEvent(env, "welcome_mail", !!(r && r.ok), r ? "HTTP " + r.status : "net");
+}
 /* ---------- owner: email updates to every member (Resend batch API), each with its own unsubscribe link ---------- */
 async function mailSig(env, uid){ return (await sha256("unsub:" + uid + ":" + (env.RESEND_API_KEY || ""))).slice(0, 24); }
 const API_BASE = env => env.API_URL || "https://hybrid-api.hybridapp.workers.dev";
@@ -557,7 +579,7 @@ async function sendUpdate(env, owner, subject, message, test){
       const first = String(u.name || "").trim().split(/\s+/)[0] || "there";
       const body = message.replace(/\{name\}/g, first), unsub = API_BASE(env) + "/api/unsubscribe?u=" + u.id + "&s=" + (await mailSig(env, u.id));
       const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;font-size:16px;line-height:1.55">' +
-        '<div style="background:#BE383E;color:#fff;font-weight:800;font-size:22px;letter-spacing:-.02em;padding:14px 18px;border-radius:6px;margin-bottom:22px">HYBRD</div>' +
+        MAIL_HEAD +
         body.split(/\n{2,}/).map(par => '<p style="margin:0 0 14px">' + linkify(esc2(par)).replace(/\n/g, "<br>") + '</p>').join("") +
         '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Open HYBRD</a></p>' +
         '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this because you have a HYBRD Running account.' + (addr ? ' ' + esc2(addr) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe</a></p></div>';
@@ -637,7 +659,10 @@ async function route(req, env, path, ctx){
     if (await env.DB.prepare("SELECT 1 FROM users WHERE email = ?").bind(email).first()) throw new HttpError(409, "That email already has an account. Log in instead.");
     const id = rand(12), salt = rand(16), t = now();
     await env.DB.prepare("INSERT INTO users (id, email, name, pass_hash, salt, created, terms_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id, email, name, await hashPassword(password, salt), salt, t, t).run();
-    if (ctx && !/@example\.com$/.test(email)) ctx.waitUntil(tellOwnerSignup(env, name, email).catch(e => console.log("signup notice", e && e.message)));
+    if (ctx && !/@example\.com$/.test(email)){
+      ctx.waitUntil(tellOwnerSignup(env, name, email).catch(e => console.log("signup notice", e && e.message)));
+      ctx.waitUntil(welcomeMail(env, id, name, email).catch(e => console.log("welcome", e && e.message)));
+    }
     return {token: await newSession(env, id), user: {id, email, name, terms_at: t}};
   }
   if (M === "GET" && path === "/api/garmin/callback"){
@@ -800,7 +825,7 @@ async function route(req, env, path, ctx){
         await env.DB.prepare("INSERT INTO pw_resets (token_hash, user_id, expires) VALUES (?, ?, ?)").bind(await sha256(code), u.id, new Date(Date.now() + 3600e3).toISOString()).run();
         const hi = u.name ? "Hi " + String(u.name).split(" ")[0].replace(/[<>&"]/g, "") + "," : "Hi,";
         const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111">' +
-          '<div style="background:#BE383E;color:#fff;font-weight:800;font-size:22px;letter-spacing:-.02em;padding:14px 18px;border-radius:6px">HYBRD</div>' +
+          MAIL_HEAD +
           '<p style="font-size:16px;margin:22px 0 8px">' + hi + '</p><p style="font-size:16px;line-height:1.5;margin:0 0 20px">Tap the button to pick a new password. The link works once and expires in 1 hour.</p>' +
           '<p><a href="' + link + '" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:13px 22px;border-radius:6px">Choose a new password</a></p>' +
           '<p style="font-size:13px;color:#666;line-height:1.5;margin-top:24px">If you didn\'t ask for this, ignore this email. Your password stays the same.</p></div>';
