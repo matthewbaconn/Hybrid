@@ -184,6 +184,8 @@ async function coachUsage(env, userId){
   await env.DB.prepare("INSERT INTO ai_usage (user_id, day, count) VALUES (?, ?, 1) ON CONFLICT (user_id, day) DO UPDATE SET count = count + 1").bind(userId, "coach:" + day).run();
   return true;
 }
+// trim to the last full sentence that fits
+const clip = (t, n) => { if (t.length <= n) return t; const c = t.slice(0, n), i = Math.max(c.lastIndexOf(". "), c.lastIndexOf("! "), c.lastIndexOf("? ")); return i > 40 ? c.slice(0, i + 1) : c.replace(/\s+\S*$/, "") + "…"; };
 async function askCoach(env, system, data){
   if (!env.ANTHROPIC_API_KEY) return null;
   const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {method: "POST",
@@ -204,8 +206,8 @@ async function runReview(env, userId, U, act, today){
   const data = {activity: {name: act.name, type: act.type, miles: act.mi, minutes: act.minutes, avg_pace: pace, avg_hr: act.avg_hr || null},
     planned: s ? {title: s.title, steps: s.steps.map(x => x[0]), type: s.type} : null, check: as ? {verdict: as.verdict, explanation: as.why} : null,
     pace_changes_for_next_workouts_s_per_mi: next.offs, upcoming_notes: nextKeys, tomorrow: sessionsText(U, HP.addDays(act.date, 1), next)};
-  const out = await askCoach(env, COACH_STYLE + ' Write a post-workout summary. Reply with ONLY JSON: {"headline":"2-5 word verdict","numbers":"key numbers joined with \' · \'","meaning":"one sentence on what it means","next":"one sentence on what comes next"}', data);
-  const review = out && out.headline ? {headline: String(out.headline).slice(0, 60), numbers: String(out.numbers || "").slice(0, 140), meaning: String(out.meaning || "").slice(0, 240), next: String(out.next || "").slice(0, 240), verdict: as ? as.verdict : "extra", title: s ? s.title : act.name}
+  const out = await askCoach(env, COACH_STYLE + ' Write a post-workout summary. Reply with ONLY JSON: {"headline":"2-5 word verdict","numbers":"key numbers joined with \' · \'","meaning":"one sentence under 25 words on what it means","next":"one sentence under 25 words on what comes next"}', data);
+  const review = out && out.headline ? {headline: String(out.headline).slice(0, 60), numbers: clip(String(out.numbers || ""), 140), meaning: clip(String(out.meaning || ""), 240), next: clip(String(out.next || ""), 240), verdict: as ? as.verdict : "extra", title: s ? s.title : act.name}
     : {headline: as ? ({ok: "On target", easy: "Came in fast", hard: "Too hard", unknown: "Done"})[as.verdict] : "Done", numbers: [act.mi ? act.mi + " mi" : "", pace || "", act.avg_hr ? act.avg_hr + " bpm" : ""].filter(Boolean).join(" · "),
        meaning: as ? as.why : "", next: nextKeys[0] || "Next sessions stay as planned.", verdict: as ? as.verdict : "extra", title: s ? s.title : act.name};
   await env.DB.prepare("INSERT INTO reviews (activity_id, user_id, date, data, created) VALUES (?, ?, ?, ?, ?) ON CONFLICT (activity_id) DO UPDATE SET data = excluded.data")
@@ -234,9 +236,9 @@ async function morningNote(env, userId, today){
     calories_today_target: f.cal, protein_g: f.pro, yesterday: U.eaten[yday] ? {eaten: U.eaten[yday], target: fy.cal} : "no food logged",
     weight_7day_avg: a7 ? Math.round(a7 * 10) / 10 : null, weight_change_vs_last_week: a7 && a14 ? Math.round((a7 - a14) * 10) / 10 : null, goal_weight: U.profile.goalWeight || null,
     last_3_days: recent};
-  const out = await askCoach(env, COACH_STYLE + ' Write the morning check-in note. Reply with ONLY JSON: {"headline":"2-6 words","lines":["2 or 3 short sentences: recovery read, today\'s session and fuel"]}', data);
+  const out = await askCoach(env, COACH_STYLE + ' Write the morning check-in note. Reply with ONLY JSON: {"headline":"2-6 words","lines":["recovery read, under 20 words","today\'s session, under 20 words","fuel for today, under 20 words"]}. Three separate array items, one sentence each.', data);
   if (!out || !out.headline) return null;
-  const note = {headline: String(out.headline).slice(0, 60), lines: (Array.isArray(out.lines) ? out.lines : []).slice(0, 3).map(x => String(x).slice(0, 240))};
+  const note = {headline: String(out.headline).slice(0, 60), lines: (Array.isArray(out.lines) ? out.lines : []).slice(0, 3).map(x => clip(String(x), 220))};
   await env.DB.prepare("INSERT INTO coach_notes (user_id, date, kind, data, created) VALUES (?, ?, 'morning', ?, ?) ON CONFLICT (user_id, date, kind) DO UPDATE SET data = excluded.data, created = excluded.created")
     .bind(userId, today, JSON.stringify(note), now()).run();
   return note;
