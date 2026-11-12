@@ -497,9 +497,11 @@ function workoutCard(){
   const list = actsOn(TODAY);
   let h = '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("watch") + '<span class="lbl">Today\'s workouts</span>' +
     (strava.connected ? '<span class="r">Strava · ' + agoText(strava.last_sync) + '</span>' : '') + '</div>';
+  const matchedIds = new Set(Object.values(dayMatches(TODAY)).map(a => a.id));
+  const extraReviews = list.filter(a => !matchedIds.has(a.id) && reviewFor(a)).map(a => reviewHtml(reviewFor(a))).join("");
   h += list.length ? '<ul class="fl">' + list.map(a => '<li class="act t-' + (a.type === "run" ? "easy" : a.type === "lift" ? "lift" : "long") + '"><div class="fi"><b>' + esc(a.name) + '</b><span>' + actLine(a) + '</span></div>' +
       '<span class="src src-' + a.source + '">' + (a.source === "strava" ? 'Strava' : 'Logged') + '</span>' +
-      (a.source === "manual" ? '<button class="x" type="button" data-act="adel" data-id="' + esc(a.id) + '" aria-label="Remove ' + esc(a.name) + '">✕</button>' : '') + '</li>').join("") + '</ul>'
+      (a.source === "manual" ? '<button class="x" type="button" data-act="adel" data-id="' + esc(a.id) + '" aria-label="Remove ' + esc(a.name) + '">✕</button>' : '') + '</li>').join("") + '</ul>' + extraReviews
     : '<p class="sub">Nothing logged yet today. Finished workouts add calories to today\'s target and check off your plan.</p>';
   if (aw.open){
     h += '<div class="aform"><div class="two"><label>Type<select id="a-type">' + [["run","Run"],["lift","Strength"],["bike","Bike"],["swim","Swim"],["other","Other"]].map(([v, l]) => '<option value="' + v + '">' + l + '</option>').join("") + '</select></label>' +
@@ -521,6 +523,10 @@ let syncing = false, pendingRender = false;
 function typing(){ const a = document.activeElement; return (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) || aw.open || !!$(".back"); }
 function safeRender(){ if (typing()){ pendingRender = true; return; } pendingRender = false; captureFood(); render(); }
 document.addEventListener("focusout", () => setTimeout(() => { if (pendingRender && !typing()) safeRender(); }, 150));
+function waitForReview(id){
+  const before = Object.keys(reviews).length;
+  [5000, 12000, 22000, 35000].forEach(ms => setTimeout(() => { if (id ? !reviews[id] : Object.keys(reviews).length === before) refreshMe(); }, ms));
+}
 async function refreshMe(){
   try { const j = await api("GET", "/api/me"); const before = JSON.stringify([acts, reviews]); acts = j.activities || acts; reviews = j.reviews || reviews; notes = j.notes || notes; strava = j.strava || strava; pushInfo = j.push || pushInfo;
     if (JSON.stringify([acts, reviews]) !== before) safeRender(); } catch(e){}
@@ -532,7 +538,7 @@ async function stravaSync(quiet){
     const j = await api("POST", "/api/strava/sync"), me2 = await api("GET", "/api/me");
     const before = JSON.stringify([acts, reviews]); acts = me2.activities || []; strava = me2.strava || strava; reviews = me2.reviews || reviews; notes = me2.notes || notes;
     if (JSON.stringify([acts, reviews]) !== before || !quiet) safeRender();
-    if (j.fresh && coachOn) setTimeout(refreshMe, 6000);
+    if (j.fresh && coachOn) waitForReview(null);
     else { const r = $(".card-h .r"); if (r && /^Strava/.test(r.textContent)) r.textContent = "Strava · " + agoText(strava.last_sync); }
     if (!quiet) toast(j.synced ? "Strava is up to date." : "No new Strava activities.");
   } catch(e){ if (!quiet) toast(e.message); }
@@ -1227,7 +1233,7 @@ document.addEventListener("click", ev => {
     if (x.date > TODAY){ aw.err = "Pick today or an earlier day."; render(); return; }
     aw.busy = true; render();
     (mode === "account" ? api("POST", "/api/activity", x).then(j => j.activity) : Promise.resolve({...x, id: Date.now().toString(36), source: "manual", name: x.name || ({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Workout"})[x.type]}))
-      .then(saved => { acts.push(saved); aw = {open: false, err: "", busy: false}; save(); render(); toast("Workout saved."); if (mode === "account" && coachOn) setTimeout(refreshMe, 5000); })
+      .then(saved => { acts.push(saved); aw = {open: false, err: "", busy: false}; save(); render(); toast("Workout saved."); if (mode === "account" && coachOn) waitForReview(saved.id); })
       .catch(e => { aw.busy = false; aw.err = e.message; render(); });
     return;
   }
