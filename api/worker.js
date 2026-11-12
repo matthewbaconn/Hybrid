@@ -527,6 +527,20 @@ async function cron(env, ctx){
 }
 
 /* ---------- routes ---------- */
+/* ---------- owner: new sign-up notice (push to the owner's phone + an email to the HYBRD inbox) ---------- */
+async function tellOwnerSignup(env, name, email){
+  const own = await ownerId(env), total = (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE email NOT LIKE '%@example.com'").first()).n;
+  const who = (name ? name + " · " : "") + email;
+  if (own) await pushTo(env, own, {title: "New HYBRD sign-up", body: who + " · " + total + " members now", tag: "signup", url: (env.APP_URL || "") + "#members"}).catch(() => {});
+  if (env.RESEND_API_KEY){
+    const esc2 = x => String(x).replace(/[<>&"]/g, "");
+    const r = await fetch(env.RESEND_URL || "https://api.resend.com/emails", {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"},
+      body: JSON.stringify({from: env.MAIL_FROM || "HYBRD Running <no-reply@hybrdrunning.com>", to: [env.OWNER_NOTIFY || "hybridrunning@gmail.com"], subject: "New sign-up: " + (name || email),
+        text: who + " just joined HYBRD. You have " + total + " members.\n\nSee everyone in the app: More → Members.",
+        html: '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;color:#111"><p><b>' + esc2(name || "Someone") + '</b> (' + esc2(email) + ') just joined HYBRD.</p><p>You have <b>' + total + '</b> members.</p><p style="color:#666">See everyone in the app: More → Members.</p></div>'})}).catch(() => null);
+    await logEvent(env, "signup_notice", !!(r && r.ok), r ? "HTTP " + r.status : "net");
+  }
+}
 /* ---------- Strong at 180 food estimates (Matthew's own plan page) ----------
    A tiny MCP server the plan page calls through a claude.ai custom connector named "HYBRD Food",
    so food estimates run on this app's Anthropic key instead of the claude.ai plan's usage.
@@ -578,6 +592,7 @@ async function route(req, env, path, ctx){
     if (await env.DB.prepare("SELECT 1 FROM users WHERE email = ?").bind(email).first()) throw new HttpError(409, "That email already has an account. Log in instead.");
     const id = rand(12), salt = rand(16), t = now();
     await env.DB.prepare("INSERT INTO users (id, email, name, pass_hash, salt, created, terms_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id, email, name, await hashPassword(password, salt), salt, t, t).run();
+    if (ctx && !/@example\.com$/.test(email)) ctx.waitUntil(tellOwnerSignup(env, name, email).catch(e => console.log("signup notice", e && e.message)));
     return {token: await newSession(env, id), user: {id, email, name, terms_at: t}};
   }
   if (M === "GET" && path === "/api/garmin/callback"){
@@ -1109,6 +1124,16 @@ async function route(req, env, path, ctx){
     }
     if (M === "PUT" && mc[2] === "/nickname"){ const nn = nick((await body(req)).nickname); if (!nn) throw new HttpError(400, "Pick a nickname."); await env.DB.prepare("UPDATE crew_members SET nickname = ? WHERE crew_id = ? AND user_id = ?").bind(nn, crew.id, user.id).run(); return {crews: await crewsFor(env, user.id)}; }
     if (M === "PUT" && mc[2] === "/metric"){ if (crew.owner_id !== user.id) throw new HttpError(403, "Only the person who made the crew can change the challenge."); const m = (await body(req)).metric; if (!CREW_METRICS.includes(m)) throw new HttpError(400, "Pick a challenge."); await env.DB.prepare("UPDATE crews SET metric = ? WHERE id = ?").bind(m, crew.id).run(); return {crews: await crewsFor(env, user.id)}; }
+  }
+  if (M === "GET" && path === "/api/admin/members"){
+    if (user.id !== (await ownerId(env))) throw new HttpError(403, "Not allowed.");
+    const rows = (await env.DB.prepare(
+      "SELECT u.name, u.email, u.created, p.data AS profile, (SELECT 1 FROM strava_links s WHERE s.user_id = u.id) AS strava, (SELECT 1 FROM garmin_links g WHERE g.user_id = u.id) AS garmin, " +
+      "(SELECT MAX(created) FROM sessions x WHERE x.user_id = u.id) AS last_login, (SELECT MAX(date) FROM food f WHERE f.user_id = u.id) AS last_food, (SELECT MAX(date) FROM activities a WHERE a.user_id = u.id) AS last_act " +
+      "FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.email NOT LIKE '%@example.com' ORDER BY u.created DESC").all()).results;
+    return {members: rows.map(r => { let pr = null; try { pr = r.profile ? JSON.parse(r.profile) : null; } catch(e){}
+      return {name: r.name, email: r.email, created: r.created, strava: !!r.strava, garmin: !!r.garmin, goal: pr ? HP.raceName(pr) : null, race_date: pr && pr.raceDate || null,
+        last_seen: [r.last_login, r.last_food, r.last_act].filter(Boolean).sort().pop() || null}; })};
   }
   if (M === "DELETE" && path === "/api/account"){
     const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();

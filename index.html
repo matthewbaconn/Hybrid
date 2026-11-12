@@ -333,6 +333,7 @@ button{cursor:pointer}
 .wsum{display:flex;flex-wrap:wrap;gap:6px 16px;margin:2px 0 8px;font-size:13px;color:var(--muted)}.wsum b{color:var(--ink);font:700 16px var(--f-display)}
 .nask{text-align:center;padding-top:26px}.nask h2{font:700 21px/1.2 var(--f-display);margin:12px 0 8px}.nask p{color:var(--muted);font-size:14.5px;line-height:1.5;margin:0 0 18px}.nask .btn+.btn{margin-top:8px}
 .nask-i{width:54px;height:54px;margin:0 auto;border-radius:14px;background:var(--accent);display:grid;place-items:center;color:#fff}.nask-i svg{width:26px;height:26px}
+.mlist li{align-items:flex-start}.mlist .fi span{display:block}.mtags{display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex:none}
 #app.swiping{will-change:transform;box-shadow:-18px 0 30px rgba(0,0,0,.45)} #app.swipe-settle{transition:transform .2s cubic-bezier(.2,.8,.2,1),opacity .2s}
 
 /* opening animation: red screen, a lightning bolt strikes, the screen flashes and HYBRD lands (transform/opacity only, so it stays smooth) */
@@ -775,7 +776,7 @@ function loadAccount(j){
   plan = j.profile ? buildPlan(j.profile) : null;
   setup = plan ? null : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
 }
-function signedOut(){ scr = null; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
+function signedOut(){ scr = null; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
 const checkins = S.checkins || {};          // date -> {sleep_h, sleep_q, soreness, energy, stress}
 const weights = S.weights || {};            // date -> lb
@@ -2290,7 +2291,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "47";
+const APP_VERSION = "48";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2411,7 +2412,7 @@ function askNotif(){
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 const SCR_T = {fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
   settings: "Settings", "set-notif": "Notifications", "set-watch": "Devices and apps", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
-  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How HYBRD works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew"};
+  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How HYBRD works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", members: "Members", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew"};
 const SCR_UP = {"set-acct": "settings", "set-train": "settings", "set-help": "settings", "set-health-info": "set-help", "set-terms": "set-help", "set-about": "set-help", "set-report": "set-help", "set-reports": "set-help", "set-profile": "set-acct", "set-email": "set-acct", "set-password": "set-acct", "set-account": "set-acct", "set-hr": "set-train", "set-run": "set-train", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", meals: "fuel", crew: "crews"};
 let navDir = null;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -2426,6 +2427,7 @@ function nav(dir, fn){
 }
 function go(s){
   const dir = s === null || SCR_UP[scr] === s || (scr && !s) ? "back" : "fwd";
+  if (s === "members" && mem) mem.stale = true;
   if (s === "set-notif" && mode === "account" && pushOK() && !pushState.checked) checkPush().then(() => { if (scr === "set-notif") render(); });
   nav(dir, () => { scr = s; render(); window.scrollTo(0, 0); });
 }
@@ -2437,6 +2439,7 @@ function renderScreen(){
       (plan && plan.raceDate ? '<button class="srow" type="button" data-act="go" data-scr="fuelplan">' + ic("bolt") + '<div><b>Race fueling and hydration</b><span>Carbs, fluid and sodium per hour, plus a sweat test</span></div><i>›</i></button>' : '') +
       '<button class="srow" type="button" data-act="go" data-scr="meals">' + ic("fork") + '<div><b>Meal prep and grocery list</b><span>' + (mealplan ? 'Your plan is ready' : 'Two preps a week, sized to your targets') + '</span></div><i>›</i></button></div>';
   else if (s === "faq") h = faqHtml();
+  else if (s === "members") h = membersHtml();
   else if (s === "fuelplan") h = plan ? fuelPlanHtml() : '';
   else if (s === "meals") h = plan ? mealsHtml() : '';
   else if (s === "crews") h = crewsHtml();
@@ -2460,6 +2463,7 @@ function renderMore(){
   if (plan && plan.raceDate) h += card("go", "Race fueling and hydration", "Carbs, fluid and sodium per hour, and a sweat test", "bolt", "fuelplan");
   h += card("go", "Meal prep and grocery list", "Two preps a week, sized to your targets", "fork", "meals");
   if (mode === "account") h += card("go", "Crews", "Train with friends. They only see your nickname and weekly total", "user", "crews");
+  if (mode === "account" && isOwner) h += card("go", "Members", "Only you see this · who signed up and what they've linked", "user", "members", "hi");
   h += card("go", "FAQ", "How plans, calories, recovery and syncing work", "spark", "faq");
   if (API) h += card("invite", "Invite a friend", "Send them HYBRD. It's free to try", "share");
   h += '<a class="scard" href="https://www.instagram.com/hybrdrunning/" target="_blank" rel="noopener"><i class="mi">' + ic("camera") + '</i><div><b>Follow @HybrdRunning</b><span>Tips, new features and early access news on Instagram</span></div><i>›</i></a>';
@@ -2470,6 +2474,21 @@ function renderMore(){
 }
 const CONTACT = "hybridrunning@gmail.com";
 const mailCard = () => '<a class="scard" href="mailto:' + CONTACT + '?subject=' + encodeURIComponent("HYBRD question") + '"><i class="mi">' + ic("mail") + '</i><div><b>Email us</b><span>' + CONTACT + ' · questions, ideas, anything</span></div><i>›</i></a>';
+/* owner only: everyone who signed up */
+let mem = null;
+function membersHtml(){
+  if (!isOwner) return '<section class="card"><p class="sub">Not available.</p></section>';
+  if (!mem || mem.stale){ if (!mem || !mem.busy){ mem = {busy: true, list: mem && mem.list}; api("GET", "/api/admin/members").then(j => { mem = {list: j.members}; if (scr === "members") render(); }).catch(e => { mem = {err: e.message}; if (scr === "members") render(); }); } }
+  if (mem.err) return '<section class="card"><p class="err">' + esc(mem.err) + '</p></section>';
+  if (!mem.list) return '<section class="card"><p class="sub">Loading…</p></section>';
+  const L = mem.list, wk = addDays(TODAY, -7), n = k => L.filter(k).length;
+  const ago = d => { if (!d) return "never"; const x = daysBetween(d.slice(0, 10), TODAY); return x <= 0 ? "today" : x === 1 ? "yesterday" : x + " days ago"; };
+  let h = '<section class="card"><div class="wkstats"><div><span>Members</span><b>' + L.length + '</b></div><div><span>New this week</span><b>' + n(m => m.created.slice(0, 10) > wk) + '</b></div><div><span>Active this week</span><b>' + n(m => m.last_seen && m.last_seen.slice(0, 10) > wk) + '</b></div></div>' +
+    '<div class="wkstats"><div><span>Strava</span><b>' + n(m => m.strava) + '</b></div><div><span>Garmin</span><b>' + n(m => m.garmin) + '</b></div><div><span>With a plan</span><b>' + n(m => m.goal) + '</b></div></div><p class="sub">Only you can see this screen.</p></section>';
+  h += '<section class="card"><ul class="fl mlist">' + L.map(m => '<li><div class="fi"><b>' + esc(m.name || m.email.split("@")[0]) + '</b><span>' + esc(m.email) + '</span><span>' + (m.goal ? esc(m.goal) + (m.race_date ? ' · ' + fmtD(m.race_date) : '') : 'No plan yet') + ' · joined ' + fmtD(m.created.slice(0, 10)) + ' · seen ' + ago(m.last_seen) + '</span></div>' +
+    '<span class="mtags">' + (m.strava ? '<em class="chip2" style="color:#FC5200">Strava</em>' : '') + (m.garmin ? '<em class="chip2">Garmin</em>' : '') + '</span></li>').join("") + '</ul></section>';
+  return h;
+}
 const FAQ = [
   ["How is my plan built?", "From your goal, your current fitness and the days you can train. It builds up for a few weeks, takes an easier week every fourth week, and eases off before race day. Everyday plans mix strength and cardio and keep building in 12-week blocks."],
   ["Can I change my goal or race?", "Yes. More → Change goal or start a new plan. Your plan rebuilds from this week on, and your logged workouts and food stay."],
@@ -2892,7 +2911,7 @@ function hideSplash(){
   setTimeout(() => { el.classList.add("out"); el.addEventListener("animationend", () => el.remove(), {once: true}); setTimeout(() => el.remove(), 700); }, wait);
 }
 if (splashReady) hideSplash(); else setTimeout(hideSplash, 4000);
-if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); garminReturn(); if (movedHere) setTimeout(() => toast("HYBRD has a new address: app.hybrdrunning.com. If you added it to your Home Screen, add this one again."), 600); autoSync(true); if (pushOK()) checkPush().then(() => { safeRender(); setTimeout(askNotif, 1800); }); })
+if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); garminReturn(); if (location.hash === "#members"){ try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} if (isOwner) go("members"); } if (movedHere) setTimeout(() => toast("HYBRD has a new address: app.hybrdrunning.com. If you added it to your Home Screen, add this one again."), 600); autoSync(true); if (pushOK()) checkPush().then(() => { safeRender(); setTimeout(askNotif, 1800); }); })
   .catch(e => { loading = false; if (token){ mode = "none"; plan = null; } render(); hideSplash(); toast(e.message); });
 })();
 </script>
