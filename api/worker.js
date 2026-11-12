@@ -527,6 +527,43 @@ async function cron(env, ctx){
 }
 
 /* ---------- routes ---------- */
+/* ---------- Strong at 180 food estimates (Matthew's own plan page) ----------
+   A tiny MCP server the plan page calls through a claude.ai custom connector named "HYBRD Food",
+   so food estimates run on this app's Anthropic key instead of the claude.ai plan's usage.
+   The URL carries a private key; only its SHA-256 is stored here. */
+const S180_KEY_SHA = "9c30c89dd7693c1dc13b323debad38ea03d6868b9967ce3806361a3a0622fba2";
+async function sha256hex(t){ return [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)))].map(b => b.toString(16).padStart(2, "0")).join(""); }
+async function foodMcp(req, env, key){
+  const H = {"Content-Type": "application/json", "Cache-Control": "no-store"};
+  if (!key || (await sha256hex(key)) !== S180_KEY_SHA) return new Response("Not found", {status: 404});
+  if (req.method !== "POST") return new Response(null, {status: 405, headers: {Allow: "POST"}});
+  let m; try { m = await req.json(); } catch(e){ return new Response(JSON.stringify({jsonrpc: "2.0", id: null, error: {code: -32700, message: "Parse error"}}), {status: 400, headers: H}); }
+  const one = async x => {
+    const ok = result => ({jsonrpc: "2.0", id: x.id, result}), bad = (code, message) => ({jsonrpc: "2.0", id: x.id ?? null, error: {code, message}});
+    if (x.id === undefined) return null;   // notifications need no answer
+    if (x.method === "initialize") return ok({protocolVersion: (x.params && x.params.protocolVersion) || "2025-06-18", capabilities: {tools: {}}, serverInfo: {name: "HYBRD Food", version: "1.0"}});
+    if (x.method === "ping") return ok({});
+    if (x.method === "tools/list") return ok({tools: [{name: "estimate_nutrition", description: "Estimate nutrition for a food log entry. Runs the given instructions (and optional food photos) and returns the JSON object they ask for.",
+      inputSchema: {type: "object", properties: {prompt: {type: "string", description: "Instructions ending with the JSON shape to reply in"}, images: {type: "array", items: {type: "string"}, description: "JPEG photos as base64, at most 4"}, effort: {type: "string"}}, required: ["prompt"]}}]});
+    if (x.method === "tools/call"){
+      const a = (x.params && x.params.arguments) || {}, prompt = String(a.prompt || "").slice(0, 20000), imgs = (Array.isArray(a.images) ? a.images : []).slice(0, 4).map(String);
+      if (!prompt) return ok({isError: true, content: [{type: "text", text: "prompt is required"}]});
+      const content = imgs.map(d => ({type: "image", source: {type: "base64", media_type: "image/jpeg", data: d.replace(/^data:[^,]*,/, "")}})).concat([{type: "text", text: prompt}]);
+      const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {method: "POST",
+        headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+        body: JSON.stringify({model: env.MODEL || "claude-sonnet-5-5", max_tokens: 4000, system: "Reply with only the JSON object asked for. No other text.", messages: [{role: "user", content}]})});
+      if (!r.ok){ const t = (await r.text()).slice(0, 200); await logEvent(env, "s180_food", false, r.status + " " + t); return ok({isError: true, content: [{type: "text", text: "Estimating failed (" + r.status + "). Try again."}]}); }
+      const raw = ((await r.json()).content || []).filter(c => c.type === "text").map(c => c.text).join("");
+      let parsed = null; try { parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch(e){}
+      await logEvent(env, "s180_food", !!parsed, parsed ? (imgs.length ? "photo" : "text") : "bad json");
+      if (!parsed) return ok({isError: true, content: [{type: "text", text: "Couldn't read the estimate. Try again."}]});
+      return ok({content: [{type: "text", text: JSON.stringify(parsed)}], structuredContent: parsed});
+    }
+    return bad(-32601, "Method not found");
+  };
+  if (Array.isArray(m)){ const out = (await Promise.all(m.map(one))).filter(Boolean); return out.length ? new Response(JSON.stringify(out), {headers: H}) : new Response(null, {status: 202}); }
+  const out = await one(m); return out ? new Response(JSON.stringify(out), {headers: H}) : new Response(null, {status: 202});
+}
 async function route(req, env, path, ctx){
   const M = req.method;
   if (M === "GET" && path === "/api/health") return {ok: true};
@@ -1051,6 +1088,7 @@ export default {
       try { return await site(req, host); } catch(e){ return new Response("HYBRD is having a moment. Try again in a minute.", {status: 502}); }
     }
     const h = corsFor(req), path = new URL(req.url).pathname.replace(/\/+$/, "");
+    if (path.startsWith("/mcp/food/")){ try { return await foodMcp(req, env, path.slice(10)); } catch(e){ return new Response(JSON.stringify({jsonrpc: "2.0", id: null, error: {code: -32603, message: "Server error"}}), {status: 500, headers: {"Content-Type": "application/json"}}); } }
     if (req.method === "OPTIONS") return new Response(null, {status: 204, headers: h});
     try { const out = await route(req, env, path, ctx); return out instanceof Response ? out : reply(h, out); }
     catch (e){
