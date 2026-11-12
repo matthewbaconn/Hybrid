@@ -111,7 +111,7 @@ await check("Today overview", async () => {
 await check("Settings: Watch", async () => {
   await settings(); await shot("07-settings"); await open("set-watch"); const t = await page.innerText(".hlink");
   const strava = await page.locator('[data-act="stconnect"]').count(); await back(); await back();
-  if (!/Sleep and heart rate/.test(t) || !/Strava/.test(t)) throw new Error(t.slice(0, 120)); if (!strava) throw new Error("Connect Strava button missing"); return "Strava + sleep/heart rate shown";
+  if (!/Apple Health/.test(t) || !/Strava/.test(t)) throw new Error(t.slice(0, 120)); if (!strava) throw new Error("Connect Strava button missing"); return "Strava + sleep/heart rate shown";
 });
 await check("Edit profile", async () => {
   await settings(); await open("set-profile"); await page.fill("#pf-name", "Nightly Two"); await page.fill("#pf-gw", "174"); await page.click('[data-act="pfsave"]');
