@@ -22,6 +22,7 @@ jobs:
         run: |
           set -euo pipefail
           call(){ curl -sS -X "$1" "$API$2" -H "Origin: $ORIGIN" -H "Content-Type: application/json" ${TOKEN:+-H "Authorization: Bearer $TOKEN"} ${3:+--data-binary "$3"}; }
+          cleanup(){ [ -n "$TOKEN" ] && [ "$deleted" != 1 ] && call DELETE /api/account > /dev/null 2>&1 || true; }; trap cleanup EXIT
           email="test-$(date +%s)-$RANDOM@example.com"
           TOKEN=""
           [ "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API/api/signup" -H "Origin: $ORIGIN" -H "Content-Type: application/json" -d "{\"email\":\"no-agree-$RANDOM@example.com\",\"password\":\"smoke-test-123\"}")" = 400 ] || { echo "::error::sign-up without agreeing to the terms was accepted"; exit 1; }
@@ -67,7 +68,7 @@ jobs:
           echo "name and password changes work"
           call POST /api/report '{"text":"Nightly test report. Please ignore.","screen":"today"}' | jq -e .ok > /dev/null || { echo "::error::problem report failed"; exit 1; }
           echo "problem report saved"
-          call PUT /api/lifts '{"date":"2026-01-05","sets":[{"ex":"Back squat","weight":135,"hit":true}]}' | jq -e .ok > /dev/null || { echo "::error::lift log failed"; exit 1; }
+          call PUT /api/lifts '{"date":"'"$(date -u +%F)"'","sets":[{"ex":"Back squat","weight":135,"hit":true}]}' | jq -e .ok > /dev/null || { echo "::error::lift log failed"; exit 1; }
           c=$(call POST /api/crews '{"name":"Nightly crew","metric":"workouts","nickname":"Tester"}'); echo "$c" | jq -e '.crews[0].code and .crews[0].members == 1 and (.crews[0].board[0] | keys | sort) == ["nickname","value","you"]' > /dev/null || { echo "::error::crew create failed or shared too much: $c"; exit 1; }
           cid=$(echo "$c" | jq -r '.crews[0].id'); call POST "/api/crews/$cid/leave" '{}' | jq -e '.crews | length == 0' > /dev/null || { echo "::error::crew leave failed"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API/api/races/search" -H "Origin: $ORIGIN" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"q":"x"}')" = 400 ] || { echo "::error::race search accepted an empty search"; exit 1; }
@@ -79,7 +80,7 @@ jobs:
             code=$(curl -s -o /dev/null -w '%{http_code}' "$u"); echo "Strava authorize page answered HTTP $code"
             echo "::notice::Connect Strava is on."
           fi
-          call DELETE /api/account | jq -e .ok > /dev/null
+          call DELETE /api/account | jq -e .ok > /dev/null && deleted=1
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API/api/login" -H "Origin: $ORIGIN" -H "Content-Type: application/json" -d "{\"email\":\"$email\",\"password\":\"smoke-test-123\"}")
           [ "$code" = 401 ] || { echo "::error::account not deleted ($code)"; exit 1; }
           echo "::notice::All checks passed: sign-up, AI typed meal, AI photo, food, check-in, weigh-in, Apple Health link, workout, delete."
