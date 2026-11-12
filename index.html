@@ -2164,7 +2164,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "40";
+const APP_VERSION = "41";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2323,6 +2323,7 @@ function renderMore(){
   if (mode === "account") h += card("go", "Crews", "Train with friends. They only see your nickname and weekly total", "user", "crews");
   h += card("go", "FAQ", "How plans, calories, recovery and syncing work", "spark", "faq");
   if (API) h += card("invite", "Invite a friend", "Send them Hybrid. It's free to try", "share");
+  h += '<a class="scard" href="https://www.instagram.com/hybridrunnin/" target="_blank" rel="noopener"><i class="mi">' + ic("camera") + '</i><div><b>Follow @hybridrunnin</b><span>Tips, new features and early access news on Instagram</span></div><i>›</i></a>';
   h += card("go", "Settings", "Account, devices and apps, notifications", "gear", "settings");
   h += card("go", "Help and support", "Report a problem, health and safety, terms and privacy", "heart", "set-help");
   return h + '</div>';
