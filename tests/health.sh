@@ -7,6 +7,13 @@ q(){ npx wrangler d1 execute hybrid --remote --json --command "$1" 2>/dev/null |
 problems=0; warn(){ echo "::warning::$1"; echo "- ⚠️ $1" >> "$GITHUB_STEP_SUMMARY"; }; bad(){ echo "::error::$1"; echo "- ❌ $1" >> "$GITHUB_STEP_SUMMARY"; problems=$((problems+1)); }; good(){ echo "$1"; echo "- ✅ $1" >> "$GITHUB_STEP_SUMMARY"; }
 echo "## Hybrid health report" >> "$GITHUB_STEP_SUMMARY"
 
+# custom domains: website and app answer and look right
+for pair in "https://hybridrunnin.com/|Train for anything" "https://app.hybridrunnin.com/|Hybrid" "https://app.hybridrunnin.com/plan.js|root.HP" "https://hybridrunnin.com/today.jpg|"; do
+  u=${pair%%|*}; want=${pair#*|}
+  body=$(curl -s -L --max-time 20 -w '\n%{http_code}' "$u"); code=${body##*$'\n'}
+  if [ "$code" != 200 ]; then bad "$u answered HTTP $code"; elif [ -n "$want" ] && ! grep -q "$want" <<<"$body"; then bad "$u didn't look right"; else good "$u is up"; fi
+done
+
 last=$(q "SELECT MAX(ts) AS t FROM events WHERE kind = 'cron'" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s||"[]");process.stdout.write((r[0]&&r[0].t)||"")})')
 if [ -z "$last" ]; then bad "The 15-minute schedule has never run."; else
   age=$(( ( $(date +%s) - $(date -d "$last" +%s) ) / 60 ))
