@@ -1357,6 +1357,17 @@ function calCheckCard(){
     '<p class="sub">' + (Math.abs(gap) < 150 ? 'The plan matches your real burn.' : gap > 0 ? 'You burn about ' + comma(gap) + ' more a day than the plan assumes. Eat a little more on training days.' : 'You burn about ' + comma(-gap) + ' less a day than the plan assumes. The weekly rule will trim the deficit if your weight stalls.') +
     ' Weight is ' + (c.lbWk >= 0 ? 'down ' : 'up ') + Math.abs(c.lbWk) + ' lb a week.</p></section>';
 }
+/* planned workouts sent to the athlete's Garmin calendar (Training API) */
+let gwBusy = false;
+function watchWorkoutsHtml(){
+  if (mode !== "account" || !garmin.connected) return '';
+  const n = garmin.workouts, ok = n != null && n >= 0;
+  return '<section class="card"><div class="card-h" style="--tone:var(--work)">' + ic("watch") + '<span class="lbl">Workouts on your watch</span>' + (ok ? '<span class="r ok">On</span>' : '') + '</div>' +
+    (ok ? '<p class="sub">' + (n ? n + ' upcoming workout' + (n === 1 ? ' is' : 's are') + ' on your Garmin calendar' : 'Your next 7 days of workouts go to your Garmin calendar') + ', with warm-up, reps and pace targets. They update when your plan changes. Sync your watch to load them.</p>' +
+          '<button class="btn block" type="button" data-act="gwsync"' + (gwBusy ? ' disabled aria-busy="true"' : '') + '>' + (gwBusy ? 'Sending…' : 'Send to my watch now') + '</button>'
+        : '<p class="sub">HYBRD can put each planned run, ride and swim on your Garmin, with pace targets and intervals. Garmin needs your OK first: reconnect Garmin and allow <b>Workout import</b>.</p>' +
+          '<button class="btn primary block" type="button" data-act="gmconnect">Reconnect Garmin</button><button class="linkbtn" type="button" data-act="gwsync" style="margin-top:8px">I already allowed it, check again</button>') + '</section>';
+}
 function syncLine(){
   if (mode !== "account") return '';
   const parts = [garmin.connected ? '<span class="ok">Garmin linked' + (garmin.last_push ? ' · last data ' + agoText(garmin.last_push) : '') + '</span>' : '', strava.connected ? '<span class="ok">Strava · synced ' + agoText(strava.last_sync) + '</span>' : garmin.connected ? '' : '<span>No watch linked</span>',
@@ -2184,7 +2195,7 @@ function settingsScreen(k){
   if (k === "set-password") return acctForm("password");
   if (k === "set-account") return '<section class="card" style="--tone:var(--crit)"><div class="card-h"><span class="lbl">Delete account</span></div><p class="sub">Removes your plan, food, workouts and everything else for good. This can\'t be undone.</p><button class="btn block" type="button" data-act="delacct" style="color:var(--crit)">Delete my account</button></section>';
   if (k === "set-notif") return '<section class="card">' + notifHtml() + '</section>';
-  if (k === "set-watch") return healthHtml() + (garmin.connected ? '<button class="btn block" type="button" data-act="gmdisc">Disconnect Garmin</button>' : '') +
+  if (k === "set-watch") return watchWorkoutsHtml() + healthHtml() + (garmin.connected ? '<button class="btn block" type="button" data-act="gmdisc">Disconnect Garmin</button>' : '') +
     (strava.connected ? '<button class="btn block" type="button" data-act="stdisc">Disconnect Strava' + (strava.name ? ' (' + esc(strava.name) + ')' : '') + '</button>' : '');
   if (k === "set-health") return '<section class="card">' + healthSteps() + '</section>';
   if (k === "set-report") return reportForm();
@@ -2298,7 +2309,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "50";
+const APP_VERSION = "51";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2577,6 +2588,15 @@ document.addEventListener("click", ev => {
   if (act === "actopen"){ const id = a.dataset.id; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actback"){ nav("back", () => { actSel = null; render(); }); return; }
   if (act === "afilt"){ actFilter = a.dataset.k; render(); return; }
+  if (act === "gwsync"){
+    gwBusy = true; render();
+    api("POST", "/api/garmin/workouts").then(j => { gwBusy = false;
+      if (j.ok){ garmin.workouts = j.upcoming; toast(j.added ? j.added + " workout" + (j.added === 1 ? "" : "s") + " sent. Sync your watch to load them." : "Your watch is up to date."); }
+      else if (j.why === "needs_permission"){ garmin.workouts = -1; toast("Garmin hasn't allowed workout import yet. Tap Reconnect Garmin."); }
+      else toast(j.why === "no_plan" ? "Make a plan first." : "Some workouts didn't send. Try again in a minute.");
+      render(); }).catch(e => { gwBusy = false; render(); toast(e.message); });
+    return;
+  }
   if (act === "gmconnect"){ a.disabled = true; api("POST", "/api/garmin/start").then(j => { location.href = j.url; }).catch(e => { a.disabled = false; toast(e.message); }); return; }
   if (act === "gmdisc"){
     if (!confirm("Disconnect Garmin? HYBRD stops getting your Garmin data and deletes the Garmin workouts and sleep it saved.")) return;

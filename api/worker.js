@@ -282,6 +282,7 @@ async function garminForget(env, userId, tellGarmin){
   const link = await env.DB.prepare("SELECT * FROM garmin_links WHERE user_id = ?").bind(userId).first();
   if (link && tellGarmin){ try { const tok = await garminToken(env, link); await fetch((env.GARMIN_API || GARMIN_API) + "/wellness-api/rest/user/registration", {method: "DELETE", headers: {Authorization: "Bearer " + tok}}); } catch(e){} }
   await env.DB.batch([env.DB.prepare("DELETE FROM garmin_links WHERE user_id = ?").bind(userId),
+    env.DB.prepare("DELETE FROM garmin_workouts WHERE user_id = ?").bind(userId),
     env.DB.prepare("DELETE FROM activities WHERE user_id = ? AND source = 'garmin'").bind(userId),
     env.DB.prepare("DELETE FROM health_daily WHERE user_id = ? AND source = 'garmin'").bind(userId)]);
 }
@@ -316,6 +317,61 @@ async function settingsOf(env, userId){
   const row = await env.DB.prepare("SELECT data FROM settings WHERE user_id = ?").bind(userId).first();
   let s = {}; try { s = row ? JSON.parse(row.data) : {}; } catch(e){}
   return {...DEFAULT_SETTINGS, ...s};
+}
+/* ---------- Garmin watch workouts (Training API) ----------
+   Keeps the next 7 days of planned runs/rides/swims on the athlete's Garmin calendar. Each session is
+   stored with a hash of what was sent; when the plan or its feedback changes the workout is replaced. */
+async function garminPerms(env, link, tok){
+  const r = await fetch((env.GARMIN_API || GARMIN_API) + "/wellness-api/rest/user/permissions", {headers: {Authorization: "Bearer " + tok}}).catch(() => null);
+  if (!r || !r.ok) return null;
+  const perms = await r.json().catch(() => null);
+  if (Array.isArray(perms)) await env.DB.prepare("UPDATE garmin_links SET permissions = ? WHERE user_id = ?").bind(JSON.stringify(perms).slice(0, 500), link.user_id).run();
+  return perms;
+}
+async function garminWorkouts(env, userId, opts){
+  const link = await env.DB.prepare("SELECT * FROM garmin_links WHERE user_id = ?").bind(userId).first();
+  if (!link) return {ok: false, why: "not_connected"};
+  const st = await settingsOf(env, userId), L = localNow(st.tz), today = L.date;
+  const U = await loadUser(env, userId, today); if (!U || !U.plan) return {ok: false, why: "no_plan"};
+  const tok = await garminToken(env, link);
+  let perms = null; try { perms = JSON.parse(link.permissions || "null"); } catch(e){}
+  if (!Array.isArray(perms) || (opts && opts.recheck)) perms = await garminPerms(env, link, tok) || perms;
+  if (!Array.isArray(perms) || !perms.includes("WORKOUT_IMPORT")) return {ok: false, why: "needs_permission"};
+  const base = env.GARMIN_API || GARMIN_API, H = {Authorization: "Bearer " + tok, "Content-Type": "application/json"};
+  const F = HP.feedback(U.plan, U.acts, today);
+  const have = {}; (await env.DB.prepare("SELECT * FROM garmin_workouts WHERE user_id = ? AND date >= ?").bind(userId, today).all()).results.forEach(r => have[r.date + "-" + r.idx] = r);
+  const want = {};
+  for (let d = 0; d < 7; d++){
+    const date = HP.addDays(today, d), day = HP.dayOf(U.plan, date); if (!day) continue;
+    const done = HP.dayMatches(U.plan, U.acts, date);
+    day.sessions.forEach((s, i) => { if (done[i]) return; const w = HP.garminWorkout(U.plan, s, F.offs, F.extra[date + "-" + i], date); if (w) want[date + "-" + i] = {date, i, w}; });
+  }
+  let added = 0, removed = 0, failed = 0, calls = 0;
+  const drop = async r => {
+    if (r.schedule_id){ calls++; await fetch(base + "/training-api/schedule/" + r.schedule_id, {method: "DELETE", headers: H}).catch(() => null); }
+    if (r.workout_id){ calls++; await fetch(base + "/training-api/workout/v2/" + r.workout_id, {method: "DELETE", headers: H}).catch(() => null); }
+    await env.DB.prepare("DELETE FROM garmin_workouts WHERE user_id = ? AND date = ? AND idx = ?").bind(userId, r.date, r.idx).run(); removed++;
+  };
+  for (const k of Object.keys(have)) if (!want[k]) await drop(have[k]);
+  for (const k of Object.keys(want)){
+    if (calls > 40) break;   // stay well under Garmin's 200 calls per athlete per day
+    const {date, i, w} = want[k], hash = (await sha256(JSON.stringify(w))).slice(0, 16);
+    if (have[k] && have[k].hash === hash) continue;
+    if (have[k]) await drop(have[k]);
+    calls++;
+    const cr = await fetch(base + "/workoutportal/workout/v2", {method: "POST", headers: H, body: JSON.stringify(w)}).catch(() => null);
+    if (!cr || !cr.ok){ failed++; await logEvent(env, "garmin_workout", false, "create " + (cr ? cr.status + " " + (await cr.text()).slice(0, 140) : "net")); if (cr && (cr.status === 412 || cr.status === 403)) return {ok: false, why: "needs_permission"}; continue; }
+    const cw = await cr.json().catch(() => ({}));
+    calls++;
+    const sr = await fetch(base + "/training-api/schedule/", {method: "POST", headers: H, body: JSON.stringify({workoutId: cw.workoutId, date})}).catch(() => null);
+    const sid = sr && sr.ok ? await sr.text().then(t => { try { const j = JSON.parse(t); return String(j.scheduleId || j); } catch(e){ return t.trim(); } }) : null;
+    if (!sid){ failed++; await logEvent(env, "garmin_workout", false, "schedule " + (sr ? sr.status : "net")); }
+    await env.DB.prepare("INSERT INTO garmin_workouts (user_id, date, idx, hash, workout_id, schedule_id, updated) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, date, idx) DO UPDATE SET hash = excluded.hash, workout_id = excluded.workout_id, schedule_id = excluded.schedule_id, updated = excluded.updated")
+      .bind(userId, date, i, sid ? hash : "retry", String(cw.workoutId || ""), sid, now()).run();
+    if (sid) added++;
+  }
+  if (added || removed || failed) await logEvent(env, "garmin_workout", failed === 0, added + " sent, " + removed + " removed, " + failed + " failed");
+  return {ok: failed === 0, added, removed, failed, upcoming: Object.keys(want).length};
 }
 async function loadUser(env, userId, today){
   const since = HP.addDays(today, -70);
@@ -501,6 +557,11 @@ function weeklySummary(U, today){
 async function cron(env, ctx){
   await logEvent(env, "cron", true);
   await outbox(env).catch(e => logEvent(env, "bulk_mail", false, "outbox: " + String(e && e.message).slice(0, 100)));
+  // once a day (after 4 am local) refresh the next 7 days of workouts on each athlete's Garmin
+  for (const {user_id} of (await env.DB.prepare("SELECT user_id FROM garmin_links WHERE permissions LIKE '%WORKOUT_IMPORT%'").all()).results){
+    try { const L = localNow((await settingsOf(env, user_id)).tz); if (L.hm >= "04:00" && await once(env, user_id, "gwork", L.date)) await garminWorkouts(env, user_id); }
+    catch(e){ await logEvent(env, "garmin_workout", false, "cron: " + String(e && e.message).slice(0, 100)); }
+  }
   await env.DB.prepare("DELETE FROM events WHERE ts < ?").bind(new Date(Date.now() - 21 * 864e5).toISOString()).run();
   await env.DB.prepare("DELETE FROM notif_log WHERE day < ?").bind(new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)).run();
   const users = (await env.DB.prepare("SELECT DISTINCT u.id FROM users u LEFT JOIN push_subs p ON p.user_id = u.id LEFT JOIN strava_links s ON s.user_id = u.id WHERE p.user_id IS NOT NULL OR s.user_id IS NOT NULL").all()).results;
@@ -704,6 +765,7 @@ async function route(req, env, path, ctx){
         "ON CONFLICT (user_id) DO UPDATE SET garmin_user_id = excluded.garmin_user_id, access_token = excluded.access_token, refresh_token = excluded.refresh_token, expires_at = excluded.expires_at")
         .bind(row.user_id, gid, j.access_token, j.refresh_token || "", Math.floor(Date.now() / 1000) + (j.expires_in || 86400), now())]);
     await logEvent(env, "garmin_connect", true, "");
+    ctx.waitUntil(garminWorkouts(env, row.user_id, {recheck: true}).catch(e => logEvent(env, "garmin_workout", false, "connect: " + String(e && e.message).slice(0, 100))));
     ctx.waitUntil((async () => {
       const end = Math.floor(Date.now() / 1000), start = end - 14 * 86400;
       for (const k of ["sleeps", "dailies", "hrv", "activities", "activityDetails"]){
@@ -920,14 +982,15 @@ async function route(req, env, path, ctx){
       env.DB.prepare("SELECT date, sleep_h, rhr, hrv, steps, active_cal, sleep_score, bb, stress, source FROM health_daily WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since),
       env.DB.prepare("SELECT date, ex, weight, hit FROM lift_logs WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since120),
       env.DB.prepare("SELECT data FROM meal_plans WHERE user_id = ?").bind(user.id),
-      env.DB.prepare("SELECT connected, last_push FROM garmin_links WHERE user_id = ?").bind(user.id)
+      env.DB.prepare("SELECT connected, last_push, permissions, (SELECT COUNT(*) FROM garmin_workouts w WHERE w.user_id = garmin_links.user_id AND w.date >= date('now', '-1 day') AND w.schedule_id IS NOT NULL) AS wk FROM garmin_links WHERE user_id = ?").bind(user.id)
     ]);
     const prof = p.results[0] ? JSON.parse(p.results[0].data) : null;
     const owner = await ownerId(env) === user.id, founding = await foundingNo(env, user.id);
     const reports = owner ? (await env.DB.prepare("SELECT id, email, text, info, created FROM reports ORDER BY created DESC LIMIT 50").all()).results : undefined;
     return {user: {...userOut(user), terms_at: user.terms_at || null}, profile: prof, done: d.results.map(r => r.key), food: f.results, checkins: c.results, weights: w.results, activities: a.results,
       strava: {available: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!s.results[0], name: s.results[0] ? s.results[0].athlete_name : "", last_sync: s.results[0] ? s.results[0].last_sync : null},
-      garmin: {available: !!(env.GARMIN_CLIENT_ID && env.GARMIN_CLIENT_SECRET), connected: !!gl.results[0], last_push: gl.results[0] ? gl.results[0].last_push : null},
+      garmin: {available: !!(env.GARMIN_CLIENT_ID && env.GARMIN_CLIENT_SECRET), connected: !!gl.results[0], last_push: gl.results[0] ? gl.results[0].last_push : null,
+        workouts: gl.results[0] ? (/WORKOUT_IMPORT/.test(gl.results[0].permissions || "") ? gl.results[0].wk : (gl.results[0].permissions ? -1 : null)) : null},
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
       settings: await settingsOf(env, user.id), push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY,
       owner, founding, reports, health: hd.results, lifts: ll.results, mealplan: mp.results[0] ? JSON.parse(mp.results[0].data) : null, crews: await crewsFor(env, user.id), health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
@@ -973,7 +1036,12 @@ async function route(req, env, path, ctx){
       env.DB.prepare("INSERT INTO profiles (user_id, data, updated) VALUES (?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET data = excluded.data, updated = excluded.updated").bind(user.id, s, now()),
       ...(isDate(b.resetFrom) ? [env.DB.prepare("DELETE FROM done WHERE user_id = ? AND key >= ?").bind(user.id, b.resetFrom)] : [])
     ]);
+    if (ctx) ctx.waitUntil(garminWorkouts(env, user.id).catch(e => logEvent(env, "garmin_workout", false, "profile: " + String(e && e.message).slice(0, 100))));
     return {ok: true};
+  }
+  if (M === "POST" && path === "/api/garmin/workouts"){
+    await limit(env, "gw:" + user.id);
+    return await garminWorkouts(env, user.id, {recheck: true});
   }
   if (M === "PUT" && path === "/api/done"){
     const b = await body(req), key = String(b.key || "");
@@ -1244,7 +1312,7 @@ async function route(req, env, path, ctx){
     const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
     if (link){ try { const tok = await stravaToken(env, link); await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/deauthorize", {method: "POST", headers: {Authorization: "Bearer " + tok}}); } catch(e){} }
     await garminForget(env, user.id, true);
-    await env.DB.batch(["sessions", "pw_resets", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily", "reports", "link_keys", "lift_logs", "meal_plans", "crew_members"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
+    await env.DB.batch(["sessions", "pw_resets", "garmin_workouts", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily", "reports", "link_keys", "lift_logs", "meal_plans", "crew_members"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
       .concat([env.DB.prepare("DELETE FROM crews WHERE id NOT IN (SELECT crew_id FROM crew_members)"),
         env.DB.prepare("UPDATE crews SET owner_id = (SELECT user_id FROM crew_members m WHERE m.crew_id = crews.id ORDER BY joined LIMIT 1) WHERE owner_id = ?").bind(user.id),
         env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id)]));

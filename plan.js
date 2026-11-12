@@ -640,5 +640,61 @@ function raceSplits(plan){
   return {goal, pace, rows: marks.map(mi => ({mi: Math.round(mi * 100) / 100, time: mi * pace}))};
 }
 
-root.HP = {bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
+/* ---------- Garmin watch workouts (Training API V2) ----------
+   Turns one planned session into a Garmin workout: warm-up/cool-down, rep blocks with recoveries,
+   and pace targets (as speed in m/s). Runs, rides, swims and cardio; lifts stay in the app. */
+const MI_M = 1609.34;
+function garminWorkout(plan, s, offs, extra, date){
+  if (!s || s.type === "lift" || s.type === "walk" || (s.type === "race" && s.multi)) return null;
+  const P = plan.P, off = offs || {};
+  const steps0 = extra ? withExtraRep(s.steps || []) : (s.steps || []);
+  let order = 0;
+  const speed = sec => Math.round(MI_M / sec * 1000) / 1000;
+  const paceTarget = (k, plus) => {
+    if (!k || P[k] == null) return {targetType: "OPEN"};
+    if (Array.isArray(P[k])) return {targetType: "PACE", targetValueLow: speed(Math.max(P[k][0], P[k][1]) + 15), targetValueHigh: speed(Math.min(P[k][0], P[k][1]))};
+    const c = P[k] + (off[k] || 0) + (plus || 0);
+    return {targetType: "PACE", targetValueLow: speed(c + 5), targetValueHigh: speed(c - 5)};
+  };
+  const step = (o) => ({type: "WorkoutStep", stepOrder: ++order, intensity: o.intensity || "ACTIVE", description: String(o.description || "").slice(0, 512),
+    durationType: o.durationType || "OPEN", durationValue: o.durationValue == null ? null : o.durationValue, durationValueType: o.durationValueType || null,
+    targetType: o.targetType || "OPEN", targetValue: null, targetValueLow: o.targetValueLow == null ? null : o.targetValueLow, targetValueHigh: o.targetValueHigh == null ? null : o.targetValueHigh, targetValueType: null});
+  const repeat = (n, inner) => { const r = {type: "WorkoutRepeatStep", stepOrder: ++order, repeatType: "REPEAT_UNTIL_STEPS_CMPLT", repeatValue: n, skipLastRestStep: true, steps: []}; r.steps = inner(); return r; };
+  const dur = (txt) => { const m = /(\d+(?:\.\d+)?)\s*(min|s|sec)\b/.exec(txt); return m ? {durationType: "TIME", durationValue: Math.round(+m[1] * (m[2] === "min" ? 60 : 1))} : null; };
+  const out = [];
+  if (s.mi > 0 && s.type !== "race" || (s.type === "race" && s.mi > 0)){
+    steps0.forEach((st, idx) => {
+      const [label, mi, k, plus] = st, L = String(label), low = L.toLowerCase();
+      const intensity = /^warm/.test(low) ? "WARMUP" : /^cool/.test(low) ? "COOLDOWN" : (k === "E" || k === "L") ? "ACTIVE" : "INTERVAL";
+      // "6 × 800 m at interval pace, 400 m jog between" / "3 × 1 mi …" / "8 × 1 min quick / 1 min easy" / "8 × 15 s hill sprints"
+      const rm = /^(?:finish with )?(\d+) × (\d+(?:\.\d+)?)\s*(m|mi|min|s)\b/i.exec(L);
+      if (rm){
+        const n = +rm[1], v = +rm[2], u = rm[3].toLowerCase();
+        const work = u === "m" ? {durationType: "DISTANCE", durationValue: v, durationValueType: "METER"} : u === "mi" ? {durationType: "DISTANCE", durationValue: Math.round(v * MI_M), durationValueType: "METER"} : {durationType: "TIME", durationValue: Math.round(v * (u === "min" ? 60 : 1))};
+        const restTxt = (/,\s*(.+?) between/.exec(L) || /\/\s*(.+)$/.exec(L) || [])[1] || "";
+        const restM = /(\d+)\s*m\b/.exec(restTxt), restT = dur(restTxt);
+        const rest = restM ? {durationType: "DISTANCE", durationValue: +restM[1], durationValueType: "METER"} : restT || {durationType: "OPEN"};
+        const tgt = /stride|sprint/.test(low) || !k ? {targetType: "OPEN"} : paceTarget(k, plus);
+        out.push(repeat(n, () => [step({intensity: "INTERVAL", description: L, ...work, ...tgt}), step({intensity: "RECOVERY", description: restTxt ? restTxt : (/walk/.test(low) ? "Walk back" : "Recover, then press lap"), ...rest})]));
+        return;
+      }
+      if (mi > 0) out.push(step({intensity, description: L, durationType: "DISTANCE", durationValue: Math.round(mi * MI_M), durationValueType: "METER", ...paceTarget(k, plus)}));
+      else out.push(step({intensity, description: L, durationType: "OPEN"}));
+    });
+    return {workoutName: String(s.title).slice(0, 80), description: ("HYBRD · " + (s.why || "")).slice(0, 1024), sport: "RUNNING", workoutProvider: "HYBRD", workoutSourceId: "HYBRD",
+      isSessionTransitionEnabled: false, poolLength: null, poolLengthUnit: null, segments: [{segmentOrder: 1, sport: "RUNNING", poolLength: null, poolLengthUnit: null, steps: out}]};
+  }
+  // time-based sessions (rides, swims, cardio, walk-runs): one step with the plan's instructions
+  const sport = s.type === "bike" ? "CYCLING" : s.type === "swim" ? "LAP_SWIMMING" : s.type === "easy" ? "RUNNING" : "CARDIO_TRAINING";
+  const text = (s.steps || []).map(x => Array.isArray(x) ? x[0] : x).join(" · ");
+  if (!s.min) return null;
+  const main = sport === "LAP_SWIMMING"
+    ? (s.yd ? step({intensity: "ACTIVE", description: text, durationType: "DISTANCE", durationValue: Math.round(s.yd * 0.9144), durationValueType: "METER", targetType: null})
+            : step({intensity: "ACTIVE", description: text, durationType: "TIME", durationValue: Math.min(59, s.min) * 60, targetType: null}))
+    : step({intensity: "ACTIVE", description: text, durationType: "TIME", durationValue: s.min * 60});
+  return {workoutName: String(s.title).slice(0, 80), description: ("HYBRD · " + (s.why || "")).slice(0, 1024), sport, workoutProvider: "HYBRD", workoutSourceId: "HYBRD",
+    isSessionTransitionEnabled: false, poolLength: null, poolLengthUnit: null, segments: [{segmentOrder: 1, sport, poolLength: null, poolLengthUnit: null, steps: [main]}]};
+}
+
+root.HP = {garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
 })(typeof globalThis !== "undefined" ? globalThis : self);
