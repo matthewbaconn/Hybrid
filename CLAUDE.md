@@ -23,7 +23,7 @@ Plans adapt to sleep, HRV and workouts from Garmin, Strava and Apple Health.
 - `plan.js`: plan, readiness and calorie logic, shared by the app and the API.
 - `api/worker.js`: Cloudflare Worker (API, cron, Strava/Garmin, Resend email, web push, site proxy).
   D1 database `hybrid`, migrations in `api/migrations/` (numbered, add only, never edit old ones).
-- `home/`: website. `mail/outbox.json`: the weekly member email (the API cron sends it once per id).
+- `brand/ig/`: Instagram images (public URLs Buffer can fetch). `home/`: website. `mail/outbox.json`: the weekly member email (the API cron sends it once per id).
 - `tests/e2e.mjs` (Playwright), `tests/health.sh`. GitHub Actions: `nightly.yml`, `api.yml` (deploys
   the Worker on push to main), `events.yml` (reads the live event log: use it, not raw DB queries).
 - Pushing to `main` deploys: Pages serves the app/site, `api.yml` deploys the Worker and runs migrations.
@@ -47,7 +47,7 @@ Then report what you did in one line. **Still ask first** for:
 - deleting data, changing DNS, Cloudflare secrets or Resend domain settings
 - anything that cannot be undone and could reasonably go either way
 Existing scheduled tasks keep running as approved: daily 10:47 health check/auto-fix, Monday member
-email (via `mail/outbox.json`), scheduled Instagram posts.
+email (via `mail/outbox.json`). Instagram posts are scheduled in Buffer (free plan: max 10 queued).
 
 ## How you work
 - You (Opus/Sonnet) own strategy, architecture and real feature work with Matthew.
