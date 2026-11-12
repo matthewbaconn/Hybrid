@@ -196,7 +196,7 @@ async function askCoach(env, system, data){
   if (!env.ANTHROPIC_API_KEY) return null;
   const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {method: "POST",
     headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-    body: JSON.stringify({model: env.COACH_MODEL || "claude-haiku-5-5", max_tokens: 500, system, messages: [{role: "user", content: JSON.stringify(data)}]})});
+    body: JSON.stringify({model: env.COACH_MODEL || "claude-haiku-5-5", max_tokens: 1500, system, messages: [{role: "user", content: JSON.stringify(data)}]})});
   if (!r.ok){ const t = (await r.text()).slice(0, 300); console.log("coach error", r.status, t); lastCoachError = "api " + r.status + " " + t; await logEvent(env, "ai_coach", false, lastCoachError); return null; }
   const out = await r.json(), raw = (out.content || []).filter(c => c.type === "text").map(c => c.text).join("");
   try { const j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); await logEvent(env, "ai_coach", true); return j; } catch(e){ lastCoachError = "unreadable reply (" + out.stop_reason + "): " + raw.slice(0, 200); await logEvent(env, "ai_coach", false, lastCoachError); return null; }
