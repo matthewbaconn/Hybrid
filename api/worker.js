@@ -117,6 +117,7 @@ async function site(req, host){
   const u = new URL(req.url);
   if (host === "www.hybrdrunning.com" || host === "hybridrunnin.com" || host === "www.hybridrunnin.com") return Response.redirect("https://hybrdrunning.com" + u.pathname + u.search, 301);
   if (req.method !== "GET" && req.method !== "HEAD") return new Response("Method not allowed", {status: 405});
+  if (/^\/(\.claude|\.github|CLAUDE(\.local)?\.md|api\/|tests\/|mail\/)/i.test(u.pathname)) return new Response("Not found", {status: 404});   // repo internals stay off the live domains
   const shared = /^\/(brand\/|privacy\.html$|icon-|apple-touch-icon)/.test(u.pathname);
   const target = PAGES + (host.startsWith("app.") || shared ? "" : "/home") + u.pathname + u.search;
   const r = await fetch(target, {headers: {"Accept": req.headers.get("Accept") || "*/*"}, redirect: "manual", cf: {cacheTtl: 60, cacheEverything: true}});
