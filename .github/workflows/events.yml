@@ -28,3 +28,7 @@ jobs:
           cd api
           where=$(echo "$KINDS" | tr ',' '\n' | sed "s/[^a-z_%]//g" | awk 'NF{printf "%skind LIKE '\''%s'\''", (n++?" OR ":""), $0}')
           npx wrangler d1 execute hybrid --remote --command "SELECT ts, kind, ok, detail FROM events WHERE ($where) AND ts > datetime('now','-3 days') ORDER BY ts DESC LIMIT 80"
+      - name: Counts (no personal data)
+        run: |
+          cd api
+          npx wrangler d1 execute hybrid --remote --command "SELECT (SELECT COUNT(*) FROM users) AS users, (SELECT COUNT(*) FROM strava_links) AS strava, (SELECT COUNT(*) FROM garmin_links) AS garmin"
