@@ -232,6 +232,9 @@ button{cursor:pointer}
 .splits .sp i{display:block;height:10px;border-radius:999px;background:var(--easy)}
 .splits .sp em{font-style:normal;text-align:right;color:var(--muted)}
 .wtiles small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+.rpl{display:grid;gap:10px}
+.rp{background:var(--sunk);border-radius:6px;padding:12px;display:grid;gap:6px}
+.rp p{margin:0;font-size:14.5px;white-space:pre-wrap;overflow-wrap:anywhere} .rp span{font-size:12px;color:var(--muted)}
 .hlink{display:grid;gap:12px}
 .wl{display:flex;align-items:center;gap:12px}
 .wl div{flex:1;min-width:0} .wl b{display:block;font-weight:600;font-size:14.5px} .wl span{font-size:12.5px;color:var(--muted)}
@@ -475,11 +478,11 @@ function loadAccount(j){
   clearObj(checkins); (j.checkins || []).forEach(c => checkins[c.date] = c);
   clearObj(weights); (j.weights || []).forEach(w => weights[w.date] = w.lb);
   acts = j.activities || []; strava = j.strava || strava;
-  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {};
+  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {}; isOwner = !!j.owner; reports = j.reports || [];
   plan = j.profile ? buildPlan(j.profile) : null;
   setup = plan ? null : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
 }
-function signedOut(){ token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
+function signedOut(){ isOwner = false; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
 const checkins = S.checkins || {};          // date -> {sleep_h, sleep_q, soreness, energy, stress}
 const weights = S.weights || {};            // date -> lb
@@ -728,7 +731,7 @@ function waitForReview(id){
   [5000, 12000, 22000, 35000].forEach(ms => setTimeout(() => { if (id ? !reviews[id] : Object.keys(reviews).length === before) refreshMe(); }, ms));
 }
 async function refreshMe(){
-  try { const j = await api("GET", "/api/me"); const before = JSON.stringify([acts, reviews]); acts = j.activities || acts; reviews = j.reviews || reviews; notes = j.notes || notes; dev = devMap(j.health) || dev; strava = j.strava || strava; pushInfo = j.push || pushInfo;
+  try { const j = await api("GET", "/api/me"); const before = JSON.stringify([acts, reviews]); acts = j.activities || acts; reviews = j.reviews || reviews; notes = j.notes || notes; dev = devMap(j.health) || dev; if (j.reports) reports = j.reports; strava = j.strava || strava; pushInfo = j.push || pushInfo;
     if (JSON.stringify([acts, reviews]) !== before) safeRender(); } catch(e){}
 }
 async function stravaSync(quiet){
@@ -1325,10 +1328,30 @@ function openMenu(){
     : mode === "sample"
     ? '<p class="sub">You\'re looking at a sample runner. Nothing here is saved.</p><button class="btn primary block" type="button" data-act="authsignup">Create a free account</button><button class="btn block" type="button" data-act="authlogin">Log in</button>'
     : '<button class="btn block" type="button" data-act="edit">Edit goals and rebuild plan</button><button class="btn block" type="button" data-act="reset">Start over</button><p class="sub">Your answers stay in this browser only.</p>';
-  b.innerHTML = healthView && mode === "account"
+  const rbtn = API ? '<button class="btn block" type="button" data-act="rpopen">Report a problem</button>' : '';
+  b.innerHTML = reportView ? reportSheet() : healthView && mode === "account"
     ? '<div class="sheet" role="dialog" aria-modal="true" aria-label="Sleep and heart rate"><button class="linkbtn" type="button" data-act="hlback">‹ Settings</button><h2 class="sec-t" style="font-size:20px">Sleep and heart rate</h2>' + healthSteps() + '<button class="btn block" type="button" data-act="close">Done</button></div>'
-    : '<div class="sheet" role="dialog" aria-modal="true" aria-label="Settings"><h2 class="sec-t" style="font-size:20px">Settings</h2>' + body + '<button class="btn block" type="button" data-act="close">Close</button></div>';
-  document.body.appendChild(b); b.querySelector("button").focus();
+    : '<div class="sheet" role="dialog" aria-modal="true" aria-label="Settings"><h2 class="sec-t" style="font-size:20px">Settings</h2>' + body + (mode === "account" && isOwner ? reportsHtml() : '') + rbtn + '<button class="btn block" type="button" data-act="close">Close</button></div>';
+  document.body.appendChild(b); (b.querySelector("textarea") || b.querySelector("button")).focus();
+}
+/* ---------- report a problem ---------- */
+const APP_VERSION = "18";
+let reportView = null, isOwner = false, reports = [];
+function reportSheet(){
+  const v = reportView;
+  if (v.sent) return '<div class="sheet" role="dialog" aria-modal="true" aria-label="Report a problem"><h2 class="sec-t" style="font-size:20px">Thanks, got it</h2><p class="sub">Your report was sent. We\'ll look into it.</p><button class="btn block" type="button" data-act="close">Done</button></div>';
+  return '<div class="sheet" role="dialog" aria-modal="true" aria-label="Report a problem"><button class="linkbtn" type="button" data-act="rpback">‹ Settings</button><h2 class="sec-t" style="font-size:20px">Report a problem</h2>' +
+    '<textarea id="rp-text" rows="5" maxlength="2000" aria-label="What went wrong?" placeholder="What went wrong? What did you expect to happen?">' + esc(v.text || "") + '</textarea>' +
+    '<p class="sub">Sent with which screen you were on and your phone type' + (mode === "account" ? ', and your email so we can follow up.' : '.') + '</p>' +
+    (v.err ? '<p class="err" role="alert">' + esc(v.err) + '</p>' : '') +
+    '<button class="btn primary block" type="button" data-act="rpsend"' + (v.busy ? ' disabled aria-busy="true"' : '') + '>' + (v.busy ? 'Sending…' : 'Send') + '</button><button class="btn block" type="button" data-act="close">Cancel</button></div>';
+}
+function reportsHtml(){
+  let h = '<div class="nset rpl"><div class="card-h" style="--tone:var(--work)">' + ic("flag") + '<span class="lbl">Reported problems</span><span class="r">' + reports.length + '</span></div>';
+  if (!reports.length) return h + '<p class="sub">None right now. Only you see this list.</p></div>';
+  return h + reports.map(r => { let i = {}; try { i = JSON.parse(r.info || "{}"); } catch(e){}
+    const dev = /iPhone|iPad/.test(i.device || "") ? "iPhone" : /Android/.test(i.device || "") ? "Android" : "computer";
+    return '<div class="rp"><p>' + esc(r.text) + '</p><span>' + esc(r.email || "not signed in") + ' · ' + agoText(r.created) + (i.screen ? ' · ' + esc(i.screen) + ' tab' : '') + ' · ' + dev + (i.installed ? ' app' : '') + '</span><button class="linkbtn" type="button" data-act="rpdone" data-id="' + esc(r.id) + '">Mark done</button></div>'; }).join("") + '</div>';
 }
 /* ---------- watch: Strava for workouts, an iPhone Shortcut for sleep and heart rate ---------- */
 let healthKey = null, healthLink = {on: false}, healthView = false;
@@ -1420,6 +1443,18 @@ document.addEventListener("click", ev => {
   if (act === "actback"){ actSel = null; render(); return; }
   if (act === "afilt"){ actFilter = a.dataset.k; render(); return; }
   if (act === "hlmake"){ api("POST", "/api/import-key").then(j => { healthKey = j.key; healthLink = {on: true, last_used: null}; healthView = true; closeMenu(); openMenu(); }).catch(e => toast(e.message)); return; }
+  if (act === "rpopen"){ reportView = {text: ""}; closeMenu(); openMenu(); return; }
+  if (act === "rpback"){ reportView = null; closeMenu(); openMenu(); return; }
+  if (act === "rpsend"){
+    const v = reportView; v.text = ($("#rp-text") || {}).value || "";
+    if (v.text.trim().length < 5){ v.err = "Tell us a little more about what went wrong."; closeMenu(); openMenu(); return; }
+    v.busy = true; v.err = ""; closeMenu(); openMenu();
+    api("POST", "/api/report", {text: v.text, screen: tab, version: APP_VERSION, installed: standalone()})
+      .then(() => { reportView = {sent: true}; if (isOwner) refreshMe(); }, e => { v.busy = false; v.err = e.message; })
+      .then(() => { if ($(".back")){ closeMenu(); openMenu(); } });
+    return;
+  }
+  if (act === "rpdone"){ const id = a.dataset.id; reports = reports.filter(r => r.id !== id); closeMenu(); openMenu(); api("DELETE", "/api/report/" + id).catch(e => toast(e.message)); return; }
   if (act === "hlsetup"){ healthView = true; closeMenu(); openMenu(); return; }
   if (act === "hlback"){ healthView = false; closeMenu(); openMenu(); return; }
   if (act === "hloff"){ if (!confirm("Turn this off? Your Shortcut will stop sending data.")) return; api("DELETE", "/api/import-key").then(() => { healthKey = null; healthLink = {on: false}; healthView = false; closeMenu(); openMenu(); }).catch(e => toast(e.message)); return; }
@@ -1529,7 +1564,7 @@ document.addEventListener("click", ev => {
   if (act === "wxretry"){ wxState = "idle"; loadWeather(true); render(); return; }
   if (act === "gotoday"){ ciForce = true; setTab("today", true); return; }
   if (act === "menu"){ openMenu(); return; }
-  if (act === "close"){ healthView = false; closeMenu(); return; }
+  if (act === "close"){ healthView = false; reportView = null; closeMenu(); return; }
   if (act === "edit"){ closeMenu(); const p = plan.profile.sample ? blankProfile() : {...plan.profile}; delete p.sample; delete p.start; setup = {step: 0, p}; render(); window.scrollTo(0, 0); return; }
   if (act === "reset"){ closeMenu(); plan = null; for (const k in done) delete done[k]; for (const k in food) delete food[k]; store.set(null); setup = {step: -1, p: blankProfile()}; render(); window.scrollTo(0, 0); return; }
 });

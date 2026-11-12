@@ -59,6 +59,8 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' "$API/api/import?key=hl_wrongwrongwrongwrongwrong&weight=180")" = 401 ] || { echo "::error::a wrong Apple Health link was accepted"; exit 1; }
           [ "$(call GET /api/me | jq .health_link.on)" = true ] || { echo "::error::Apple Health link not shown as on"; exit 1; }
           echo "Apple Health link works (weight, sleep, resting HR, HRV, steps)"
+          call POST /api/report '{"text":"Nightly test report. Please ignore.","screen":"today"}' | jq -e .ok > /dev/null || { echo "::error::problem report failed"; exit 1; }
+          echo "problem report saved"
           if [ "$(echo "$me" | jq .strava.available)" = true ]; then
             u=$(call POST /api/strava/start | jq -r .url)
             echo "$u" | grep -q "redirect_uri=https%3A%2F%2Fhybrid-api.hybridapp.workers.dev%2Fapi%2Fstrava%2Fcallback" || { echo "::error::Strava start URL looks wrong: $u"; exit 1; }

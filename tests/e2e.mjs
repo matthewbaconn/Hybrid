@@ -105,6 +105,10 @@ await check("Settings: Garmin + Apple Health", async () => {
   await page.click('[data-act="menu"]'); await page.waitForSelector(".sheet .hlink", {timeout: 5000}); const t = await page.innerText(".sheet .hlink"); await page.click('.sheet [data-act="close"]');
   if (!/Apple Health/.test(t) || !/Strava/.test(t)) throw new Error(t.slice(0, 120)); return "shown";
 });
+await check("Report a problem", async () => {
+  await page.click('[data-act="menu"]'); await page.click('.sheet [data-act="rpopen"]'); await page.fill("#rp-text", "Nightly test report. Please ignore.");
+  await page.click('[data-act="rpsend"]'); await page.waitForSelector(".sheet >> text=Thanks, got it", {timeout: 15000}); await page.click('.sheet [data-act="close"]'); return "sent";
+});
 await check("Settings: notifications + Strava", async () => {
   await tab("today"); await page.click('[data-act="menu"]'); await page.waitForSelector(".sheet .nset", {timeout: 5000}); const t = await page.innerText(".sheet .nset"); await shot("07-settings"); await page.click('.sheet [data-act="close"]');
   const strava = await page.locator('[data-act="stconnect"]').count(); if (!strava) throw new Error("Connect Strava button missing");

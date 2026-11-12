@@ -62,6 +62,12 @@ async function auth(req, env){
   return row;
 }
 const userOut = u => ({id: u.id, email: u.email, name: u.name});
+/* The app's owner sees problem reports. OWNER_EMAIL (a secret) wins; otherwise it's the oldest real account. */
+async function ownerId(env){
+  const row = env.OWNER_EMAIL ? await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(String(env.OWNER_EMAIL).trim().toLowerCase()).first()
+    : await env.DB.prepare("SELECT id FROM users WHERE email NOT LIKE '%@example.com' ORDER BY created LIMIT 1").first();
+  return row ? row.id : null;
+}
 
 /* ---------- AI food reading ---------- */
 async function analyze(env, user, b){
@@ -441,7 +447,27 @@ async function route(req, env, path, ctx){
     return {token: await newSession(env, u.id), user: userOut(u)};
   }
 
+  if (M === "POST" && path === "/api/report"){
+    // works signed in or not (sample runner too)
+    await limit(env, "report:" + (req.headers.get("CF-Connecting-IP") || "x"));
+    const b = await body(req), text = String(b.text || "").trim().slice(0, 2000);
+    if (text.length < 5) throw new HttpError(400, "Tell us a little more about what went wrong.");
+    const who = await auth(req, env).catch(() => null);
+    const day = await env.DB.prepare("SELECT COUNT(*) AS n FROM reports WHERE created > ?").bind(new Date(Date.now() - 864e5).toISOString()).first();
+    if (day.n >= 200) throw new HttpError(429, "Too many reports today. Try again tomorrow.");
+    const info = {screen: String(b.screen || "").slice(0, 30), version: String(b.version || "").slice(0, 20), device: (req.headers.get("User-Agent") || "").slice(0, 160), installed: !!b.installed};
+    await env.DB.prepare("INSERT INTO reports (id, user_id, email, text, info, created) VALUES (?, ?, ?, ?, ?, ?)").bind(rand(10), who ? who.id : null, who ? who.email : null, text, JSON.stringify(info), now()).run();
+    await logEvent(env, "report", true, who ? "signed in" : "not signed in");
+    const own = await ownerId(env);
+    if (own && ctx && !text.startsWith("Nightly test report.")) ctx.waitUntil(pushTo(env, own, {title: "Hybrid: problem reported", body: clip(text, 120), tag: "report"}).catch(() => {}));
+    return {ok: true};
+  }
   const user = await auth(req, env);
+  const mr = path.match(/^\/api\/report\/([a-f0-9]+)$/);
+  if (M === "DELETE" && mr){
+    if (await ownerId(env) !== user.id) throw new HttpError(403, "Not allowed.");
+    await env.DB.prepare("DELETE FROM reports WHERE id = ?").bind(mr[1]).run(); return {ok: true};
+  }
   if (M === "POST" && path === "/api/logout"){
     const t = (req.headers.get("Authorization") || "").slice(7);
     await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(await sha256(t)).run();
@@ -469,11 +495,13 @@ async function route(req, env, path, ctx){
       env.DB.prepare("SELECT date, sleep_h, rhr, hrv, steps, active_cal FROM health_daily WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since)
     ]);
     const prof = p.results[0] ? JSON.parse(p.results[0].data) : null;
+    const owner = await ownerId(env) === user.id;
+    const reports = owner ? (await env.DB.prepare("SELECT id, email, text, info, created FROM reports ORDER BY created DESC LIMIT 50").all()).results : undefined;
     return {user: userOut(user), profile: prof, done: d.results.map(r => r.key), food: f.results, checkins: c.results, weights: w.results, activities: a.results,
       strava: {available: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!s.results[0], name: s.results[0] ? s.results[0].athlete_name : "", last_sync: s.results[0] ? s.results[0].last_sync : null},
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
       settings: await settingsOf(env, user.id), push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY,
-      health: hd.results, health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
+      owner, reports, health: hd.results, health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
   }
   if (M === "PUT" && path === "/api/profile"){
     const b = await body(req), s = JSON.stringify(b.profile || null);
@@ -584,7 +612,7 @@ async function route(req, env, path, ctx){
   if (M === "DELETE" && path === "/api/account"){
     const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
     if (link){ try { const tok = await stravaToken(env, link); await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/deauthorize", {method: "POST", headers: {Authorization: "Bearer " + tok}}); } catch(e){} }
-    await env.DB.batch(["sessions", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
+    await env.DB.batch(["sessions", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily", "reports"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
       .concat([env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id)]));
     return {ok: true};
   }

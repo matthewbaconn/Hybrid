@@ -32,6 +32,9 @@ errs=$(q "SELECT ts, kind, detail FROM events WHERE ok = 0 AND ts >= datetime('n
 
 stats=$(q "SELECT (SELECT COUNT(*) FROM users) AS users, (SELECT COUNT(*) FROM profiles) AS plans, (SELECT COUNT(*) FROM strava_links) AS strava, (SELECT COUNT(DISTINCT user_id) FROM push_subs) AS push_users, (SELECT COUNT(*) FROM sessions WHERE expires > datetime('now')) AS sessions")
 good "Accounts: $stats"
+# test accounts delete themselves, and their reports with them; this clears anything left behind
+q "DELETE FROM reports WHERE text LIKE 'Nightly test report.%'" > /dev/null || true
+good "Problem reports waiting: $(q "SELECT COUNT(*) AS n FROM reports") · owner account: $(q "SELECT substr(created, 1, 10) AS since, (SELECT COUNT(*) FROM strava_links s WHERE s.user_id = u.id) AS strava FROM users u WHERE email NOT LIKE '%@example.com' ORDER BY created LIMIT 1")"
 
 if [ -n "${STRAVA_CLIENT_ID:-}" ] && [ -n "${STRAVA_CLIENT_SECRET:-}" ]; then
   subs=$(curl -sS "https://www.strava.com/api/v3/push_subscriptions?client_id=$STRAVA_CLIENT_ID&client_secret=$STRAVA_CLIENT_SECRET")
