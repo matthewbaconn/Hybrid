@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hybrid · Train for anything. Eat for it too.</title>
+<meta name="description" content="Hybrid builds your training plan around your life: running, HYROX, triathlon, swimming, cycling or just getting fitter. Strength days, food targets and recovery, all in one app.">
+<meta name="theme-color" content="#0A0B0F">
+<meta property="og:title" content="Hybrid · Train for anything. Eat for it too.">
+<meta property="og:description" content="A training plan built around your life, with strength, food targets and recovery in one app.">
+<meta property="og:image" content="https://matthewbaconn.github.io/Hybrid/home/today.jpg">
+<meta property="og:type" content="website">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+:root{--bg:#0A0B0F;--surface:#14161C;--sunk:#1E212B;--ink:#F5F6FA;--muted:#9CA3B4;--line:#262A35;--accent:#800000;--accent-2:#E0464C;
+  --easy:#22D3EE;--long:#34D399;--work:#FACC15;--lift:#FF6FB5;--swim:#60A5FA;--bike:#A3E635;
+  --f-display:"SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;--f-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.55 var(--f-body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit}
+img{max-width:100%;display:block}
+.wrap{width:min(1120px,100% - 40px);margin:0 auto}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:10;background:rgba(10,11,15,.86);backdrop-filter:saturate(140%) blur(10px);-webkit-backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid transparent;transition:border-color .2s}
+.nav.scrolled{border-bottom-color:var(--line)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font:800 20px/1 var(--f-display);text-decoration:none;letter-spacing:-.01em}
+.brand img{width:34px;height:34px;border-radius:8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 22px;border-radius:8px;border:0;font:700 15.5px/1 var(--f-body);text-decoration:none;cursor:pointer;transition:transform .08s ease,background .15s}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.primary:hover{background:#9a0d0d}
+.btn.ghost{background:var(--sunk);color:var(--ink)}
+.btn.sm{min-height:40px;padding:0 16px;font-size:14.5px}
+
+/* hero */
+.hero{position:relative;padding:56px 0 40px}
+.hero::before{content:"";position:absolute;inset:-120px 0 auto;height:620px;background:radial-gradient(60% 55% at 70% 30%,rgba(128,0,0,.38),transparent 70%),radial-gradient(40% 40% at 15% 10%,rgba(34,211,238,.10),transparent 70%);pointer-events:none;z-index:-1}
+.hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}
+.tag{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:rgba(224,70,76,.12);color:#ff8a8f;font:700 12.5px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase}
+.tag i{width:7px;height:7px;border-radius:50%;background:#ff5a60;box-shadow:0 0 0 4px rgba(255,90,96,.18)}
+h1{font:800 clamp(42px,6.4vw,76px)/1.0 var(--f-display);letter-spacing:-.035em;margin:20px 0 18px}
+h1 em{font-style:normal;color:var(--accent-2)}
+.lead{font-size:clamp(17px,1.6vw,20px);color:var(--muted);max-width:30em;margin:0 0 28px}
+.ctas{display:flex;gap:12px;flex-wrap:wrap}
+.fine{font-size:13.5px;color:var(--muted);margin-top:14px}
+
+/* phones */
+.phone{position:relative;border-radius:36px;padding:9px;background:#1b1d24;border:1px solid #2b2f3a;box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.03) inset}
+.phone img{border-radius:28px;width:100%;height:auto}
+.phones{position:relative;height:640px}
+.phones .phone{position:absolute;width:300px}
+.phones .p1{right:150px;top:30px;transform:rotate(-4deg)}
+.phones .p2{right:0;top:0;transform:rotate(3deg);z-index:2}
+
+/* goals strip */
+.goals{padding:26px 0 8px}
+.goals p{color:var(--muted);font-size:14px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin:0 0 14px}
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{padding:10px 16px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-weight:600;font-size:15px}
+.chip b{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:9px;vertical-align:1px;background:var(--c)}
+
+/* feature rows */
+.rows{padding:56px 0 20px;display:grid;gap:96px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+.row.flip .copy{order:2}
+.row .shot{display:flex;justify-content:center}
+.row .shot .phone{width:min(330px,100%)}
+.kicker{font:700 13px/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--c)}
+h2{font:800 clamp(30px,3.6vw,46px)/1.06 var(--f-display);letter-spacing:-.025em;margin:14px 0 16px}
+.copy p{color:var(--muted);margin:0 0 18px;max-width:32em}
+.ticks{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.ticks li{display:flex;gap:12px;align-items:flex-start}
+.ticks li::before{content:"";flex:none;width:20px;height:20px;margin-top:3px;border-radius:5px;background:color-mix(in srgb,var(--c) 22%,transparent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center/12px no-repeat}
+
+/* connects */
+.connects{margin:96px 0 0;padding:44px;border-radius:14px;background:linear-gradient(140deg,rgba(128,0,0,.22),var(--surface) 60%);border:1px solid var(--line);display:grid;grid-template-columns:1.2fr 1fr;gap:36px;align-items:center}
+.connects h2{margin-top:0}
+.connects p{color:var(--muted);margin:0}
+.apps{display:flex;flex-wrap:wrap;gap:10px}
+.app{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;background:var(--bg);border:1px solid var(--line);font-weight:700}
+.app i{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:var(--c)}
+.app i svg{width:17px;height:17px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cws{margin-top:22px;display:inline-flex;background:#fff;border-radius:5px;padding:7px 10px}
+.cws img{height:12px;width:auto}
+
+/* privacy band */
+.band{margin:96px 0 0;display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.band div{padding:28px;border-radius:12px;background:var(--surface);border:1px solid var(--line)}
+.band b{display:block;font:800 22px/1.2 var(--f-display);margin-bottom:8px;letter-spacing:-.01em}
+.band span{color:var(--muted)}
+
+/* final cta */
+.final{margin:96px 0 0;text-align:center;padding:72px 24px;border-radius:16px;background:radial-gradient(70% 90% at 50% 0%,rgba(128,0,0,.45),transparent 70%),var(--surface);border:1px solid var(--line)}
+.final h2{font-size:clamp(34px,4.6vw,58px);margin:0 0 14px}
+.final p{color:var(--muted);margin:0 auto 26px;max-width:30em}
+.final .ctas{justify-content:center}
+
+footer{padding:48px 0 calc(40px + env(safe-area-inset-bottom,0px));color:var(--muted);font-size:14px}
+footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:28px}
+footer nav{display:flex;gap:20px;flex-wrap:wrap}
+footer a{text-decoration:none}
+footer a:hover{color:var(--ink)}
+
+/* reveal */
+.rv{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
+.rv.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
+
+@media (max-width:900px){
+  .hero{padding:30px 0 10px}
+  .hero .wrap{grid-template-columns:1fr;gap:28px}
+  .phones{height:470px;max-width:420px;width:100%;margin:0 auto}
+  .phones .phone{width:220px;border-radius:28px;padding:7px}
+  .phones .phone img{border-radius:22px}
+  .phones .p1{right:auto;left:8px;top:28px}
+  .phones .p2{right:8px}
+  .rows{gap:72px;padding-top:40px}
+  .row,.row.flip{grid-template-columns:1fr;gap:28px}
+  .row.flip .copy{order:0}
+  .row .shot .phone{width:min(290px,80%)}
+  .connects{grid-template-columns:1fr;padding:28px}
+  .band{grid-template-columns:1fr}
+  .final{padding:52px 20px}
+}
+</style>
+</head>
+<body>
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="icon.png" alt="">Hybrid</a>
+    <a class="btn primary sm" href="../">Open the app</a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div class="rv">
+        <span class="tag"><i></i>Early access</span>
+        <h1>Train for anything.<br><em>Eat for it too.</em></h1>
+        <p class="lead">Hybrid builds a week-by-week plan around your life, with strength days, daily food targets and a plan that eases off when you're run down.</p>
+        <div class="ctas">
+          <a class="btn primary" href="../">Get early access</a>
+          <a class="btn ghost" href="#how">See how it works</a>
+        </div>
+        <p class="fine">Free while in early access. Works on any phone, no download needed.</p>
+      </div>
+      <div class="phones rv" aria-hidden="true">
+        <div class="phone p1"><img src="plan.jpg" alt="" width="780" height="1688" loading="eager"></div>
+        <div class="phone p2"><img src="today.jpg" alt="" width="780" height="1688" loading="eager"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="goals">
+    <div class="wrap rv">
+      <p>Pick your goal</p>
+      <div class="chips">
+        <span class="chip" style="--c:var(--long)"><b></b>Lose weight</span>
+        <span class="chip" style="--c:var(--long)"><b></b>Build muscle</span>
+        <span class="chip" style="--c:var(--easy)"><b></b>5K to marathon</span>
+        <span class="chip" style="--c:var(--easy)"><b></b>Trail and ultra</span>
+        <span class="chip" style="--c:var(--lift)"><b></b>HYROX</span>
+        <span class="chip" style="--c:var(--work)"><b></b>Sprint and Olympic tri</span>
+        <span class="chip" style="--c:var(--work)"><b></b>70.3 and 140.6</span>
+        <span class="chip" style="--c:var(--swim)"><b></b>Open water swims</span>
+        <span class="chip" style="--c:var(--bike)"><b></b>Century rides</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <section class="rows" id="how">
+      <article class="row">
+        <div class="copy rv" style="--c:var(--easy)">
+          <span class="kicker">Your plan</span>
+          <h2>A real plan, built for your week.</h2>
+          <p>Tell Hybrid your goal, how fit you are now and which days you can train. You get every session laid out, from easy days and long days to strength and race week.</p>
+          <ul class="ticks">
+            <li>Search races anywhere in the world and your plan counts down to it</li>
+            <li>Strength days that don't wreck your runs</li>
+            <li>Paces and targets from your own fitness</li>
+          </ul>
+        </div>
+        <div class="shot rv"><div class="phone"><img src="plan.jpg" alt="The Plan tab showing a week of sessions" width="780" height="1688" loading="eager" decoding="async"></div></div>
+      </article>
+
+      <article class="row flip">
+        <div class="copy rv" style="--c:var(--long)">
+          <span class="kicker">Recovery</span>
+          <h2>Tired? Your plan already knows.</h2>
+          <p>A 20-second morning check-in plus your watch's sleep, resting heart rate and HRV give you a readiness score. On low days, the workout gets shorter or easier.</p>
+          <ul class="ticks">
+            <li>Readiness, sleep and soreness at a glance</li>
+            <li>Hard sessions move when you need a lighter day</li>
+          </ul>
+        </div>
+        <div class="shot rv"><div class="phone"><img src="recovery.jpg" alt="The Recovery screen with readiness, sleep and legs" width="780" height="1688" loading="eager" decoding="async"></div></div>
+      </article>
+
+      <article class="row">
+        <div class="copy rv" style="--c:var(--lift)">
+          <span class="kicker">Food</span>
+          <h2>Food targets that move with your training.</h2>
+          <p>Your calories start from your height, weight, age and how active your day is, then add what you burn in workouts. Snap a photo or scan a barcode to log a meal.</p>
+          <ul class="ticks">
+            <li>Lose, maintain or gain, at a safe pace</li>
+            <li>Race fueling plans and meal prep with a grocery list</li>
+          </ul>
+        </div>
+        <div class="shot rv"><div class="phone"><img src="fuel.jpg" alt="The Fuel screen with calories and macros left today" width="780" height="1688" loading="eager" decoding="async"></div></div>
+      </article>
+    </section>
+
+    <section class="connects rv">
+      <div>
+        <span class="kicker" style="--c:var(--accent-2)">Connects to your watch</span>
+        <h2>Your workouts come in on their own.</h2>
+        <p>Link Garmin or Strava once. Runs, rides, lifts, routes, sleep and heart rate sync automatically. Apple Watch, WHOOP and Oura come in through Apple Health.</p>
+        <span class="cws"><img src="../brand/compatible-strava-orange.svg" alt="Compatible with Strava" width="437" height="37"></span>
+      </div>
+      <div class="apps">
+        <span class="app" style="--c:#0A7BC1"><i><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 6V3h6v3M9 18v3h6v-3M12 10v2l1 1"/></svg></i>Garmin</span>
+        <span class="app" style="--c:#FC5200"><i><svg viewBox="0 0 24 24"><circle cx="13" cy="4.5" r="1.8"/><path d="M8 21l3-6 3 2v4M7 12l3-3 3 1 2 3h3M11 15l-2-3"/></svg></i>Strava</span>
+        <span class="app" style="--c:#C2185B"><i><svg viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg></i>Apple Health</span>
+        <span class="app" style="--c:#2A2E3A"><i><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 6V3h6v3M9 18v3h6v-3"/></svg></i>COROS, Polar, Suunto</span>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="rv"><b>Private by default.</b><span>Your goals, weight and food are yours. Friends in a crew only see your nickname and one weekly total.</span></div>
+      <div class="rv"><b>No ads. Never sold.</b><span>Hybrid doesn't sell your data or show ads. Delete your account any time and everything goes with it.</span></div>
+    </section>
+
+    <section class="final rv">
+      <h2>Your next block starts Monday.</h2>
+      <p>Answer a few questions and get your plan in under two minutes.</p>
+      <div class="ctas"><a class="btn primary" href="../">Get early access</a></div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Hybrid Running</span>
+    <nav>
+      <a href="../privacy.html">Privacy</a>
+      <a href="mailto:HybridRunningApp@gmail.com">Contact</a>
+      <a href="../">Open the app</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var nav = document.getElementById("nav");
+  addEventListener("scroll", function(){ nav.classList.toggle("scrolled", scrollY > 8); }, {passive: true});
+  var els = document.querySelectorAll(".rv");
+  if (!("IntersectionObserver" in window)){ els.forEach(function(e){ e.classList.add("in"); }); return; }
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); } }); }, {rootMargin: "0px 0px -8% 0px"});
+  els.forEach(function(e){ io.observe(e); });
+})();
+</script>
+</body>
+</html>
