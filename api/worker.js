@@ -497,6 +497,7 @@ function weeklySummary(U, today){
 }
 async function cron(env, ctx){
   await logEvent(env, "cron", true);
+  await outbox(env).catch(e => logEvent(env, "bulk_mail", false, "outbox: " + String(e && e.message).slice(0, 100)));
   await env.DB.prepare("DELETE FROM events WHERE ts < ?").bind(new Date(Date.now() - 21 * 864e5).toISOString()).run();
   await env.DB.prepare("DELETE FROM notif_log WHERE day < ?").bind(new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)).run();
   const users = (await env.DB.prepare("SELECT DISTINCT u.id FROM users u LEFT JOIN push_subs p ON p.user_id = u.id LEFT JOIN strava_links s ON s.user_id = u.id WHERE p.user_id IS NOT NULL OR s.user_id IS NOT NULL").all()).results;
@@ -569,6 +570,21 @@ async function sendUpdate(env, owner, subject, message, test){
   }
   await logEvent(env, "bulk_mail", failed === 0, (test ? "test " : "") + sent + " sent, " + failed + " failed");
   return {sent, failed, total: list.length};
+}
+/* ---------- weekly member update: mail/outbox.json in the repo (served by GitHub Pages) is sent once, after send_after ---------- */
+async function outbox(env){
+  if (!env.RESEND_API_KEY) return;
+  const r = await fetch((env.OUTBOX_URL || PAGES + "/mail/outbox.json") + "?t=" + Math.floor(Date.now() / 600e3), {cf: {cacheTtl: 0}}).catch(() => null);
+  if (!r || !r.ok) return;
+  let m; try { m = await r.json(); } catch(e){ return; }
+  const id = String(m.id || ""), subject = String(m.subject || "").trim().slice(0, 120), message = String(m.message || "").trim().slice(0, 8000), after = Date.parse(m.send_after || "");
+  if (!/^[a-z0-9-]{4,60}$/.test(id) || !subject || message.length < 20 || !(after <= Date.now()) || after < Date.now() - 7 * 864e5) return;
+  const claim = await env.DB.prepare("INSERT OR IGNORE INTO mail_sent (id, sent_at) VALUES (?, ?)").bind(id, now()).run();
+  if (!claim.meta.changes) return;   // already sent
+  const res = await sendUpdate(env, null, subject, message, false);
+  await env.DB.prepare("UPDATE mail_sent SET sent = ? WHERE id = ?").bind(res.sent, id).run();
+  const own = await ownerId(env);
+  if (own) await pushTo(env, own, {title: "Member update sent", body: "\"" + subject + "\" went to " + res.sent + " member" + (res.sent === 1 ? "" : "s") + (res.failed ? " (" + res.failed + " failed)" : "") + ".", tag: "mail-" + id}).catch(() => {});
 }
 /* ---------- Strong at 180 food estimates (Matthew's own plan page) ----------
    A tiny MCP server the plan page calls through a claude.ai custom connector named "HYBRD Food",
