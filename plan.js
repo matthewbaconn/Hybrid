@@ -211,11 +211,22 @@ const avgW = (weights, end) => { const v = []; for (let i = 0; i < 7; i++){ cons
 const weekIdx = (plan, date) => Math.floor(daysBetween(plan.start, date) / 7);
 function dayOf(plan, date){ const wi = weekIdx(plan, date); const w = plan.weeks[wi]; return w ? w.days[dow(date)] : null; }
 
-function readiness(c){
+/* watch data (sleep, resting HR, HRV) vs the last 14 days: a clearly low HRV or high resting HR
+   lowers readiness a little, the way a Garmin or Whoop recovery score would */
+function devSignals(dev, date){
+  const d = dev && dev[date]; if (!d) return null;
+  const prev = Object.keys(dev).filter(k => k < date && k >= addDays(date, -14)).map(k => dev[k]);
+  const avg = k => { const v = prev.map(x => x[k]).filter(x => x > 0); return v.length >= 3 ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const hrvA = avg("hrv"), rhrA = avg("rhr"), notes = []; let pen = 0;
+  if (d.hrv && hrvA){ const pc = (d.hrv - hrvA) / hrvA; if (pc <= -.12){ pen += 8; notes.push("HRV " + Math.round(-pc * 100) + "% below your normal"); } else if (pc >= .08) notes.push("HRV above your normal"); }
+  if (d.rhr && rhrA){ const df = d.rhr - rhrA; if (df >= 5){ pen += 6; notes.push("resting HR " + Math.round(df) + " bpm above normal"); } else if (df <= -3) notes.push("resting HR below normal"); }
+  return {sleep_h: d.sleep_h || null, rhr: d.rhr || null, hrv: d.hrv || null, steps: d.steps || null, active_cal: d.active_cal || null, hrvA, rhrA, pen, notes};
+}
+function readiness(c, sig){
   if (!c) return null;
-  const score = Math.round(Math.min(1, c.sleep_h / 8) * 30 + (c.sleep_q - 1) / 4 * 20 + (5 - c.soreness) / 4 * 20 + (c.energy - 1) / 4 * 20 + (5 - c.stress) / 4 * 10);
+  const score = Math.max(0, (sig && sig.pen ? -sig.pen : 0) + Math.round(Math.min(1, c.sleep_h / 8) * 30 + (c.sleep_q - 1) / 4 * 20 + (5 - c.soreness) / 4 * 20 + (c.energy - 1) / 4 * 20 + (5 - c.stress) / 4 * 10));
   const level = c.sleep_h < 5 || score < 50 ? 2 : score < 70 ? 1 : 0;
-  return {score, level, word: ["Ready to train", "Go easier today", "Recovery day"][level], tone: ["long", "work", "race"][level]};
+  return {score, level, word: ["Ready to train", "Go easier today", "Recovery day"][level], tone: ["long", "work", "race"][level], watch: sig && sig.notes.length ? sig.notes : null};
 }
 const ADJ = {
   1: {workout: "Easier today: do one rep fewer and run the reps at the slow end of the range.", long: "Easier today: cut 2 mi and keep every mile easy.", race: "", easy: "Keep it strictly conversational. Slow is fine.", lift: "Drop one set from each exercise."},
@@ -387,5 +398,5 @@ function raceSplits(plan){
   return {goal, pace, rows: marks.map(mi => ({mi: Math.round(mi * 100) / 100, time: mi * pace}))};
 }
 
-root.HP = {heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
+root.HP = {heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
 })(typeof globalThis !== "undefined" ? globalThis : self);

@@ -162,20 +162,22 @@ async function settingsOf(env, userId){
 }
 async function loadUser(env, userId, today){
   const since = HP.addDays(today, -70);
-  const [p, a, w, c, f, u] = await env.DB.batch([
+  const [p, a, w, c, f, u, hd] = await env.DB.batch([
     env.DB.prepare("SELECT data FROM profiles WHERE user_id = ?").bind(userId),
     env.DB.prepare("SELECT id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, laps, work_pace FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(userId, since),
     env.DB.prepare("SELECT date, lb FROM weights WHERE user_id = ? AND date >= ?").bind(userId, HP.addDays(today, -200)),
     env.DB.prepare("SELECT date, sleep_h, sleep_q, soreness, energy, stress FROM checkins WHERE user_id = ? AND date >= ?").bind(userId, HP.addDays(today, -14)),
     env.DB.prepare("SELECT date, cal FROM food WHERE user_id = ? AND date >= ?").bind(userId, HP.addDays(today, -14)),
-    env.DB.prepare("SELECT name FROM users WHERE id = ?").bind(userId)
+    env.DB.prepare("SELECT name FROM users WHERE id = ?").bind(userId),
+    env.DB.prepare("SELECT date, sleep_h, rhr, hrv, steps, active_cal FROM health_daily WHERE user_id = ? AND date >= ?").bind(userId, HP.addDays(today, -21))
   ]);
   if (!p.results[0]) return null;
   const profile = JSON.parse(p.results[0].data), plan = HP.buildPlan(profile, today);
   const weights = {}; w.results.forEach(x => weights[x.date] = x.lb);
   const checkins = {}; c.results.forEach(x => checkins[x.date] = x);
   const eaten = {}; f.results.forEach(x => eaten[x.date] = (eaten[x.date] || 0) + x.cal);
-  return {profile, plan, acts: a.results, weights, checkins, eaten, name: (u.results[0] || {}).name || ""};
+  const dev = {}; hd.results.forEach(x => dev[x.date] = x);
+  return {profile, plan, acts: a.results, weights, checkins, eaten, dev, name: (u.results[0] || {}).name || ""};
 }
 function sessionsText(U, date, fbk){
   const day = HP.dayOf(U.plan, date); if (!day || !day.sessions.length) return "Rest day";
@@ -237,7 +239,7 @@ async function afterNewActivities(env, userId, ids, source){
 }
 async function morningNote(env, userId, today){
   const U = await loadUser(env, userId, today); if (!U) return null;
-  const fbk = HP.feedback(U.plan, U.acts, today), c = U.checkins[today], r = HP.readiness(c), f = HP.fuel(U.plan, U.weights, U.acts, today);
+  const fbk = HP.feedback(U.plan, U.acts, today), c = U.checkins[today], sig = HP.devSignals(U.dev, today), r = HP.readiness(c, sig), f = HP.fuel(U.plan, U.weights, U.acts, today);
   const yday = HP.addDays(today, -1), fy = HP.fuel(U.plan, U.weights, U.acts, yday);
   const recent = U.acts.filter(a => a.date >= HP.addDays(today, -3) && a.date < today).map(a => a.name + " " + (a.mi ? a.mi + " mi" : a.minutes + " min"));
   const a7 = HP.avgW(U.weights, today), a14 = HP.avgW(U.weights, HP.addDays(today, -7));
@@ -246,7 +248,8 @@ async function morningNote(env, userId, today){
     plan_notes_today: Object.keys(fbk.notes).filter(k => k.startsWith(today)).map(k => fbk.notes[k]),
     calories_today_target: f.cal, protein_g: f.pro, yesterday: U.eaten[yday] ? {eaten: U.eaten[yday], target: fy.cal} : "no food logged",
     weight_7day_avg: a7 ? Math.round(a7 * 10) / 10 : null, weight_change_vs_last_week: a7 && a14 ? Math.round((a7 - a14) * 10) / 10 : null, goal_weight: U.profile.goalWeight || null,
-    last_3_days: recent};
+    last_3_days: recent,
+    watch: sig ? {sleep_h: sig.sleep_h, resting_hr: sig.rhr, resting_hr_14day_avg: sig.rhrA ? Math.round(sig.rhrA) : null, hrv_ms: sig.hrv, hrv_14day_avg: sig.hrvA ? Math.round(sig.hrvA) : null, flags: sig.notes} : "no watch data today"};
   const out = await askCoach(env, COACH_STYLE + ' Write the morning check-in note. Reply with ONLY JSON: {"headline":"2-6 words","lines":["recovery read, under 20 words","today\'s session, under 20 words","fuel for today, under 20 words"]}. Three separate array items, one sentence each.', data);
   if (!out || !out.headline) return null;
   const note = {headline: String(out.headline).slice(0, 60), lines: (Array.isArray(out.lines) ? out.lines : []).slice(0, 3).map(x => clip(String(x), 220))};
@@ -365,22 +368,47 @@ async function route(req, env, path, ctx){
     return go("connected");
   }
   if ((M === "GET" || M === "POST") && path === "/api/import"){
-    // iPhone Shortcut: .../api/import?key=…&weight=195.2 lb  (weigh-ins from Apple Health, Garmin Index scale, etc.)
+    // iPhone Shortcut (Apple Health — Apple Watch, or Garmin/scales that write to Apple Health):
+    //   .../api/import?key=…&weight=195.2 lb&sleep=7 hr 25 min&rhr=52&hrv=61 ms&steps=12,034&active=640 kcal
+    // Every value is optional. Lists (one value per line) are added up or averaged.
     const q = new URL(req.url).searchParams, b = M === "POST" ? await body(req).catch(() => ({})) : {};
     const key = String(q.get("key") || b.key || "");
     await limit(env, "import:" + (req.headers.get("CF-Connecting-IP") || "x"));
     const row = key.length > 20 ? await env.DB.prepare("SELECT user_id FROM import_keys WHERE key_hash = ?").bind(await sha256(key)).first() : null;
     if (!row) throw new HttpError(401, "That link isn't valid anymore. Make a new one in Hybrid settings.");
-    const raw = String(q.get("weight") ?? b.weight ?? "").replace(",", "."), m = raw.match(/\d+(\.\d+)?/);
-    let lb = m ? Number(m[0]) : NaN; if (/kg/i.test(raw)) lb *= 2.20462;
-    if (!(lb >= 70 && lb <= 500)) throw new HttpError(400, "Send a weight in pounds, like weight=195.2");
-    const st = await settingsOf(env, row.user_id), dq = String(q.get("date") || b.date || "").slice(0, 10);
-    const date = isDate(dq) ? dq : localNow(st.tz).date;
-    await env.DB.batch([
-      env.DB.prepare("INSERT INTO weights (user_id, date, lb) VALUES (?, ?, ?) ON CONFLICT (user_id, date) DO UPDATE SET lb = excluded.lb").bind(row.user_id, date, Math.round(lb * 10) / 10),
-      env.DB.prepare("UPDATE import_keys SET last_used = ? WHERE user_id = ?").bind(now(), row.user_id)]);
-    await logEvent(env, "health_import", true, "weight");
-    return {ok: true, date, lb: Math.round(lb * 10) / 10};
+    const get = k => { const v = q.get(k) ?? b[k]; return v == null ? "" : String(v).trim(); };
+    const nums = raw => raw.split(/[\n;|]+/).map(t => t.replace(/(\d),(\d{3})(?!\d)/g, "$1$2").replace(",", ".")).map(t => { const m = t.match(/-?\d+(\.\d+)?/); return m ? Number(m[0]) : NaN; }).filter(x => !isNaN(x));
+    const sum = a => a.reduce((x, y) => x + y, 0), mean = a => a.length ? sum(a) / a.length : NaN;
+    const hours = raw => {
+      const parts = raw.split(/[\n;|]+/).filter(t => /\d/.test(t)); let tot = 0;
+      for (const t of parts){
+        const h = t.match(/(\d+(?:[.,]\d+)?)\s*(?:h|hr|hrs|hour|hours)\b/i), m = t.match(/(\d+(?:[.,]\d+)?)\s*(?:m|min|mins|minute|minutes)\b/i), sec = t.match(/(\d+(?:[.,]\d+)?)\s*(?:s|sec|secs|second|seconds)\b/i);
+        const n = x => Number(x[1].replace(",", "."));
+        if (h || m || sec){ tot += (h ? n(h) : 0) + (m ? n(m) / 60 : 0) + (sec ? n(sec) / 3600 : 0); continue; }
+        const c = t.match(/^(\d+):(\d{2})(?::(\d{2}))?$/); if (c){ tot += +c[1] + +c[2] / 60 + (c[3] ? +c[3] / 3600 : 0); continue; }
+        const v = nums(t)[0]; if (v == null) continue;
+        tot += v > 1440 ? v / 3600 : v > 24 ? v / 60 : v;   // plain number: seconds, minutes or hours
+      }
+      return tot;
+    };
+    const saved = {}, st = await settingsOf(env, row.user_id), dq = (get("date") || "").slice(0, 10);
+    const date = isDate(dq) ? dq : localNow(st.tz).date, ops = [];
+    const w = get("weight");
+    if (w){ let lb = nums(w).slice(-1)[0]; if (/kg/i.test(w)) lb *= 2.20462; if (lb >= 70 && lb <= 500){ saved.weight = Math.round(lb * 10) / 10;
+      ops.push(env.DB.prepare("INSERT INTO weights (user_id, date, lb) VALUES (?, ?, ?) ON CONFLICT (user_id, date) DO UPDATE SET lb = excluded.lb").bind(row.user_id, date, saved.weight)); } }
+    const sl = get("sleep"); if (sl){ const h = hours(sl); if (h >= 1 && h <= 16) saved.sleep_h = Math.round(h * 100) / 100; }
+    const rh = get("rhr"); if (rh){ const v = mean(nums(rh)); if (v >= 25 && v <= 150) saved.rhr = Math.round(v); }
+    const hv = get("hrv"); if (hv){ const v = mean(nums(hv)); if (v >= 5 && v <= 300) saved.hrv = Math.round(v); }
+    const sp = get("steps"); if (sp){ const v = sum(nums(sp)); if (v >= 0 && v <= 150000) saved.steps = Math.round(v); }
+    const ac = get("active"); if (ac){ let v = sum(nums(ac)); if (/kj/i.test(ac)) v /= 4.184; if (v >= 0 && v <= 8000) saved.active_cal = Math.round(v); }
+    const dk = ["sleep_h", "rhr", "hrv", "steps", "active_cal"].filter(k => k in saved);
+    if (dk.length) ops.push(env.DB.prepare("INSERT INTO health_daily (user_id, date, sleep_h, rhr, hrv, steps, active_cal, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, date) DO UPDATE SET " +
+      dk.map(k => k + " = excluded." + k).join(", ") + ", updated = excluded.updated").bind(row.user_id, date, saved.sleep_h ?? null, saved.rhr ?? null, saved.hrv ?? null, saved.steps ?? null, saved.active_cal ?? null, now()));
+    if (!ops.length) throw new HttpError(400, "Nothing to save. Send weight=, sleep=, rhr=, hrv=, steps= or active= with a number.");
+    ops.push(env.DB.prepare("UPDATE import_keys SET last_used = ? WHERE user_id = ?").bind(now(), row.user_id));
+    await env.DB.batch(ops);
+    await logEvent(env, "health_import", true, Object.keys(saved).join(","));
+    return {ok: true, date, saved};
   }
   if (path === "/api/strava/webhook"){
     if (M === "GET"){
@@ -433,18 +461,19 @@ async function route(req, env, path, ctx){
       env.DB.prepare("SELECT id, source, date, type, name, mi, minutes, cal, avg_hr, work_pace, laps, poly, start_local, elev_ft, sport, max_hr FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(user.id, since),
       env.DB.prepare("SELECT athlete_name, last_sync FROM strava_links WHERE user_id = ?").bind(user.id)
     ]);
-    const [rv, cn, ps, ik] = await env.DB.batch([
+    const [rv, cn, ps, ik, hd] = await env.DB.batch([
       env.DB.prepare("SELECT activity_id, data FROM reviews WHERE user_id = ? AND date >= ?").bind(user.id, since),
       env.DB.prepare("SELECT date, kind, data FROM coach_notes WHERE user_id = ? AND date >= ?").bind(user.id, new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10)),
       env.DB.prepare("SELECT COUNT(*) AS n FROM push_subs WHERE user_id = ?").bind(user.id),
-      env.DB.prepare("SELECT last_used FROM import_keys WHERE user_id = ?").bind(user.id)
+      env.DB.prepare("SELECT last_used FROM import_keys WHERE user_id = ?").bind(user.id),
+      env.DB.prepare("SELECT date, sleep_h, rhr, hrv, steps, active_cal FROM health_daily WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since)
     ]);
     const prof = p.results[0] ? JSON.parse(p.results[0].data) : null;
     return {user: userOut(user), profile: prof, done: d.results.map(r => r.key), food: f.results, checkins: c.results, weights: w.results, activities: a.results,
       strava: {available: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!s.results[0], name: s.results[0] ? s.results[0].athlete_name : "", last_sync: s.results[0] ? s.results[0].last_sync : null},
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
       settings: await settingsOf(env, user.id), push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY,
-      health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
+      health: hd.results, health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
   }
   if (M === "PUT" && path === "/api/profile"){
     const b = await body(req), s = JSON.stringify(b.profile || null);
@@ -555,7 +584,7 @@ async function route(req, env, path, ctx){
   if (M === "DELETE" && path === "/api/account"){
     const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
     if (link){ try { const tok = await stravaToken(env, link); await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/deauthorize", {method: "POST", headers: {Authorization: "Bearer " + tok}}); } catch(e){} }
-    await env.DB.batch(["sessions", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
+    await env.DB.batch(["sessions", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
       .concat([env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id)]));
     return {ok: true};
   }

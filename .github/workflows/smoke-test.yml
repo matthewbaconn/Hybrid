@@ -54,10 +54,11 @@ jobs:
           [ "$(echo "$me" | jq '.checkins | length')" = 1 ] && [ "$(echo "$me" | jq '.weights | length')" = 1 ] && [ "$(echo "$me" | jq '.activities | length')" = 1 ] || { echo "::error::tracking not saved: $me"; exit 1; }
           echo "check-in, weigh-in and workout saved; strava: $(echo "$me" | jq -c .strava)"
           key=$(call POST /api/import-key | jq -r .key); [ -n "$key" ] && [ "$key" != null ] || { echo "::error::couldn't make an Apple Health link"; exit 1; }
-          r=$(curl -sS "$API/api/import?key=$key&weight=179.6%20lb"); echo "$r" | jq -e '.lb == 179.6' > /dev/null || { echo "::error::Apple Health weigh-in failed: $r"; exit 1; }
+          r=$(curl -sS "$API/api/import?key=$key&weight=179.6%20lb&sleep=1%20hr%2010%20min%0A6%20hr%205%20min&rhr=52%20count%2Fmin&hrv=58%20ms%0A64%20ms&steps=12%2C034"); echo "$r" | jq -e '.saved.weight == 179.6 and .saved.sleep_h > 7.2 and .saved.sleep_h < 7.3 and .saved.rhr == 52 and .saved.hrv == 61 and .saved.steps == 12034' > /dev/null || { echo "::error::Apple Health import failed: $r"; exit 1; }
+          [ "$(call GET /api/me | jq '.health | length')" = 1 ] || { echo "::error::watch data not returned"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' "$API/api/import?key=hl_wrongwrongwrongwrongwrong&weight=180")" = 401 ] || { echo "::error::a wrong Apple Health link was accepted"; exit 1; }
           [ "$(call GET /api/me | jq .health_link.on)" = true ] || { echo "::error::Apple Health link not shown as on"; exit 1; }
-          echo "Apple Health weigh-in link works"
+          echo "Apple Health link works (weight, sleep, resting HR, HRV, steps)"
           if [ "$(echo "$me" | jq .strava.available)" = true ]; then
             u=$(call POST /api/strava/start | jq -r .url)
             echo "$u" | grep -q "redirect_uri=https%3A%2F%2Fhybrid-api.hybridapp.workers.dev%2Fapi%2Fstrava%2Fcallback" || { echo "::error::Strava start URL looks wrong: $u"; exit 1; }

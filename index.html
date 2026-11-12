@@ -231,7 +231,11 @@ button{cursor:pointer}
 .splits .sp.hd{font-size:12px;color:var(--muted)}
 .splits .sp i{display:block;height:10px;border-radius:999px;background:var(--easy)}
 .splits .sp em{font-style:normal;text-align:right;color:var(--muted)}
+.wtiles small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
 .hlink{display:grid;gap:10px}
+.hlink details{background:var(--sunk);border-radius:6px;padding:10px 12px}
+.hlink summary{cursor:pointer;font-weight:600;font-size:14px}
+.hlink details ol{margin-top:8px}
 .hlink input{font-size:13px}
 .hlink ol{margin:0;padding-left:20px;display:grid;gap:6px;font-size:13.5px;color:var(--muted)}
 .hlink ol b{color:var(--ink)}
@@ -463,7 +467,7 @@ function loadAccount(j){
   clearObj(checkins); (j.checkins || []).forEach(c => checkins[c.date] = c);
   clearObj(weights); (j.weights || []).forEach(w => weights[w.date] = w.lb);
   acts = j.activities || []; strava = j.strava || strava;
-  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; healthLink = j.health_link || {on: false};
+  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {};
   plan = j.profile ? buildPlan(j.profile) : null;
   setup = plan ? null : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
 }
@@ -483,7 +487,11 @@ const morningNote = () => notes.find(n => n.date === TODAY && n.kind === "mornin
 const actsOn = d => acts.filter(a => a.date === d);
 const weightNow = () => { const a = avgWeight(TODAY); return a || (plan && plan.profile.weight) || 170; };
 const avgWeight = end => HP.avgW(weights, end);
-const {readiness, ADJ} = HP;
+const {ADJ} = HP;
+let dev = {};
+function devMap(list){ if (!list) return null; const m = {}; list.forEach(x => m[x.date] = x); return m; }                                // date -> {sleep_h, rhr, hrv, steps, active_cal} from Apple Health
+const sigOn = d => HP.devSignals(dev, d);
+const readiness = (c, sig) => HP.readiness(c, sig === undefined && c && c.date ? sigOn(c.date) : sig);
 const dayMatches = date => plan ? HP.dayMatches(plan, acts, date) : {};
 const sessDone = (date, i, m) => !!done[date + "-" + i] || !!(m || dayMatches(date))[i];
 const fuelFor = (p, day, date) => HP.fuel(plan, weights, acts, date || TODAY);
@@ -502,13 +510,15 @@ const CIQ = [
   ["stress", "Stress", [[1, "Calm"], [2, "Low"], [3, "Some"], [4, "High"], [5, "Very"]]]
 ];
 function checkinCard(){
-  const c = checkins[TODAY], r = readiness(c);
+  const c = checkins[TODAY], r = readiness(c, sigOn(TODAY));
   if (c && !ci) return '<section class="card ci-done" style="--tone:var(--' + r.tone + ')"><div class="card-h">' + ic("heart") + '<span class="lbl">Today\'s readiness</span><button class="linkbtn r" type="button" data-act="ciedit">Edit</button></div>' +
-    '<div class="ready"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>' + c.sleep_h + ' h sleep · ' + ["", "very low", "low", "OK", "good", "great"][c.energy] + ' energy · ' + ["", "no", "light", "some", "sore", "very sore"][c.soreness] + (c.soreness <= 1 ? ' soreness' : ' legs') + '</span></div></div>' +
+    '<div class="ready"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>' + (r.watch ? 'Watch: ' + esc(r.watch.join(", ")) + ' · ' : '') + c.sleep_h + ' h sleep · ' + ["", "very low", "low", "OK", "good", "great"][c.energy] + ' energy · ' + ["", "no", "light", "some", "sore", "very sore"][c.soreness] + (c.soreness <= 1 ? ' soreness' : ' legs') + '</span></div></div>' +
     (morningNote() ? reviewHtml({headline: morningNote().headline, meaning: (morningNote().lines || []).join(" ")}) : ci === null && coachOn && mode === "account" && notePending ? '<p class="sub">Your coach note is on its way…</p>' : '') + '</section>';
+  const ws = dev[TODAY] && dev[TODAY].sleep_h;
+  if (!c && ws && (!ci || ci.sleep_h == null)){ const opts = CIQ[0][2].map(o => o[0]); ci = {...(ci || {}), sleep_h: opts.reduce((a, b) => Math.abs(b - ws) < Math.abs(a - ws) ? b : a), fromWatch: true}; }
   const d = ci || {};
   return '<section class="card" style="--tone:var(--long)"><div class="card-h">' + ic("heart") + '<span class="lbl">Morning check-in</span><span class="r">20 seconds</span></div>' +
-    '<p class="sub" style="margin-top:-6px">How did you sleep and how do you feel? Today\'s session adjusts to your answers.</p>' +
+    '<p class="sub" style="margin-top:-6px">How did you sleep and how do you feel? Today\'s session adjusts to your answers.' + (d.fromWatch && ws ? ' Sleep is filled in from your watch (' + hm(ws) + ').' : '') + '</p>' +
     CIQ.map(([k, label, opts]) => '<div class="ciq"><span>' + label + '</span><div class="cio" role="group" aria-label="' + label + '">' +
       opts.map(([v, l]) => '<button type="button" class="' + (d[k] === v ? 'on' : '') + '" data-act="ciset" data-k="' + k + '" data-v="' + v + '" aria-pressed="' + (d[k] === v) + '">' + l + '</button>').join("") + '</div></div>').join("") +
     '<p class="err" role="alert">' + esc((ci && ci.err) || "") + '</p><button class="btn primary block" type="button" data-act="cisave"' + (ci && ci.busy ? ' disabled aria-busy="true"' : '') + '>' + (ci && ci.busy ? 'Saving…' : 'Save check-in') + '</button></section>';
@@ -705,7 +715,7 @@ function waitForReview(id){
   [5000, 12000, 22000, 35000].forEach(ms => setTimeout(() => { if (id ? !reviews[id] : Object.keys(reviews).length === before) refreshMe(); }, ms));
 }
 async function refreshMe(){
-  try { const j = await api("GET", "/api/me"); const before = JSON.stringify([acts, reviews]); acts = j.activities || acts; reviews = j.reviews || reviews; notes = j.notes || notes; strava = j.strava || strava; pushInfo = j.push || pushInfo;
+  try { const j = await api("GET", "/api/me"); const before = JSON.stringify([acts, reviews]); acts = j.activities || acts; reviews = j.reviews || reviews; notes = j.notes || notes; dev = devMap(j.health) || dev; strava = j.strava || strava; pushInfo = j.push || pushInfo;
     if (JSON.stringify([acts, reviews]) !== before) safeRender(); } catch(e){}
 }
 async function stravaSync(quiet){
@@ -765,14 +775,15 @@ function lineChart(series, aria){
 
 /* ---------- Recovery tab (from the person's own check-ins) ---------- */
 function renderRecovery(){
-  const c = checkins[TODAY], r = readiness(c), days = Array.from({length: 14}, (_, i) => addDays(TODAY, i - 13));
+  const c = checkins[TODAY], r = readiness(c, sigOn(TODAY)), days = Array.from({length: 14}, (_, i) => addDays(TODAY, i - 13));
   let h = '<h2 class="sec-t">Recovery</h2>';
   if (r) h += '<section class="card" style="--tone:var(--' + r.tone + ')"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span></div><div class="rings">' +
     ring(r.score, 100, "var(--" + r.tone + ")", "Readiness", String(r.score), r.word) + ring(c.sleep_h, 8, "var(--accent-2)", "Sleep", (c.sleep_h >= 9 ? "9+" : c.sleep_h < 5 ? "<5" : c.sleep_h) + " h", ["", "awful", "poor", "OK", "good", "great"][c.sleep_q] + " quality") +
     ring(6 - c.soreness, 5, "var(--lift)", "Legs", ["", "fresh", "light", "some", "sore", "very sore"][c.soreness], "energy " + ["", "very low", "low", "OK", "good", "great"][c.energy]) + '</div>' +
     '<div class="verdict v' + r.level + '"><b>' + r.word + '</b><span>' + ["Train as planned.", "Today's session is trimmed. See the note on the Today tab.", "Today is easy or rest. Your workout moves later in the week."][r.level] + '</span></div></section>';
   else h += '<section class="card" style="--tone:var(--long)"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span></div><p class="sub">Do the 20-second morning check-in and your readiness shows here.</p><button class="btn primary" type="button" data-act="gotoday">Do today\'s check-in</button></section>';
-  const rs = days.map(d => { const x = readiness(checkins[d]); return x ? x.score : null; }), sl = days.map(d => checkins[d] ? checkins[d].sleep_h : null);
+  h += watchCard(days);
+  const rs = days.map(d => { const x = readiness(checkins[d], sigOn(d)); return x ? x.score : null; }), sl = days.map(d => dev[d] && dev[d].sleep_h ? Math.round(dev[d].sleep_h * 10) / 10 : checkins[d] ? checkins[d].sleep_h : null);
   const lab = days.map((d, i) => i % 2 === 1 ? '' : String(parseD(d).getUTCDate()));
   const avg = a => { const v = a.filter(x => x != null); return v.length ? v.reduce((p, q) => p + q, 0) / v.length : null; };
   const n = rs.filter(x => x != null).length;
@@ -784,10 +795,27 @@ function renderRecovery(){
     '<li><i style="--c:var(--long)"></i><span><b>Green (70+):</b> train as planned.</span></li>' +
     '<li><i style="--c:var(--work)"></i><span><b>Amber (50–69):</b> workouts lose a rep, long runs get 2 mi shorter, easy runs stay strictly easy.</span></li>' +
     '<li><i style="--c:var(--race)"></i><span><b>Red (under 50, or under 5 h sleep):</b> today becomes easy or rest and the workout moves later in the week.</span></li></ul>' +
-    '<p class="sub">Readiness comes from your sleep, soreness, energy and stress. Use the sleep time from your watch if you wear one.</p></section>';
+    '<p class="sub">Readiness comes from your sleep, soreness, energy and stress. If your watch sends HRV and resting heart rate, a clearly low HRV or high resting HR lowers it a little.</p></section>';
   return h;
 }
 
+const hm = h => Math.floor(h) + 'h ' + pad(Math.round((h % 1) * 60)) + 'm';
+function watchCard(days){
+  const has = days.some(d => dev[d]), t = dev[TODAY] || dev[addDays(TODAY, -1)], sig = sigOn(dev[TODAY] ? TODAY : addDays(TODAY, -1));
+  if (!has) return mode === "account" ? '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("watch") + '<span class="lbl">From your watch</span></div><p class="sub">Send sleep, resting heart rate and HRV from Apple Health (Apple Watch, or Garmin synced to Apple Health) and your readiness uses them too.</p><button class="btn block" type="button" data-act="menu">Set it up in Settings</button></section>' : '';
+  const tile = (k, v, sub) => '<div><span>' + k + '</span><b>' + v + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</div>';
+  const vs = (v, a, unit, lowGood) => a && v ? (Math.round(v - a) === 0 ? 'normal' : (v > a ? '+' : '−') + Math.abs(Math.round(v - a)) + unit + ' vs normal') : '';
+  let h = '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("watch") + '<span class="lbl">From your watch</span><span class="r">' + (dev[TODAY] ? 'today' : t ? 'yesterday' : '') + '</span></div>';
+  if (t) h += '<div class="wsum wtiles">' + tile("Sleep", t.sleep_h ? hm(t.sleep_h) : '–') + tile("Resting HR", t.rhr ? t.rhr : '–', sig ? vs(t.rhr, sig.rhrA, ' bpm') : '') + tile("HRV", t.hrv ? t.hrv + ' ms' : '–', sig ? vs(t.hrv, sig.hrvA, ' ms') : '') + '</div>' +
+    (t.steps != null || t.active_cal != null ? '<p class="sub">' + [t.steps != null ? comma(t.steps) + ' steps' : '', t.active_cal != null ? comma(t.active_cal) + ' active cal' : ''].filter(Boolean).join(' · ') + '</p>' : '') +
+    (sig && sig.notes.length ? '<p class="fbnote">' + ic("gauge") + '<span>' + esc(sig.notes.join(", ").replace(/^./, x => x.toUpperCase())) + '.' + (sig.pen ? ' Readiness is lowered a little to match.' : '') + '</span></p>' : '');
+  else h += '<p class="sub">Nothing from your watch today yet.</p>';
+  const lab = days.map((d, i) => i % 2 === 1 ? '' : String(parseD(d).getUTCDate()));
+  const hv = days.map(d => dev[d] && dev[d].hrv || null), rh = days.map(d => dev[d] && dev[d].rhr || null);
+  if (hv.filter(Boolean).length >= 2) h += '<div class="card-h" style="--tone:var(--easy)"><span class="lbl">HRV · 14 days</span></div>' + barChart(hv, lab, () => "var(--easy)", null, null, "Heart rate variability for each of the last 14 days");
+  if (rh.filter(Boolean).length >= 2) h += '<div class="card-h" style="--tone:var(--race)"><span class="lbl">Resting HR · 14 days</span></div>' + barChart(rh, lab, () => "var(--race)", null, null, "Resting heart rate for each of the last 14 days");
+  return h + '</section>';
+}
 /* ---------- Training tab extras: weight and calories ---------- */
 function bodyCards(){
   const p = plan.profile, days = Array.from({length: 42}, (_, i) => addDays(TODAY, i - 41));
@@ -1072,7 +1100,7 @@ function sessHtml(s, key, big){
   const heat = future && date === TODAY && s.type === "workout" && !s.base ? heatToday() : null, hp = heat && heat.pct >= .01 ? heat.pct : 0;
   if (hp){ const o = {...(offs || {})}; for (const k of HP.PACE_KEYS) if (plan.P[k] && !Array.isArray(plan.P[k])) o[k] = (o[k] || 0) + plan.P[k] * hp; offs = o; }
   const as = match ? F.assess[key] : null, rv = match ? reviewFor(match) : null, t = estTime(s);
-  const r = date === TODAY ? readiness(checkins[TODAY]) : null, adj = r && r.level && ADJ[r.level][s.type];
+  const r = date === TODAY ? readiness(checkins[TODAY], sigOn(TODAY)) : null, adj = r && r.level && ADJ[r.level][s.type];
   const stats = s.type === "lift" ? '<div><b>' + s.steps.length + '</b><span>exercises</span></div><div><b>~50 min</b><span>time</span></div>'
     : '<div><b>' + s.mi + ' mi</b><span>distance</span></div>' + (t ? '<div><b>' + fmtTime(t).replace(/:\d\d$/, "") + (t >= 3600 ? '' : ' min') + '</b><span>about</span></div>' : '') +
       '<div><b>' + (s.type === "race" ? fmtPace(plan.P.G) : s.k === "E" || s.k === "L" ? fmtPace(plan.P[s.k][0]) + '+' : fmtPace((plan.P[s.k] || plan.P.T) + ((offs && offs[s.k]) || 0))) + '</b><span>' + (s.type === "race" ? "goal pace" : "key pace") + '</span></div>';
@@ -1290,20 +1318,29 @@ function openMenu(){
 /* ---------- Garmin + Apple Health (until direct connections are approved) ---------- */
 let healthKey = null, healthLink = {on: false};
 function healthHtml(){
-  let h = '<div class="nset hlink"><div class="card-h" style="--tone:var(--long)">' + ic("link") + '<span class="lbl">Garmin + Apple Health</span></div>' +
-    '<p class="sub"><b style="color:var(--ink)">Workouts:</b> in the Strava app go to Settings → Applications, Services, and Devices → Connect a device, and pick <b style="color:var(--ink)">Garmin</b> or <b style="color:var(--ink)">Health</b> (Apple Watch). Every workout then goes Garmin/Apple → Strava → Hybrid, with your route map.</p>' +
-    '<p class="sub"><b style="color:var(--ink)">Weigh-ins from Apple Health</b> (smart scale, Garmin Index scale, anything that writes your weight to Health): make your personal link, then an iPhone Shortcut sends your newest weight each morning.</p>';
+  const B = t => '<b>' + t + '</b>';
+  let h = '<div class="nset hlink"><div class="card-h" style="--tone:var(--long)">' + ic("link") + '<span class="lbl">Apple Watch + Garmin</span></div>' +
+    '<p class="sub"><b style="color:var(--ink)">Workouts + route maps:</b> in the Strava app, Settings → Applications, Services, and Devices → Connect a device → <b style="color:var(--ink)">Garmin</b> or <b style="color:var(--ink)">Health</b> (Apple Watch). They come through Strava to Hybrid.</p>' +
+    '<p class="sub"><b style="color:var(--ink)">Sleep, resting HR, HRV, steps, weight:</b> an iPhone Shortcut sends them from Apple Health every morning. Apple Watch writes all of these to Apple Health. Garmin: in Garmin Connect, More → Settings → Connected Apps → Apple Health, turn everything on (Garmin shares sleep, heart rate and steps, but not HRV).</p>';
   if (healthKey){
-    const url = API + "/api/import?key=" + healthKey + "&weight=";
+    const url = API + "/api/import?key=" + healthKey;
     h += '<input id="hl-url" readonly value="' + esc(url) + '" aria-label="Your personal Apple Health link"><button class="btn primary block" type="button" data-act="hlcopy">Copy link</button>' +
-      '<ol><li>Open <b>Shortcuts</b> → <b>Automation</b> → <b>+</b> → <b>Time of Day</b> (e.g. 9:00 AM, daily) → <b>Run Immediately</b>.</li>' +
-      '<li>Add <b>Find Health Samples</b>: Type is <b>Weight</b>, sort by <b>Start Date</b>, <b>Latest First</b>, limit <b>1</b>.</li>' +
-      '<li>Add <b>Get Contents of URL</b>. Paste the link, then tap right after <b>weight=</b> and pick the <b>Health Samples</b> variable.</li>' +
-      '<li>Tap ▶ to test. Your weight shows up in Hybrid.</li></ol>' +
-      '<p class="sub">Keep this link private: anyone with it can add weigh-ins to your account. It\'s only shown once.</p>';
+      '<details open><summary>1. Make the Shortcut</summary><ol>' +
+      '<li>Open ' + B("Shortcuts") + ' → ' + B("Automation") + ' → ' + B("+") + ' → ' + B("Time of Day") + ': 8:00 AM, Daily → ' + B("Run Immediately") + '.</li>' +
+      '<li>Add these, each one ' + B("Find Health Samples") + ' (all optional, add the ones you want):<br>' +
+      '• ' + B("Sleep") + ': Type Sleep Analysis, Start Date in the last 1 day, Value is Asleep (all). Then ' + B("Get Details of Health Samples") + ' → Duration, then ' + B("Calculate Statistics") + ' → Sum.<br>' +
+      '• ' + B("Resting heart rate") + ': Type Resting Heart Rate, Latest First, Limit 1.<br>' +
+      '• ' + B("HRV") + ': Type Heart Rate Variability, Start Date in the last 1 day, then ' + B("Calculate Statistics") + ' → Average.<br>' +
+      '• ' + B("Steps") + ': Type Steps, Start Date in the last 1 day, then ' + B("Calculate Statistics") + ' → Sum.<br>' +
+      '• ' + B("Weight") + ': Type Weight, Latest First, Limit 1.</li></ol></details>' +
+      '<details open><summary>2. Send it to Hybrid</summary><ol>' +
+      '<li>Add ' + B("Get Contents of URL") + ' and paste your link.</li>' +
+      '<li>Right after the link, type ' + B("&sleep=") + ' and pick the sleep result, then ' + B("&rhr=") + ' + resting HR, ' + B("&hrv=") + ' + HRV, ' + B("&steps=") + ' + steps, ' + B("&weight=") + ' + weight. Skip any you didn\'t add.</li>' +
+      '<li>Tap ▶ to test. Your numbers show in the Recovery tab.</li></ol></details>' +
+      '<p class="sub">Keep this link private: anyone with it can add data to your account. It\'s only shown once.</p>';
   } else if (healthLink.on){
-    h += '<p class="sub">Your link is on' + (healthLink.last_used ? ' · last weigh-in sent ' + agoText(healthLink.last_used) : ' · nothing sent yet') + '.</p>' +
-      '<div class="fbtns"><button class="btn" type="button" data-act="hlmake">Make a new link</button><button class="btn" type="button" data-act="hloff">Turn off</button></div>';
+    h += '<p class="sub">Your Apple Health link is on' + (healthLink.last_used ? ' · last data sent ' + agoText(healthLink.last_used) : ' · nothing sent yet') + '.</p>' +
+      '<div class="fbtns"><button class="btn" type="button" data-act="hlmake">New link + steps</button><button class="btn" type="button" data-act="hloff">Turn off</button></div>';
   } else h += '<button class="btn block" type="button" data-act="hlmake">Make my Apple Health link</button>';
   return h + '</div>';
 }
@@ -1417,14 +1454,14 @@ document.addEventListener("click", ev => {
     else openInstall();
     return;
   }
-  if (act === "ciset"){ ci = ci || {}; ci[a.dataset.k] = +a.dataset.v; ci.err = ""; render(); return; }
+  if (act === "ciset"){ ci = ci || {}; ci[a.dataset.k] = +a.dataset.v; if (a.dataset.k === "sleep_h") ci.fromWatch = false; ci.err = ""; render(); return; }
   if (act === "ciedit"){ ci = {...checkins[TODAY]}; render(); return; }
   if (act === "cisave"){
     const d = ci || {}; if (CIQ.some(([k]) => d[k] == null)){ ci = {...d, err: "Answer all five so the plan can adjust."}; render(); return; }
     const c = {date: TODAY, sleep_h: d.sleep_h, sleep_q: d.sleep_q, soreness: d.soreness, energy: d.energy, stress: d.stress};
     ci.busy = true; render();
     notePending = true;
-    saveRemote("PUT", "/api/checkin", c).then(j => { notePending = false; if (j && j.note){ notes = notes.filter(n => !(n.date === TODAY && n.kind === "morning")).concat([{date: TODAY, kind: "morning", ...j.note}]); } checkins[TODAY] = c; ci = null; save(); render(); const r = readiness(c); toast(r.word + (r.level ? ". Today's session is adjusted." : ".")); })
+    saveRemote("PUT", "/api/checkin", c).then(j => { notePending = false; if (j && j.note){ notes = notes.filter(n => !(n.date === TODAY && n.kind === "morning")).concat([{date: TODAY, kind: "morning", ...j.note}]); } checkins[TODAY] = c; ci = null; save(); render(); const r = readiness(c, sigOn(TODAY)); toast(r.word + (r.level ? ". Today's session is adjusted." : ".")); })
       .catch(e => { ci.busy = false; ci.err = e.message; render(); });
     return;
   }
