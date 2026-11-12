@@ -45,12 +45,13 @@ await check("Build a plan (4 steps)", async () => {
   return await page.innerText(".hero .sess-t").catch(() => "rest day");
 });
 await check("Morning check-in + AI coach note", async () => {
+  if (!(await page.locator('[data-act="cisave"]').count())){ await tab("recovery"); await page.click('[data-act="gotoday"]'); await page.waitForSelector('[data-act="cisave"]', {timeout: 5000}); }   // after noon the check-in is hidden unless opened
   for (const [k, v] of [["sleep_h", "6"], ["sleep_q", "3"], ["soreness", "3"], ["energy", "3"], ["stress", "3"]]) await page.click('[data-act="ciset"][data-k="' + k + '"][data-v="' + v + '"]');
-  await page.click('[data-act="cisave"]'); await page.waitForSelector(".ready", {timeout: 30000});
-  const score = await page.innerText(".ready > b");
+  await page.click('[data-act="cisave"]'); await page.waitForSelector(".ci-row", {timeout: 30000});
+  const score = await page.innerText(".ci-row > b");
   if (FAST) return "readiness " + score;
-  await page.waitForSelector(".card:has(.ready) .coach", {timeout: 30000});
-  return "readiness " + score + " · " + (await page.innerText(".card:has(.ready) .coach b"));
+  await page.waitForSelector(".ci-done .coach", {timeout: 30000});
+  return "readiness " + score + " · " + (await page.innerText(".ci-done .coach b"));
 });
 if (!FAST) await check("Weather + best time to run", async () => {
   await page.fill("#wx-city", "Vero Beach"); await page.click('[data-act="wxcity"]');
@@ -95,7 +96,7 @@ await check("Activities tab (feed + detail)", async () => {
   return n + " activit" + (n === 1 ? "y" : "ies") + " · opened " + t;
 });
 await check("Fuel + food at the top after check-in", async () => {
-  await tab("today"); const order = await page.$$eval("#app .view > section, #app .view > article", els => els.map(e => (e.querySelector(".card-h .lbl") || {}).textContent || ""));
+  await tab("today"); const order = await page.$$eval("#app .view > section, #app .view > article", els => els.map(e => e.classList.contains("ci-done") ? "readiness" : (e.querySelector(".card-h .lbl") || {}).textContent || ""));
   const ci = order.findIndex(x => /readiness/i.test(x)), fu = order.findIndex(x => /fuel today/i.test(x));
   if (ci < 0 || fu !== ci + 1) throw new Error(order.join(" > ")); if (!(await page.locator(".card:has(.left) .food-in").count())) throw new Error("food log not inside the fuel card");
   return "readiness → fuel + food log";

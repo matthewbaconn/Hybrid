@@ -232,13 +232,13 @@ button{cursor:pointer}
 .splits .sp i{display:block;height:10px;border-radius:999px;background:var(--easy)}
 .splits .sp em{font-style:normal;text-align:right;color:var(--muted)}
 .wtiles small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
-.hlink{display:grid;gap:10px}
-.hlink details{background:var(--sunk);border-radius:6px;padding:10px 12px}
-.hlink summary{cursor:pointer;font-weight:600;font-size:14px}
-.hlink details ol{margin-top:8px}
-.hlink input{font-size:13px}
-.hlink ol{margin:0;padding-left:20px;display:grid;gap:6px;font-size:13.5px;color:var(--muted)}
-.hlink ol b{color:var(--ink)}
+.hlink{display:grid;gap:12px}
+.wl{display:flex;align-items:center;gap:12px}
+.wl div{flex:1;min-width:0} .wl b{display:block;font-weight:600;font-size:14.5px} .wl span{font-size:12.5px;color:var(--muted)}
+.wl .btn{min-height:36px;padding:0 14px;flex:none}
+.wl em.ok{font-style:normal;font-size:13px;font-weight:600;color:var(--long);flex:none}
+.steps-plain{margin:0;padding-left:20px;display:grid;gap:14px;font-size:14.5px}
+.steps-plain li{padding-left:4px} .steps-plain input{margin:10px 0 8px;font-size:13px}
 
 /* setup */
 .setup{display:grid;gap:22px}
@@ -316,11 +316,19 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 
 
 /* check-in, workouts, weight */
-.ciq{display:grid;gap:8px}
-.ciq > span{font-weight:600;font-size:14px}
-.cio{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
-.cio button{min-height:42px;border-radius:5px;border:1px solid transparent;background:var(--sunk);font:600 13px/1.1 var(--f-body);color:var(--ink);padding:0 2px;transition:background-color .15s,border-color .15s}
-.cio button.on{background:var(--accent-soft);border-color:var(--accent);color:#F3C9CA}
+.ci{gap:10px;padding:16px}
+.ci-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.ci-top b{font:700 15px/1.2 var(--f-body)} .ci-top span{font-size:12.5px;color:var(--muted)}
+.ciq{display:grid;grid-template-columns:58px 1fr;align-items:center;gap:8px}
+.ciq > span{font-size:13px;color:var(--muted)}
+.cio{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--sunk);border-radius:6px;padding:3px;gap:2px}
+.cio button{min-height:34px;border-radius:4px;border:1px solid transparent;background:transparent;font:600 12px/1.1 var(--f-body);color:var(--muted);padding:0 1px;transition:background-color .15s,color .15s}
+.ci .btn{min-height:40px}
+.ci-done{padding:14px 16px;gap:10px}
+.ci-row{display:flex;align-items:center;gap:12px}
+.ci-row > b{font:800 28px/1 var(--f-display);color:var(--tone)}
+.ci-row div{flex:1;min-width:0} .ci-row strong{display:block;font-weight:700;color:var(--tone)} .ci-row div span{font-size:12.5px;color:var(--muted)}
+.cio button.on{background:var(--accent);color:#fff}
 .ready{display:flex;align-items:center;gap:16px}
 .ready > b{font:800 46px/1 var(--f-display);color:var(--tone);letter-spacing:-.04em}
 .ready strong{display:block;font:700 19px/1.2 var(--f-display);color:var(--tone)}
@@ -503,25 +511,30 @@ async function saveRemote(method, path, data){ if (mode === "account") return ap
 
 /* ---------- check-in ---------- */
 const CIQ = [
-  ["sleep_h", "Hours of sleep", [[4.5, "<5"], [5, "5"], [6, "6"], [7, "7"], [8, "8"], [9, "9+"]]],
-  ["sleep_q", "Sleep quality", [[1, "Awful"], [2, "Poor"], [3, "OK"], [4, "Good"], [5, "Great"]]],
-  ["soreness", "Muscle soreness", [[1, "None"], [2, "Light"], [3, "Some"], [4, "Sore"], [5, "Very"]]],
+  ["sleep_h", "Sleep", [[4.5, "<5"], [5, "5"], [6, "6"], [7, "7"], [8, "8"], [9, "9+"]]],
+  ["sleep_q", "Quality", [[1, "Awful"], [2, "Poor"], [3, "OK"], [4, "Good"], [5, "Great"]]],
+  ["soreness", "Legs", [[1, "Fresh"], [2, "Light"], [3, "Some"], [4, "Sore"], [5, "Very"]]],
   ["energy", "Energy", [[1, "Drained"], [2, "Low"], [3, "OK"], [4, "Good"], [5, "Great"]]],
   ["stress", "Stress", [[1, "Calm"], [2, "Low"], [3, "Some"], [4, "High"], [5, "Very"]]]
 ];
+let ciForce = false;
+const morningNow = () => { const h = new Date().getHours(); return h >= 3 && h < 12; };
 function checkinCard(){
   const c = checkins[TODAY], r = readiness(c, sigOn(TODAY));
-  if (c && !ci) return '<section class="card ci-done" style="--tone:var(--' + r.tone + ')"><div class="card-h">' + ic("heart") + '<span class="lbl">Today\'s readiness</span><button class="linkbtn r" type="button" data-act="ciedit">Edit</button></div>' +
-    '<div class="ready"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>' + (r.watch ? 'Watch: ' + esc(r.watch.join(", ")) + ' · ' : '') + c.sleep_h + ' h sleep · ' + ["", "very low", "low", "OK", "good", "great"][c.energy] + ' energy · ' + ["", "no", "light", "some", "sore", "very sore"][c.soreness] + (c.soreness <= 1 ? ' soreness' : ' legs') + '</span></div></div>' +
-    (morningNote() ? reviewHtml({headline: morningNote().headline, meaning: (morningNote().lines || []).join(" ")}) : ci === null && coachOn && mode === "account" && notePending ? '<p class="sub">Your coach note is on its way…</p>' : '') + '</section>';
+  if (c && !ci){
+    const mn = morningNote();
+    return '<section class="card ci-done" style="--tone:var(--' + r.tone + ')"><div class="ci-row"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>' +
+      c.sleep_h + ' h sleep · ' + ["", "very low", "low", "OK", "good", "great"][c.energy] + ' energy' + (r.watch ? ' · ' + esc(r.watch[0]) : '') + '</span></div><button class="linkbtn" type="button" data-act="ciedit">Edit</button></div>' +
+      (mn ? reviewHtml({headline: mn.headline, meaning: (mn.lines || []).join(" ")}) : coachOn && mode === "account" && notePending ? '<p class="sub">Coach note on its way…</p>' : '') + '</section>';
+  }
+  if (!c && !ci && !ciForce && !morningNow()) return '';
   const ws = dev[TODAY] && dev[TODAY].sleep_h;
   if (!c && ws && (!ci || ci.sleep_h == null)){ const opts = CIQ[0][2].map(o => o[0]); ci = {...(ci || {}), sleep_h: opts.reduce((a, b) => Math.abs(b - ws) < Math.abs(a - ws) ? b : a), fromWatch: true}; }
   const d = ci || {};
-  return '<section class="card" style="--tone:var(--long)"><div class="card-h">' + ic("heart") + '<span class="lbl">Morning check-in</span><span class="r">20 seconds</span></div>' +
-    '<p class="sub" style="margin-top:-6px">How did you sleep and how do you feel? Today\'s session adjusts to your answers.' + (d.fromWatch && ws ? ' Sleep is filled in from your watch (' + hm(ws) + ').' : '') + '</p>' +
+  return '<section class="card ci" style="--tone:var(--long)"><div class="ci-top"><b>Morning check-in</b><span>' + (d.fromWatch && ws ? 'sleep from your watch' : 'adjusts today') + '</span></div>' +
     CIQ.map(([k, label, opts]) => '<div class="ciq"><span>' + label + '</span><div class="cio" role="group" aria-label="' + label + '">' +
       opts.map(([v, l]) => '<button type="button" class="' + (d[k] === v ? 'on' : '') + '" data-act="ciset" data-k="' + k + '" data-v="' + v + '" aria-pressed="' + (d[k] === v) + '">' + l + '</button>').join("") + '</div></div>').join("") +
-    '<p class="err" role="alert">' + esc((ci && ci.err) || "") + '</p><button class="btn primary block" type="button" data-act="cisave"' + (ci && ci.busy ? ' disabled aria-busy="true"' : '') + '>' + (ci && ci.busy ? 'Saving…' : 'Save check-in') + '</button></section>';
+    (d.err ? '<p class="err" role="alert">' + esc(d.err) + '</p>' : '') + '<button class="btn primary block" type="button" data-act="cisave"' + (d.busy ? ' disabled aria-busy="true"' : '') + '>' + (d.busy ? 'Saving…' : 'Save') + '</button></section>';
 }
 
 /* ---------- weigh-in ---------- */
@@ -802,7 +815,7 @@ function renderRecovery(){
 const hm = h => Math.floor(h) + 'h ' + pad(Math.round((h % 1) * 60)) + 'm';
 function watchCard(days){
   const has = days.some(d => dev[d]), t = dev[TODAY] || dev[addDays(TODAY, -1)], sig = sigOn(dev[TODAY] ? TODAY : addDays(TODAY, -1));
-  if (!has) return mode === "account" ? '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("watch") + '<span class="lbl">From your watch</span></div><p class="sub">Send sleep, resting heart rate and HRV from Apple Health (Apple Watch, or Garmin synced to Apple Health) and your readiness uses them too.</p><button class="btn block" type="button" data-act="menu">Set it up in Settings</button></section>' : '';
+  if (!has) return mode === "account" ? '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("watch") + '<span class="lbl">From your watch</span></div><p class="sub">No watch data yet. Add sleep and heart rate from your iPhone and your readiness uses them.</p><button class="btn block" type="button" data-act="menu">Set up in Settings</button></section>' : '';
   const tile = (k, v, sub) => '<div><span>' + k + '</span><b>' + v + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</div>';
   const vs = (v, a, unit, lowGood) => a && v ? (Math.round(v - a) === 0 ? 'normal' : (v > a ? '+' : '−') + Math.abs(Math.round(v - a)) + unit + ' vs normal') : '';
   let h = '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("watch") + '<span class="lbl">From your watch</span><span class="r">' + (dev[TODAY] ? 'today' : t ? 'yesterday' : '') + '</span></div>';
@@ -1129,8 +1142,8 @@ function renderToday(){
   if (TODAY < first){ h += '<section class="card"><h2 class="sec-t">Your plan starts ' + fmtD(first) + '</h2><p class="sub">Keep running easy until then. Open the Plan tab to see week 1.</p></section>'; return h; }
   if (TODAY > last){ h += '<section class="card"><h2 class="sec-t">Plan complete</h2><p class="sub">Nice work. Open settings to build your next plan.</p></section>'; return h; }
   const day = dayOf(TODAY), t = dayType(day);
-  const f = fuelFor(p, day, TODAY), fuelFood = fuelCard(f, foodCard(true)), checkedIn = !!checkins[TODAY] && !ci;
-  h += checkinCard() + (checkedIn ? fuelFood : '') + weatherCard();
+  const f = fuelFor(p, day, TODAY), fuelFood = fuelCard(f, foodCard(true)), ciHtml = checkinCard(), checkedIn = !/data-act="cisave"/.test(ciHtml);
+  h += ciHtml + (checkedIn ? fuelFood : '') + weatherCard();
   h += '<article class="card hero t-' + t + '"><header class="hero-h"><div><div class="d">Today</div><div class="dd">' + DAYF[dow(TODAY)] + ', ' + fmtD(TODAY) + '</div></div><span class="chip">' + TYPE[t] + '</span></header><div class="hero-b">' +
     (day.sessions.length ? day.sessions.map((s, i) => sessHtml(s, TODAY + "-" + i, true)).join("") : '<div class="sess"><h3 class="sess-t">Rest day</h3><p class="muted">An easy walk or mobility is plenty. Sleep and food do the work today.</p></div>') + '</div></article>';
   h += workoutCard() + (checkedIn ? '' : fuelFood) + weighCard();
@@ -1312,37 +1325,32 @@ function openMenu(){
     : mode === "sample"
     ? '<p class="sub">You\'re looking at a sample runner. Nothing here is saved.</p><button class="btn primary block" type="button" data-act="authsignup">Create a free account</button><button class="btn block" type="button" data-act="authlogin">Log in</button>'
     : '<button class="btn block" type="button" data-act="edit">Edit goals and rebuild plan</button><button class="btn block" type="button" data-act="reset">Start over</button><p class="sub">Your answers stay in this browser only.</p>';
-  b.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-label="Settings"><h2 class="sec-t" style="font-size:20px">Settings</h2>' + body + '<button class="btn block" type="button" data-act="close">Close</button></div>';
+  b.innerHTML = healthView && mode === "account"
+    ? '<div class="sheet" role="dialog" aria-modal="true" aria-label="Sleep and heart rate"><button class="linkbtn" type="button" data-act="hlback">‹ Settings</button><h2 class="sec-t" style="font-size:20px">Sleep and heart rate</h2>' + healthSteps() + '<button class="btn block" type="button" data-act="close">Done</button></div>'
+    : '<div class="sheet" role="dialog" aria-modal="true" aria-label="Settings"><h2 class="sec-t" style="font-size:20px">Settings</h2>' + body + '<button class="btn block" type="button" data-act="close">Close</button></div>';
   document.body.appendChild(b); b.querySelector("button").focus();
 }
-/* ---------- Garmin + Apple Health (until direct connections are approved) ---------- */
-let healthKey = null, healthLink = {on: false};
+/* ---------- watch: Strava for workouts, an iPhone Shortcut for sleep and heart rate ---------- */
+let healthKey = null, healthLink = {on: false}, healthView = false;
 function healthHtml(){
-  const B = t => '<b>' + t + '</b>';
-  let h = '<div class="nset hlink"><div class="card-h" style="--tone:var(--long)">' + ic("link") + '<span class="lbl">Apple Watch + Garmin</span></div>' +
-    '<p class="sub"><b style="color:var(--ink)">Workouts + route maps:</b> in the Strava app, Settings → Applications, Services, and Devices → Connect a device → <b style="color:var(--ink)">Garmin</b> or <b style="color:var(--ink)">Health</b> (Apple Watch). They come through Strava to Hybrid.</p>' +
-    '<p class="sub"><b style="color:var(--ink)">Sleep, resting HR, HRV, steps, weight:</b> an iPhone Shortcut sends them from Apple Health every morning. Apple Watch writes all of these to Apple Health. Garmin: in Garmin Connect, More → Settings → Connected Apps → Apple Health, turn everything on (Garmin shares sleep, heart rate and steps, but not HRV).</p>';
-  if (healthKey){
-    const url = API + "/api/import?key=" + healthKey;
-    h += '<input id="hl-url" readonly value="' + esc(url) + '" aria-label="Your personal Apple Health link"><button class="btn primary block" type="button" data-act="hlcopy">Copy link</button>' +
-      '<details open><summary>1. Make the Shortcut</summary><ol>' +
-      '<li>Open ' + B("Shortcuts") + ' → ' + B("Automation") + ' → ' + B("+") + ' → ' + B("Time of Day") + ': 8:00 AM, Daily → ' + B("Run Immediately") + '.</li>' +
-      '<li>Add these, each one ' + B("Find Health Samples") + ' (all optional, add the ones you want):<br>' +
-      '• ' + B("Sleep") + ': Type Sleep Analysis, Start Date in the last 1 day, Value is Asleep (all). Then ' + B("Get Details of Health Samples") + ' → Duration, then ' + B("Calculate Statistics") + ' → Sum.<br>' +
-      '• ' + B("Resting heart rate") + ': Type Resting Heart Rate, Latest First, Limit 1.<br>' +
-      '• ' + B("HRV") + ': Type Heart Rate Variability, Start Date in the last 1 day, then ' + B("Calculate Statistics") + ' → Average.<br>' +
-      '• ' + B("Steps") + ': Type Steps, Start Date in the last 1 day, then ' + B("Calculate Statistics") + ' → Sum.<br>' +
-      '• ' + B("Weight") + ': Type Weight, Latest First, Limit 1.</li></ol></details>' +
-      '<details open><summary>2. Send it to Hybrid</summary><ol>' +
-      '<li>Add ' + B("Get Contents of URL") + ' and paste your link.</li>' +
-      '<li>Right after the link, type ' + B("&sleep=") + ' and pick the sleep result, then ' + B("&rhr=") + ' + resting HR, ' + B("&hrv=") + ' + HRV, ' + B("&steps=") + ' + steps, ' + B("&weight=") + ' + weight. Skip any you didn\'t add.</li>' +
-      '<li>Tap ▶ to test. Your numbers show in the Recovery tab.</li></ol></details>' +
-      '<p class="sub">Keep this link private: anyone with it can add data to your account. It\'s only shown once.</p>';
-  } else if (healthLink.on){
-    h += '<p class="sub">Your Apple Health link is on' + (healthLink.last_used ? ' · last data sent ' + agoText(healthLink.last_used) : ' · nothing sent yet') + '.</p>' +
-      '<div class="fbtns"><button class="btn" type="button" data-act="hlmake">New link + steps</button><button class="btn" type="button" data-act="hloff">Turn off</button></div>';
-  } else h += '<button class="btn block" type="button" data-act="hlmake">Make my Apple Health link</button>';
-  return h + '</div>';
+  const row = (t, sub, right) => '<div class="wl"><div><b>' + t + '</b><span>' + sub + '</span></div>' + right + '</div>';
+  return '<div class="nset hlink"><div class="card-h" style="--tone:var(--long)">' + ic("watch") + '<span class="lbl">Watch</span></div>' +
+    row("Workouts and maps", strava.connected ? "From Strava" : "Link your watch to Strava, then connect it here",
+      strava.connected ? '<em class="ok">Connected</em>' : strava.available ? '<button class="btn" type="button" data-act="stconnect">Connect</button>' : '') +
+    row("Sleep and heart rate", healthLink.on ? (healthLink.last_used ? "Updated " + agoText(healthLink.last_used) : "Waiting for your first update") : "From Apple Health on your iPhone",
+      healthLink.on ? '<button class="btn" type="button" data-act="hlsetup">Steps</button>' : '<button class="btn" type="button" data-act="hlmake">Set up</button>') +
+    '</div>';
+}
+function healthSteps(){
+  if (!healthKey) return '<p class="sub">This is on. To see the steps again, make a new link (your old one stops working).</p><button class="btn primary block" type="button" data-act="hlmake">New link</button><button class="linkbtn" type="button" data-act="hloff" style="color:var(--crit)">Turn it off</button>';
+  return '<ol class="steps-plain">' +
+    '<li>Copy your link.<input id="hl-url" readonly value="' + esc(API + "/api/import?key=" + healthKey) + '" aria-label="Your link"><button class="btn primary block" type="button" data-act="hlcopy">Copy link</button></li>' +
+    '<li>Open the Shortcuts app. Tap Automation, then +, then Time of Day. Pick 8:00 AM, Daily, Run Immediately.</li>' +
+    '<li>Add <b>Find Health Samples</b> three times: Sleep Analysis, Resting Heart Rate, and Heart Rate Variability. Set each to the last 1 day. Right after the sleep one, add <b>Get Details of Health Samples</b> and pick Duration.</li>' +
+    '<li>Add <b>Get Contents of URL</b>. Paste your link. After it, type &amp;sleep= then pick the sleep result. Do the same with &amp;rhr= and &amp;hrv=.</li>' +
+    '<li>Tap play to test it. Your numbers show up on the Recovery tab.</li></ol>' +
+    '<p class="sub">Garmin watch? In Garmin Connect, turn on Apple Health under Connected Apps first.</p>' +
+    '<p class="sub">Keep the link to yourself. You only see it once.</p>';
 }
 /* ---------- notifications (web push) ---------- */
 const pushOK = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
@@ -1411,8 +1419,10 @@ document.addEventListener("click", ev => {
   if (act === "actopen"){ actSel = a.dataset.id; render(); window.scrollTo(0, 0); return; }
   if (act === "actback"){ actSel = null; render(); return; }
   if (act === "afilt"){ actFilter = a.dataset.k; render(); return; }
-  if (act === "hlmake"){ api("POST", "/api/import-key").then(j => { healthKey = j.key; healthLink = {on: true, last_used: null}; closeMenu(); openMenu(); }).catch(e => toast(e.message)); return; }
-  if (act === "hloff"){ if (!confirm("Turn off the Apple Health link? Your Shortcut will stop sending weigh-ins.")) return; api("DELETE", "/api/import-key").then(() => { healthKey = null; healthLink = {on: false}; closeMenu(); openMenu(); }).catch(e => toast(e.message)); return; }
+  if (act === "hlmake"){ api("POST", "/api/import-key").then(j => { healthKey = j.key; healthLink = {on: true, last_used: null}; healthView = true; closeMenu(); openMenu(); }).catch(e => toast(e.message)); return; }
+  if (act === "hlsetup"){ healthView = true; closeMenu(); openMenu(); return; }
+  if (act === "hlback"){ healthView = false; closeMenu(); openMenu(); return; }
+  if (act === "hloff"){ if (!confirm("Turn this off? Your Shortcut will stop sending data.")) return; api("DELETE", "/api/import-key").then(() => { healthKey = null; healthLink = {on: false}; healthView = false; closeMenu(); openMenu(); }).catch(e => toast(e.message)); return; }
   if (act === "hlcopy"){ const v = ($("#hl-url") || {}).value || ""; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast("Link copied."), () => { const el = $("#hl-url"); if (el){ el.focus(); el.select(); } toast("Press and hold the link to copy it."); }); return; }
   if (act === "wk"){ const cur = wkSel != null ? wkSel : Math.max(0, weekOf(TODAY)); wkSel = Math.max(0, Math.min(plan.weeks.length - 1, cur + +a.dataset.dir)); render(); return; }
   if (act === "goday"){ const el = document.getElementById("d-" + a.dataset.date); if (el) el.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"start"}); return; }
@@ -1517,9 +1527,9 @@ document.addEventListener("click", ev => {
   }
   if (act === "wxchange"){ wxState = "pick"; wxErr = ""; render(); return; }
   if (act === "wxretry"){ wxState = "idle"; loadWeather(true); render(); return; }
-  if (act === "gotoday"){ setTab("today", true); return; }
+  if (act === "gotoday"){ ciForce = true; setTab("today", true); return; }
   if (act === "menu"){ openMenu(); return; }
-  if (act === "close"){ closeMenu(); return; }
+  if (act === "close"){ healthView = false; closeMenu(); return; }
   if (act === "edit"){ closeMenu(); const p = plan.profile.sample ? blankProfile() : {...plan.profile}; delete p.sample; delete p.start; setup = {step: 0, p}; render(); window.scrollTo(0, 0); return; }
   if (act === "reset"){ closeMenu(); plan = null; for (const k in done) delete done[k]; for (const k in food) delete food[k]; store.set(null); setup = {step: -1, p: blankProfile()}; render(); window.scrollTo(0, 0); return; }
 });
