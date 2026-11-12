@@ -131,6 +131,8 @@ footer a:hover{color:var(--ink)}
   .band{grid-template-columns:1fr}
   .final{padding:52px 20px}
 }
+.founding{margin-top:22px;display:grid;gap:4px;max-width:520px;padding:14px 16px;border-radius:10px;background:rgba(190,56,62,.16);border:1px solid rgba(212,88,92,.5)}
+.founding b{font-weight:800;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#fff}.founding span{font-size:15px;color:var(--muted);line-height:1.5}.founding strong{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -153,6 +155,7 @@ footer a:hover{color:var(--ink)}
           <a class="btn ghost" href="#how">See how it works</a>
         </div>
         <p class="fine">Free while in early access. Works on any phone, no download needed.</p>
+        <div class="founding"><b>Founding 100</b><span>The first 100 members get HYBRD free for life, including anything paid we add later. <strong id="fspots">Limited spots</strong> · ends Jan 1, 2027</span></div>
       </div>
       <div class="phones rv" aria-hidden="true">
         <div class="phone p1"><img src="plan.jpg" alt="" width="780" height="1688" loading="eager"></div>
@@ -262,6 +265,7 @@ footer a:hover{color:var(--ink)}
 </footer>
 
 <script>
+fetch("https://hybrid-api.hybridapp.workers.dev/api/founding").then(function(r){ return r.json(); }).then(function(j){ var el = document.getElementById("fspots"); if (el && j.left != null) el.textContent = j.left > 0 ? j.left + (j.left === 1 ? " spot" : " spots") + " left" : "All spots taken"; }).catch(function(){});
 (function(){
   var nav = document.getElementById("nav");
   addEventListener("scroll", function(){ nav.classList.toggle("scrolled", scrollY > 8); }, {passive: true});

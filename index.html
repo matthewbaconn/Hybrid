@@ -335,6 +335,9 @@ button{cursor:pointer}
 .nask-i{width:54px;height:54px;margin:0 auto;border-radius:14px;background:var(--accent);display:grid;place-items:center;color:#fff}.nask-i svg{width:26px;height:26px}
 .mlist li{align-items:flex-start}.mlist .fi span{display:block}.mtags{display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex:none}
 .cityrow{display:flex;gap:8px}.cityrow input{flex:1;min-width:0}.cityrow .btn{flex:none;padding:0 12px;font-size:14px}
+.fbanner{display:grid;gap:4px;padding:14px 16px;border-radius:8px;background:color-mix(in srgb,var(--accent) 22%,#14161C);border:1px solid color-mix(in srgb,var(--accent-2) 55%,transparent);margin:4px 0 16px}.fbanner b{font:800 15px var(--f-display);letter-spacing:.02em;text-transform:uppercase;color:#fff}.fbanner span{font-size:14px;color:var(--muted);line-height:1.45}.fbanner strong{color:var(--ink)}
+.fbadge{display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-style:normal;font-size:12px;font-weight:700;color:#fff;background:var(--accent);padding:4px 9px;border-radius:999px}.fbadge svg{width:13px;height:13px}
+.fcard{display:flex;gap:14px;align-items:center;padding:16px 18px;border-radius:12px;background:color-mix(in srgb,var(--accent) 24%,var(--surface));border:1px solid color-mix(in srgb,var(--accent-2) 55%,transparent);margin-bottom:14px}.fcard i{width:42px;height:42px;border-radius:10px;background:var(--accent);display:grid;place-items:center;color:#fff;flex:none}.fcard i svg{width:22px;height:22px}.fcard b{display:block;font-weight:700;font-size:16px}.fcard span{font-size:13.5px;color:var(--muted);line-height:1.45}
 #app.swiping{will-change:transform;box-shadow:-18px 0 30px rgba(0,0,0,.45)} #app.swipe-settle{transition:transform .2s cubic-bezier(.2,.8,.2,1),opacity .2s}
 
 /* opening animation: red screen, a lightning bolt strikes, the screen flashes and HYBRD lands (transform/opacity only, so it stays smooth) */
@@ -772,7 +775,7 @@ function loadAccount(j){
   clearObj(checkins); (j.checkins || []).forEach(c => checkins[c.date] = c);
   clearObj(weights); (j.weights || []).forEach(w => weights[w.date] = w.lb);
   acts = j.activities || []; strava = j.strava || strava; garmin = j.garmin || {available: false, connected: false, last_push: null};
-  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {}; isOwner = !!j.owner; reports = j.reports || [];
+  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {}; isOwner = !!j.owner; founding = j.founding || null; reports = j.reports || [];
   liftLog = j.lifts || []; mealplan = j.mealplan || null; crews = j.crews || []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null;
   plan = j.profile ? buildPlan(j.profile) : null;
   setup = plan ? null : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
@@ -1971,7 +1974,7 @@ function renderSetup(){
       '<li><i style="--c:var(--work)">' + ic("scale") + '</i><div><b>Food targets from your body</b><span>Calories from your height, weight, age and activity, adjusted as your weight changes.</span></div></li>' +
       '<li><i style="--c:var(--lift)">' + ic("dumbbell") + '</i><div><b>Strength built in</b><span>Lifting days that don\'t wreck your runs.</span></div></li>' +
       '<li><i style="--c:var(--long)">' + ic("heart") + '</i><div><b>Adapts to recovery</b><span>Connect Garmin or Strava in the full app.</span></div></li></ul>' +
-      '<div class="nav" style="flex-direction:column">' + (API && mode !== "account"
+      (mode !== "account" ? foundBanner() : '') + '<div class="nav" style="flex-direction:column">' + (API && mode !== "account"
         ? '<button class="btn primary block" type="button" data-act="authsignup">Create a free account</button><button class="btn block" type="button" data-act="authlogin">Log in</button>'
         : '<button class="btn primary block" type="button" data-act="next">Build my plan</button>') +
       '<button class="btn block" type="button" data-act="sample" style="background:transparent">Look around with a sample runner</button></div></section>';
@@ -2075,7 +2078,7 @@ function renderAuth(){
     '<p class="err" role="alert">' + esc(a.err || "") + '</p><button class="btn primary block" type="submit"' + (a.busy ? ' disabled aria-busy="true"' : '') + '>' + (a.busy ? 'Saving…' : 'Save and log in') + '</button>' +
     '<button class="linkbtn" type="button" data-act="authback" style="justify-self:center;color:var(--muted)">Cancel</button></form>';
   return header() + '<form class="setup view" id="authform" novalidate><h2 class="sec-t">' + (up ? 'Create your account' : 'Welcome back') + '</h2>' +
-    (up ? '<div class="q"><label for="a-name">First name</label><input id="a-name" autocomplete="given-name" maxlength="30" value="' + esc(a.name || "") + '"></div>' : '') +
+    (up ? foundBanner() : '') + (up ? '<div class="q"><label for="a-name">First name</label><input id="a-name" autocomplete="given-name" maxlength="30" value="' + esc(a.name || "") + '"></div>' : '') +
     '<div class="q"><label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" value="' + esc(a.email || "") + '"></div>' +
     '<div class="q"><label for="a-pass">Password</label><input id="a-pass" type="password" autocomplete="' + (up ? 'new-password' : 'current-password') + '" minlength="8">' + (up ? '<p class="hint" style="margin-top:0">At least 8 characters.</p>' : '') + '</div>' +
     (up ? '<label class="agree"><input type="checkbox" id="a-agree"' + (a.agree ? ' checked' : '') + '><span>I\'m 18 or older, and I agree to the <button class="linkbtn inl" type="button" data-act="doc" data-k="terms">Terms</button> and the <button class="linkbtn inl" type="button" data-act="doc" data-k="health">Health and safety notice</button>.</span></label>' : '') +
@@ -2148,7 +2151,7 @@ function settingsScreen(k){
   const helpCard = card("set-help", "Help and support", "Report a problem, how HYBRD works, health and safety, terms and privacy");
   const trainCard = card("set-train", "Coaching and training", plan ? esc(HP.raceName(pr)) + (plan.raceDate ? ' · ' + fmtD(plan.raceDate) : '') + ' · heart rate zones · run time' : 'Goal, heart rate zones and run time');
   if (k === "settings"){
-    if (mode === "account") return '<button class="me-card" type="button" data-act="go" data-scr="set-acct"><span class="avatar">' + esc((nm || me.email || "?").slice(0, 1).toUpperCase()) + '</span><div><b>' + esc(nm || "Add your name") + '</b><span>' + esc(me.email) + '</span></div><i>›</i></button>' +
+    if (mode === "account") return '<button class="me-card" type="button" data-act="go" data-scr="set-acct"><span class="avatar">' + esc((nm || me.email || "?").slice(0, 1).toUpperCase()) + '</span><div><b>' + esc(nm || "Add your name") + '</b><span>' + esc(me.email) + '</span>' + (founding ? '<em class="fbadge">' + ic("bolt") + 'Founding Member #' + founding + '</em>' : '') + '</div><i>›</i></button>' +
       '<div class="scards">' + invite +
       card("set-acct", "Account and profile", "Name, body and goals, email, password and account") +
       card("set-watch", "Devices and apps", (garmin.connected ? 'Garmin linked' : 'Garmin') + ' · ' + (strava.connected ? 'Strava linked' : 'Strava') + ' · Apple Health and more') +
@@ -2295,7 +2298,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "49";
+const APP_VERSION = "50";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2461,7 +2464,7 @@ function progSwitch(cur){
 }
 function renderMore(){
   const card = (act, title, sub, icon, scrTo, cls) => '<button class="scard' + (cls ? ' ' + cls : '') + '" type="button" data-act="' + act + '"' + (scrTo ? ' data-scr="' + scrTo + '"' : '') + '><i class="mi">' + ic(icon) + '</i><div><b>' + title + '</b><span>' + sub + '</span></div><i>›</i></button>';
-  let h = '<h2 class="sec-t">More</h2><div class="scards">';
+  let h = '<h2 class="sec-t">More</h2>' + (founding ? '<div class="fcard"><i>' + ic("bolt") + '</i><div><b>Founding Member #' + founding + '</b><span>HYBRD is free for you for life, including anything paid we add later. Thanks for being here early.</span></div></div>' : '') + '<div class="scards">';
   if (mode === "account") h += card("racefind", "Find a race", "Search races anywhere in the world and build a plan for it", "flag", "", "hi");
   h += card("edit", "Change goal or start a new plan", plan ? "Now: " + esc(HP.raceName(plan.profile)) + (plan.raceDate ? " · " + fmtD(plan.raceDate) : "") : "Pick a goal and your training days", "cal");
   if (plan && plan.raceDate) h += card("go", "Race fueling and hydration", "Carbs, fluid and sodium per hour, and a sweat test", "bolt", "fuelplan");
@@ -2479,7 +2482,14 @@ function renderMore(){
 const CONTACT = "hybridrunning@gmail.com";
 const mailCard = () => '<a class="scard" href="mailto:' + CONTACT + '?subject=' + encodeURIComponent("HYBRD question") + '"><i class="mi">' + ic("mail") + '</i><div><b>Email us</b><span>' + CONTACT + ' · questions, ideas, anything</span></div><i>›</i></a>';
 /* owner only: everyone who signed up */
-let mem = null, mailv = {};
+let mem = null, mailv = {}, founding = null, fspots = null;
+/* Founding 100 promo: spots left, shown to people who haven't signed up yet */
+function foundBanner(){
+  if (!API || fspots === 0) return '';
+  if (fspots == null){ fspots = -1; api("GET", "/api/founding").then(j => { fspots = j.left; render(); }).catch(() => { fspots = 0; }); return ''; }
+  if (fspots < 0) return '';
+  return '<div class="fbanner"><b>Founding 100</b><span>The first 100 members get HYBRD free for life, including anything paid we add later. <strong>' + fspots + ' spot' + (fspots === 1 ? '' : 's') + ' left</strong> · ends Jan 1, 2027</span></div>';
+}
 function membersHtml(){
   if (!isOwner) return '<section class="card"><p class="sub">Not available.</p></section>';
   if (!mem || mem.stale){ if (!mem || !mem.busy){ mem = {busy: true, list: mem && mem.list}; api("GET", "/api/admin/members").then(j => { mem = {list: j.members}; if (scr === "members") render(); }).catch(e => { mem = {err: e.message}; if (scr === "members") render(); }); } }
@@ -2488,7 +2498,7 @@ function membersHtml(){
   const L = mem.list, wk = addDays(TODAY, -7), n = k => L.filter(k).length;
   const ago = d => { if (!d) return "never"; const x = daysBetween(d.slice(0, 10), TODAY); return x <= 0 ? "today" : x === 1 ? "yesterday" : x + " days ago"; };
   let h = '<section class="card"><div class="wkstats"><div><span>Members</span><b>' + L.length + '</b></div><div><span>New this week</span><b>' + n(m => m.created.slice(0, 10) > wk) + '</b></div><div><span>Active this week</span><b>' + n(m => m.last_seen && m.last_seen.slice(0, 10) > wk) + '</b></div></div>' +
-    '<div class="wkstats"><div><span>Strava</span><b>' + n(m => m.strava) + '</b></div><div><span>Garmin</span><b>' + n(m => m.garmin) + '</b></div><div><span>With a plan</span><b>' + n(m => m.goal) + '</b></div></div><p class="sub">Only you can see this screen.</p></section>';
+    '<div class="wkstats"><div><span>Strava</span><b>' + n(m => m.strava) + '</b></div><div><span>Garmin</span><b>' + n(m => m.garmin) + '</b></div><div><span>With a plan</span><b>' + n(m => m.goal) + '</b></div></div><div class="wkstats"><div><span>Founding spots taken</span><b>' + Math.min(100, n(m => m.founding)) + ' / 100</b></div><div><span>Promo ends</span><b>Jan 1</b></div></div><p class="sub">Only you can see this screen.</p></section>';
   const reach = L.filter(m => !m.no_mail).length, mv = mailv;
   h += '<section class="card form"><div class="card-h" style="--tone:var(--accent-2)">' + ic("mail") + '<span class="lbl">Email everyone</span><span class="r">' + reach + ' will get it</span></div>' +
     (mv.done ? '<p class="okmark" role="status">' + esc(mv.done) + '</p>' : '') +

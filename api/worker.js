@@ -5,7 +5,7 @@ const HP = globalThis.HP;
 // Runs on Cloudflare Workers with a D1 database (binding DB). Secrets: ANTHROPIC_API_KEY.
 // Auth: email + password (PBKDF2-SHA256, per-user salt); sessions are random bearer tokens,
 // stored only as SHA-256 hashes, valid 90 days.
-const ORIGINS = ["https://app.hybrdrunning.com", "https://app.hybridrunnin.com", "https://matthewbaconn.github.io", "http://localhost:8000", "http://127.0.0.1:8000"];
+const ORIGINS = ["https://app.hybrdrunning.com", "https://hybrdrunning.com", "https://app.hybridrunnin.com", "https://matthewbaconn.github.io", "http://localhost:8000", "http://127.0.0.1:8000"];
 const AI_PER_DAY = 30;            // photo/text food reads per person per day (protects the API bill)
 const MAX_IMAGE_B64 = 2_000_000;
 const SESSION_DAYS = 90;
@@ -542,6 +542,19 @@ async function tellOwnerSignup(env, name, email){
     await logEvent(env, "signup_notice", !!(r && r.ok), r ? "HTTP " + r.status : "net");
   }
 }
+/* Founding members: the first 100 real accounts made before Jan 1, 2027 get HYBRD free for life when paid features come out */
+const FOUNDING_END = "2027-01-01T05:00:00.000Z", FOUNDING_MAX = 100;   // midnight Jan 1 in Florida
+async function foundingNo(env, userId){
+  const u = await env.DB.prepare("SELECT created, email FROM users WHERE id = ?").bind(userId).first();
+  if (!u || /@example\.com$/.test(u.email) || u.created >= FOUNDING_END) return null;
+  const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE email NOT LIKE '%@example.com' AND created <= ?").bind(u.created).first()).n;
+  return n <= FOUNDING_MAX ? n : null;
+}
+async function foundingLeft(env){
+  if (new Date().toISOString() >= FOUNDING_END) return 0;
+  const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE email NOT LIKE '%@example.com' AND created < ?").bind(FOUNDING_END).first()).n;
+  return Math.max(0, FOUNDING_MAX - n);
+}
 /* email header: the HYBRD profile picture + name (hosted with the app; alt text shows if images are off) */
 const MAIL_HEAD = '<table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:22px"><tr><td style="padding-right:12px"><img src="https://app.hybrdrunning.com/brand/profile-240.png" width="52" height="52" alt="HYBRD" style="display:block;border-radius:12px;border:0"></td>' +
   '<td style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-weight:800;font-size:20px;letter-spacing:-.02em;color:#111">HYBRD Running</td></tr></table>';
@@ -550,7 +563,8 @@ async function welcomeMail(env, id, name, email){
   if (!env.RESEND_API_KEY) return;
   const first = String(name || "").trim().split(/\s+/)[0] || "there", esc2 = x => String(x).replace(/[<>&"]/g, "");
   const unsub = API_BASE(env) + "/api/unsubscribe?u=" + id + "&s=" + (await mailSig(env, id));
-  const paras = ["Hey " + first + ",", "Welcome to HYBRD Running. I'm really glad you're here.", "A few things to get the most out of it:"];
+  const fno = await foundingNo(env, id);
+  const paras = ["Hey " + first + ",", "Welcome to HYBRD Running. I'm really glad you're here."].concat(fno ? ["You're Founding Member #" + fno + " of 100. That means HYBRD is free for you for life, including anything paid we add later. Thank you for being here early."] : []).concat(["A few things to get the most out of it:"]);
   const steps = ["Build your plan: pick a race, or everyday fitness if you just want to get fitter.", "Connect Strava or Garmin in Settings so your workouts come in on their own.", "Do the 20-second morning check-in. Your day adjusts to how you slept and feel.", "On iPhone, add HYBRD to your home screen so it opens like an app."];
   const end = ["Follow along on Instagram @hybrdrunning for tips and early looks at what's coming.", "If you have a question or an idea, just reply to this email. I read every one."];
   const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;font-size:16px;line-height:1.55">' + MAIL_HEAD +
@@ -804,6 +818,7 @@ async function route(req, env, path, ctx){
   }
 
   // forgot password: email a one-time link (always answers the same, so it can't be used to test which emails have accounts)
+  if (M === "GET" && path === "/api/founding") return {left: await foundingLeft(env), max: FOUNDING_MAX, ends: "2027-01-01"};
   if (path === "/api/unsubscribe"){
     const q = new URL(req.url).searchParams, uid = String(q.get("u") || ""), sig = String(q.get("s") || "");
     const ok = /^[a-f0-9]{8,64}$/.test(uid) && env.RESEND_API_KEY && safeEqual(sig, await mailSig(env, uid));
@@ -905,14 +920,14 @@ async function route(req, env, path, ctx){
       env.DB.prepare("SELECT connected, last_push FROM garmin_links WHERE user_id = ?").bind(user.id)
     ]);
     const prof = p.results[0] ? JSON.parse(p.results[0].data) : null;
-    const owner = await ownerId(env) === user.id;
+    const owner = await ownerId(env) === user.id, founding = await foundingNo(env, user.id);
     const reports = owner ? (await env.DB.prepare("SELECT id, email, text, info, created FROM reports ORDER BY created DESC LIMIT 50").all()).results : undefined;
     return {user: {...userOut(user), terms_at: user.terms_at || null}, profile: prof, done: d.results.map(r => r.key), food: f.results, checkins: c.results, weights: w.results, activities: a.results,
       strava: {available: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!s.results[0], name: s.results[0] ? s.results[0].athlete_name : "", last_sync: s.results[0] ? s.results[0].last_sync : null},
       garmin: {available: !!(env.GARMIN_CLIENT_ID && env.GARMIN_CLIENT_SECRET), connected: !!gl.results[0], last_push: gl.results[0] ? gl.results[0].last_push : null},
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
       settings: await settingsOf(env, user.id), push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY,
-      owner, reports, health: hd.results, lifts: ll.results, mealplan: mp.results[0] ? JSON.parse(mp.results[0].data) : null, crews: await crewsFor(env, user.id), health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
+      owner, founding, reports, health: hd.results, lifts: ll.results, mealplan: mp.results[0] ? JSON.parse(mp.results[0].data) : null, crews: await crewsFor(env, user.id), health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
   }
   if (M === "PUT" && path === "/api/account"){
     const b = await body(req), name = String(b.name ?? "").trim().slice(0, 30);
@@ -1219,7 +1234,7 @@ async function route(req, env, path, ctx){
       "(SELECT MAX(created) FROM sessions x WHERE x.user_id = u.id) AS last_login, (SELECT MAX(date) FROM food f WHERE f.user_id = u.id) AS last_food, (SELECT MAX(date) FROM activities a WHERE a.user_id = u.id) AS last_act " +
       "FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.email NOT LIKE '%@example.com' ORDER BY u.created DESC").all()).results;
     return {members: rows.map(r => { let pr = null; try { pr = r.profile ? JSON.parse(r.profile) : null; } catch(e){}
-      return {name: r.name, email: r.email, created: r.created, no_mail: !!r.no_mail, strava: !!r.strava, garmin: !!r.garmin, goal: pr ? HP.raceName(pr) : null, race_date: pr && pr.raceDate || null,
+      return {name: r.name, email: r.email, created: r.created, founding: r.created < FOUNDING_END, no_mail: !!r.no_mail, strava: !!r.strava, garmin: !!r.garmin, goal: pr ? HP.raceName(pr) : null, race_date: pr && pr.raceDate || null,
         last_seen: [r.last_login, r.last_food, r.last_act].filter(Boolean).sort().pop() || null}; })};
   }
   if (M === "DELETE" && path === "/api/account"){
