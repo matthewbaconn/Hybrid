@@ -136,6 +136,8 @@ async function stravaSync(env, user, ctx){
       Math.round((a.distance || 0) / 1609.34 * 100) / 100, Math.round((a.moving_time || 0) / 60), n0(a.calories || (a.kilojoules ? a.kilojoules * 1.1 : 0)), n0(a.average_heartrate),
       (a.map && a.map.summary_polyline || "").slice(0, 20000) || null, String(a.start_date_local || "").slice(0, 16), Math.round((a.total_elevation_gain || 0) * 3.281), String(a.sport_type || a.type || "").slice(0, 30), n0(a.max_heartrate), t));
   ops.push(env.DB.prepare("UPDATE strava_links SET last_sync = ? WHERE user_id = ?").bind(t, user.id));
+  // same workout from Garmin and from Strava: keep the Strava copy (it has the route map)
+  ops.push(env.DB.prepare("DELETE FROM activities WHERE user_id = ? AND source = 'garmin' AND EXISTS (SELECT 1 FROM activities s WHERE s.user_id = activities.user_id AND s.source = 'strava' AND s.date = activities.date AND s.type = activities.type AND ABS(s.minutes - activities.minutes) <= 3 AND ABS(s.mi - activities.mi) <= 0.2)").bind(user.id));
   await env.DB.batch(ops);
   // lap splits for runs from the last 2 weeks that don't have them yet (needed to check workout reps)
   const need = (await env.DB.prepare("SELECT id, ext_id FROM activities WHERE user_id = ? AND source = 'strava' AND type = 'run' AND laps IS NULL AND date >= ? ORDER BY date DESC LIMIT 4")
@@ -152,6 +154,109 @@ async function stravaSync(env, user, ctx){
   await logEvent(env, "strava_sync", true, list.length + " seen, " + fresh.length + " new");
   if (fresh.length && ctx) ctx.waitUntil(afterNewActivities(env, user.id, fresh, "strava").catch(e => console.log("after-sync", e && e.stack || e)));
   return {synced: list.length, fresh: fresh.length, last_sync: t};
+}
+
+/* ---------- Garmin Connect (OAuth2 PKCE + push notifications) ----------
+   Secrets GARMIN_CLIENT_ID / GARMIN_CLIENT_SECRET. Redirect URL registered in the Garmin portal:
+   <worker>/api/garmin/callback. Every data endpoint in Garmin's API tools points to <worker>/api/garmin/push. */
+const GARMIN_AUTH = "https://connect.garmin.com/oauth2Confirm", GARMIN_TOKEN = "https://connectapi.garmin.com/di-oauth2-service/oauth/token", GARMIN_API = "https://apis.garmin.com";
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const G_TYPE = t => { t = String(t || "").toUpperCase(); return /RUN|TREADMILL|TRACK/.test(t) ? "run" : /CYCL|BIK|RIDE|SPIN|MOUNTAIN|GRAVEL|ROAD/.test(t) ? "bike" : /SWIM/.test(t) ? "swim" : /STRENGTH|HIIT|CARDIO_TRAINING|FITNESS_EQUIPMENT|INDOOR_CARDIO|TRAINING/.test(t) ? "lift" : "other"; };
+const G_NAME = t => String(t || "Activity").toLowerCase().replace(/_/g, " ").replace(/^\w/, c => c.toUpperCase()).slice(0, 80);
+async function garminToken(env, link){
+  if (link.expires_at > Date.now() / 1000 + 600) return link.access_token;
+  const r = await fetch(env.GARMIN_TOKEN_URL || GARMIN_TOKEN, {method: "POST", headers: {"Content-Type": "application/x-www-form-urlencoded"},
+    body: new URLSearchParams({grant_type: "refresh_token", client_id: env.GARMIN_CLIENT_ID, client_secret: env.GARMIN_CLIENT_SECRET, refresh_token: link.refresh_token})});
+  if (!r.ok){ await logEvent(env, "garmin_token", false, "refresh HTTP " + r.status); throw new HttpError(502, "Garmin needs you to reconnect. Open Settings and connect Garmin again."); }
+  const j = await r.json();
+  await env.DB.prepare("UPDATE garmin_links SET access_token = ?, refresh_token = ?, expires_at = ? WHERE user_id = ?").bind(j.access_token, j.refresh_token || link.refresh_token, Math.floor(Date.now() / 1000) + (j.expires_in || 86400), link.user_id).run();
+  return j.access_token;
+}
+// Google polyline encoding (same format as Strava's summary_polyline, which the app already draws)
+function encodePolyline(pts){
+  let out = "", pl = 0, pn = 0;
+  const enc1 = v => { v = v < 0 ? ~(v << 1) : v << 1; let s = ""; while (v >= 0x20){ s += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>= 5; } return s + String.fromCharCode(v + 63); };
+  for (const [la, ln] of pts){ const a = Math.round(la * 1e5), b = Math.round(ln * 1e5); out += enc1(a - pl) + enc1(b - pn); pl = a; pn = b; }
+  return out;
+}
+// one day of watch numbers; Garmin wins over Apple Health for the same day
+async function saveHealth(env, userId, date, saved, src){
+  const DK = ["sleep_h", "rhr", "hrv", "steps", "active_cal", "sleep_score", "bb", "stress"], dk = DK.filter(k => saved[k] != null);
+  if (!dk.length || !isDate(date)) return;
+  const set = k => src === "garmin" ? k + " = COALESCE(excluded." + k + ", health_daily." + k + ")" : k + " = CASE WHEN health_daily.source = 'garmin' AND health_daily." + k + " IS NOT NULL THEN health_daily." + k + " ELSE excluded." + k + " END";
+  await env.DB.prepare("INSERT INTO health_daily (user_id, date, " + DK.join(", ") + ", source, updated) VALUES (?, ?, " + DK.map(() => "?").join(", ") + ", ?, ?) ON CONFLICT (user_id, date) DO UPDATE SET " +
+    dk.map(set).join(", ") + ", source = CASE WHEN health_daily.source = 'garmin' OR excluded.source = 'garmin' THEN 'garmin' ELSE excluded.source END, updated = excluded.updated")
+    .bind(userId, date, ...DK.map(k => saved[k] ?? null), src, now()).run();
+}
+const gDate = (sec, off) => new Date(((sec || 0) + (off || 0)) * 1000).toISOString();
+async function garminPush(env, data, ctx){
+  const ids = new Set();
+  for (const k of Object.keys(data || {})) if (Array.isArray(data[k])) data[k].forEach(x => x && x.userId && ids.add(String(x.userId)));
+  if (!ids.size) return;
+  const links = (await env.DB.prepare("SELECT user_id, garmin_user_id FROM garmin_links WHERE garmin_user_id IN (" + [...ids].map(() => "?").join(",") + ")").bind(...ids).all()).results;
+  const who = Object.fromEntries(links.map(l => [l.garmin_user_id, l.user_id])), seen = {}, fresh = {};
+  const uid = x => who[String(x.userId)];
+  for (const d of data.deregistrations || []){ const u = uid(d); if (u) await garminForget(env, u, false); }
+  for (const p of data.userPermissionsChange || []){ const u = uid(p); if (u) await env.DB.prepare("UPDATE garmin_links SET permissions = ? WHERE user_id = ?").bind(JSON.stringify(p.permissions || []).slice(0, 500), u).run(); }
+  const actList = [...(data.activities || []), ...(data.manuallyUpdatedActivities || []), ...(data.activityDetails || []).filter(d => d.summary).map(d => ({...d.summary, userId: d.userId, summaryId: String(d.summaryId || d.summary.summaryId || "").replace(/-detail$/, ""), _fromDetail: true}))];
+  for (const a of actList){
+    const u = uid(a); if (!u) continue; seen[u] = 1;
+    const ext = String(a.summaryId || a.activityId || ""); if (!ext) continue;
+    const local = gDate(a.startTimeInSeconds, a.startTimeOffsetInSeconds), date = local.slice(0, 10), type = G_TYPE(a.activityType), mi = Math.round((a.distanceInMeters || 0) / 1609.34 * 100) / 100, min = Math.round((a.durationInSeconds || 0) / 60);
+    // same workout already came in from Strava (the person has both linked): keep the Strava one, it has the map
+    const dup = await env.DB.prepare("SELECT 1 FROM activities WHERE user_id = ? AND source = 'strava' AND date = ? AND type = ? AND ABS(minutes - ?) <= 3 AND ABS(mi - ?) <= 0.2 LIMIT 1").bind(u, date, type, min, mi).first();
+    if (dup) continue;
+    const known = await env.DB.prepare("SELECT 1 FROM activities WHERE user_id = ? AND source = 'garmin' AND ext_id = ?").bind(u, ext).first();
+    await env.DB.prepare("INSERT INTO activities (id, user_id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, start_local, elev_ft, sport, max_hr, created) VALUES (?, ?, 'garmin', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+      (a._fromDetail ? "ON CONFLICT (user_id, source, ext_id) DO NOTHING" : "ON CONFLICT (user_id, source, ext_id) DO UPDATE SET date = excluded.date, type = excluded.type, name = excluded.name, mi = excluded.mi, minutes = excluded.minutes, cal = excluded.cal, avg_hr = excluded.avg_hr, start_local = excluded.start_local, elev_ft = excluded.elev_ft, sport = excluded.sport, max_hr = excluded.max_hr"))
+      .bind(rand(10), u, ext, date, type, String(a.activityName || G_NAME(a.activityType)).slice(0, 80), mi, min, n0(a.activeKilocalories), n0(a.averageHeartRateInBeatsPerMinute), local.slice(0, 16),
+        Math.round((a.totalElevationGainInMeters || 0) * 3.281), String(a.activityType || "").slice(0, 30), n0(a.maxHeartRateInBeatsPerMinute), now()).run();
+    if (!known) (fresh[u] = fresh[u] || []).push(ext);
+  }
+  // route map + lap splits from the detailed activity
+  for (const d of data.activityDetails || []){
+    const u = uid(d); if (!u) continue; seen[u] = 1;
+    const ext = String(d.summaryId || d.activityId || "").replace(/-detail$/, ""), sm = d.samples || [];
+    const pts = sm.filter(s => s.latitudeInDegree != null && s.longitudeInDegree != null).map(s => [s.latitudeInDegree, s.longitudeInDegree]);
+    const step = Math.max(1, Math.ceil(pts.length / 1500)), poly = pts.length > 1 ? encodePolyline(pts.filter((_, i) => i % step === 0 || i === pts.length - 1)).slice(0, 20000) : null;
+    let laps = null;
+    if (Array.isArray(d.laps) && d.laps.length > 1 && sm.length){
+      const at = t => { let i = sm.findIndex(s => s.startTimeInSeconds >= t); return i < 0 ? sm.length - 1 : i; };
+      const bounds = d.laps.map(l => at(l.startTimeInSeconds)).concat([sm.length - 1]);
+      laps = []; for (let i = 0; i < bounds.length - 1; i++){
+        const a = sm[bounds[i]], b = sm[bounds[i + 1]], seg = sm.slice(bounds[i], bounds[i + 1] + 1).map(s => s.heartRate).filter(h => h > 0);
+        laps.push([Math.round((b.totalDistanceInMeters || 0) - (a.totalDistanceInMeters || 0)), Math.round((b.timerDurationInSeconds ?? b.startTimeInSeconds) - (a.timerDurationInSeconds ?? a.startTimeInSeconds)), seg.length ? Math.round(seg.reduce((x, y) => x + y, 0) / seg.length) : 0]);
+      }
+      laps = laps.filter(l => l[1] > 0).slice(0, 80);
+    }
+    if (poly || laps) await env.DB.prepare("UPDATE activities SET poly = COALESCE(?, poly), laps = COALESCE(?, laps) WHERE user_id = ? AND source = 'garmin' AND ext_id = ?").bind(poly, laps ? JSON.stringify(laps) : null, u, ext).run();
+  }
+  for (const s of data.sleeps || []){
+    const u = uid(s); if (!u) continue; seen[u] = 1;
+    const h = (s.durationInSeconds || 0) / 3600, sc = s.overallSleepScore && s.overallSleepScore.value;
+    await saveHealth(env, u, s.calendarDate, {sleep_h: h >= 1 && h <= 16 ? Math.round(h * 100) / 100 : null, sleep_score: sc >= 0 && sc <= 100 ? Math.round(sc) : null}, "garmin");
+  }
+  for (const d of data.dailies || []){
+    const u = uid(d); if (!u) continue; seen[u] = 1;
+    const r = d.restingHeartRateInBeatsPerMinute, st = d.averageStressLevel;
+    await saveHealth(env, u, d.calendarDate, {rhr: r >= 25 && r <= 150 ? Math.round(r) : null, steps: d.steps >= 0 && d.steps <= 150000 ? Math.round(d.steps) : null,
+      active_cal: d.activeKilocalories >= 0 && d.activeKilocalories <= 8000 ? Math.round(d.activeKilocalories) : null, stress: st >= 0 && st <= 100 ? Math.round(st) : null}, "garmin");
+  }
+  for (const v of data.hrv || []){
+    const u = uid(v); if (!u) continue; seen[u] = 1;
+    const x = v.lastNightAvg; await saveHealth(env, u, v.calendarDate, {hrv: x >= 5 && x <= 300 ? Math.round(x) : null}, "garmin");
+  }
+  for (const u of Object.keys(seen)) await env.DB.prepare("UPDATE garmin_links SET last_push = ? WHERE user_id = ?").bind(now(), u).run();
+  await logEvent(env, "garmin_push", true, Object.keys(data).filter(k => Array.isArray(data[k])).map(k => k + ":" + data[k].length).join(",").slice(0, 120));
+  for (const [u, list] of Object.entries(fresh)) ctx.waitUntil(afterNewActivities(env, u, list, "garmin").catch(e => console.log("garmin review", e && e.stack || e)));
+}
+// stop Garmin access and delete stored Garmin data (privacy policy: disconnect deletes Garmin data)
+async function garminForget(env, userId, tellGarmin){
+  const link = await env.DB.prepare("SELECT * FROM garmin_links WHERE user_id = ?").bind(userId).first();
+  if (link && tellGarmin){ try { const tok = await garminToken(env, link); await fetch((env.GARMIN_API || GARMIN_API) + "/wellness-api/rest/user/registration", {method: "DELETE", headers: {Authorization: "Bearer " + tok}}); } catch(e){} }
+  await env.DB.batch([env.DB.prepare("DELETE FROM garmin_links WHERE user_id = ?").bind(userId),
+    env.DB.prepare("DELETE FROM activities WHERE user_id = ? AND source = 'garmin'").bind(userId),
+    env.DB.prepare("DELETE FROM health_daily WHERE user_id = ? AND source = 'garmin'").bind(userId)]);
 }
 
 /* ---------- each person's data, in their own time zone ---------- */
@@ -257,7 +362,7 @@ async function runReview(env, userId, U, act, today){
 async function afterNewActivities(env, userId, ids, source){
   const st = await settingsOf(env, userId), L = localNow(st.tz), U = await loadUser(env, userId, L.date);
   if (!U) return;
-  const fresh = U.acts.filter(a => (source === "strava" ? ids.includes(a.ext_id) : ids.includes(a.id)) && a.date >= HP.addDays(L.date, -2));
+  const fresh = U.acts.filter(a => (source === "manual" ? ids.includes(a.id) : ids.includes(a.ext_id)) && a.date >= HP.addDays(L.date, -2));
   for (const a of fresh.slice(0, 3)){
     if (!(await coachUsage(env, userId))) break;
     const rv = await runReview(env, userId, U, a, L.date);
@@ -377,6 +482,39 @@ async function route(req, env, path, ctx){
     const id = rand(12), salt = rand(16), t = now();
     await env.DB.prepare("INSERT INTO users (id, email, name, pass_hash, salt, created, terms_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id, email, name, await hashPassword(password, salt), salt, t, t).run();
     return {token: await newSession(env, id), user: {id, email, name, terms_at: t}};
+  }
+  if (M === "GET" && path === "/api/garmin/callback"){
+    const q = new URL(req.url).searchParams, st = q.get("state") || "";
+    const row = await env.DB.prepare("SELECT user_id, created, verifier FROM oauth_states WHERE state = ?").bind(st).first();
+    await env.DB.prepare("DELETE FROM oauth_states WHERE state = ? OR created < ?").bind(st, new Date(Date.now() - 3600e3).toISOString()).run();
+    const go = code => Response.redirect((env.APP_URL || "https://matthewbaconn.github.io/Hybrid/") + "?garmin=" + code + "#today", 302);
+    if (!row || !row.verifier || Date.parse(row.created) < Date.now() - 1800e3) return go("expired");
+    if (q.get("error") || !q.get("code")) return go("cancelled");
+    const cb = new URL(req.url).origin + "/api/garmin/callback";
+    const r = await fetch(env.GARMIN_TOKEN_URL || GARMIN_TOKEN, {method: "POST", headers: {"Content-Type": "application/x-www-form-urlencoded"},
+      body: new URLSearchParams({grant_type: "authorization_code", client_id: env.GARMIN_CLIENT_ID, client_secret: env.GARMIN_CLIENT_SECRET, code: q.get("code"), code_verifier: row.verifier, redirect_uri: cb})});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.access_token){ await logEvent(env, "garmin_connect", false, "token HTTP " + r.status + " " + JSON.stringify(j).slice(0, 100)); return go("failed"); }
+    const ur = await fetch((env.GARMIN_API || GARMIN_API) + "/wellness-api/rest/user/id", {headers: {Authorization: "Bearer " + j.access_token}});
+    const uj = await ur.json().catch(() => ({}));
+    if (!ur.ok || !uj.userId){ await logEvent(env, "garmin_connect", false, "user id HTTP " + ur.status); return go("failed"); }
+    const gid = String(uj.userId);
+    // a Garmin account can only be linked to one Hybrid account: move it if it was linked elsewhere
+    await env.DB.batch([env.DB.prepare("DELETE FROM garmin_links WHERE garmin_user_id = ? AND user_id != ?").bind(gid, row.user_id),
+      env.DB.prepare("INSERT INTO garmin_links (user_id, garmin_user_id, access_token, refresh_token, expires_at, connected) VALUES (?, ?, ?, ?, ?, ?) " +
+        "ON CONFLICT (user_id) DO UPDATE SET garmin_user_id = excluded.garmin_user_id, access_token = excluded.access_token, refresh_token = excluded.refresh_token, expires_at = excluded.expires_at")
+        .bind(row.user_id, gid, j.access_token, j.refresh_token || "", Math.floor(Date.now() / 1000) + (j.expires_in || 86400), now())]);
+    await logEvent(env, "garmin_connect", true, "");
+    return go("connected");
+  }
+  if (path === "/api/garmin/push"){
+    if (M !== "POST") return {ok: true};
+    const raw = await req.text();
+    if (raw.length > 8_000_000) throw new HttpError(413, "Too large.");
+    let data; try { data = JSON.parse(raw); } catch(e){ throw new HttpError(400, "Bad JSON."); }
+    // answer Garmin right away; store the data after
+    ctx.waitUntil(garminPush(env, data, ctx).catch(async e => { console.log("garmin push", e && e.stack || e); await logEvent(env, "garmin_push", false, String(e && e.message || e).slice(0, 120)); }));
+    return {ok: true};
   }
   if (M === "GET" && path === "/api/strava/callback"){
     const q = new URL(req.url).searchParams, st = q.get("state") || "";
@@ -516,20 +654,22 @@ async function route(req, env, path, ctx){
       env.DB.prepare("SELECT id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, work_pace, CASE WHEN date >= ? THEN laps END AS laps, CASE WHEN date >= ? THEN poly END AS poly, start_local, elev_ft, sport, max_hr FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(since, since, user.id, since120),
       env.DB.prepare("SELECT athlete_name, last_sync FROM strava_links WHERE user_id = ?").bind(user.id)
     ]);
-    const [rv, cn, ps, ik, hd, ll, mp] = await env.DB.batch([
+    const [rv, cn, ps, ik, hd, ll, mp, gl] = await env.DB.batch([
       env.DB.prepare("SELECT activity_id, data FROM reviews WHERE user_id = ? AND date >= ?").bind(user.id, since),
       env.DB.prepare("SELECT date, kind, data FROM coach_notes WHERE user_id = ? AND date >= ?").bind(user.id, new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10)),
       env.DB.prepare("SELECT COUNT(*) AS n FROM push_subs WHERE user_id = ?").bind(user.id),
       env.DB.prepare("SELECT last_used FROM import_keys WHERE user_id = ?").bind(user.id),
       env.DB.prepare("SELECT date, sleep_h, rhr, hrv, steps, active_cal, sleep_score, bb, stress, source FROM health_daily WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since),
       env.DB.prepare("SELECT date, ex, weight, hit FROM lift_logs WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since120),
-      env.DB.prepare("SELECT data FROM meal_plans WHERE user_id = ?").bind(user.id)
+      env.DB.prepare("SELECT data FROM meal_plans WHERE user_id = ?").bind(user.id),
+      env.DB.prepare("SELECT connected, last_push FROM garmin_links WHERE user_id = ?").bind(user.id)
     ]);
     const prof = p.results[0] ? JSON.parse(p.results[0].data) : null;
     const owner = await ownerId(env) === user.id;
     const reports = owner ? (await env.DB.prepare("SELECT id, email, text, info, created FROM reports ORDER BY created DESC LIMIT 50").all()).results : undefined;
     return {user: {...userOut(user), terms_at: user.terms_at || null}, profile: prof, done: d.results.map(r => r.key), food: f.results, checkins: c.results, weights: w.results, activities: a.results,
       strava: {available: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!s.results[0], name: s.results[0] ? s.results[0].athlete_name : "", last_sync: s.results[0] ? s.results[0].last_sync : null},
+      garmin: {available: !!(env.GARMIN_CLIENT_ID && env.GARMIN_CLIENT_SECRET), connected: !!gl.results[0], last_push: gl.results[0] ? gl.results[0].last_push : null},
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
       settings: await settingsOf(env, user.id), push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY,
       owner, reports, health: hd.results, lifts: ll.results, mealplan: mp.results[0] ? JSON.parse(mp.results[0].data) : null, crews: await crewsFor(env, user.id), health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
@@ -666,6 +806,14 @@ async function route(req, env, path, ctx){
     const n = await pushTo(env, user.id, {title: "Notifications are on", body: "You'll get your morning check-in, run summaries, a Monday recap and a bedtime reminder.", tag: "test"});
     return {sent: n};
   }
+  if (M === "POST" && path === "/api/garmin/start"){
+    if (!env.GARMIN_CLIENT_ID || !env.GARMIN_CLIENT_SECRET) throw new HttpError(503, "Garmin connection isn't set up yet.");
+    const st = rand(16), verifier = b64url(crypto.getRandomValues(new Uint8Array(48))), challenge = b64url(await crypto.subtle.digest("SHA-256", enc.encode(verifier)));
+    await env.DB.prepare("INSERT INTO oauth_states (state, user_id, created, verifier) VALUES (?, ?, ?, ?)").bind(st, user.id, now(), verifier).run();
+    const cb = new URL(req.url).origin + "/api/garmin/callback";
+    return {url: (env.GARMIN_AUTH_URL || GARMIN_AUTH) + "?response_type=code&client_id=" + encodeURIComponent(env.GARMIN_CLIENT_ID) + "&code_challenge=" + challenge + "&code_challenge_method=S256&redirect_uri=" + encodeURIComponent(cb) + "&state=" + st};
+  }
+  if (M === "POST" && path === "/api/garmin/disconnect"){ await garminForget(env, user.id, true); return {ok: true}; }
   if (M === "POST" && path === "/api/strava/start"){
     if (!env.STRAVA_CLIENT_ID) throw new HttpError(503, "Strava connection isn't set up yet.");
     const st = rand(16);
@@ -801,6 +949,7 @@ async function route(req, env, path, ctx){
   if (M === "DELETE" && path === "/api/account"){
     const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
     if (link){ try { const tok = await stravaToken(env, link); await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/deauthorize", {method: "POST", headers: {Authorization: "Bearer " + tok}}); } catch(e){} }
+    await garminForget(env, user.id, true);
     await env.DB.batch(["sessions", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily", "reports", "link_keys", "lift_logs", "meal_plans", "crew_members"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
       .concat([env.DB.prepare("DELETE FROM crews WHERE id NOT IN (SELECT crew_id FROM crew_members)"),
         env.DB.prepare("UPDATE crews SET owner_id = (SELECT user_id FROM crew_members m WHERE m.crew_id = crews.id ORDER BY joined LIMIT 1) WHERE owner_id = ?").bind(user.id),

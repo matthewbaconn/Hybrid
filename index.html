@@ -703,7 +703,7 @@ function loadAccount(j){
   (j.food || []).forEach(x => (food[x.date] = food[x.date] || []).push(x));
   clearObj(checkins); (j.checkins || []).forEach(c => checkins[c.date] = c);
   clearObj(weights); (j.weights || []).forEach(w => weights[w.date] = w.lb);
-  acts = j.activities || []; strava = j.strava || strava;
+  acts = j.activities || []; strava = j.strava || strava; garmin = j.garmin || {available: false, connected: false, last_push: null};
   reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {}; isOwner = !!j.owner; reports = j.reports || [];
   liftLog = j.lifts || []; mealplan = j.mealplan || null; crews = j.crews || []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null;
   plan = j.profile ? buildPlan(j.profile) : null;
@@ -714,7 +714,7 @@ function signedOut(){ scr = null; liftLog = []; mealplan = null; crews = []; lif
 const checkins = S.checkins || {};          // date -> {sleep_h, sleep_q, soreness, energy, stress}
 const weights = S.weights || {};            // date -> lb
 let acts = S.acts || [];                    // [{id, source, date, type, name, mi, minutes, cal, avg_hr}]
-let strava = {available: false, connected: false, name: "", last_sync: null};
+let strava = {available: false, connected: false, name: "", last_sync: null}, garmin = {available: false, connected: false, last_push: null};
 let ci = null, wf = null, aw = {open: false, err: "", busy: false};
 let reviews = {}, notes = [], uset = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", n_morning: true, n_run: true, n_weekly: true, n_bed: true}, pushInfo = {key: null, devices: 0}, coachOn = false;
 const reviewFor = a => reviews[a.id] || null;
@@ -793,7 +793,7 @@ function workoutCard(){
   const matchedIds = new Set(Object.values(dayMatches(TODAY)).map(a => a.id));
   const extraReviews = list.filter(a => reviewFor(a)).map(a => reviewHtml(reviewFor(a))).join("");
   h += list.length ? '<ul class="fl">' + list.map(a => '<li class="act t-' + (a.type === "run" ? "easy" : a.type === "lift" ? "lift" : "long") + '"><div class="fi"><b>' + esc(a.name) + '</b><span>' + actLine(a) + '</span></div>' +
-      '<span class="src src-' + a.source + '">' + (a.source === "strava" ? 'Strava' : 'Logged') + '</span>' +
+      '<span class="src src-' + a.source + '">' + (a.source === "strava" ? 'Strava' : a.source === "garmin" ? 'Garmin' : 'Logged') + '</span>' +
       (a.source === "manual" ? '<button class="x" type="button" data-act="adel" data-id="' + esc(a.id) + '" aria-label="Remove ' + esc(a.name) + '">✕</button>' : '') + '</li>').join("") + '</ul>' + extraReviews
     : '<p class="sub">Nothing logged yet today. Finished workouts add calories to today\'s target and check off your plan.</p>';
   if (aw.open){
@@ -852,7 +852,7 @@ function routeSvg(pts){
   return '<svg viewBox="0 0 340 200" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><polyline points="' + path + '" fill="none" stroke="var(--accent)" stroke-width="7" stroke-opacity=".25" stroke-linejoin="round" stroke-linecap="round"/><polyline points="' + path + '" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></svg>';
 }
 function actCard(a){
-  const pts = ptsOf(a), tone = ACT_TONE[a.type] || "long", src = a.source === "strava" ? "Strava" : a.source === "sample" ? "Sample" : "Logged";
+  const pts = ptsOf(a), tone = ACT_TONE[a.type] || "long", src = a.source === "strava" ? "Strava" : a.source === "garmin" ? "Garmin" : a.source === "sample" ? "Sample" : "Logged";
   return '<article class="card actc" style="--tc:var(--' + tone + ')" data-act="actopen" data-id="' + esc(a.id) + '" tabindex="0" role="button" aria-label="Open ' + esc(a.name) + '">' +
     '<div class="ah"><span class="aic">' + ic(ACT_IC[a.type] || "watch") + '</span><div><b>' + esc((me && me.name) || (plan && plan.profile.name) || "You") + '</b><span>' + whenTxt(a) + ' · ' + src + '</span></div></div>' +
     '<h3>' + esc(a.name) + '</h3><div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
@@ -978,6 +978,13 @@ async function stravaSync(quiet){
     if (!quiet) toast(j.synced ? "Strava is up to date." : "No new Strava activities.");
   } catch(e){ if (!quiet) toast(e.message); }
   finally { syncing = false; }
+}
+function garminReturn(){
+  let q; try { q = new URLSearchParams(location.search).get("garmin"); } catch(e){ q = null; }
+  if (!q) return;
+  try { history.replaceState(null, "", location.pathname + "#today"); } catch(e){}
+  const msg = {connected: "Garmin linked. New workouts and sleep come in automatically after your watch syncs.", cancelled: "Garmin wasn't linked.", expired: "That took too long. Tap Connect Garmin again.", failed: "Couldn't link Garmin. Try again in a minute."}[q];
+  if (msg) setTimeout(() => toast(msg), 300);
 }
 function stravaReturn(){
   let q; try { q = new URLSearchParams(location.search).get("strava"); } catch(e){ q = null; }
@@ -1230,7 +1237,7 @@ function calCheckCard(){
 }
 function syncLine(){
   if (mode !== "account") return '';
-  const parts = [strava.connected ? '<span class="ok">Strava · synced ' + agoText(strava.last_sync) + '</span>' : '<span>Strava not connected</span>',
+  const parts = [garmin.connected ? '<span class="ok">Garmin linked' + (garmin.last_push ? ' · last data ' + agoText(garmin.last_push) : '') + '</span>' : '', strava.connected ? '<span class="ok">Strava · synced ' + agoText(strava.last_sync) + '</span>' : garmin.connected ? '' : '<span>No watch linked</span>',
     pushState.checked ? (pushState.on ? '<span class="ok">Notifications on</span>' : '<span>Notifications off</span>') : ''];
   return '<p class="syncline">' + parts.filter(Boolean).join(' · ') + '</p>';
 }
@@ -1989,7 +1996,7 @@ function settingsScreen(k){
     if (mode === "account") return '<button class="me-card" type="button" data-act="go" data-scr="set-acct"><span class="avatar">' + esc((nm || me.email || "?").slice(0, 1).toUpperCase()) + '</span><div><b>' + esc(nm || "Add your name") + '</b><span>' + esc(me.email) + '</span></div><i>›</i></button>' +
       '<div class="scards">' + invite +
       card("set-acct", "Account and profile", "Name, body and goals, email, password and account") +
-      card("set-watch", "Devices and apps", (strava.connected ? 'Strava linked' : 'Strava') + ' · Garmin coming soon · Apple Health and more') +
+      card("set-watch", "Devices and apps", (garmin.connected ? 'Garmin linked' : 'Garmin') + ' · ' + (strava.connected ? 'Strava linked' : 'Strava') + ' · Apple Health and more') +
       trainCard +
       card("set-notif", "Notifications", pushState.on ? 'On · reminders and workout summaries' : 'Reminders and workout summaries') +
       helpCard + '</div>' +
@@ -2019,7 +2026,7 @@ function settingsScreen(k){
   if (k === "set-password") return acctForm("password");
   if (k === "set-account") return '<section class="card" style="--tone:var(--crit)"><div class="card-h"><span class="lbl">Delete account</span></div><p class="sub">Removes your plan, food, workouts and everything else for good. This can\'t be undone.</p><button class="btn block" type="button" data-act="delacct" style="color:var(--crit)">Delete my account</button></section>';
   if (k === "set-notif") return '<section class="card">' + notifHtml() + '</section>';
-  if (k === "set-watch") return healthHtml() +
+  if (k === "set-watch") return healthHtml() + (garmin.connected ? '<button class="btn block" type="button" data-act="gmdisc">Disconnect Garmin</button>' : '') +
     (strava.connected ? '<button class="btn block" type="button" data-act="stdisc">Disconnect Strava' + (strava.name ? ' (' + esc(strava.name) + ')' : '') + '</button>' : '');
   if (k === "set-health") return '<section class="card">' + healthSteps() + '</section>';
   if (k === "set-report") return reportForm();
@@ -2133,7 +2140,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "36";
+const APP_VERSION = "37";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2188,7 +2195,9 @@ function healthHtml(){
     : card(A("strava"), "Workouts, routes and heart rate from any watch", strava.available ? '' : pill("Unavailable"), strava.available ? '<button class="stbtn" type="button" data-act="stconnect" aria-label="Connect with Strava"><img src="brand/strava-connect.svg" alt="Connect with Strava" width="237" height="48"></button>' : '');
   const ah = healthLink && healthLink.on;
   const direct = st +
-    card(A("garmin"), "Approved by Garmin. Until direct sync is live, link it to Strava.", pill("Coming soon", "soon")) +
+    (garmin.connected ? card(A("garmin"), "Workouts, sleep, resting heart rate and HRV" + (garmin.last_push ? " · last data " + agoText(garmin.last_push) : " · waiting for your next watch sync"), pill("Linked", "on"))
+      : garmin.available && mode === "account" ? card(A("garmin"), "Workouts, sleep, resting heart rate and HRV, straight from Garmin Connect", '<button class="pill2 act" type="button" data-act="gmconnect">Connect</button>')
+      : card(A("garmin"), "Direct sync is on the way. For now, link Garmin to Strava.", pill("Coming soon", "soon"))) +
     card(A("apple-health"), ah ? "Sleep, resting heart rate and HRV" : "Sleep, resting heart rate and HRV from your iPhone", SHORTCUT_URL ? (ah ? pill("Linked", "on") : '<button class="pill2 act" type="button" data-act="hlsetup">Set up</button>') : pill("Coming soon", "soon"), '', SHORTCUT_URL && ah ? "hlsetup" : "");
   const via = (grp, note) => APPS.filter(x => x.group === grp).map(x => card(x, note, pill(grp === "strava" ? "Via Strava" : "Via Apple Health"))).join("");
   return '<div class="apps">' + direct +
@@ -2317,6 +2326,11 @@ document.addEventListener("click", ev => {
   if (act === "actopen"){ const id = a.dataset.id; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actback"){ nav("back", () => { actSel = null; render(); }); return; }
   if (act === "afilt"){ actFilter = a.dataset.k; render(); return; }
+  if (act === "gmconnect"){ a.disabled = true; api("POST", "/api/garmin/start").then(j => { location.href = j.url; }).catch(e => { a.disabled = false; toast(e.message); }); return; }
+  if (act === "gmdisc"){
+    if (!confirm("Disconnect Garmin? Hybrid stops getting your Garmin data and deletes the Garmin workouts and sleep it saved.")) return;
+    api("POST", "/api/garmin/disconnect").then(() => { garmin.connected = false; acts = acts.filter(x => x.source !== "garmin"); refreshMe(); render(); toast("Garmin disconnected."); }).catch(e => toast(e.message)); return;
+  }
   if (act === "invite"){
     const url = location.origin + location.pathname, msg = "I've been training with Hybrid. It builds a plan for your race, sets your food targets and adjusts when you're tired. Try it free: " + url;
     if (navigator.share) navigator.share({title: "Hybrid", text: msg}).catch(() => {});
@@ -2661,7 +2675,7 @@ function hideSplash(){
   setTimeout(() => { el.classList.add("out"); el.addEventListener("animationend", () => el.remove(), {once: true}); setTimeout(() => el.remove(), 700); }, wait);
 }
 if (splashReady) hideSplash(); else setTimeout(hideSplash, 4000);
-if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); autoSync(true); if (pushOK()) checkPush().then(() => safeRender()); })
+if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); garminReturn(); autoSync(true); if (pushOK()) checkPush().then(() => safeRender()); })
   .catch(e => { loading = false; if (token){ mode = "none"; plan = null; } render(); hideSplash(); toast(e.message); });
 })();
 </script>
