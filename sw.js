@@ -1,5 +1,5 @@
 // Offline support (keeps the app shell so it opens instantly) and push notifications.
-const CACHE = "hybrid-v44";
+const CACHE = "hybrid-v45";
 const FILES = ["./", "./index.html", "./plan.js", "./vendor/leaflet.js", "./vendor/leaflet.css", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./brand/strava-connect.svg", "./brand/compatible-strava-orange.svg", "./brand/garmin-black.png", "./brand/garmin-white.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
@@ -11,8 +11,8 @@ self.addEventListener("fetch", e => {
     .catch(() => caches.match(e.request).then(r => r || caches.match("./index.html"))));
 });
 self.addEventListener("push", e => {
-  let d = {}; try { d = e.data ? e.data.json() : {}; } catch(err){ d = {title: "Hybrid", body: e.data ? e.data.text() : ""}; }
-  e.waitUntil(self.registration.showNotification(d.title || "Hybrid", {body: d.body || "", icon: "icon-192.png", badge: "icon-192.png", tag: d.tag || undefined, data: {url: d.url || "./#today"}}));
+  let d = {}; try { d = e.data ? e.data.json() : {}; } catch(err){ d = {title: "HYBRD", body: e.data ? e.data.text() : ""}; }
+  e.waitUntil(self.registration.showNotification(d.title || "HYBRD", {body: d.body || "", icon: "icon-192.png", badge: "icon-192.png", tag: d.tag || undefined, data: {url: d.url || "./#today"}}));
 });
 self.addEventListener("notificationclick", e => {
   e.notification.close();

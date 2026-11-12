@@ -1,17 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="background:#BE383E">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#800000">
-<title>Hybrid</title>
+<title>HYBRD</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Hybrid">
+<meta name="apple-mobile-web-app-title" content="HYBRD">
 <meta name="description" content="Run and lift plans built around your goals.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1290x2796.png">
+<link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1179x2556.png">
+<link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1206x2622.png">
+<link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1320x2868.png">
+<link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1284x2778.png">
+<link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1170x2532.png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1125x2436.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1242x2688.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="splash/launch-828x1792.png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="splash/launch-750x1334.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1242x2208.png">
+<link rel="apple-touch-startup-image" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="splash/launch-640x1136.png">
 <link rel="icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -218,7 +230,7 @@ button{cursor:pointer}
 .actc h3{margin:12px 18px 0;font:800 21px/1.2 var(--f-display);letter-spacing:-.01em;overflow-wrap:anywhere}
 .ast{display:flex;flex-wrap:wrap;gap:6px 26px;padding:12px 18px 16px}
 .ast span{display:block;font-size:12.5px;color:var(--muted)} .ast b{font:700 20px/1.25 var(--f-display);white-space:nowrap}
-.amap{height:200px;background:#0F1218;position:relative;border-top:1px solid rgba(255,255,255,.06)}
+.amap{height:220px;background:#0F1218;position:relative;border-top:1px solid rgba(255,255,255,.06)}
 .amap.big{height:300px;border-radius:7px;overflow:hidden;border:1px solid rgba(255,255,255,.07)}
 .amap > svg{position:absolute;inset:0;width:100%;height:100%}
 .amap .leaflet-container,.amap.leaflet-container{background:#0F1218;font:11px var(--f-body)}
@@ -316,20 +328,28 @@ button{cursor:pointer}
 #ptr.go svg{animation:spin .7s linear infinite}
 #ptr.back{transition:transform .25s ease,opacity .25s ease}
 #app.pulling{will-change:transform} #app.settle{transition:transform .25s ease}
+.wdate{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--muted);font-weight:500}.wdate input{flex:1;max-width:190px;min-height:38px;font-size:14px}
+.wrng{margin-left:auto;display:flex;gap:2px;background:var(--sunk);border-radius:6px;padding:2px}.wrng button{border:0;background:none;color:var(--muted);font:600 12px var(--f-body);padding:5px 9px;border-radius:5px}.wrng button.on{background:var(--card,#1a1d24);color:var(--ink)}
+.wsum{display:flex;flex-wrap:wrap;gap:6px 16px;margin:2px 0 8px;font-size:13px;color:var(--muted)}.wsum b{color:var(--ink);font:700 16px var(--f-display)}
+.nask{text-align:center;padding-top:26px}.nask h2{font:700 21px/1.2 var(--f-display);margin:12px 0 8px}.nask p{color:var(--muted);font-size:14.5px;line-height:1.5;margin:0 0 18px}.nask .btn+.btn{margin-top:8px}
+.nask-i{width:54px;height:54px;margin:0 auto;border-radius:14px;background:var(--accent);display:grid;place-items:center;color:#fff}.nask-i svg{width:26px;height:26px}
+#app.swiping{will-change:transform;box-shadow:-18px 0 30px rgba(0,0,0,.45)} #app.swipe-settle{transition:transform .2s cubic-bezier(.2,.8,.2,1),opacity .2s}
 
-/* opening animation: the logo draws itself, then fills (transform/opacity/stroke only, so it stays smooth) */
-#splash{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-content:center;justify-items:center;gap:18px;will-change:opacity,transform}
-#splash .sp-logo{width:104px;height:104px;border-radius:24px;background:var(--accent);display:grid;place-items:center;transform:scale(.6);opacity:0;will-change:transform,opacity;
-  animation:sp-pop .55s cubic-bezier(.2,.9,.25,1.15) .05s forwards}
-#splash svg{width:56px;height:56px;overflow:visible}
-#splash path{fill:#fff;fill-opacity:0;stroke:#fff;stroke-width:1.15;stroke-linejoin:round;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;
-  animation:sp-draw .8s cubic-bezier(.65,0,.35,1) .25s forwards,sp-fill .3s ease-out 1s forwards}
-#splash b{font:800 26px/1 var(--f-display);letter-spacing:-.03em;opacity:0;transform:translateY(8px);will-change:transform,opacity;animation:sp-up .45s cubic-bezier(.2,.8,.2,1) .9s forwards}
+/* opening animation: red screen, a lightning bolt strikes, the screen flashes and HYBRD lands (transform/opacity only, so it stays smooth) */
+#splash{position:fixed;inset:0;z-index:100;background:radial-gradient(120% 80% at 50% 42%,#D2434A 0%,#BE383E 45%,#8F1F25 100%);display:grid;place-content:center;justify-items:center;overflow:hidden;will-change:opacity,transform}
+#splash .sp-bolt{position:absolute;left:50%;top:0;width:90px;height:52vh;transform:translateX(-38%);overflow:visible;filter:drop-shadow(0 0 6px #fff) drop-shadow(0 0 18px rgba(255,255,255,.7))}
+#splash .sp-bolt path{fill:none;stroke:#fff;stroke-width:3.2;stroke-linejoin:miter;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;animation:sp-strike .2s cubic-bezier(.5,0,.9,.5) .15s forwards,sp-gone .35s ease-out .55s forwards}
+#splash .sp-bolt path+path{stroke-width:1.6;animation-delay:.24s,.55s}
+#splash .sp-flash{position:absolute;inset:0;background:#fff;opacity:0;animation:sp-flash .5s linear .33s forwards}
+#splash .sp-word{position:relative;font:800 64px/1 Archivo,-apple-system,system-ui,sans-serif;letter-spacing:-.02em;color:#fff;opacity:0;transform:scale(1.18);will-change:transform,opacity;animation:sp-land .5s cubic-bezier(.2,.9,.25,1.1) .34s forwards,sp-jolt .22s steps(2) .36s}
+#splash .sp-sub{position:relative;margin-top:10px;font:700 13px/1 Archivo,-apple-system,system-ui,sans-serif;letter-spacing:.42em;padding-left:.42em;color:rgba(255,255,255,.85);opacity:0;animation:sp-up .45s ease-out .75s forwards}
 #splash.out{animation:sp-out .38s cubic-bezier(.4,0,.2,1) forwards;pointer-events:none}
-@keyframes sp-pop{to{transform:scale(1);opacity:1}}
-@keyframes sp-draw{to{stroke-dashoffset:0}}
-@keyframes sp-fill{to{fill-opacity:1}}
-@keyframes sp-up{to{opacity:1;transform:none}}
+@keyframes sp-strike{to{stroke-dashoffset:0}}
+@keyframes sp-gone{to{opacity:0}}
+@keyframes sp-flash{0%{opacity:0}8%{opacity:.9}22%{opacity:.1}34%{opacity:.6}100%{opacity:0}}
+@keyframes sp-land{0%{opacity:0;transform:scale(1.18)}30%{opacity:1}100%{opacity:1;transform:none;text-shadow:0 0 0 transparent}}
+@keyframes sp-jolt{0%{translate:-3px 1px}50%{translate:3px -1px}100%{translate:0 0}}
+@keyframes sp-up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes sp-out{to{opacity:0;transform:scale(1.04)}}
 @media (prefers-reduced-motion:reduce){#splash *{animation-duration:.01s!important;animation-delay:0s!important}}
 
@@ -380,7 +400,7 @@ a.srow{text-decoration:none;box-sizing:border-box}
 .zr div{flex:1;min-width:0} .zr b{display:block;font-weight:600} .zr span{font-size:13px;color:var(--muted)}
 .zr .zp{width:52px;min-height:30px;padding:0 6px;font-size:14px;text-align:center;display:inline-block;margin:0 2px}
 .zr em{font-style:normal;font-weight:700;white-space:nowrap}
-.dark-tiles{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.88) saturate(.35)}
+.dark-tiles{filter:invert(1) hue-rotate(180deg) brightness(1.05) contrast(1.05) saturate(.5)}
 
 /* setup */
 .setup{display:grid;gap:22px}
@@ -667,10 +687,20 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .faq summary::-webkit-details-marker{display:none}.faq summary::after{content:"+";position:absolute;right:2px;top:12px;color:var(--muted);font-size:20px;font-weight:400}
 .faq details[open] summary::after{content:"−"}.faq p{margin:0 0 14px;color:var(--muted);line-height:1.5;font-size:14.5px}
 .feelq{margin:10px 0 8px!important;font-weight:600;color:var(--ink)!important}.feel{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.feel button{border:1px solid var(--line);background:var(--sunk);color:var(--ink);border-radius:7px;padding:10px 2px;font:600 12.5px/1.1 var(--f-body)}.feel button:active{transform:scale(.96)}.feel button:disabled{opacity:.5}.feelnote{margin-top:8px;width:100%;min-height:40px;font-size:14px}
+
+/* plainer finish: flat tints instead of diagonal gradients and glows */
+.logo,.getapp,.steps-bar i.on{background:var(--accent)} .getapp{box-shadow:none}
+.hero-h{background:color-mix(in srgb,var(--tc) 34%,#111318)}
+.hub-hero{background:color-mix(in srgb,var(--tc) 30%,#111318)}
+.day-h{background:color-mix(in srgb,var(--tc) 13%,#15171D)}
+.verdict{background:color-mix(in srgb,var(--good) 10%,#14161C)} .verdict.v1{background:color-mix(in srgb,var(--work) 10%,#14161C)} .verdict.v2{background:color-mix(in srgb,var(--race) 10%,#14161C)}
+.inst{background:color-mix(in srgb,var(--accent) 12%,#14161C)}
+.scard{background:var(--surface)} .scard.hi{background:color-mix(in srgb,var(--accent) 14%,var(--surface))} .icard{background:var(--surface)}
+.rg-w circle{filter:none!important}
 </style>
 </head>
 <body>
-<div id="splash" aria-hidden="true"><div class="sp-logo"><svg viewBox="0 0 24 24"><path pathLength="1" d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg></div><b>Hybrid</b></div>
+<div id="splash" aria-hidden="true"><svg class="sp-bolt" viewBox="0 0 90 300" preserveAspectRatio="none"><path pathLength="1" d="M58 -10 L30 95 L52 102 L18 205 L44 212 L26 300"/><path pathLength="1" d="M30 95 L8 140 M18 205 L4 236"/></svg><div class="sp-flash"></div><b class="sp-word">HYBRD</b><span class="sp-sub">RUNNING</span></div>
 <script>window.__splashAt = performance.now();</script>
 <div id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></div>
 <div class="wrap" id="app" aria-live="polite"></div>
@@ -813,9 +843,10 @@ function checkinCard(){
 function weighCard(){
   const w = weights[TODAY], a = avgWeight(TODAY);
   if (w && !wf) return '<section class="card" style="--tone:var(--lift)"><div class="card-h">' + ic("scale") + '<span class="lbl">Weigh-in</span><button class="linkbtn r" type="button" data-act="wedit">Edit</button></div>' +
-    '<div class="wrow"><b>' + w + ' <small>lb</small></b><span>7-day average <strong>' + a.toFixed(1) + ' lb</strong>' + goalLine(a) + '</span></div></section>';
+    '<div class="wrow"><b>' + w + ' <small>lb</small></b><span>7-day average <strong>' + a.toFixed(1) + ' lb</strong>' + goalLine(a) + '</span></div><button class="linkbtn" type="button" data-act="wedit" data-past="1" style="margin-top:10px">Add a day you missed</button></section>';
   return '<section class="card" style="--tone:var(--lift)"><div class="card-h">' + ic("scale") + '<span class="lbl">Morning weigh-in</span><span class="r">optional</span></div>' +
-    '<div class="wform"><input id="w-lb" inputmode="decimal" placeholder="' + (a ? a.toFixed(1) : "Weight") + '" aria-label="Weight in pounds" value="' + (w || "") + '"><span>lb</span><button class="btn primary" type="button" data-act="wsave">Save</button></div>' +
+    '<div class="wform"><input id="w-lb" inputmode="decimal" placeholder="' + (a ? a.toFixed(1) : "Weight") + '" aria-label="Weight in pounds" value="' + (wf && wf.past ? "" : w || "") + '"><span>lb</span><button class="btn primary" type="button" data-act="wsave">Save</button></div>' +
+    '<label class="wdate">Day <input id="w-date" type="date" max="' + TODAY + '" min="' + addDays(TODAY, -60) + '" value="' + (wf && wf.past ? addDays(TODAY, -1) : TODAY) + '"></label>' +
     '<p class="err" role="alert">' + esc((wf && wf.err) || "") + '</p><p class="sub">Your calorie target uses your 7-day average, so one high or low morning doesn\'t swing it.</p></section>';
 }
 function goalLine(a){ const g = plan && plan.profile.goalWeight; if (!g || !a) return ''; const d = a - g; return Math.abs(d) < .5 ? ' · at your goal' : ' · ' + Math.abs(d).toFixed(1) + ' lb ' + (d > 0 ? 'to go' : 'under goal'); }
@@ -960,15 +991,15 @@ function mountMaps(){
     if (!el.isConnected || el._map || el.dataset.fallback) return;
     const a = feedActs().find(x => x.id === el.dataset.map), pts = a && ptsOf(a); if (!pts) return;
     const big = !!el.dataset.big, cs = getComputedStyle(document.documentElement);
-    const col = (cs.getPropertyValue("--accent-2") || "#D4585C").trim(), glow = (cs.getPropertyValue("--accent") || "#800000").trim();
+    const col = "#FF5A5F";
     el.innerHTML = "";
     const m = L.map(el, {zoomControl: false, attributionControl: true, dragging: big, touchZoom: big, doubleClickZoom: big, scrollWheelZoom: false, boxZoom: false, keyboard: false, tap: false});
-    const tl = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, className: "dark-tiles", attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(m);
+    const tl = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, detectRetina: true, className: "dark-tiles", attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(m);
     let okT = 0, badT = 0; tl.on("tileload", () => okT++);
     tl.on("tileerror", () => { if (++badT >= 4 && !okT && el._map){ el._map.remove(); el._map = null; el.dataset.fallback = "1"; el.innerHTML = routeSvg(pts); } });
     m.attributionControl.setPrefix(false);
-    L.polyline(pts, {color: glow, weight: 9, opacity: .3, interactive: false}).addTo(m);
-    const line = L.polyline(pts, {color: col, weight: 4, opacity: 1, interactive: false}).addTo(m);
+    L.polyline(pts, {color: "#0A0B0F", weight: 8, opacity: .55, smoothFactor: .4, interactive: false}).addTo(m);
+    const line = L.polyline(pts, {color: col, weight: big ? 4.5 : 3.5, opacity: 1, smoothFactor: .4, lineJoin: "round", interactive: false}).addTo(m);
     L.circleMarker(pts[0], {radius: 6, color: "#0A0B0F", weight: 2, fillColor: "#34D399", fillOpacity: 1, interactive: false}).addTo(m);
     L.circleMarker(pts[pts.length - 1], {radius: 6, color: "#0A0B0F", weight: 2, fillColor: "#FF4D5E", fillOpacity: 1, interactive: false}).addTo(m);
     m.fitBounds(line.getBounds(), {padding: [22, 22]});
@@ -1065,6 +1096,37 @@ addEventListener("focus", checkVersion);
 setInterval(checkVersion, 4 * 60e3);
 document.addEventListener("focusout", () => setTimeout(reloadIfIdle, 400));
 
+/* swipe from the left edge to go back, like Instagram: the screen follows your finger */
+(function(){
+  const appEl = document.getElementById("app"), EDGE = 28;
+  let x0 = null, y0 = 0, dx = 0, on = false, t0 = 0, btn = null;
+  const backBtn = () => document.querySelector('.scrbar [data-act="back"], [data-act="actback"], .setup .nav [data-act="prev"]');
+  addEventListener("touchstart", e => {
+    x0 = null; if (e.touches.length !== 1 || $(".back")) return;
+    const t = e.touches[0]; if (t.clientX > EDGE) return;
+    btn = backBtn(); if (!btn) return;
+    x0 = t.clientX; y0 = t.clientY; dx = 0; on = false; t0 = performance.now();
+  }, {passive: true});
+  addEventListener("touchmove", e => {
+    if (x0 == null) return;
+    const t = e.touches[0], mx = t.clientX - x0, my = t.clientY - y0;
+    if (!on){ if (Math.abs(my) > 12 && Math.abs(my) > Math.abs(mx)){ x0 = null; return; } if (mx < 10) return; on = true; appEl.classList.add("swiping"); }
+    dx = Math.max(0, mx); appEl.style.transform = "translateX(" + dx + "px)";
+    if (e.cancelable) e.preventDefault();
+  }, {passive: false});
+  const end = () => {
+    if (x0 == null) return; x0 = null; if (!on) return; on = false;
+    const w = innerWidth, fast = dx > 40 && dx / (performance.now() - t0) > .5;
+    appEl.classList.remove("swiping"); appEl.classList.add("swipe-settle");
+    if (dx > w * .33 || fast){
+      appEl.style.transform = "translateX(" + w + "px)";
+      setTimeout(() => { appEl.classList.remove("swipe-settle"); noVT = true; try { if (btn && btn.isConnected) btn.click(); } finally { noVT = false; }
+        appEl.style.transform = "translateX(-24px)"; appEl.style.opacity = ".6"; requestAnimationFrame(() => { appEl.classList.add("swipe-settle"); appEl.style.transform = ""; appEl.style.opacity = ""; setTimeout(() => appEl.classList.remove("swipe-settle"), 220); }); }, 170);
+    } else { appEl.style.transform = ""; setTimeout(() => appEl.classList.remove("swipe-settle"), 220); }
+  };
+  addEventListener("touchend", end); addEventListener("touchcancel", end);
+})();
+
 /* pull down from the top to refresh: reloads your data, Strava and the forecast */
 (function(){
   const ptr = document.getElementById("ptr"), appEl = document.getElementById("app"), MAX = 120, GO = 72;
@@ -1073,7 +1135,7 @@ document.addEventListener("focusout", () => setTimeout(reloadIfIdle, 400));
   const show = (dist, spin) => { const p = Math.min(1, dist / GO); ptr.style.opacity = p; ptr.style.transform = "translateY(" + (Math.min(dist, MAX) * .6 - 50 + 50 * p) + "px) rotate(" + dist * 3 + "deg)"; appEl.style.transform = dist ? "translateY(" + Math.min(dist, MAX) * .4 + "px)" : ""; if (spin) ptr.classList.add("go"); };
   const reset = () => { ptr.classList.add("back"); appEl.classList.add("settle"); ptr.style.opacity = 0; ptr.style.transform = "translateY(-50px)"; appEl.style.transform = ""; ptr.classList.remove("go");
     setTimeout(() => { ptr.classList.remove("back"); appEl.classList.remove("settle"); }, 260); };
-  addEventListener("touchstart", e => { if (busy || blocked() || e.touches.length !== 1) { y0 = null; return; } y0 = e.touches[0].clientY; d = 0; appEl.classList.add("pulling"); }, {passive: true});
+  addEventListener("touchstart", e => { if (busy || blocked() || e.touches.length !== 1 || e.touches[0].clientX <= 28) { y0 = null; return; } y0 = e.touches[0].clientY; d = 0; appEl.classList.add("pulling"); }, {passive: true});
   addEventListener("touchmove", e => {
     if (y0 == null) return;
     const dy = e.touches[0].clientY - y0;
@@ -1125,7 +1187,12 @@ function lineChart(series, aria){
 function renderRecovery(){
   const c = checkins[TODAY], r = readiness(c, sigOn(TODAY)), days = Array.from({length: 14}, (_, i) => addDays(TODAY, i - 13));
   let h = '<h2 class="sec-t">Recovery</h2>';
-  if (r) h += '<section class="card" style="--tone:var(--' + r.tone + ')"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span></div><div class="rings">' +
+  if (r && !c){ const sg = sigOn(TODAY);
+    h += '<section class="card" style="--tone:var(--' + r.tone + ')"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span><span class="r">from your watch</span></div><div class="rings">' +
+      ring(r.score, 100, "var(--" + r.tone + ")", "Readiness", String(r.score), r.word) + (sg.sleep_h ? ring(sg.sleep_h, 8, "var(--accent-2)", "Sleep", (Math.round(sg.sleep_h * 10) / 10) + " h", sg.sleep_score != null ? "score " + sg.sleep_score : "last night") : '') +
+      (sg.hrv ? ring(sg.hrv, sg.hrvA ? sg.hrvA * 1.3 : 120, "var(--lift)", "HRV", sg.hrv + " ms", sg.hrvA ? "normal " + Math.round(sg.hrvA) : "last night") : '') + '</div>' +
+      '<div class="verdict v' + r.level + '"><b>' + r.word + '</b><span>' + ["Train as planned.", "Today's session is trimmed. See the note on the Today tab.", "Today is easy or rest. Your workout moves later in the week."][r.level] + ' Do the check-in for a fuller read.</span></div><button class="btn block" type="button" data-act="gotoday">Do the check-in</button></section>'; }
+  else if (r) h += '<section class="card" style="--tone:var(--' + r.tone + ')"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span></div><div class="rings">' +
     ring(r.score, 100, "var(--" + r.tone + ")", "Readiness", String(r.score), r.word) + ring(c.sleep_h, 8, "var(--accent-2)", "Sleep", (c.sleep_h >= 9 ? "9+" : c.sleep_h < 5 ? "<5" : c.sleep_h) + " h", ["", "awful", "poor", "OK", "good", "great"][c.sleep_q] + " quality") +
     ring(6 - c.soreness, 5, "var(--lift)", "Legs", ["", "fresh", "light", "some", "sore", "very sore"][c.soreness], "energy " + ["", "very low", "low", "OK", "good", "great"][c.energy]) + '</div>' +
     '<div class="verdict v' + r.level + '"><b>' + r.word + '</b><span>' + ["Train as planned.", "Today's session is trimmed. See the note on the Today tab.", "Today is easy or rest. Your workout moves later in the week."][r.level] + '</span></div></section>';
@@ -1166,15 +1233,18 @@ function watchCard(days){
   return h + '</section>';
 }
 /* ---------- Training tab extras: weight and calories ---------- */
+let wRange = 42;
+function wAsk(){ try { return localStorage.getItem("hy-wask") !== "off"; } catch(e){ return true; } }
 function bodyCards(){
-  const p = plan.profile, days = Array.from({length: 42}, (_, i) => addDays(TODAY, i - 41));
+  const N = wRange, p = plan.profile, days = Array.from({length: N}, (_, i) => addDays(TODAY, i - N + 1));
   const pts = [], avgPts = []; days.forEach((d, i) => { if (weights[d]) pts.push([i, weights[d]]); const a = avgWeight(d); if (a && Object.keys(weights).some(k => k <= d && k > addDays(d, -7))) avgPts.push([i, Math.round(a * 10) / 10]); });
-  let h = '<section class="card" style="--tone:var(--lift)"><div class="card-h">' + ic("scale") + '<span class="lbl">Body weight · 6 weeks</span>';
+  let h = '<section class="card" style="--tone:var(--lift)"><div class="card-h">' + ic("scale") + '<span class="lbl">Body weight</span><div class="wrng" role="group" aria-label="Range">' + [[42, "6 wk"], [120, "4 mo"]].map(([n, l]) => '<button type="button" data-act="wrange" data-n="' + n + '" aria-pressed="' + (wRange === n) + '"' + (wRange === n ? ' class="on"' : '') + '>' + l + '</button>').join("") + '</div>';
   if (pts.length >= 2){
     const a = avgWeight(TODAY), b = avgWeight(addDays(TODAY, -7)), wk = a && b ? a - b : null;
     const series = [{pts, color: "var(--muted)", w: 1.2, dots: true}, {pts: avgPts, color: "var(--lift)", w: 2.8}];
-    if (p.goalWeight) series.push({pts: [[0, p.goalWeight], [41, p.goalWeight]], color: "var(--long)", dash: true, w: 1.6});
-    h += '<span class="r">' + (wk != null ? (wk <= 0 ? '−' : '+') + Math.abs(wk).toFixed(1) + ' lb this week' : '') + '</span></div>' + lineChart(series, "Daily weigh-ins and 7-day average over 6 weeks") +
+    if (p.goalWeight) series.push({pts: [[0, p.goalWeight], [N - 1, p.goalWeight]], color: "var(--long)", dash: true, w: 1.6});
+    const first = pts[0][1], tot = a ? a - (avgPts.length ? avgPts[0][1] : first) : 0;
+    h += '</div><p class="wsum">' + (wk != null ? '<span><b>' + (wk <= 0 ? '−' : '+') + Math.abs(wk).toFixed(1) + '</b> lb this week</span>' : '') + (avgPts.length > 7 ? '<span><b>' + (tot <= 0 ? '−' : '+') + Math.abs(tot).toFixed(1) + '</b> lb since ' + fmtD(days[avgPts[0][0]]) + '</span>' : '') + '<span><b>' + pts.length + '</b> weigh-ins</span></p>' + lineChart(series, "Daily weigh-ins and 7-day average") +
       '<div class="legend"><span><i style="--c:var(--lift)"></i>7-day average</span><span><i style="--c:var(--muted)"></i>Weigh-ins</span>' + (p.goalWeight ? '<span><i style="--c:var(--long)"></i>Goal ' + p.goalWeight + ' lb</span>' : '') + '</div>' +
       (wk != null && p.goalWeight && p.goalWeight < a ? '<p class="sub">' + (-wk > 1.5 ? 'Losing over 1.5 lb a week can cost muscle. Eating a bit more on training days helps.' : -wk >= .4 ? 'Losing at a muscle-safe pace. Keep going.' : 'Weight is holding steady. If that lasts two weeks, trim about 150 cal a day.') + '</p>' : '');
   } else h += '</div><p class="sub">Weigh in on a few mornings and your trend shows here. The 7-day average smooths out water-weight swings.</p>';
@@ -1417,7 +1487,7 @@ function liftLogHtml(s, key){
       '<label class="lw"><input inputmode="decimal" id="lw-' + i + '" placeholder="' + (h.next != null ? h.next : '') + '" value="' + (today && today.weight != null ? today.weight : '') + '" aria-label="' + esc(ex) + ' weight in pounds"><small>lb</small></label>' +
       '<label class="lh"><input type="checkbox" id="lh-' + i + '"' + (!today || today.hit ? ' checked' : '') + '><small>All reps</small></label></div>';
   }).join("");
-  return '<div class="liftlog">' + rows + '<div class="fbtns"><button class="btn" type="button" data-act="lclose" data-key="' + key + '">Close</button><button class="btn primary" type="button" data-act="lsave" data-key="' + key + '">Save weights</button></div><p class="fine">Leave weight empty for bodyweight moves. Next time, Hybrid suggests the weight to try.</p></div>';
+  return '<div class="liftlog">' + rows + '<div class="fbtns"><button class="btn" type="button" data-act="lclose" data-key="' + key + '">Close</button><button class="btn primary" type="button" data-act="lsave" data-key="' + key + '">Save weights</button></div><p class="fine">Leave weight empty for bodyweight moves. Next time, HYBRD suggests the weight to try.</p></div>';
 }
 
 /* ============ race fueling and hydration ============ */
@@ -1527,7 +1597,7 @@ function mealsHtml(){
     '<label>Leave out<small>Foods you don\'t eat, separated by commas.</small><input id="mp-avoid" maxlength="120" value="' + esc(v.avoid || "") + '" placeholder="e.g. mushrooms, shrimp"></label>' +
     '<label>Cooking time<select id="mp-time"><option value="normal"' + (v.time === "normal" ? ' selected' : '') + '>Normal</option><option value="quick"' + (v.time === "quick" ? ' selected' : '') + '>Quick (20 min a prep)</option></select></label>' +
     (v.err ? '<p class="err" role="alert">' + esc(v.err) + '</p>' : '') +
-    '<button class="btn primary block" type="button" data-act="mpgo"' + (v.busy ? ' disabled aria-busy="true"' : '') + '>' + (v.busy ? 'Making your plan… (about 20 s)' : 'Make my plan') + '</button>' +
+    '<button class="btn primary block" type="button" data-act="mpgo"' + (v.busy ? ' disabled aria-busy="true"' : '') + '>' + (v.busy ? 'Making your plan… (up to a minute)' : 'Make my plan') + '</button>' +
     '<p class="fine">General meal ideas sized to your daily targets, not a medical diet. If you have a food allergy, always check labels yourself.</p></section>';
   return h;
 }
@@ -1612,7 +1682,7 @@ const inApp = /Instagram|FBAN|FBAV|TikTok|musical_ly|Snapchat|Line\/|GSA\//.test
 const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 let installEvt = null, guideOpen = false;
 addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; render(); });
-addEventListener("appinstalled", () => { installEvt = null; toast("Hybrid is on your home screen."); render(); });
+addEventListener("appinstalled", () => { installEvt = null; toast("HYBRD is on your home screen."); render(); });
 const isPhone = isIOS || /Android/.test(ua);
 const showGetApp = () => !standalone() && (!!installEvt || isPhone);
 function openInstall(){
@@ -1621,16 +1691,16 @@ function openInstall(){
     ? '<p class="sub">This page is open inside another app. Tap the <b style="color:var(--ink)">•••</b> or compass button and choose <b style="color:var(--ink)">Open in Safari</b>' + (isIOS ? '' : ' (or Chrome)') + ', then tap <b style="color:var(--ink)">Get app</b> again.</p>'
     : isIOS
     ? '<ol><li><span>Tap the <b>Share</b> button ' + ic("share") + ' in Safari\'s toolbar. On newer iPhones it\'s inside the <b>•••</b> button.</span></li>' +
-      '<li><span>Scroll down and tap <b>Add to Home Screen</b>.</span></li><li><span>Tap <b>Add</b>. Then open Hybrid from your home screen.</span></li></ol>' +
+      '<li><span>Scroll down and tap <b>Add to Home Screen</b>.</span></li><li><span>Tap <b>Add</b>. Then open HYBRD from your home screen.</span></li></ol>' +
       '<p class="sub">Apple only lets you add apps from Safari\'s Share menu, so this one takes 3 taps.</p>'
     : '<ol><li><span>Open your browser\'s menu <b>⋮</b>.</span></li><li><span>Tap <b>Install app</b> or <b>Add to Home screen</b>.</span></li></ol>';
-  b.innerHTML = '<div class="sheet inst" role="dialog" aria-modal="true" aria-label="Get the Hybrid app"><div class="inst-h"><span class="logo">' + ic("bolt") + '</span><div><b>Add Hybrid to your home screen</b><span>Opens full screen, like any app.</span></div></div>' + steps +
+  b.innerHTML = '<div class="sheet inst" role="dialog" aria-modal="true" aria-label="Get the HYBRD app"><div class="inst-h"><span class="logo">' + ic("bolt") + '</span><div><b>Add HYBRD to your home screen</b><span>Opens full screen, like any app.</span></div></div>' + steps +
     '<button class="btn block" type="button" data-act="close">Got it</button></div>';
   document.body.appendChild(b); b.querySelector("button").focus();
   if (isIOS && !inApp){ b.style.paddingBottom = "56px"; const ar = document.createElement("div"); ar.className = "inst-arrow"; ar.setAttribute("aria-hidden", "true"); ar.textContent = "Share is down here ↓"; document.body.appendChild(ar); setTimeout(() => ar.remove(), 9000); }
 }
 function header(){
-  return '<header class="top"><div class="brand"><span class="logo">' + ic("bolt") + '</span><b>Hybrid</b></div>' + (mode === "sample" ? '<span class="pill demo">Sample</span>' : mode === "account" || API ? '' : '<span class="pill demo">Demo</span>') +
+  return '<header class="top"><div class="brand"><span class="logo">' + ic("bolt") + '</span><b>HYBRD</b></div>' + (mode === "sample" ? '<span class="pill demo">Sample</span>' : mode === "account" || API ? '' : '<span class="pill demo">Demo</span>') +
     (showGetApp() ? '<button class="getapp" type="button" data-act="getapp">' + ic("download") + '<span>Get app</span></button>' : '') +
     (plan ? '<button class="iconbtn" type="button" data-act="menu" aria-label="Settings">' + ic("gear") + '</button>' : '') + '</header>';
 }
@@ -1712,8 +1782,11 @@ function renderToday(){
   const tile = (scrName, tone, title, big, sub, extra, wide) => '<div class="tl' + (wide ? ' wide' : '') + '" style="--tc:var(--' + tone + ')" data-act="go" data-scr="' + scrName + '" role="button" tabindex="0"><div class="tt"><i></i>' + title + '<em>›</em></div><b>' + big + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + (extra || '') + '</div>';
   const fuelTile = tile("fuel", "accent-2", "Fuel", comma(Math.abs(left)) + ' <small>' + (left < 0 ? 'cal over' : 'cal left') + '</small>', comma(e.cal) + ' eaten of ' + comma(f.cal),
     '<div class="bar"><i style="width:' + (f.cal ? Math.min(100, e.cal / f.cal * 100) : 0) + '%' + (left < 0 ? ';background:var(--crit)' : '') + '"></i></div><button class="btn primary tbtn" type="button" data-act="go" data-scr="fuel">' + ic("plus") + 'Log food</button>', true);
-  h += checkinCard() + fuelTile + heroSummary(day);
   const list = actsOn(TODAY), wt = weights[TODAY], aw7 = avgWeight(TODAY), L = wxLoc();
+  let wskip = null; try { wskip = localStorage.getItem("hy-wskip"); } catch(e){}
+  const quickW = !wt && wskip !== TODAY && wAsk() ? '<section class="card qw" style="--tone:var(--lift)"><div class="card-h">' + ic("scale") + '<span class="lbl">Morning weigh-in</span><button class="linkbtn r" type="button" data-act="wskip">Not today</button></div>' +
+    '<div class="wform"><input id="w-lb" inputmode="decimal" placeholder="' + (aw7 ? aw7.toFixed(1) : "Weight") + '" aria-label="Weight in pounds"><span>lb</span><button class="btn primary" type="button" data-act="wsave">Save</button></div>' + (wf && wf.err ? '<p class="err" role="alert">' + esc(wf.err) + '</p>' : '') + '</section>' : '';
+  h += checkinCard() + fuelTile + heroSummary(day) + quickW;
   if (L && wxState === "idle") setTimeout(() => loadWeather(), 0);
   const nowKey = TODAY + "T" + String(new Date().getHours()).padStart(2, "0") + ":00", bw = wx && wxState === "ok" ? HP.bestWindow(wx.hours, nowKey, addDays(TODAY, 1)) : null;
   let wmi = 0, wdone = 0;
@@ -1743,7 +1816,7 @@ function renderPlan(){
 }
 function ring(val, max, color, label, txt, sub){
   const r = 42, c = 2 * Math.PI * r, f = Math.max(.04, Math.min(1, val / max));
-  return '<div class="rg"><div class="rg-w"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="' + r + '" fill="none" stroke="var(--sunk)" stroke-width="9"/><circle cx="50" cy="50" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + (c * (1 - f)).toFixed(1) + '" style="filter:drop-shadow(0 0 5px ' + color + ')"/></svg><b>' + txt + '</b></div><span>' + label + '</span><small>' + sub + '</small></div>';
+  return '<div class="rg"><div class="rg-w"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="' + r + '" fill="none" stroke="var(--sunk)" stroke-width="9"/><circle cx="50" cy="50" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + (c * (1 - f)).toFixed(1) + '"/></svg><b>' + txt + '</b></div><span>' + label + '</span><small>' + sub + '</small></div>';
 }
 function renderTraining(part){
   const p = plan.profile, P = plan.P;
@@ -2025,13 +2098,13 @@ function settingsScreen(k){
   const row = (to, label, sub, icon, act, cls) => '<button class="srow' + (cls ? ' ' + cls : '') + '" type="button" data-act="' + (act || 'go') + '"' + (to ? ' data-scr="' + to + '"' : '') + '>' + ic(icon) + '<div><b>' + label + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</div>' + (to || act === "edit" ? '<i>›</i>' : '') + '</button>';
   const group = (title, rows) => '<section class="sgroup">' + (title ? '<h2>' + title + '</h2>' : '') + '<div class="slist">' + rows + '</div></section>';
   const pr = plan ? plan.profile : {}, nm = (me && me.name) || pr.name || "";
-  const help = group("", (API ? row("set-report", "Report a problem", "Something broken or confusing? Tell us.", "flag") : '') + (mode === "account" && isOwner ? row("set-reports", "Reported problems", reports.length + ' waiting', "bars") : '') + row("set-about", "How Hybrid works", "Your plan, readiness and calories, explained", "spark") +
+  const help = group("", (API ? row("set-report", "Report a problem", "Something broken or confusing? Tell us.", "flag") : '') + (mode === "account" && isOwner ? row("set-reports", "Reported problems", reports.length + ' waiting', "bars") : '') + row("set-about", "How HYBRD works", "Your plan, readiness and calories, explained", "spark") +
     row("set-health-info", "Health and safety", "Read before changing how you eat or train", "heart") + row("set-terms", "Terms of use", "", "flag") + '<a class="srow" href="privacy.html" target="_blank" rel="noopener">' + ic("lock") + '<div><b>Privacy policy</b><span>What we collect and how it\'s used</span></div><i>›</i></a>');
   const training = group("Your plan", row("", "Race, training days and lifting", plan ? HP.raceName(pr) + (plan.raceDate ? ' · ' + fmtD(plan.raceDate) : '') + ' · rebuilds your plan' : '', "cal", "edit") +
     row("set-hr", "Heart rate zones", hrSummary(), "heart") + row("set-run", "Running", 'Usual run time ' + hr12(+String(uset.run_time || "07:00").slice(0, 2)) + (wxLoc() ? ' · ' + esc(wxLoc().place || 'weather on') : ''), "sun"));
   const card = (to, title, sub, icon, act) => '<button class="scard" type="button" data-act="' + (act || 'go') + '"' + (to ? ' data-scr="' + to + '"' : '') + '>' + '<div><b>' + title + '</b><span>' + sub + '</span></div><i>' + (icon ? ic(icon) : '›') + '</i></button>';
-  const invite = API ? card("", "Invite a friend", "Send them Hybrid. It's free to try.", "share", "invite").replace('class="scard"', 'class="scard hi"') : '';
-  const helpCard = card("set-help", "Help and support", "Report a problem, how Hybrid works, health and safety, terms and privacy");
+  const invite = API ? card("", "Invite a friend", "Send them HYBRD. It's free to try.", "share", "invite").replace('class="scard"', 'class="scard hi"') : '';
+  const helpCard = card("set-help", "Help and support", "Report a problem, how HYBRD works, health and safety, terms and privacy");
   const trainCard = card("set-train", "Coaching and training", plan ? esc(HP.raceName(pr)) + (plan.raceDate ? ' · ' + fmtD(plan.raceDate) : '') + ' · heart rate zones · run time' : 'Goal, heart rate zones and run time');
   if (k === "settings"){
     if (mode === "account") return '<button class="me-card" type="button" data-act="go" data-scr="set-acct"><span class="avatar">' + esc((nm || me.email || "?").slice(0, 1).toUpperCase()) + '</span><div><b>' + esc(nm || "Add your name") + '</b><span>' + esc(me.email) + '</span></div><i>›</i></button>' +
@@ -2061,7 +2134,7 @@ function settingsScreen(k){
     '<p><b>Readiness</b> comes from your morning check-in (and your watch, if connected). On low days, today\'s run gets shorter or easier, and hard workouts move later in the week.</p>' +
     '<p><b>Run paces</b> adjust from how your last workouts went, and from the heat when it\'s hot out.</p>' +
     '<p><b>Calories</b> are a base for your body weight, plus what you burn in workouts, minus a small deficit if you\'re working toward a lower weight.</p>' +
-    '<p><b>Your data</b> is saved to your Hybrid account so it\'s on every phone you log in on. Delete your account any time in Settings and it\'s all removed.</p></section><p class="sub" style="text-align:center">Hybrid · version ' + APP_VERSION + '</p>';
+    '<p><b>Your data</b> is saved to your HYBRD account so it\'s on every phone you log in on. Delete your account any time in Settings and it\'s all removed.</p></section><p class="sub" style="text-align:center">HYBRD · version ' + APP_VERSION + '</p>';
   if (mode !== "account" && k !== "set-report") return '';
   if (k === "set-email") return acctForm("email");
   if (k === "set-password") return acctForm("password");
@@ -2134,27 +2207,27 @@ function hrRead(){
 }
 
 /* ---------- health and safety + terms (privacy policy: privacy.html) ----------
-   Hybrid gives general fitness and nutrition information (Florida's exemption for general wellness advice,
+   HYBRD gives general fitness and nutrition information (Florida's exemption for general wellness advice,
    s. 468.505(1)(n)): it never presents itself as a dietitian or nutritionist and isn't for people whose doctor
    is treating a condition with a special diet. */
 const LEGAL_DATE = "November 12, 2026", HELPLINE = "866-662-1235";
 function legalHtml(k){
   const P = t => '<p>' + t + '</p>', L = items => '<ul>' + items.map(x => '<li>' + x + '</li>').join("") + '</ul>', H = t => '<h3>' + t + '</h3>';
   if (k === "health") return H("General information only") +
-    P("Hybrid gives general fitness and nutrition information for healthy adults. It is not medical advice and doesn't replace a doctor, registered dietitian or other health professional. Hybrid is not a dietitian, nutritionist or nutrition counselor.") +
+    P("HYBRD gives general fitness and nutrition information for healthy adults. It is not medical advice and doesn't replace a doctor, registered dietitian or other health professional. HYBRD is not a dietitian, nutritionist or nutrition counselor.") +
     H("Check with a doctor first if you") + L(["are pregnant or breastfeeding", "have a heart, lung, kidney, liver or blood sugar condition, high blood pressure, or any other medical condition", "take medication that affects heart rate, blood sugar or appetite", "are coming back from an injury, surgery or illness", "haven't exercised in a long time"]) +
-    H("Don't use Hybrid's calorie targets if you") + L(["are under 18", "have, or have had, an eating disorder", "are being treated by a doctor for a condition that needs a special diet (for example diabetes or kidney disease)"]) +
+    H("Don't use HYBRD's calorie targets if you") + L(["are under 18", "have, or have had, an eating disorder", "are being treated by a doctor for a condition that needs a special diet (for example diabetes or kidney disease)"]) +
     H("Stop and get help") + P("Stop exercising and get medical help right away if you have chest pain or pressure, fainting, severe dizziness, trouble breathing, an irregular heartbeat, or sharp or unusual pain. In an emergency, call 911.") +
     H("Numbers are estimates") + P("Calorie, macro, pace, heart rate zone, fitness and race time numbers are estimates and can be off. Food read from photos and text, coach notes and workout reviews are written by AI and can be wrong. Check food labels when you can, and listen to your body over the app.") +
     H("Built-in safety limits") + L(["A weight-loss calorie target never goes below 1,500 calories a day (or your maintenance, if that's lower).", "The deficit is capped at 750 calories, and shrinks if you lose more than about 1% of your body weight in a week.", "Every 8th week is a maintenance week, and targets go to maintenance once you reach your goal.", "Goal weights more than 20% below your current weight aren't accepted."]) +
     H("If food or weight feels stressful") + P("Talking to someone helps. The National Alliance for Eating Disorders helpline is free and staffed by licensed therapists: <a href=\"tel:18666621235\">" + HELPLINE + "</a> (Monday to Friday, 9 am to 7 pm ET).") +
     '<p class="sub">Updated ' + LEGAL_DATE + '</p>';
-  if (k === "terms") return P("By creating an account or using Hybrid, you agree to these terms and to the <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">privacy policy</a>.") +
-    H("Who can use Hybrid") + P("You must be 18 or older.") +
-    H("Not medical or dietetic advice") + P("Hybrid provides general information only, as described in the Health and safety notice. Decisions about your training, eating and health are yours. Talk to a qualified professional before making changes, especially if you have a medical condition.") +
-    H("Use at your own risk") + P("Exercise and changes to how you eat carry risk, including injury. Hybrid is provided \"as is\", without warranties of any kind. To the fullest extent the law allows, Hybrid and its creator aren't liable for any injury, illness, loss or damage that comes from using the app or relying on its information.") +
+  if (k === "terms") return P("By creating an account or using HYBRD, you agree to these terms and to the <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">privacy policy</a>.") +
+    H("Who can use HYBRD") + P("You must be 18 or older.") +
+    H("Not medical or dietetic advice") + P("HYBRD provides general information only, as described in the Health and safety notice. Decisions about your training, eating and health are yours. Talk to a qualified professional before making changes, especially if you have a medical condition.") +
+    H("Use at your own risk") + P("Exercise and changes to how you eat carry risk, including injury. HYBRD is provided \"as is\", without warranties of any kind. To the fullest extent the law allows, HYBRD and its creator aren't liable for any injury, illness, loss or damage that comes from using the app or relying on its information.") +
     H("AI features") + P("Food reading, coach notes and workout reviews are generated by AI. They can be inaccurate and aren't reviewed by a person before you see them.") +
-    H("Your account") + P("Keep your password private. Don't misuse the app, try to break it, or access other people's accounts. Hybrid may change or remove features, and may close accounts that misuse it. You can delete your account at any time in Settings.") +
+    H("Your account") + P("Keep your password private. Don't misuse the app, try to break it, or access other people's accounts. HYBRD may change or remove features, and may close accounts that misuse it. You can delete your account at any time in Settings.") +
     H("Changes") + P("These terms may be updated. If something important changes, the app will ask you to agree again.") +
     H("Questions") + P("Use Settings → Report a problem.") + '<p class="sub">Updated ' + LEGAL_DATE + '</p>';
   return '';
@@ -2171,7 +2244,7 @@ const needsConsent = () => mode === "account" && me && !me.terms_at;
 function renderConsent(){
   const c = consentv || (consentv = {});
   return header() + '<section class="setup view legal"><h2 class="sec-t">Before you keep going</h2>' +
-    '<p class="sub">Hybrid gives general fitness and nutrition information for healthy adults. It isn\'t medical advice, and Hybrid isn\'t a dietitian or nutritionist.</p>' +
+    '<p class="sub">HYBRD gives general fitness and nutrition information for healthy adults. It isn\'t medical advice, and HYBRD isn\'t a dietitian or nutritionist.</p>' +
     '<ul><li>Check with a doctor before starting, especially if you have a medical condition, take medication, or are pregnant.</li><li>Don\'t use the calorie targets if you have or had an eating disorder, or a doctor is treating you with a special diet.</li><li>Calories and AI food reads are estimates and can be wrong.</li></ul>' +
     '<p class="sub"><button class="linkbtn inl" type="button" data-act="doc" data-k="health">Health and safety</button> · <button class="linkbtn inl" type="button" data-act="doc" data-k="terms">Terms</button> · <a class="linkbtn inl" href="privacy.html" target="_blank" rel="noopener">Privacy</a></p>' +
     '<label class="agree"><input type="checkbox" id="c-agree"' + (c.on ? ' checked' : '') + '><span>I\'m 18 or older, and I agree to the Terms and the Health and safety notice.</span></label>' +
@@ -2181,7 +2254,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "43";
+const APP_VERSION = "44";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2268,8 +2341,8 @@ async function checkPush(){ try { const reg = await Promise.race([navigator.serv
 function notifHtml(){
   let h = '<div class="nset"><div class="card-h" style="--tone:var(--accent-2)">' + ic("bell") + '<span class="lbl">Notifications</span></div>';
   if (!pushInfo.key) return h + '<p class="sub">Notifications are being set up.</p></div>';
-  if (!pushOK()) return h + '<p class="sub">' + (isIOS && !standalone() ? 'On iPhone, add Hybrid to your home screen first (tap <b style="color:var(--ink)">Get app</b>), open it from there, then turn notifications on here.' : 'This browser can\'t show notifications.') + '</p></div>';
-  if (Notification.permission === "denied") return h + '<p class="sub">Notifications are blocked for Hybrid. Turn them on in your phone\'s Settings → Notifications, then come back.</p></div>';
+  if (!pushOK()) return h + '<p class="sub">' + (isIOS && !standalone() ? 'On iPhone, add HYBRD to your home screen first (tap <b style="color:var(--ink)">Get app</b>), open it from there, then turn notifications on here.' : 'This browser can\'t show notifications.') + '</p></div>';
+  if (Notification.permission === "denied") return h + '<p class="sub">Notifications are blocked for HYBRD. Turn them on in your phone\'s Settings → Notifications, then come back.</p></div>';
   if (!pushState.on) return h + '<p class="sub">Morning check-in reminder, a summary after every workout, a Monday recap and a bedtime reminder.</p><button class="btn primary block" type="button" data-act="pushon">Turn on notifications</button></div>';
   const tg = (k, label) => '<label class="tgl"><input type="checkbox" data-set="' + k + '"' + (uset[k] ? ' checked' : '') + '><span>' + label + '</span></label>';
   return h + tg("n_morning", "Morning check-in reminder") + '<label class="tm">at<input type="time" data-set="morning" value="' + esc(uset.morning) + '"></label>' +
@@ -2287,15 +2360,28 @@ async function pushOn(){
   const j = await api("PUT", "/api/settings", {tz}); uset = j.settings || uset;
   pushState.on = true; pushInfo.devices = (pushInfo.devices || 0) + 1;
 }
+/* ask once on open when notifications are off (again after 3 days if they said "Not now") */
+function askNotif(){
+  if (mode !== "account" || !plan || setup || authv || !pushInfo.key || !pushOK() || pushState.on || $(".back")) return;
+  const denied = Notification.permission === "denied"; let last = 0; try { last = +localStorage.getItem("hy-nask") || 0; } catch(e){}
+  if (Date.now() - last < (denied ? 7 : 3) * 864e5) return;
+  try { localStorage.setItem("hy-nask", Date.now()); } catch(e){}
+  const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
+  b.innerHTML = '<div class="sheet nask" role="dialog" aria-modal="true" aria-labelledby="nask-h"><div class="nask-i">' + ic("bell") + '</div><h2 id="nask-h">' + (denied ? 'Notifications are off' : 'Turn on notifications?') + '</h2>' +
+    '<p>' + (denied ? 'HYBRD can\'t reach you. To get your morning readiness and workout summaries, open your phone\'s Settings → Notifications → HYBRD and allow them.' : 'Get your readiness score when you wake up, a summary after each workout and a short Monday recap. You can change this any time in Settings.') + '</p>' +
+    (denied ? '<button class="btn primary block" type="button" data-act="nasknot">OK</button>' : '<button class="btn primary block" type="button" data-act="naskyes">Allow</button><button class="btn block" type="button" data-act="nasknot">Not now</button>') + '</div>';
+  document.body.appendChild(b);
+}
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 const SCR_T = {fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
   settings: "Settings", "set-notif": "Notifications", "set-watch": "Devices and apps", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
-  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Hybrid works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew"};
+  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How HYBRD works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew"};
 const SCR_UP = {"set-acct": "settings", "set-train": "settings", "set-help": "settings", "set-health-info": "set-help", "set-terms": "set-help", "set-about": "set-help", "set-report": "set-help", "set-reports": "set-help", "set-profile": "set-acct", "set-email": "set-acct", "set-password": "set-acct", "set-account": "set-acct", "set-hr": "set-train", "set-run": "set-train", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", meals: "fuel", crew: "crews"};
 let navDir = null;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let noVT = false;
 function nav(dir, fn){
-  if (reduceMotion){ fn(); return; }
+  if (reduceMotion || noVT){ fn(); return; }
   if (document.startViewTransition && document.visibilityState === "visible"){
     document.documentElement.dataset.nav = dir;
     try { const t = document.startViewTransition(() => { fn(); }); t.finished.catch(() => {}).finally(() => { delete document.documentElement.dataset.nav; }); return; } catch(e){}
@@ -2321,7 +2407,7 @@ function renderScreen(){
   else if (s === "crew") h = crewHtml();
   else if (s === "workouts") h = workoutCard();
   else if (s === "weather") h = weatherCard();
-  else if (s === "weight") h = weighCard() + (p ? bodyCards() : '');
+  else if (s === "weight") h = weighCard() + (p ? bodyCards() : '') + '<section class="card"><label class="tgl"><input type="checkbox" id="w-ask"' + (wAsk() ? ' checked' : '') + '><span>Ask me on Today each morning</span></label><p class="sub">Shows a quick weigh-in on Today until you\'ve weighed in. Totally optional.</p></section>';
   else if (s === "session") h = day ? sessionCard(day) : '<p class="sub">Nothing planned today.</p>';
   else if (s.startsWith("t-")) h = renderTraining(s.slice(2));
   else h = settingsScreen(s);
@@ -2339,8 +2425,8 @@ function renderMore(){
   h += card("go", "Meal prep and grocery list", "Two preps a week, sized to your targets", "fork", "meals");
   if (mode === "account") h += card("go", "Crews", "Train with friends. They only see your nickname and weekly total", "user", "crews");
   h += card("go", "FAQ", "How plans, calories, recovery and syncing work", "spark", "faq");
-  if (API) h += card("invite", "Invite a friend", "Send them Hybrid. It's free to try", "share");
-  h += '<a class="scard" href="https://www.instagram.com/hybridrunnin/" target="_blank" rel="noopener"><i class="mi">' + ic("camera") + '</i><div><b>Follow @hybridrunnin</b><span>Tips, new features and early access news on Instagram</span></div><i>›</i></a>';
+  if (API) h += card("invite", "Invite a friend", "Send them HYBRD. It's free to try", "share");
+  h += '<a class="scard" href="https://www.instagram.com/hybrdrunning/" target="_blank" rel="noopener"><i class="mi">' + ic("camera") + '</i><div><b>Follow @HybrdRunning</b><span>Tips, new features and early access news on Instagram</span></div><i>›</i></a>';
   h += card("go", "Settings", "Account, devices and apps, notifications", "gear", "settings");
   h += card("go", "Help and support", "Report a problem, health and safety, terms and privacy", "heart", "set-help");
   return h + '</div>';
@@ -2349,13 +2435,13 @@ const FAQ = [
   ["How is my plan built?", "From your goal, your current fitness and the days you can train. It builds up for a few weeks, takes an easier week every fourth week, and eases off before race day. Everyday plans mix strength and cardio and keep building in 12-week blocks."],
   ["Can I change my goal or race?", "Yes. More → Change goal or start a new plan. Your plan rebuilds from this week on, and your logged workouts and food stay."],
   ["How do I find my race?", "More → Find a race. Search by name, city or sport and tap your race to set the date. Always double-check the date on the race's own website."],
-  ["How are my calories worked out?", "Your resting burn (BMR) comes from your height, weight, age and sex. Hybrid adds how active your day is and the workouts you log, then adjusts for your goal: a deficit to lose, a small surplus to gain. It never goes below safe minimums."],
+  ["How are my calories worked out?", "Your resting burn (BMR) comes from your height, weight, age and sex. HYBRD adds how active your day is and the workouts you log, then adjusts for your goal: a deficit to lose, a small surplus to gain. It never goes below safe minimums."],
   ["What does readiness mean?", "A score from your morning check-in plus your watch's sleep, resting heart rate and HRV when linked. On low days the workout gets shorter or easier."],
   ["Which watches work?", "Garmin and Strava connect directly. COROS, Polar, Suunto, Wahoo and Zwift come in through Strava. Apple Watch, WHOOP and Oura come in through Apple Health."],
   ["I linked Garmin and Apple Health. Which numbers win?", "Garmin's sleep, sleep score, resting heart rate and HRV replace Apple Health's for the same day. Apple Health fills in anything Garmin didn't send."],
-  ["Why didn't my workout show up?", "Garmin and Strava send workouts after your watch syncs with their app. Open Garmin Connect or Strava on your phone, let it sync, then pull down on Hybrid to refresh."],
-  ["Who can see my data?", "Only you. Crews see just your nickname and one weekly total. Hybrid never sells your data or shows ads."],
-  ["Is this medical or nutrition advice?", "No. Hybrid gives general fitness and food guidance for healthy adults. If you have a health condition, are pregnant, or have a history of disordered eating, check with your doctor first."],
+  ["Why didn't my workout show up?", "Garmin and Strava send workouts after your watch syncs with their app. Open Garmin Connect or Strava on your phone, let it sync, then pull down on HYBRD to refresh."],
+  ["Who can see my data?", "Only you. Crews see just your nickname and one weekly total. HYBRD never sells your data or shows ads."],
+  ["Is this medical or nutrition advice?", "No. HYBRD gives general fitness and food guidance for healthy adults. If you have a health condition, are pregnant, or have a history of disordered eating, check with your doctor first."],
   ["How do I delete my account?", "Settings → Account and profile → Delete account. Everything is removed, and linked apps are disconnected."]
 ];
 function faqHtml(){
@@ -2406,7 +2492,7 @@ document.addEventListener("click", ev => {
   if (act === "afilt"){ actFilter = a.dataset.k; render(); return; }
   if (act === "gmconnect"){ a.disabled = true; api("POST", "/api/garmin/start").then(j => { location.href = j.url; }).catch(e => { a.disabled = false; toast(e.message); }); return; }
   if (act === "gmdisc"){
-    if (!confirm("Disconnect Garmin? Hybrid stops getting your Garmin data and deletes the Garmin workouts and sleep it saved.")) return;
+    if (!confirm("Disconnect Garmin? HYBRD stops getting your Garmin data and deletes the Garmin workouts and sleep it saved.")) return;
     api("POST", "/api/garmin/disconnect").then(() => { garmin.connected = false; acts = acts.filter(x => x.source !== "garmin"); refreshMe(); render(); toast("Garmin disconnected."); }).catch(e => toast(e.message)); return;
   }
   if (act === "feel"){
@@ -2416,8 +2502,8 @@ document.addEventListener("click", ev => {
     return;
   }
   if (act === "invite"){
-    const url = location.origin + location.pathname, msg = "I've been training with Hybrid. It builds a plan for your race, sets your food targets and adjusts when you're tired. Try it free: " + url;
-    if (navigator.share) navigator.share({title: "Hybrid", text: msg}).catch(() => {});
+    const url = location.origin + location.pathname, msg = "I've been training with HYBRD. It builds a plan for your race, sets your food targets and adjusts when you're tired. Try it free: " + url;
+    if (navigator.share) navigator.share({title: "HYBRD", text: msg}).catch(() => {});
     else if (navigator.clipboard) navigator.clipboard.writeText(msg).then(() => toast("Invite copied. Paste it in a text."), () => toast(url));
     else toast(url);
     return;
@@ -2488,7 +2574,7 @@ document.addEventListener("click", ev => {
   }
   if (act === "crewshare"){
     const c = crews.find(x => x.id === a.dataset.id); if (!c) return;
-    const msg = "Join my crew \"" + c.name + "\" on Hybrid. Open " + location.origin + location.pathname + " and enter code " + c.code + " under Activities, Crews. Crews only see nicknames and weekly totals.";
+    const msg = "Join my crew \"" + c.name + "\" on HYBRD. Open " + location.origin + location.pathname + " and enter code " + c.code + " under Activities, Crews. Crews only see nicknames and weekly totals.";
     if (navigator.share) navigator.share({text: msg}).catch(() => {});
     else if (navigator.clipboard) navigator.clipboard.writeText(msg).then(() => toast("Invite copied."), () => toast("Code: " + c.code));
     else toast("Code: " + c.code);
@@ -2617,11 +2703,14 @@ document.addEventListener("click", ev => {
       .catch(e => { ci.busy = false; ci.err = e.message; render(); });
     return;
   }
-  if (act === "wedit"){ wf = {err: ""}; render(); const el = document.getElementById("w-lb"); if (el) el.focus(); return; }
+  if (act === "wedit"){ wf = {err: "", past: a.dataset.past === "1"}; render(); const el = document.getElementById("w-lb"); if (el) el.focus(); return; }
+  if (act === "wrange"){ wRange = +a.dataset.n || 42; render(); return; }
+  if (act === "wskip"){ try { localStorage.setItem("hy-wskip", TODAY); } catch(e){} render(); return; }
   if (act === "wsave"){
     const lb = parseFloat(((document.getElementById("w-lb") || {}).value || "").replace(",", "."));
+    const wd = ((document.getElementById("w-date") || {}).value || TODAY), date = /^\d{4}-\d{2}-\d{2}$/.test(wd) && wd <= TODAY ? wd : TODAY;
     if (!(lb >= 70 && lb <= 500)){ wf = {err: "Enter your weight in pounds, like 182.4."}; render(); return; }
-    saveRemote("PUT", "/api/weight", {date: TODAY, lb}).then(() => { weights[TODAY] = Math.round(lb * 10) / 10; wf = null; save(); render(); }).catch(e => { wf = {err: e.message}; render(); });
+    saveRemote("PUT", "/api/weight", {date, lb}).then(() => { weights[date] = Math.round(lb * 10) / 10; wf = null; save(); render(); if (date !== TODAY) toast("Saved for " + fmtD(date) + "."); }).catch(e => { wf = {err: e.message}; render(); });
     return;
   }
   if (act === "atoggle"){ aw = {open: !aw.open, err: "", busy: false}; render(); return; }
@@ -2648,6 +2737,8 @@ document.addEventListener("click", ev => {
     api("POST", "/api/strava/disconnect").then(() => { strava.connected = false; acts = acts.filter(x => x.source !== "strava"); render(); toast("Strava disconnected."); }).catch(e => toast(e.message)); return;
   }
   if (act === "fday"){ captureFood(); fdate = addDays(fdate, +a.dataset.dir); if (fdate > TODAY) fdate = TODAY; fs.err = ""; fs.note = ""; render(); return; }
+  if (act === "nasknot"){ closeMenu(); return; }
+  if (act === "naskyes"){ a.disabled = true; a.textContent = "One moment…"; pushOn().then(() => { closeMenu(); render(); toast("Notifications are on."); }).catch(e => { closeMenu(); toast(e.message || "Couldn't turn on notifications."); }); return; }
   if (act === "pushon"){ a.disabled = true; a.textContent = "One moment…"; pushOn().then(() => { render(); toast("Notifications are on."); }).catch(e => { a.disabled = false; a.textContent = "Turn on notifications"; toast(e.message || "Couldn't turn on notifications."); }); return; }
   if (act === "pushtest"){ api("POST", "/api/push/test").then(j => toast(j.sent ? "Test sent. It should arrive in a few seconds." : "Couldn't reach this phone. Turn notifications off and on again.")).catch(e => toast(e.message)); return; }
   if (act === "pushoff"){ navigator.serviceWorker.ready.then(reg => reg.pushManager.getSubscription()).then(sub => sub ? api("POST", "/api/push/unsubscribe", {endpoint: sub.endpoint}).then(() => sub.unsubscribe()) : null)
@@ -2692,6 +2783,7 @@ document.addEventListener("change", ev => {
     return;
   }
   if (ev.target.id === "food-meal"){ fs.meal = ev.target.value; return; }
+  if (ev.target.id === "w-ask"){ try { localStorage.setItem("hy-wask", ev.target.checked ? "on" : "off"); } catch(e){} return; }
   if (ev.target.id === "food-barcode"){ const file = ev.target.files && ev.target.files[0]; if (file){ captureFood(); scanBarcode(file); } return; }
   if (ev.target.dataset && ev.target.dataset.groc){ const g = groceryDone(); if (ev.target.checked) g[ev.target.dataset.groc] = 1; else delete g[ev.target.dataset.groc]; try { localStorage.setItem("hy-groc-" + mealplan.id, JSON.stringify(g)); } catch(e){} ev.target.closest(".gi").classList.toggle("done", ev.target.checked); return; }
   if (!setup) return;
@@ -2709,7 +2801,7 @@ function bodyFields(p, pre){
     (showGoal ? '<div class="q"><label for="' + pre + '-gw">Goal weight (lb)</label><input id="' + pre + '-gw" inputmode="decimal" placeholder="' + (ev && bg === "lose" ? 'Needed' : 'Optional') + '" value="' + (p.goalWeight ?? '') + '"></div>' : '<div></div>') + '</div>' +
     '<div class="q"><span class="ql">Sex</span><p class="hint">Only used in the resting-calorie formula.</p>' + optList(pre + "sex", [["m","Male"],["f","Female"],["x","Prefer not to say"]], p.sex || "") + '</div>' +
     '<div class="q"><span class="ql">Outside of workouts, your day is…</span>' + optList(pre + "daily", [["sit","Mostly sitting"],["some","On my feet some"],["feet","On my feet most of the day"]], p.daily || "some") + '</div>' +
-    '<p class="hint">Hybrid works out your resting burn (BMR) from your height, weight, age and sex, adds your daily activity and workouts, then sets food targets for your goal.</p>';
+    '<p class="hint">HYBRD works out your resting burn (BMR) from your height, weight, age and sex, adds your daily activity and workouts, then sets food targets for your goal.</p>';
 }
 function readBody(p, pre, optional){
   const v = id => { const e = document.getElementById(id); return e ? e.value.trim() : ""; }, num = id => { const x = parseFloat(v(id)); return isFinite(x) ? x : null; };
@@ -2719,23 +2811,23 @@ function readBody(p, pre, optional){
   if (optional && ft == null && age == null){   // older profiles: height and age not given, keep the simple calorie estimate
     if (!(w >= 80 && w <= 500)) return "Enter your weight in pounds.";
     if (gw != null && !(gw >= 80 && gw <= 500)) return "Enter a goal weight in pounds, or leave it empty.";
-    if (gw != null && gw < w * .8) return "For a goal more than 20% below your current weight, please work with a doctor or registered dietitian. Hybrid won't set targets for it.";
+    if (gw != null && gw < w * .8) return "For a goal more than 20% below your current weight, please work with a doctor or registered dietitian. HYBRD won't set targets for it.";
     p.weight = Math.round(w * 10) / 10; p.goalWeight = gw == null ? null : Math.round(gw * 10) / 10; p.sex = radio(pre + "sex") || p.sex; p.daily = radio(pre + "daily") || p.daily; return "";
   }
   if (!(ft >= 4 && ft <= 7) || inch < 0 || inch >= 12) return "Enter your height in feet and inches.";
   const h = ft * 12 + inch; if (h < 54 || h > 90) return "Enter your height in feet and inches.";
   if (!(w >= 80 && w <= 500)) return "Enter your weight in pounds.";
-  if (!(age >= 18 && age <= 100)) return "Hybrid is for adults 18 and older. Enter your age.";
+  if (!(age >= 18 && age <= 100)) return "HYBRD is for adults 18 and older. Enter your age.";
   p.heightIn = h; p.weight = Math.round(w * 10) / 10; p.age = Math.round(age); p.sex = radio(pre + "sex") || p.sex || "x"; p.daily = radio(pre + "daily") || p.daily || "some";
   p.goalWeight = gw;
-  if (ev && bg === "lose" && gw == null) return "Add a goal weight so Hybrid can set your targets.";
+  if (ev && bg === "lose" && gw == null) return "Add a goal weight so HYBRD can set your targets.";
   if (ev && bg === "lose" && gw >= w) return "For losing weight, the goal should be below your current weight.";
   if (ev && bg === "gain" && gw != null && gw <= w) return "For gaining, the goal should be above your current weight, or leave it empty.";
   if (ev && bg === "maintain") p.goalWeight = null;
   if (gw != null && !(gw >= 80 && gw <= 500)) return "Enter a goal weight in pounds, or leave it empty.";
   if (gw != null && gw < w * .8) return "For a goal more than 20% below your current weight, please work with a doctor or registered dietitian. Pick a goal closer to your current weight.";
   const minW = Math.ceil(18.5 * h * h / 703);
-  if (gw != null && gw < w && gw < minW) return "That goal is under a healthy weight for your height. Hybrid won't set targets below " + minW + " lb.";
+  if (gw != null && gw < w && gw < minW) return "That goal is under a healthy weight for your height. HYBRD won't set targets below " + minW + " lb.";
   return "";
 }
 function readStepSoft(){ const keep = setup.err; readStep(); setup.err = keep && ""; }
@@ -2749,18 +2841,18 @@ tab = ["today","plan","activities","recovery","training","more"].includes(locati
 render();
 let upd = null; try { upd = JSON.parse(sessionStorage.getItem("hy-upd") || "null"); sessionStorage.removeItem("hy-upd"); } catch(e){}
 if (upd && Date.now() - upd.at < 30e3){
-  const sp = document.getElementById("splash"); if (sp) sp.remove();
+  const sp = document.getElementById("splash"); if (sp) sp.remove(); document.documentElement.style.background = "";
   if (upd.tab) tab = upd.tab; if (upd.scr && SCR_T[upd.scr]) scr = upd.scr;
   render(); setTimeout(() => window.scrollTo(0, upd.y || 0), 60);
 }
 let splashReady = !token;
 function hideSplash(){
-  const el = document.getElementById("splash"); if (!el || el.classList.contains("out")) return;
+  const el = document.getElementById("splash"); document.documentElement.style.background = ""; if (!el || el.classList.contains("out")) return;
   const wait = Math.max(0, 1450 - (performance.now() - (window.__splashAt || 0)));
   setTimeout(() => { el.classList.add("out"); el.addEventListener("animationend", () => el.remove(), {once: true}); setTimeout(() => el.remove(), 700); }, wait);
 }
 if (splashReady) hideSplash(); else setTimeout(hideSplash, 4000);
-if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); garminReturn(); if (movedHere) setTimeout(() => toast("Hybrid has a new home: app.hybridrunnin.com. If you added it to your Home Screen, add this one again."), 600); autoSync(true); if (pushOK()) checkPush().then(() => safeRender()); })
+if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); garminReturn(); if (movedHere) setTimeout(() => toast("HYBRD has a new home: app.hybridrunnin.com. If you added it to your Home Screen, add this one again."), 600); autoSync(true); if (pushOK()) checkPush().then(() => { safeRender(); setTimeout(askNotif, 1800); }); })
   .catch(e => { loading = false; if (token){ mode = "none"; plan = null; } render(); hideSplash(); toast(e.message); });
 })();
 </script>

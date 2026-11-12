@@ -420,10 +420,18 @@ function devSignals(dev, date){
   if (d.hrv && hrvA){ const pc = (d.hrv - hrvA) / hrvA; if (pc <= -.12){ pen += 8; notes.push("HRV " + Math.round(-pc * 100) + "% below your normal"); } else if (pc >= .08) notes.push("HRV above your normal"); }
   if (d.rhr && rhrA){ const df = d.rhr - rhrA; if (df >= 5){ pen += 6; notes.push("resting HR " + Math.round(df) + " bpm above normal"); } else if (df <= -3) notes.push("resting HR below normal"); }
   if (d.sleep_score != null && d.sleep_score < 60){ pen += 5; notes.push("sleep score " + d.sleep_score); }
-  return {sleep_h: d.sleep_h || null, rhr: d.rhr || null, hrv: d.hrv || null, steps: d.steps || null, active_cal: d.active_cal || null, hrvA, rhrA, pen, notes};
+  return {sleep_h: d.sleep_h || null, sleep_score: d.sleep_score != null ? d.sleep_score : null, rhr: d.rhr || null, hrv: d.hrv || null, steps: d.steps || null, active_cal: d.active_cal || null, hrvA, rhrA, pen, notes};
 }
 function readiness(c, sig){
-  if (!c) return null;
+  // no check-in yet: a first read from the watch alone (sleep, sleep score, HRV, resting HR); the check-in refines it
+  if (!c){
+    if (!sig || !(sig.sleep_h > 0 || sig.sleep_score != null)) return null;
+    const sh = sig.sleep_h || null, sc = sig.sleep_score;
+    const q = sc != null ? Math.max(0, Math.min(1, (sc - 40) / 50)) : sh ? Math.max(0, Math.min(1, (sh - 5) / 3)) : .5;
+    const score = Math.max(0, Math.round((sh ? Math.min(1, sh / 8) : q) * 30 + q * 20 + 20 + 10 + 7) - (sig.pen || 0));
+    const level = (sh && sh < 5) || score < 50 ? 2 : score < 70 ? 1 : 0;
+    return {score, level, word: ["Ready to train", "Go easier today", "Recovery day"][level], tone: ["long", "work", "race"][level], watch: sig.notes.length ? sig.notes : null, watchOnly: true};
+  }
   const score = Math.max(0, (sig && sig.pen ? -sig.pen : 0) + Math.round(Math.min(1, c.sleep_h / 8) * 30 + (c.sleep_q - 1) / 4 * 20 + (5 - c.soreness) / 4 * 20 + (c.energy - 1) / 4 * 20 + (5 - c.stress) / 4 * 10));
   const level = c.sleep_h < 5 || score < 50 ? 2 : score < 70 ? 1 : 0;
   return {score, level, word: ["Ready to train", "Go easier today", "Recovery day"][level], tone: ["long", "work", "race"][level], watch: sig && sig.notes.length ? sig.notes : null};

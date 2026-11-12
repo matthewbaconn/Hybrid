@@ -16,6 +16,7 @@ async function check(name, fn){ step = name; try { const d = await fn(); ok(name
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({viewport: {width: 390, height: 844}, userAgent: iPhone, deviceScaleFactor: 2, isMobile: true, hasTouch: true});
+await ctx.addInitScript(() => { try { localStorage.setItem("hy-nask", String(Date.now())); } catch(e){} });   // skip the "turn on notifications?" pop-up
 const page = await ctx.newPage();
 const consoleErrors = [];
 page.on("pageerror", e => consoleErrors.push("[" + step + "] " + e.message));

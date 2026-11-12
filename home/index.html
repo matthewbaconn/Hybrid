@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Hybrid · Train for anything. Eat for it too.</title>
-<meta name="description" content="Hybrid builds your training plan around your life: running, HYROX, triathlon, swimming, cycling or just getting fitter. Strength days, food targets and recovery, all in one app.">
+<title>HYBRD · Train for anything. Eat for it too.</title>
+<meta name="description" content="HYBRD builds your training plan around your life: running, HYROX, triathlon, swimming, cycling or just getting fitter. Strength days, food targets and recovery, all in one app.">
 <meta name="theme-color" content="#0A0B0F">
-<meta property="og:title" content="Hybrid · Train for anything. Eat for it too.">
+<meta property="og:title" content="HYBRD · Train for anything. Eat for it too.">
 <meta property="og:description" content="A training plan built around your life, with strength, food targets and recovery in one app.">
 <meta property="og:image" content="https://hybridrunnin.com/today.jpg">
 <meta property="og:type" content="website">
@@ -85,7 +85,11 @@ h2{font:800 clamp(30px,3.6vw,46px)/1.06 var(--f-display);letter-spacing:-.025em;
 .app{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;background:var(--bg);border:1px solid var(--line);font-weight:700}
 .app i{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:var(--c)}
 .app i svg{width:17px;height:17px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.cws{margin-top:22px;display:inline-flex;background:#fff;border-radius:5px;padding:7px 10px}
+.badges{margin-top:22px;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.cws{display:inline-flex;align-items:center;background:#fff;border-radius:5px;padding:7px 10px;height:30px;box-sizing:border-box}
+.gbn{display:inline-flex;align-items:center;gap:7px;background:#000;border:1px solid rgba(255,255,255,.18);border-radius:5px;padding:0 11px;height:30px;box-sizing:border-box}
+.gbn img{height:13px;width:auto}.gbn em{font-style:normal;color:#fff;font-weight:600;font-size:12.5px;letter-spacing:.01em}
+.gapp{padding:12px 18px;min-height:56px;box-sizing:border-box}.gapp img{height:17px;width:auto;display:block}
 .cws img{height:12px;width:auto}
 
 /* privacy band */
@@ -132,7 +136,7 @@ footer a:hover{color:var(--ink)}
 <body>
 <header class="nav" id="nav">
   <div class="wrap">
-    <a class="brand" href="#top"><img src="icon.png" alt="">Hybrid</a>
+    <a class="brand" href="#top"><img src="icon.png" alt="">HYBRD</a>
     <a class="btn primary sm" href="https://app.hybridrunnin.com/">Open the app</a>
   </div>
 </header>
@@ -143,7 +147,7 @@ footer a:hover{color:var(--ink)}
       <div class="rv">
         <span class="tag"><i></i>Early access</span>
         <h1>Train for anything.<br><em>Eat for it too.</em></h1>
-        <p class="lead">Hybrid builds a week-by-week plan around your life, with strength days, daily food targets and a plan that eases off when you're run down.</p>
+        <p class="lead">HYBRD builds a week-by-week plan around your life, with strength days, daily food targets and a plan that eases off when you're run down.</p>
         <div class="ctas">
           <a class="btn primary" href="https://app.hybridrunnin.com/">Get early access</a>
           <a class="btn ghost" href="#how">See how it works</a>
@@ -180,7 +184,7 @@ footer a:hover{color:var(--ink)}
         <div class="copy rv" style="--c:var(--easy)">
           <span class="kicker">Your plan</span>
           <h2>A real plan, built for your week.</h2>
-          <p>Tell Hybrid your goal, how fit you are now and which days you can train. You get every session laid out, from easy days and long days to strength and race week.</p>
+          <p>Tell HYBRD your goal, how fit you are now and which days you can train. You get every session laid out, from easy days and long days to strength and race week.</p>
           <ul class="ticks">
             <li>Search races anywhere in the world and your plan counts down to it</li>
             <li>Strength days that don't wreck your runs</li>
@@ -222,10 +226,10 @@ footer a:hover{color:var(--ink)}
         <span class="kicker" style="--c:var(--accent-2)">Connects to your watch</span>
         <h2>Your workouts come in on their own.</h2>
         <p>Link Garmin or Strava once. Runs, rides, lifts, routes, sleep and heart rate sync automatically. Apple Watch, WHOOP and Oura come in through Apple Health.</p>
-        <span class="cws"><img src="https://app.hybridrunnin.com/brand/compatible-strava-orange.svg" alt="Compatible with Strava" width="437" height="37"></span>
+        <div class="badges"><span class="gbn"><img src="https://app.hybridrunnin.com/brand/garmin-white.png" alt="Garmin" width="463" height="72"><em>Connect</em></span><span class="cws"><img src="https://app.hybridrunnin.com/brand/compatible-strava-orange.svg" alt="Compatible with Strava" width="437" height="37"></span></div>
       </div>
       <div class="apps">
-        <span class="app" style="--c:#0A7BC1"><i><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 6V3h6v3M9 18v3h6v-3M12 10v2l1 1"/></svg></i>Garmin</span>
+        <span class="app gapp"><img src="https://app.hybridrunnin.com/brand/garmin-white.png" alt="Garmin" width="463" height="72"></span>
         <span class="app" style="--c:#FC5200"><i><svg viewBox="0 0 24 24"><circle cx="13" cy="4.5" r="1.8"/><path d="M8 21l3-6 3 2v4M7 12l3-3 3 1 2 3h3M11 15l-2-3"/></svg></i>Strava</span>
         <span class="app" style="--c:#C2185B"><i><svg viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg></i>Apple Health</span>
         <span class="app" style="--c:#2A2E3A"><i><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 6V3h6v3M9 18v3h6v-3"/></svg></i>COROS, Polar, Suunto</span>
@@ -234,22 +238,22 @@ footer a:hover{color:var(--ink)}
 
     <section class="band">
       <div class="rv"><b>Private by default.</b><span>Your goals, weight and food are yours. Friends in a crew only see your nickname and one weekly total.</span></div>
-      <div class="rv"><b>No ads. Never sold.</b><span>Hybrid doesn't sell your data or show ads. Delete your account any time and everything goes with it.</span></div>
+      <div class="rv"><b>No ads. Never sold.</b><span>HYBRD doesn't sell your data or show ads. Delete your account any time and everything goes with it.</span></div>
     </section>
 
     <section class="final rv">
       <h2>Your next block starts Monday.</h2>
       <p>Answer a few questions and get your plan in under two minutes.</p>
-      <div class="ctas"><a class="btn primary" href="https://app.hybridrunnin.com/">Get early access</a><a class="btn ghost" href="https://www.instagram.com/hybridrunnin/" target="_blank" rel="noopener">Follow @hybridrunnin</a></div>
+      <div class="ctas"><a class="btn primary" href="https://app.hybridrunnin.com/">Get early access</a><a class="btn ghost" href="https://www.instagram.com/hybrdrunning/" target="_blank" rel="noopener">Follow @HybrdRunning</a></div>
     </section>
   </div>
 </main>
 
 <footer>
   <div class="wrap">
-    <span>© 2026 Hybrid Running</span>
+    <span>© 2026 HYBRD Running</span>
     <nav>
-      <a href="https://www.instagram.com/hybridrunnin/" target="_blank" rel="noopener">Instagram @hybridrunnin</a>
+      <a href="https://www.instagram.com/hybrdrunning/" target="_blank" rel="noopener">Instagram @HybrdRunning</a>
       <a href="https://app.hybridrunnin.com/privacy.html">Privacy</a>
       <a href="mailto:HybridRunningApp@gmail.com">Contact</a>
       <a href="https://app.hybridrunnin.com/">Open the app</a>

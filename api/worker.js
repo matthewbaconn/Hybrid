@@ -148,7 +148,7 @@ async function stravaSync(env, user, ctx){
   const ops = list.slice(0, 100).map(a => env.DB.prepare(
     "INSERT INTO activities (id, user_id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, poly, start_local, elev_ft, sport, max_hr, created) VALUES (?, ?, 'strava', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
     "ON CONFLICT (user_id, source, ext_id) DO UPDATE SET date = excluded.date, type = excluded.type, name = excluded.name, mi = excluded.mi, minutes = excluded.minutes, cal = CASE WHEN excluded.cal > 0 THEN excluded.cal ELSE activities.cal END, avg_hr = excluded.avg_hr, " +
-    "poly = excluded.poly, start_local = excluded.start_local, elev_ft = excluded.elev_ft, sport = excluded.sport, max_hr = excluded.max_hr")
+    "poly = CASE WHEN COALESCE(length(activities.poly), 0) > COALESCE(length(excluded.poly), 0) THEN activities.poly ELSE excluded.poly END, start_local = excluded.start_local, elev_ft = excluded.elev_ft, sport = excluded.sport, max_hr = excluded.max_hr")
     .bind(rand(10), user.id, String(a.id), String(a.start_date_local || "").slice(0, 10), TYPE_MAP(a.sport_type || a.type || ""), String(a.name || "Activity").slice(0, 80),
       Math.round((a.distance || 0) / 1609.34 * 100) / 100, Math.round((a.moving_time || 0) / 60), n0(a.calories || (a.kilojoules ? a.kilojoules * 1.1 : 0)), n0(a.average_heartrate),
       (a.map && a.map.summary_polyline || "").slice(0, 20000) || null, String(a.start_date_local || "").slice(0, 16), Math.round((a.total_elevation_gain || 0) * 3.281), String(a.sport_type || a.type || "").slice(0, 30), n0(a.max_heartrate), t));
@@ -161,10 +161,13 @@ async function stravaSync(env, user, ctx){
     .bind(user.id, new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10)).all()).results;
   for (const x of need){
     try {
-      const lr = await fetch(base + "/api/v3/activities/" + x.ext_id + "/laps", {headers: {Authorization: "Bearer " + tok}});
+      // the full activity has the lap splits and the full-detail route (the list only has a simplified route)
+      const lr = await fetch(base + "/api/v3/activities/" + x.ext_id, {headers: {Authorization: "Bearer " + tok}});
       if (!lr.ok) break;
-      const laps = (await lr.json()).slice(0, 80).map(l => [Math.round(l.distance || 0), Math.round(l.moving_time || 0), Math.round(l.average_heartrate || 0)]);
-      await env.DB.prepare("UPDATE activities SET laps = ? WHERE id = ?").bind(JSON.stringify(laps), x.id).run();
+      const d = await lr.json();
+      const laps = (Array.isArray(d.laps) ? d.laps : []).slice(0, 80).map(l => [Math.round(l.distance || 0), Math.round(l.moving_time || 0), Math.round(l.average_heartrate || 0)]);
+      const full = d.map && d.map.polyline && d.map.polyline.length <= 60000 ? d.map.polyline : null;
+      await env.DB.prepare("UPDATE activities SET laps = ?, poly = COALESCE(?, poly) WHERE id = ?").bind(JSON.stringify(laps), full, x.id).run();
     } catch(e){ break; }
   }
   const fresh = list.filter(a => !known.has(String(a.id))).map(a => String(a.id));
@@ -248,8 +251,9 @@ async function garminPush(env, data, ctx){
     }
     if (poly || laps) await env.DB.prepare("UPDATE activities SET poly = COALESCE(?, poly), laps = COALESCE(?, laps) WHERE user_id = ? AND source = 'garmin' AND ext_id = ?").bind(poly, laps ? JSON.stringify(laps) : null, u, ext).run();
   }
+  const woke = {};
   for (const s of data.sleeps || []){
-    const u = uid(s); if (!u) continue; seen[u] = 1;
+    const u = uid(s); if (!u) continue; seen[u] = 1; if (!woke[u] || s.calendarDate > woke[u]) woke[u] = s.calendarDate;
     const h = (s.durationInSeconds || 0) / 3600, sc = s.overallSleepScore && s.overallSleepScore.value;
     await saveHealth(env, u, s.calendarDate, {sleep_h: h >= 1 && h <= 16 ? Math.round(h * 100) / 100 : null, sleep_score: sc >= 0 && sc <= 100 ? Math.round(sc) : null}, "garmin");
   }
@@ -261,11 +265,13 @@ async function garminPush(env, data, ctx){
   }
   for (const v of data.hrv || []){
     const u = uid(v); if (!u) continue; seen[u] = 1;
+    if (!woke[u] || v.calendarDate > woke[u]) woke[u] = v.calendarDate;
     const x = v.lastNightAvg; await saveHealth(env, u, v.calendarDate, {hrv: x >= 5 && x <= 300 ? Math.round(x) : null}, "garmin");
   }
   for (const u of Object.keys(seen)) await env.DB.prepare("UPDATE garmin_links SET last_push = ? WHERE user_id = ?").bind(now(), u).run();
   await logEvent(env, "garmin_push", true, Object.keys(data).filter(k => Array.isArray(data[k])).map(k => k + ":" + data[k].length).join(",").slice(0, 120));
   for (const [u, list] of Object.entries(fresh)) ctx.waitUntil(afterNewActivities(env, u, list, "garmin").catch(e => console.log("garmin review", e && e.stack || e)));
+  for (const [u, d] of Object.entries(woke)) ctx.waitUntil(wakeUp(env, u, d).catch(e => console.log("wake", e && e.stack || e)));
 }
 // stop Garmin access and delete stored Garmin data (privacy policy: disconnect deletes Garmin data)
 async function garminForget(env, userId, tellGarmin){
@@ -410,7 +416,7 @@ async function morningNote(env, userId, today){
   const yday = HP.addDays(today, -1), fy = HP.fuel(U.plan, U.weights, U.acts, yday);
   const recent = U.acts.filter(a => a.date >= HP.addDays(today, -3) && a.date < today).map(a => a.name + " " + (a.mi ? a.mi + " mi" : a.minutes + " min"));
   const a7 = HP.avgW(U.weights, today), a14 = HP.avgW(U.weights, HP.addDays(today, -7));
-  const data = {name: (U.name || "").split(" ")[0], readiness: r ? {score: r.score, call: r.word, sleep_h: c.sleep_h, soreness_1to5: c.soreness, energy_1to5: c.energy, stress_1to5: c.stress} : null,
+  const data = {name: (U.name || "").split(" ")[0], readiness: r ? (c ? {score: r.score, call: r.word, sleep_h: c.sleep_h, soreness_1to5: c.soreness, energy_1to5: c.energy, stress_1to5: c.stress} : {score: r.score, call: r.word, based_on: "watch only, no check-in yet"}) : null,
     today: sessionsText(U, today, fbk), adjustment_rule: r && r.level ? "Today's sessions are adjusted: " + (r.level === 1 ? "one rep fewer, long run 2 mi shorter, easy runs strictly easy" : "easy or rest, workout moves later in the week") : "train as planned",
     plan_notes_today: Object.keys(fbk.notes).filter(k => k.startsWith(today)).map(k => fbk.notes[k]),
     calories_today_target: f.cal, protein_g: f.pro, yesterday: U.eaten[yday] ? {eaten: U.eaten[yday], target: fy.cal} : "no food logged",
@@ -426,6 +432,22 @@ async function morningNote(env, userId, today){
   return note;
 }
 
+// Garmin sent last night's sleep: readiness is ready, so adjust today and tell the person right away (once a day)
+async function wakeUp(env, userId, date){
+  const st = await settingsOf(env, userId), L = localNow(st.tz);
+  if (date !== L.date || L.hm < "04:00") return;
+  if (await env.DB.prepare("SELECT 1 FROM notif_log WHERE user_id = ? AND kind = 'wake' AND day = ?").bind(userId, L.date).first()) return;
+  const U = await loadUser(env, userId, L.date); if (!U || !U.plan) return;
+  const r = HP.readiness(U.checkins[L.date], HP.devSignals(U.dev, L.date)); if (!r) return;
+  if (!(await once(env, userId, "wake", L.date))) return;
+  await logEvent(env, "wake_read", true, String(r.score));
+  if (!U.checkins[L.date] && (await coachUsage(env, userId))) await morningNote(env, userId, L.date).catch(e => console.log("wake note", e && e.message));
+  if (st.n_morning){
+    const fbk = HP.feedback(U.plan, U.acts, L.date), adj = ["Train as planned", "Today's session is trimmed", "Easy day or rest today"][r.level];
+    await pushTo(env, userId, {title: "Readiness " + r.score + " · " + r.word, body: adj + ". Today: " + sessionsText(U, L.date, fbk) + ". Check in for a fuller read.", tag: "morning-" + L.date});
+    await once(env, userId, "morning", L.date);   // no second morning reminder
+  }
+}
 /* ---------- push notifications ---------- */
 async function pushTo(env, userId, msg){
   if (!env.VAPID_PUBLIC || !env.VAPID_PRIVATE) return 0;
@@ -540,6 +562,13 @@ async function route(req, env, path, ctx){
         "ON CONFLICT (user_id) DO UPDATE SET garmin_user_id = excluded.garmin_user_id, access_token = excluded.access_token, refresh_token = excluded.refresh_token, expires_at = excluded.expires_at")
         .bind(row.user_id, gid, j.access_token, j.refresh_token || "", Math.floor(Date.now() / 1000) + (j.expires_in || 86400), now())]);
     await logEvent(env, "garmin_connect", true, "");
+    ctx.waitUntil((async () => {
+      const end = Math.floor(Date.now() / 1000), start = end - 14 * 86400;
+      for (const k of ["sleeps", "dailies", "hrv", "activities", "activityDetails"]){
+        const br = await fetch((env.GARMIN_API || GARMIN_API) + "/wellness-api/rest/backfill/" + k + "?summaryStartTimeInSeconds=" + start + "&summaryEndTimeInSeconds=" + end, {headers: {Authorization: "Bearer " + j.access_token}}).catch(() => null);
+        await logEvent(env, "garmin_backfill", !!(br && (br.ok || br.status === 409)), k + " " + (br ? br.status : "net"));
+      }
+    })());
     return go("connected");
   }
   if (path === "/api/garmin/push"){
@@ -578,7 +607,7 @@ async function route(req, env, path, ctx){
     await limit(env, "import:" + (req.headers.get("CF-Connecting-IP") || "x"));
     const kh = key.length > 20 ? await sha256(key) : null;
     let row = kh ? await env.DB.prepare("SELECT user_id, 'apple' AS kind FROM import_keys WHERE key_hash = ?").bind(kh).first() : null;
-    if (!row) throw new HttpError(401, "That link isn't valid anymore. Make a new one in Hybrid settings.");
+    if (!row) throw new HttpError(401, "That link isn't valid anymore. Make a new one in HYBRD settings.");
     const src = row.kind === "garmin" ? "garmin" : "apple";
     const get = k => { const v = q.get(k) ?? b[k]; return v == null ? "" : String(v).trim(); };
     const nums = raw => raw.split(/[\n;|]+/).map(t => t.replace(/(\d),(\d{3})(?!\d)/g, "$1$2").replace(",", ".")).map(t => { const m = t.match(/-?\d+(\.\d+)?/); return m ? Number(m[0]) : NaN; }).filter(x => !isNaN(x));
@@ -661,7 +690,7 @@ async function route(req, env, path, ctx){
     await env.DB.prepare("INSERT INTO reports (id, user_id, email, text, info, created) VALUES (?, ?, ?, ?, ?, ?)").bind(rand(10), who ? who.id : null, who ? who.email : null, text, JSON.stringify(info), now()).run();
     await logEvent(env, "report", true, who ? "signed in" : "not signed in");
     const own = await ownerId(env);
-    if (own && ctx && !text.startsWith("Nightly test report.")) ctx.waitUntil(pushTo(env, own, {title: "Hybrid: problem reported", body: clip(text, 120), tag: "report"}).catch(() => {}));
+    if (own && ctx && !text.startsWith("Nightly test report.")) ctx.waitUntil(pushTo(env, own, {title: "HYBRD: problem reported", body: clip(text, 120), tag: "report"}).catch(() => {}));
     return {ok: true};
   }
   const user = await auth(req, env);
@@ -940,12 +969,19 @@ async function route(req, env, path, ctx){
       "Grocery amounts must cover all the days. Common grocery-store foods only. 2–3 short tips. Never go below the calorie target.";
     const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {method: "POST",
       headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-      body: JSON.stringify({model: env.MODEL || "claude-sonnet-5-5", max_tokens: 4000, system,
+      body: JSON.stringify({model: env.MODEL || "claude-sonnet-5-5", max_tokens: 8000, system,
         messages: [{role: "user", content: "Daily target about " + cal + " calories and " + pro + " g protein. Diet: " + diet + ". Avoid: " + (avoid || "nothing") + ". Cooking time: " + time + "."}]})});
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok){ await logEvent(env, "ai_meal", false, String((j.error && j.error.message) || r.status).slice(0, 120)); throw new HttpError(502, "Couldn't make a plan just now. Try again in a minute."); }
-    let plan; try { const t = (j.content || []).filter(c => c.type === "text").map(c => c.text).join(""); plan = JSON.parse(t.match(/\{[\s\S]*\}/)[0]); } catch(e){ plan = null; }
-    if (!plan || !Array.isArray(plan.preps) || !Array.isArray(plan.grocery)){ await logEvent(env, "ai_meal", false, "bad json"); throw new HttpError(502, "Couldn't make a plan just now. Try again in a minute."); }
+    let plan = null, why = "";
+    for (let tries = 0; tries < 2 && !plan; tries++){
+      const rr = tries ? await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {method: "POST", headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+        body: JSON.stringify({model: env.MODEL || "claude-sonnet-5-5", max_tokens: 8000, system: system + " Keep it compact: short meal names, each 'how' under 10 words, at most 22 grocery items. Output the JSON object only, no other text.",
+          messages: [{role: "user", content: "Daily target about " + cal + " calories and " + pro + " g protein. Diet: " + diet + ". Avoid: " + (avoid || "nothing") + ". Cooking time: " + time + "."}]})}) : r;
+      const j = await rr.json().catch(() => ({}));
+      if (!rr.ok){ why = String((j.error && j.error.message) || rr.status).slice(0, 120); continue; }
+      const t = (j.content || []).filter(c => c.type === "text").map(c => c.text).join("").replace(/```(json)?/g, "");
+      try { const p = JSON.parse(t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1)); if (Array.isArray(p.preps) && p.preps.length && Array.isArray(p.grocery)) plan = p; else why = "missing parts"; } catch(e){ why = "bad json (" + j.stop_reason + ")"; }
+    }
+    if (!plan){ await logEvent(env, "ai_meal", false, why); throw new HttpError(502, "Couldn't make a plan just now. Try again in a minute."); }
     const data = {id: rand(6), created: now(), cal, protein: pro, diet, avoid, preps: plan.preps.slice(0, 3), grocery: plan.grocery.slice(0, 8), tips: (plan.tips || []).slice(0, 3)};
     await env.DB.prepare("INSERT INTO meal_plans (user_id, data, created) VALUES (?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET data = excluded.data, created = excluded.created").bind(user.id, JSON.stringify(data), now()).run();
     await logEvent(env, "ai_meal", true, "");
@@ -1009,7 +1045,7 @@ export default {
   async fetch(req, env, ctx){
     const host = new URL(req.url).hostname;
     if (host === "hybridrunnin.com" || host === "www.hybridrunnin.com" || host === "app.hybridrunnin.com"){
-      try { return await site(req, host); } catch(e){ return new Response("Hybrid is having a moment. Try again in a minute.", {status: 502}); }
+      try { return await site(req, host); } catch(e){ return new Response("HYBRD is having a moment. Try again in a minute.", {status: 502}); }
     }
     const h = corsFor(req), path = new URL(req.url).pathname.replace(/\/+$/, "");
     if (req.method === "OPTIONS") return new Response(null, {status: 204, headers: h});
