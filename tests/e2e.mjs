@@ -111,7 +111,12 @@ await check("Today overview", async () => {
 await check("Settings: Watch", async () => {
   await settings(); await shot("07-settings"); await open("set-watch"); const t = await page.innerText(".hlink");
   const strava = await page.locator('[data-act="stconnect"]').count(); await back(); await back();
-  if (!/Apple Health/.test(t) || !/Strava/.test(t)) throw new Error(t.slice(0, 120)); if (!strava) throw new Error("Connect Strava button missing"); return "Strava + Apple Health shown";
+  if (!/Sleep and heart rate/.test(t) || !/Strava/.test(t)) throw new Error(t.slice(0, 120)); if (!strava) throw new Error("Connect Strava button missing"); return "Strava + sleep/heart rate shown";
+});
+await check("Heart rate zones", async () => {
+  await settings(); await open("set-hr"); await page.click('[data-act="hrm"][data-m="lthr"]'); await page.fill("#hr-base", "172"); await page.click('[data-act="hrsave"]');
+  await page.waitForSelector(".scrbar >> text=Settings", {timeout: 10000}); const t = await page.innerText('[data-scr="set-hr"]'); await back();
+  if (!/172/.test(t)) throw new Error(t); return t.replace(/\n/g, " ");
 });
 await check("Report a problem", async () => {
   await settings(); await open("set-report"); await page.fill("#rp-text", "Nightly test report. Please ignore.");

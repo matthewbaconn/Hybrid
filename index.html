@@ -43,7 +43,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .muted{color:var(--muted)}
-.wrap{max-width:640px;margin:0 auto;padding:14px 14px calc(118px + env(safe-area-inset-bottom,0px));display:grid;gap:26px}
+.wrap{max-width:640px;margin:0 auto;padding:14px 14px calc(118px + env(safe-area-inset-bottom,0px));display:grid;gap:26px;align-content:start;min-height:100vh;min-height:calc(100lvh + 1px)}
 
 /* header */
 .top{display:flex;align-items:center;gap:12px}
@@ -244,6 +244,22 @@ button{cursor:pointer}
 .steps-plain{margin:0;padding-left:20px;display:grid;gap:14px;font-size:14.5px}
 .steps-plain li{padding-left:4px} .steps-plain input{margin:10px 0 8px;font-size:13px}
 
+/* opening animation: the logo draws itself, then fills (transform/opacity/stroke only, so it stays smooth) */
+#splash{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-content:center;justify-items:center;gap:18px;will-change:opacity,transform}
+#splash .sp-logo{width:104px;height:104px;border-radius:24px;background:var(--accent);display:grid;place-items:center;transform:scale(.6);opacity:0;will-change:transform,opacity;
+  animation:sp-pop .55s cubic-bezier(.2,.9,.25,1.15) .05s forwards}
+#splash svg{width:56px;height:56px;overflow:visible}
+#splash path{fill:#fff;fill-opacity:0;stroke:#fff;stroke-width:1.15;stroke-linejoin:round;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;
+  animation:sp-draw .8s cubic-bezier(.65,0,.35,1) .25s forwards,sp-fill .3s ease-out 1s forwards}
+#splash b{font:800 26px/1 var(--f-display);letter-spacing:-.03em;opacity:0;transform:translateY(8px);will-change:transform,opacity;animation:sp-up .45s cubic-bezier(.2,.8,.2,1) .9s forwards}
+#splash.out{animation:sp-out .38s cubic-bezier(.4,0,.2,1) forwards;pointer-events:none}
+@keyframes sp-pop{to{transform:scale(1);opacity:1}}
+@keyframes sp-draw{to{stroke-dashoffset:0}}
+@keyframes sp-fill{to{fill-opacity:1}}
+@keyframes sp-up{to{opacity:1;transform:none}}
+@keyframes sp-out{to{opacity:0;transform:scale(1.04)}}
+@media (prefers-reduced-motion:reduce){#splash *{animation-duration:.01s!important;animation-delay:0s!important}}
+
 /* today overview + screens */
 .hub-hero{display:grid;gap:18px;margin-inline:-14px;padding:26px 20px 24px;cursor:pointer;color:#fff;
   background:linear-gradient(160deg,color-mix(in srgb,var(--tc) 55%,#000) 0%,color-mix(in srgb,var(--tc) 18%,#0A0B0F) 75%)}
@@ -279,6 +295,17 @@ button{cursor:pointer}
 .srow div{flex:1;min-width:0} .srow b{display:block;font-weight:600;font-size:15.5px} .srow span{display:block;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
 .srow > i{font-style:normal;color:var(--muted);font-size:20px}
 .srow.danger b{color:var(--crit)}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--sunk);border-radius:6px;padding:3px;gap:3px}
+.seg button{border:0;background:none;border-radius:4px;min-height:40px;font-weight:600;font-size:14px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.hrin{display:grid;gap:8px;font-weight:600}
+.hrin span{display:flex;align-items:center;gap:10px;color:var(--muted);font-weight:500} .hrin input{max-width:140px;font-size:22px;font-weight:700}
+.zones{display:grid;gap:8px}
+.zr{display:flex;align-items:center;gap:14px;background:var(--sunk);border-radius:6px;padding:12px 14px;border-left:4px solid var(--zc)}
+.zr > i{font-style:normal;font:800 18px var(--f-display);color:var(--zc);width:28px}
+.zr div{flex:1;min-width:0} .zr b{display:block;font-weight:600} .zr span{font-size:13px;color:var(--muted)}
+.zr .zp{width:52px;min-height:30px;padding:0 6px;font-size:14px;text-align:center;display:inline-block;margin:0 2px}
+.zr em{font-style:normal;font-weight:700;white-space:nowrap}
 .dark-tiles{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.88) saturate(.35)}
 
 /* setup */
@@ -460,6 +487,8 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 </style>
 </head>
 <body>
+<div id="splash" aria-hidden="true"><div class="sp-logo"><svg viewBox="0 0 24 24"><path pathLength="1" d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg></div><b>Hybrid</b></div>
+<script>window.__splashAt = performance.now();</script>
 <div class="wrap" id="app" aria-live="polite"></div>
 <nav class="tabbar" id="tabbar" aria-label="Sections" hidden>
   <button type="button" data-tab="today"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg><span>Today</span></button>
@@ -572,7 +601,8 @@ function checkinCard(){
   const ws = dev[TODAY] && dev[TODAY].sleep_h;
   if (!c && ws && (!ci || ci.sleep_h == null)){ const opts = CIQ[0][2].map(o => o[0]); ci = {...(ci || {}), sleep_h: opts.reduce((a, b) => Math.abs(b - ws) < Math.abs(a - ws) ? b : a), fromWatch: true}; }
   const d = ci || {};
-  return '<section class="card ci" style="--tone:var(--long)"><div class="ci-top"><b>Morning check-in</b><span>' + (d.fromWatch && ws ? 'sleep from your watch' : 'adjusts today') + '</span></div>' +
+  const hs = SHORTCUT_URL && mode === "account" && hkStore.get() && !ws ? '<button class="linkbtn" type="button" data-act="hsync">Get sleep from Apple Health</button>' : '';
+  return '<section class="card ci" style="--tone:var(--long)"><div class="ci-top"><b>Morning check-in</b><span>' + (d.fromWatch && ws ? 'sleep from your watch' : 'adjusts today') + '</span></div>' + hs +
     CIQ.map(([k, label, opts]) => '<div class="ciq"><span>' + label + '</span><div class="cio" role="group" aria-label="' + label + '">' +
       opts.map(([v, l]) => '<button type="button" class="' + (d[k] === v ? 'on' : '') + '" data-act="ciset" data-k="' + k + '" data-v="' + v + '" aria-pressed="' + (d[k] === v) + '">' + l + '</button>').join("") + '</div></div>').join("") +
     (d.err ? '<p class="err" role="alert">' + esc(d.err) + '</p>' : '') + '<button class="btn primary block" type="button" data-act="cisave"' + (d.busy ? ' disabled aria-busy="true"' : '') + '>' + (d.busy ? 'Saving…' : 'Save') + '</button></section>';
@@ -648,7 +678,7 @@ function actStats(a, big){
   if (a.type === "run" && a.mi > 0 && a.minutes > 0) st.push(["Pace", fmtPace(a.minutes * 60 / a.mi) + '/mi']);
   if (a.type === "bike" && a.mi > 0 && a.minutes > 0) st.push(["Speed", (Math.round(a.mi / a.minutes * 600) / 10) + ' mph']);
   if (a.minutes) st.push(["Time", durTxt(a.minutes)]);
-  if (big || st.length < 3){ if (a.avg_hr) st.push(["Avg HR", a.avg_hr + ' bpm']); }
+  if (big || st.length < 3){ if (a.avg_hr) st.push(["Avg HR", a.avg_hr + ' bpm' + (big && zoneOf(a.avg_hr) ? ' · Z' + zoneOf(a.avg_hr) : '')]); }
   if (big){ if (a.max_hr) st.push(["Max HR", a.max_hr + ' bpm']); if (a.elev_ft) st.push(["Elevation", comma(a.elev_ft) + ' ft']); if (a.cal) st.push(["Calories", comma(a.cal)]); if (a.work_pace) st.push(["Rep pace", fmtPace(a.work_pace) + '/mi']); }
   else if (st.length < 3 && a.cal) st.push(["Calories", comma(a.cal)]);
   return big ? st : st.slice(0, 3);
@@ -1397,12 +1427,15 @@ function settingsScreen(k){
   const help = API ? group("Help", row("set-report", "Report a problem", "Something broken or confusing? Tell us.", "flag") + (mode === "account" && isOwner ? row("set-reports", "Reported problems", reports.length + ' waiting', "bars") : '')) : '';
   if (k === "settings"){
     if (mode === "account") return group("Account", row("set-account", "Account", esc(me.email), "user") + row("", "Edit goals and rebuild plan", "", "cal", "edit")) +
+      group("Training", row("set-hr", "Heart rate zones", hrSummary(), "heart")) +
       group("Connections", row("set-watch", "Watch", strava.connected ? 'Strava connected' + (healthLink.on ? ' · sleep and heart rate on' : '') : 'Strava, Apple Watch, Garmin', "watch")) +
       group("Notifications", row("set-notif", "Notifications", pushState.on ? 'On' : 'Reminders and workout summaries', "bell")) +
       help + group("", row("", "Log out", "", "logout", "logout"));
-    if (mode === "sample") return group("Sample runner", '<p class="sub" style="padding:16px 16px 4px">You\'re looking at a sample runner. Nothing here is saved.</p>' + row("", "Create a free account", "", "user", "authsignup") + row("", "Log in", "", "logout", "authlogin")) + help;
-    return group("Plan", row("", "Edit goals and rebuild plan", "", "cal", "edit") + row("", "Start over", "Your answers stay in this browser only.", "flag", "reset")) + help;
+    if (mode === "sample") return group("Sample runner", '<p class="sub" style="padding:16px 16px 4px">You\'re looking at a sample runner. Nothing here is saved.</p>' + row("", "Create a free account", "", "user", "authsignup") + row("", "Log in", "", "logout", "authlogin")) + group("Training", row("set-hr", "Heart rate zones", hrSummary(), "heart")) + help;
+    return group("Plan", row("", "Edit goals and rebuild plan", "", "cal", "edit") + row("", "Start over", "Your answers stay in this browser only.", "flag", "reset")) +
+      group("Training", row("set-hr", "Heart rate zones", hrSummary(), "heart")) + help;
   }
+  if (k === "set-hr") return hrScreen();
   if (mode !== "account" && k !== "set-report") return '';
   if (k === "set-account") return '<section class="card"><p class="sub">Signed in as</p><b style="font-size:17px;overflow-wrap:anywhere">' + esc(me.email) + '</b></section>' +
     '<section class="card" style="--tone:var(--crit)"><div class="card-h"><span class="lbl">Delete account</span></div><p class="sub">Removes your plan, food, workouts and everything else for good.</p><button class="btn block" type="button" data-act="delacct" style="color:var(--crit)">Delete my account</button></section>';
@@ -1414,6 +1447,47 @@ function settingsScreen(k){
   if (k === "set-reports") return '<section class="card">' + reportsHtml() + '</section>';
   return '';
 }
+/* ---------- heart rate zones (% of max HR or of lactate threshold HR) ---------- */
+const HR_DEF = {max: [60, 70, 80, 90], lthr: [85, 90, 95, 100]};
+const HR_NAMES = ["Recovery", "Easy", "Aerobic", "Threshold", "Max effort"];
+function hrLocal(){ try { return JSON.parse(localStorage.getItem("hybrid-hr") || "{}"); } catch(e){ return {}; } }
+function hrCfg(){
+  const u = mode === "account" ? uset : {...uset, ...hrLocal()}, m = u.hr_method === "lthr" ? "lthr" : "max";
+  return {method: m, max: u.hr_max || null, lthr: u.hr_lthr || null, pct: u["hr_pct_" + m] || HR_DEF[m], base: m === "lthr" ? u.hr_lthr : u.hr_max};
+}
+function hrZones(c){
+  c = c || hrCfg(); if (!c.base) return null;
+  const b = c.pct.map(x => Math.round(c.base * x / 100)), lo = c.method === "max" ? Math.round(c.base * .5) : null;
+  return [[lo, b[0] - 1], [b[0], b[1] - 1], [b[1], b[2] - 1], [b[2], b[3] - 1], [b[3], c.method === "max" ? c.base : null]];
+}
+function zoneOf(hr){ const z = hrZones(); if (!z || !hr) return 0; for (let i = 4; i >= 0; i--) if (hr >= (z[i][0] || 0)) return i + 1; return 1; }
+function hrSummary(){ const c = hrCfg(); return c.base ? (c.method === "lthr" ? 'Threshold ' + c.base + ' bpm' : 'Max ' + c.base + ' bpm') : 'Set by max HR or lactate threshold'; }
+let hrEdit = null;
+function hrScreen(){
+  const c = hrCfg(), e = hrEdit || (hrEdit = {method: c.method, max: c.max, lthr: c.lthr, pct_max: c.method === "max" ? c.pct.slice() : (uset.hr_pct_max || HR_DEF.max).slice(), pct_lthr: c.method === "lthr" ? c.pct.slice() : (uset.hr_pct_lthr || HR_DEF.lthr).slice()});
+  const m = e.method, base = m === "lthr" ? e.lthr : e.max, pct = e["pct_" + m];
+  const seen = Math.max(0, ...acts.map(a => a.max_hr || 0));
+  const z = hrZones({method: m, base, pct});
+  const tone = ["rest", "easy", "long", "work", "race"];
+  let h = '<section class="card"><div class="seg" role="group" aria-label="Zones based on"><button type="button" data-act="hrm" data-m="max" aria-pressed="' + (m === "max") + '">Max heart rate</button><button type="button" data-act="hrm" data-m="lthr" aria-pressed="' + (m === "lthr") + '">Lactate threshold</button></div>' +
+    '<label class="hrin">' + (m === "lthr" ? 'Lactate threshold heart rate' : 'Max heart rate') + '<span><input id="hr-base" inputmode="numeric" value="' + (base || "") + '" placeholder="' + (m === "max" ? (seen ? seen : '190') : '170') + '"> bpm</span></label>' +
+    '<p class="sub">' + (m === "lthr" ? 'Your average heart rate for a hard 30-minute solo effort, or what your Garmin shows as lactate threshold.' : 'The highest you\'ve seen in a hard race or hill sprints' + (seen ? ' (your workouts here peak at ' + seen + ')' : '') + '. Age-based guesses are often off by 10+ beats.') + '</p></section>';
+  h += '<section class="card"><div class="card-h"><span class="lbl">Your zones</span><span class="r">% of ' + (m === "lthr" ? 'threshold' : 'max') + '</span></div><div class="zones">' +
+    HR_NAMES.map((n, i) => {
+      const from = i === 0 ? (m === "max" ? 50 : null) : pct[i - 1], to = i < 4 ? pct[i] : (m === "max" ? 100 : null);
+      return '<div class="zr" style="--zc:var(--' + tone[i] + ')"><i>Z' + (i + 1) + '</i><div><b>' + n + '</b><span>' + (from == null ? 'under ' : from + '–') + (i < 4 ? '<input class="zp" data-zi="' + i + '" inputmode="numeric" value="' + to + '" aria-label="Zone ' + (i + 1) + ' top, percent">%' : (to == null ? '+' : to + '%')) + '</span></div><em>' +
+        (z ? (z[i][0] == null ? '< ' + (z[i][1] + 1) : z[i][1] == null ? z[i][0] + '+' : z[i][0] + '–' + z[i][1]) + ' bpm' : '–') + '</em></div>';
+    }).join("") + '</div><p class="sub">Tap a percentage to change where a zone ends.</p>' +
+    (hrEdit.err ? '<p class="err" role="alert">' + esc(hrEdit.err) + '</p>' : '') +
+    '<div class="fbtns"><button class="btn" type="button" data-act="hrreset">Default %</button><button class="btn primary" type="button" data-act="hrsave">Save zones</button></div></section>';
+  return h;
+}
+function hrRead(){
+  const e = hrEdit, m = e.method, v = parseInt(($("#hr-base") || {}).value, 10);
+  e[m === "lthr" ? "lthr" : "max"] = Number.isFinite(v) ? v : null;
+  document.querySelectorAll(".zp").forEach(el => { const x = parseInt(el.value, 10); if (Number.isFinite(x)) e["pct_" + m][+el.dataset.zi] = x; });
+}
+
 /* ---------- report a problem ---------- */
 const APP_VERSION = "19";
 let reportView = null, isOwner = false, reports = [];
@@ -1434,16 +1508,34 @@ function reportsHtml(){
 }
 /* ---------- watch: Strava for workouts, an iPhone Shortcut for sleep and heart rate ---------- */
 let healthKey = null, healthLink = {on: false}, healthView = false;
+/* Shared "Hybrid Health" shortcut (iCloud link). Hybrid hands it the person's key each time it runs it,
+   so nobody types or pastes anything. Empty = not published yet: only the app owner sees the manual steps. */
+const SHORTCUT_URL = "", SHORTCUT_NAME = "Hybrid Health";
+const hkStore = {get(){ try { return me ? localStorage.getItem("hybrid-hk-" + me.id) : null; } catch(e){ return null; } }, set(v){ try { if (me) localStorage.setItem("hybrid-hk-" + me.id, v); } catch(e){} }};
+let healthPending = 0;
+async function healthSync(){
+  let k = hkStore.get();
+  if (!k){ const j = await api("POST", "/api/import-key"); k = j.key; hkStore.set(k); healthLink = {on: true, last_used: null}; }
+  healthPending = Date.now();
+  location.href = "shortcuts://run-shortcut?name=" + encodeURIComponent(SHORTCUT_NAME) + "&input=text&text=" + encodeURIComponent(k);
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && healthPending && Date.now() - healthPending < 10 * 60e3){ healthPending = 0; [1200, 5000].forEach(ms => setTimeout(refreshMe, ms)); } });
 function healthHtml(){
   const row = (t, sub, right) => '<div class="wl"><div><b>' + t + '</b><span>' + sub + '</span></div>' + right + '</div>';
   return '<div class="hlink">' +
     row("Workouts and maps", strava.connected ? "From Strava" : "Link your watch to Strava, then connect it here",
       strava.connected ? '<em class="ok">Connected</em>' : strava.available ? '<button class="btn" type="button" data-act="stconnect">Connect</button>' : '') +
-    row("Sleep and heart rate", healthLink.on ? (healthLink.last_used ? "Updated " + agoText(healthLink.last_used) : "Waiting for your first update") : "From Apple Health on your iPhone",
-      healthLink.on ? '<button class="btn" type="button" data-act="hlsetup">Steps</button>' : '<button class="btn" type="button" data-act="hlmake">Set up</button>') +
+    (SHORTCUT_URL
+      ? row("Sleep and heart rate", healthLink.on && healthLink.last_used ? "Updated " + agoText(healthLink.last_used) : "From Apple Health (Apple Watch or Garmin)", '<button class="btn" type="button" data-act="hlsetup">Set up</button>')
+      : isOwner ? row("Sleep and heart rate", healthLink.on ? (healthLink.last_used ? "Updated " + agoText(healthLink.last_used) : "Waiting for your first update") : "From Apple Health on your iPhone",
+          healthLink.on ? '<button class="btn" type="button" data-act="hlsetup">Steps</button>' : '<button class="btn" type="button" data-act="hlmake">Set up</button>')
+      : row("Sleep and heart rate", "Coming soon", '')) +
     '</div>';
 }
 function healthSteps(){
+  if (SHORTCUT_URL) return '<ol class="steps-plain"><li>Add the Hybrid Health shortcut. It\'s one tap.<a class="btn primary block" style="margin-top:10px" href="' + esc(SHORTCUT_URL) + '" target="_blank" rel="noopener">Get the shortcut</a></li>' +
+    '<li>Come back and tap Sync. The first time, allow Health access.<button class="btn block" style="margin-top:10px" type="button" data-act="hsync">Sync from Apple Health</button></li></ol>' +
+    '<p class="sub">After that, the morning check-in has a Sync button. Garmin watch? Turn on Apple Health in Garmin Connect under Connected Apps.</p>';
   if (!healthKey) return '<p class="sub">This is on. To see the steps again, make a new link (your old one stops working).</p><button class="btn primary block" type="button" data-act="hlmake">New link</button><button class="linkbtn" type="button" data-act="hloff" style="color:var(--crit)">Turn it off</button>';
   return '<ol class="steps-plain">' +
     '<li>Copy your link.<input id="hl-url" readonly value="' + esc(API + "/api/import?key=" + healthKey) + '" aria-label="Your link"><button class="btn primary block" type="button" data-act="hlcopy">Copy link</button></li>' +
@@ -1483,8 +1575,8 @@ async function pushOn(){
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 const SCR_T = {fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
   settings: "Settings", "set-notif": "Notifications", "set-watch": "Watch", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Account",
-  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup"};
-const SCR_UP = {"set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", "set-report": "settings", "set-reports": "settings", "set-account": "settings"};
+  "set-hr": "Heart rate zones", "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup"};
+const SCR_UP = {"set-hr": "settings", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", "set-report": "settings", "set-reports": "settings", "set-account": "settings"};
 function go(s){
   scr = s;
   if (s === "set-notif" && mode === "account" && pushOK() && !pushState.checked) checkPush().then(() => { if (scr === "set-notif") render(); });
@@ -1545,7 +1637,7 @@ document.addEventListener("click", ev => {
   if (act === "actback"){ actSel = null; render(); return; }
   if (act === "afilt"){ actFilter = a.dataset.k; render(); return; }
   if (act === "go"){ if (a.dataset.scr === "set-report" && reportView && reportView.sent) reportView = null; go(a.dataset.scr); return; }
-  if (act === "back"){ const up = SCR_UP[scr] || null; if (scr === "set-report") reportView = null; go(up); return; }
+  if (act === "back"){ if (scr === "set-hr") hrEdit = null; const up = SCR_UP[scr] || null; if (scr === "set-report") reportView = null; go(up); return; }
   if (act === "hlmake"){ api("POST", "/api/import-key").then(j => { healthKey = j.key; healthLink = {on: true, last_used: null}; go("set-health"); }).catch(e => toast(e.message)); return; }
   if (act === "rpsend"){
     const v = reportView; v.text = ($("#rp-text") || {}).value || "";
@@ -1557,6 +1649,19 @@ document.addEventListener("click", ev => {
     return;
   }
   if (act === "rpdone"){ const id = a.dataset.id; reports = reports.filter(r => r.id !== id); render(); api("DELETE", "/api/report/" + id).catch(e => toast(e.message)); return; }
+  if (act === "hrm"){ hrRead(); hrEdit.method = a.dataset.m; hrEdit.err = ""; render(); return; }
+  if (act === "hrreset"){ hrRead(); hrEdit["pct_" + hrEdit.method] = HR_DEF[hrEdit.method].slice(); render(); return; }
+  if (act === "hrsave"){
+    hrRead(); const e = hrEdit, m = e.method, base = m === "lthr" ? e.lthr : e.max, pc = e["pct_" + m];
+    if (!(base >= (m === "lthr" ? 100 : 120) && base <= (m === "lthr" ? 220 : 230))){ e.err = "Enter your " + (m === "lthr" ? "threshold" : "max") + " heart rate in bpm."; render(); return; }
+    if (!pc.every((x, i) => x >= 30 && x <= 120 && (!i || x > pc[i - 1]))){ e.err = "Each zone has to end higher than the one before."; render(); return; }
+    const body = {hr_method: m, ["hr_" + m]: base, ["hr_pct_" + m]: pc};
+    const done_ = () => { hrEdit = null; toast("Heart rate zones saved."); go("settings"); };
+    if (mode === "account") api("PUT", "/api/settings", body).then(j => { uset = j.settings || uset; done_(); }).catch(err => { e.err = err.message; render(); });
+    else { try { localStorage.setItem("hybrid-hr", JSON.stringify({...hrLocal(), ...body})); } catch(x){} done_(); }
+    return;
+  }
+  if (act === "hsync"){ healthSync().catch(e => toast(e.message)); return; }
   if (act === "hlsetup"){ go("set-health"); return; }
   if (act === "hloff"){ if (!confirm("Turn this off? Your Shortcut will stop sending data.")) return; api("DELETE", "/api/import-key").then(() => { healthKey = null; healthLink = {on: false}; go("set-watch"); }).catch(e => toast(e.message)); return; }
   if (act === "hlcopy"){ const v = ($("#hl-url") || {}).value || ""; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast("Link copied."), () => { const el = $("#hl-url"); if (el){ el.focus(); el.select(); } toast("Press and hold the link to copy it."); }); return; }
@@ -1698,8 +1803,15 @@ window.addEventListener("hashchange", () => { if (!setup && plan) setTab(locatio
 
 tab = ["today","plan","activities","recovery","training"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "today";
 render();
-if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); stravaReturn(); autoSync(true); if (pushOK()) checkPush().then(() => safeRender()); })
-  .catch(e => { loading = false; if (token){ mode = "none"; plan = null; } render(); toast(e.message); });
+let splashReady = !token;
+function hideSplash(){
+  const el = document.getElementById("splash"); if (!el || el.classList.contains("out")) return;
+  const wait = Math.max(0, 1450 - (performance.now() - (window.__splashAt || 0)));
+  setTimeout(() => { el.classList.add("out"); el.addEventListener("animationend", () => el.remove(), {once: true}); setTimeout(() => el.remove(), 700); }, wait);
+}
+if (splashReady) hideSplash(); else setTimeout(hideSplash, 4000);
+if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); hideSplash(); stravaReturn(); autoSync(true); if (pushOK()) checkPush().then(() => safeRender()); })
+  .catch(e => { loading = false; if (token){ mode = "none"; plan = null; } render(); hideSplash(); toast(e.message); });
 })();
 </script>
 <script>if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));</script>

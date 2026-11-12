@@ -574,6 +574,11 @@ async function route(req, env, path, ctx){
     if (b.lat === null){ delete next.lat; delete next.lon; }
     else if (Number.isFinite(+b.lat) && Number.isFinite(+b.lon) && Math.abs(+b.lat) <= 90 && Math.abs(+b.lon) <= 180){ next.lat = Math.round(+b.lat * 100) / 100; next.lon = Math.round(+b.lon * 100) / 100; if (typeof b.place === "string") next.place = b.place.slice(0, 60); }
     for (const k of ["n_morning", "n_run", "n_weekly", "n_bed"]) if (typeof b[k] === "boolean") next[k] = b[k];
+    // heart rate zones: % of max HR or of lactate threshold HR
+    if (b.hr_method === "max" || b.hr_method === "lthr") next.hr_method = b.hr_method;
+    if (b.hr_max === null) delete next.hr_max; else if (b.hr_max >= 120 && b.hr_max <= 230) next.hr_max = Math.round(b.hr_max);
+    if (b.hr_lthr === null) delete next.hr_lthr; else if (b.hr_lthr >= 100 && b.hr_lthr <= 220) next.hr_lthr = Math.round(b.hr_lthr);
+    for (const k of ["hr_pct_max", "hr_pct_lthr"]) if (Array.isArray(b[k]) && b[k].length === 4 && b[k].every((x, i) => Number.isFinite(x) && x >= 30 && x <= 120 && (!i || x > b[k][i - 1]))) next[k] = b[k].map(x => Math.round(x));
     await env.DB.prepare("INSERT INTO settings (user_id, data) VALUES (?, ?) ON CONFLICT (user_id) DO UPDATE SET data = excluded.data").bind(user.id, JSON.stringify(next)).run();
     return {settings: next};
   }
