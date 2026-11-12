@@ -845,6 +845,27 @@ function autoSync(force){
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") autoSync(); });
 addEventListener("focus", () => autoSync());
+/* New version published? Load it by itself when you come back to the app or after a few minutes,
+   never while you're typing, and land back on the same screen. No closing and reopening. */
+const verHash = t => { let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return h; };
+let myVer = null, newVer = false, lastVerCheck = 0;
+fetch("index.html?v=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : null).then(t => { if (t) myVer = verHash(t); }).catch(() => {});
+function checkVersion(){
+  if (myVer == null || document.visibilityState !== "visible" || Date.now() - lastVerCheck < 20e3) return;
+  lastVerCheck = Date.now();
+  fetch("index.html?v=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : null).then(t => { if (t && verHash(t) !== myVer){ newVer = true; reloadIfIdle(); } }).catch(() => {});
+}
+function reloadIfIdle(){
+  if (!newVer || typing() || loading || setup || (fs && fs.busy) || (ci && ci.busy)) return;
+  try { sessionStorage.setItem("hy-upd", JSON.stringify({scr, tab, y: window.scrollY, at: Date.now()})); } catch(e){}
+  if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {}).finally(() => location.reload());
+  else location.reload();
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkVersion(); });
+addEventListener("focus", checkVersion);
+setInterval(checkVersion, 4 * 60e3);
+document.addEventListener("focusout", () => setTimeout(reloadIfIdle, 400));
+
 /* pull down from the top to refresh: reloads your data, Strava and the forecast */
 (function(){
   const ptr = document.getElementById("ptr"), appEl = document.getElementById("app"), MAX = 120, GO = 72;
@@ -1847,6 +1868,12 @@ window.addEventListener("hashchange", () => { if (!setup && plan) setTab(locatio
 
 tab = ["today","plan","activities","recovery","training"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "today";
 render();
+let upd = null; try { upd = JSON.parse(sessionStorage.getItem("hy-upd") || "null"); sessionStorage.removeItem("hy-upd"); } catch(e){}
+if (upd && Date.now() - upd.at < 30e3){
+  const sp = document.getElementById("splash"); if (sp) sp.remove();
+  if (upd.tab) tab = upd.tab; if (upd.scr && SCR_T[upd.scr]) scr = upd.scr;
+  render(); setTimeout(() => window.scrollTo(0, upd.y || 0), 60);
+}
 let splashReady = !token;
 function hideSplash(){
   const el = document.getElementById("splash"); if (!el || el.classList.contains("out")) return;
@@ -1854,7 +1881,7 @@ function hideSplash(){
   setTimeout(() => { el.classList.add("out"); el.addEventListener("animationend", () => el.remove(), {once: true}); setTimeout(() => el.remove(), 700); }, wait);
 }
 if (splashReady) hideSplash(); else setTimeout(hideSplash, 4000);
-if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); hideSplash(); stravaReturn(); autoSync(true); if (pushOK()) checkPush().then(() => safeRender()); })
+if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); autoSync(true); if (pushOK()) checkPush().then(() => safeRender()); })
   .catch(e => { loading = false; if (token){ mode = "none"; plan = null; } render(); hideSplash(); toast(e.message); });
 })();
 </script>
