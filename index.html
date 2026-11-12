@@ -1510,7 +1510,7 @@ function reportsHtml(){
 let healthKey = null, healthLink = {on: false}, healthView = false;
 /* Shared "Hybrid Health" shortcut (iCloud link). Hybrid hands it the person's key each time it runs it,
    so nobody types or pastes anything. Empty = not published yet: only the app owner sees the manual steps. */
-const SHORTCUT_URL = "", SHORTCUT_NAME = "Hybrid Health";
+const SHORTCUT_URL = "https://www.icloud.com/shortcuts/65aecedd559b48b3a6a529011c45c3a4", SHORTCUT_NAME = "Hybrid Health";
 const hkStore = {get(){ try { return me ? localStorage.getItem("hybrid-hk-" + me.id) : null; } catch(e){ return null; } }, set(v){ try { if (me) localStorage.setItem("hybrid-hk-" + me.id, v); } catch(e){} }};
 let healthPending = 0;
 async function healthSync(){
