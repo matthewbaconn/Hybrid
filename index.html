@@ -619,6 +619,7 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .crewc{cursor:pointer}
 .code{font:700 34px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;text-align:center;padding:14px;border-radius:8px;background:var(--sunk);user-select:all}
 .stbtn{border:0;padding:0;background:none;display:block;justify-self:center;line-height:0;border-radius:6px;transition:transform .08s ease,opacity .12s}.stbtn img{display:block;height:48px;width:auto}.stbtn:active{transform:scale(.97);opacity:.9}.stwrap{padding:0 0 16px;display:grid;border-bottom:1px solid var(--line)}.stbtn:disabled{opacity:.6}
+.cws{display:flex;width:fit-content;align-items:center;background:#fff;border-radius:4px;padding:5px 8px;margin-top:8px;font-style:normal;line-height:0}.cws img{height:10px;width:auto;display:block}
 </style>
 </head>
 <body>
@@ -856,6 +857,7 @@ function renderActivities(){
     'No activities yet. Log a workout on the Today tab' + (mode === "account" ? ' or sync Strava' : '') + '.') + '</p></section>';
   else h += list.slice(0, 40).map(actCard).join("");
   if (strava.connected) h += '<button class="linkbtn" type="button" data-act="stsync" style="justify-self:center">Sync Strava now · ' + agoText(strava.last_sync) + '</button>';
+  if (strava.connected) h += '<div style="display:grid;justify-items:center">' + '<i class="cws"><img src="brand/compatible-strava-orange.svg" alt="Compatible with Strava" width="437" height="37"></i>' + '</div>';
   h += crewCardHtml();
   return h;
 }
@@ -2088,7 +2090,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "33";
+const APP_VERSION = "34";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2136,7 +2138,7 @@ function healthHtml(){
   const row = (x, sub, right) => '<div class="app">' + appTile(x) + '<div><b>' + esc(x.name) + '</b><span>' + sub + '</span></div>' + right + '</div>';
   const chip = (t, cls) => '<em class="chip2 ' + (cls || '') + '">' + t + '</em>';
   const A = id => APPS.find(x => x.id === id);
-  const direct = row(A("strava"), strava.connected ? "Connected" + (strava.name ? " as " + esc(strava.name) : "") + ". Workouts, routes and heart rate sync on their own." : "Workouts, routes and heart rate from any watch.",
+  const direct = row(A("strava"), (strava.connected ? "Connected" + (strava.name ? " as " + esc(strava.name) : "") + ". Workouts, routes and heart rate sync on their own." : "Workouts, routes and heart rate from any watch.") + (strava.connected ? '<i class="cws"><img src="brand/compatible-strava-orange.svg" alt="Compatible with Strava" width="437" height="37"></i>' : ''),
       strava.connected ? chip("Connected", "on") : strava.available ? '' : chip("Unavailable")) +
     (!strava.connected && strava.available ? '<div class="stwrap"><button class="stbtn" type="button" data-act="stconnect" aria-label="Connect with Strava"><img src="brand/strava-connect.svg" alt="Connect with Strava" width="237" height="48"></button></div>' : '') +
     row(A("garmin"), "Approved by Garmin. Direct sync is on the way. For now, link Garmin to Strava.", chip("Coming soon", "soon")) +
