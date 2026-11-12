@@ -289,6 +289,15 @@ button{cursor:pointer}
 .about p + p{margin-top:12px}
 .about b{color:var(--ink)}
 
+.fine{font-size:12px;line-height:1.45;color:var(--muted);margin:0}
+.linkbtn.inl{display:inline;padding:0;min-height:0;font:inherit;color:var(--accent-2);text-decoration:underline;text-underline-offset:2px;vertical-align:baseline}
+.agree{display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.45;cursor:pointer}
+.agree input{flex:none;width:22px;height:22px;min-height:0;margin:1px 0 0;accent-color:var(--accent)}
+.legal h3{font:700 16px/1.3 var(--f-display);margin:18px 0 6px} .legal h3:first-child{margin-top:0}
+.legal p,.legal li{font-size:14.5px;line-height:1.55;color:#C9CDD8} .legal p{margin:0 0 8px} .legal ul{margin:0 0 8px;padding-left:20px;display:grid;gap:6px}
+.legal a{color:var(--accent-2)}
+.coach small.ai{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+
 /* pull down to refresh */
 #ptr{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 6px);z-index:30;width:38px;height:38px;margin-left:-19px;border-radius:50%;background:var(--surface);border:1px solid rgba(255,255,255,.08);
   display:grid;place-items:center;opacity:0;transform:translateY(-50px);will-change:transform,opacity;pointer-events:none}
@@ -640,7 +649,7 @@ let ci = null, wf = null, aw = {open: false, err: "", busy: false};
 let reviews = {}, notes = [], uset = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", n_morning: true, n_run: true, n_weekly: true, n_bed: true}, pushInfo = {key: null, devices: 0}, coachOn = false;
 const reviewFor = a => reviews[a.id] || null;
 const VCLS = {ok: "good", easy: "easy", hard: "warn", unknown: "muted", extra: "good"};
-function reviewHtml(rv){ return '<div class="coach">' + ic("spark") + '<div><b>' + esc(rv.headline) + '</b>' + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + '</div></div>'; }
+function reviewHtml(rv){ return '<div class="coach">' + ic("spark") + '<div><small class="ai">AI coach · can be wrong</small><b>' + esc(rv.headline) + '</b>' + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + '</div></div>'; }
 let notePending = false;
 const morningNote = () => notes.find(n => n.date === TODAY && n.kind === "morning");   // check-in draft, weigh-in edit, workout form
 const actsOn = d => acts.filter(a => a.date === d);
@@ -1204,7 +1213,8 @@ function fuelCard(f, extra){
     '<span class="sub">' + comma(e.cal) + ' eaten of ' + comma(f.cal) + ' (estimate)</span><div class="bar"><i style="width:' + pc(e.cal, f.cal) + '%' + (left < 0 ? ';background:var(--crit)' : '') + '"></i></div></div>' +
     '<div class="macs">' + mac("Protein", e.protein, f.pro, "lift") + mac("Carbs", e.carbs, f.carb, "work") + mac("Fat", e.fat, f.fat, "easy") + '</div>' +
     '<p class="sub">' + (f.logged ? 'Base ' + comma(f.base) + ' + training ' + comma(f.train) + ' = ' + comma(f.cal) + '.' : f.planned ? 'Base ' + comma(f.base) + '. Today\'s training adds about +' + comma(f.planned) + ' once you log it.' : 'Base ' + comma(f.base) + ' on a rest day.') +
-      (f.brk ? ' ' + esc(f.why) : f.cut ? ' Includes a ' + f.deficit + '-calorie deficit toward your goal weight.' + (f.why ? ' ' + esc(f.why) : '') : f.why ? ' ' + esc(f.why) : '') + '</p>' + (extra || '') + '</section>';
+      (f.brk ? ' ' + esc(f.why) : f.cut ? ' Includes a ' + f.deficit + '-calorie deficit toward your goal weight.' + (f.why ? ' ' + esc(f.why) : '') : f.why ? ' ' + esc(f.why) : '') + '</p>' + (extra || '') +
+      '<p class="fine">Estimates for healthy adults, not medical or nutrition advice. Check with your doctor before changing how you eat. <button class="linkbtn inl" type="button" data-act="doc" data-k="health">Health and safety</button></p></section>';
 }
 function foodCard(inner){
   const list = food[fdate] || [], ai = aiOn(), meal = fs.meal || mealNow();
@@ -1224,6 +1234,7 @@ function foodCard(inner){
       '<div class="fbtns"><label class="cam">' + ic("camera") + '<span>' + (fs.photo ? 'Retake' : 'Photo') + '</span><input type="file" id="food-photo" accept="image/*" aria-label="Take or choose a food photo"></label>' +
       '<button class="btn primary" type="button" data-act="fadd"' + (fs.busy ? ' disabled aria-busy="true"' : '') + '>' + (fs.busy ? 'Reading your food…' : 'Add food') + '</button></div>' +
       '<p class="err" role="alert">' + esc(fs.err) + '</p>' + (fs.note ? '<p class="fnote">' + esc(fs.note) + '</p>' : '') +
+      '<p class="fine">AI reads are estimates and can be off. Check the label when you can.</p>' +
       '<button class="linkbtn" type="button" data-act="fmanual">' + (fs.manual ? 'Hide manual entry' : 'Enter the numbers myself') + '</button>' + (fs.manual ? manual : '');
   } else {
     form += '<p class="fnote">' + (mode === "sample" ? 'Create an account to log food with a photo. Sample entries aren\'t saved.' : 'Photo logging is being set up. Enter the numbers for now.') + '</p>' + manual + '<p class="err" role="alert">' + esc(fs.err) + '</p>';
@@ -1597,6 +1608,7 @@ function readStep(){
     if (document.getElementById("s-easy")){ const t = parseTime(v("s-easy")); if (!t || t < 300 || t > 1200) return "Type your easy pace as numbers, like 1030 for 10:30."; p.easyPace = t; p.prSec = null; p.prDist = "none"; }
   } else if (st.step === 2){
     p.lifts = +(radio("lifts") || 0); p.liftExp = radio("liftExp") || p.liftExp; p.weight = num("s-w"); p.goalWeight = num("s-gw");
+    if (p.weight && p.goalWeight && p.goalWeight < p.weight * .8) return "For a goal more than 20% below your current weight, please work with a doctor or registered dietitian. Leave goal weight empty, or pick one closer to your current weight.";
     if (p.weight != null && (p.weight < 80 || p.weight > 400)) return "Weight should be in pounds.";
   } else if (st.step === 3){
     p.days = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(e => +e.value);
@@ -1614,20 +1626,22 @@ function renderAuth(){
     (up ? '<div class="q"><label for="a-name">First name</label><input id="a-name" autocomplete="given-name" maxlength="30" value="' + esc(a.name || "") + '"></div>' : '') +
     '<div class="q"><label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" value="' + esc(a.email || "") + '"></div>' +
     '<div class="q"><label for="a-pass">Password</label><input id="a-pass" type="password" autocomplete="' + (up ? 'new-password' : 'current-password') + '" minlength="8">' + (up ? '<p class="hint" style="margin-top:0">At least 8 characters.</p>' : '') + '</div>' +
+    (up ? '<label class="agree"><input type="checkbox" id="a-agree"' + (a.agree ? ' checked' : '') + '><span>I\'m 18 or older, and I agree to the <button class="linkbtn inl" type="button" data-act="doc" data-k="terms">Terms</button> and the <button class="linkbtn inl" type="button" data-act="doc" data-k="health">Health and safety notice</button>.</span></label>' : '') +
     '<p class="err" role="alert">' + esc(a.err || "") + '</p>' +
     '<button class="btn primary block" type="submit"' + (a.busy ? ' disabled aria-busy="true"' : '') + '>' + (a.busy ? 'One moment…' : up ? 'Create account' : 'Log in') + '</button>' +
     '<button class="linkbtn" type="button" data-act="' + (up ? 'authlogin' : 'authsignup') + '" style="justify-self:center">' + (up ? 'Already have an account? Log in' : 'New here? Create an account') + '</button>' +
-    (up ? '<p class="sub" style="text-align:center">Your plan and food log are saved to your account so they follow you to any phone. You can delete your account and everything in it from Settings.</p>' : '') +
+    (up ? '<p class="sub" style="text-align:center">Your plan and food log are saved to your account so they follow you to any phone. You can delete your account and everything in it from Settings. <a class="linkbtn inl" href="privacy.html" target="_blank" rel="noopener">Privacy</a></p>' : '') +
     '<button class="linkbtn" type="button" data-act="authback" style="justify-self:center;color:var(--muted)">Back</button></form>';
 }
 async function submitAuth(){
   const a = authv, up = a.view === "signup", v = id => (document.getElementById(id) || {}).value || "";
-  a.name = v("a-name").trim(); a.email = v("a-email").trim(); const pw = v("a-pass");
+  a.name = v("a-name").trim(); a.email = v("a-email").trim(); const pw = v("a-pass"); a.agree = !!(document.getElementById("a-agree") || {}).checked;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email)){ a.err = "Enter a valid email."; render(); return; }
   if (pw.length < 8){ a.err = up ? "Use a password of at least 8 characters." : "Enter your password."; render(); return; }
+  if (up && !a.agree){ a.err = "Please confirm you're 18 or older and agree to the terms."; render(); return; }
   a.busy = true; a.err = ""; render();
   try {
-    const j = await api("POST", up ? "/api/signup" : "/api/login", up ? {email: a.email, password: pw, name: a.name} : {email: a.email, password: pw});
+    const j = await api("POST", up ? "/api/signup" : "/api/login", up ? {email: a.email, password: pw, name: a.name, agree: true} : {email: a.email, password: pw});
     token = j.token; tokenStore.set(token); authv = null; loading = true; render();
     loadAccount(await api("GET", "/api/me")); loading = false; tab = "today"; render(); window.scrollTo(0, 0); autoSync(true);
     if (!up) toast("Welcome back" + (me.name ? ", " + me.name.split(" ")[0] : "") + ".");
@@ -1636,6 +1650,7 @@ async function submitAuth(){
 function render(){
   if (loading){ bar.hidden = true; app.innerHTML = header() + '<section class="building"><div class="spin" aria-hidden="true"></div><p class="sub">Loading your plan…</p></section>'; return; }
   if (authv){ bar.hidden = true; app.innerHTML = renderAuth(); return; }
+  if (needsConsent()){ bar.hidden = true; app.innerHTML = renderConsent(); return; }
   if (setup){ bar.hidden = true; app.innerHTML = renderSetup(); return; }
   if (!plan){ setup = {step: -1, p: blankProfile()}; return render(); }
   bar.hidden = false;
@@ -1653,7 +1668,8 @@ function settingsScreen(k){
   const row = (to, label, sub, icon, act, cls) => '<button class="srow' + (cls ? ' ' + cls : '') + '" type="button" data-act="' + (act || 'go') + '"' + (to ? ' data-scr="' + to + '"' : '') + '>' + ic(icon) + '<div><b>' + label + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</div>' + (to || act === "edit" ? '<i>›</i>' : '') + '</button>';
   const group = (title, rows) => '<section class="sgroup">' + (title ? '<h2>' + title + '</h2>' : '') + '<div class="slist">' + rows + '</div></section>';
   const pr = plan ? plan.profile : {}, nm = (me && me.name) || pr.name || "";
-  const help = group("Help", (API ? row("set-report", "Report a problem", "Something broken or confusing? Tell us.", "flag") : '') + (mode === "account" && isOwner ? row("set-reports", "Reported problems", reports.length + ' waiting', "bars") : '') + row("set-about", "How Hybrid works", "Your plan, readiness and calories, explained", "spark") + '<a class="srow" href="privacy.html" target="_blank" rel="noopener">' + ic("lock") + '<div><b>Privacy policy</b><span>What we collect and how it\'s used</span></div><i>›</i></a>');
+  const help = group("Help", (API ? row("set-report", "Report a problem", "Something broken or confusing? Tell us.", "flag") : '') + (mode === "account" && isOwner ? row("set-reports", "Reported problems", reports.length + ' waiting', "bars") : '') + row("set-about", "How Hybrid works", "Your plan, readiness and calories, explained", "spark") +
+    row("set-health-info", "Health and safety", "Read before changing how you eat or train", "heart") + row("set-terms", "Terms of use", "", "flag") + '<a class="srow" href="privacy.html" target="_blank" rel="noopener">' + ic("lock") + '<div><b>Privacy policy</b><span>What we collect and how it\'s used</span></div><i>›</i></a>');
   const training = group("Training", row("set-profile", "Body and goals", (pr.weight ? pr.weight + ' lb' : 'Weight not set') + (pr.goalWeight ? ' → ' + pr.goalWeight + ' lb' : ''), "scale") +
     row("", "Race, run days and lifting", plan ? RACES[pr.goal].name + (plan.raceDate ? ' · ' + fmtD(plan.raceDate) : '') + ' · rebuilds your plan' : '', "cal", "edit") +
     row("set-hr", "Heart rate zones", hrSummary(), "heart") + row("set-run", "Running", 'Usual run time ' + hr12(+String(uset.run_time || "07:00").slice(0, 2)) + (wxLoc() ? ' · ' + esc(wxLoc().place || 'weather on') : ''), "sun"));
@@ -1669,6 +1685,8 @@ function settingsScreen(k){
     return training + group("Plan", row("", "Start over", "Your answers stay in this browser only.", "flag", "reset")) + help;
   }
   if (k === "set-hr") return hrScreen();
+  if (k === "set-health-info") return '<section class="card legal">' + legalHtml("health") + '</section>';
+  if (k === "set-terms") return '<section class="card legal">' + legalHtml("terms") + '</section>';
   if (k === "set-profile") return profileForm();
   if (k === "set-run") return '<section class="card form"><label>Usual run time<small>Used for the heat adjustment and the best time to run.</small><input type="time" data-set="run_time" value="' + esc(uset.run_time || "07:00") + '"></label></section>' +
     '<section class="card"><div class="card-h"><span class="lbl">Weather location</span><span class="r">' + esc(wxLoc() ? wxLoc().place || 'Set' : 'Not set') + '</span></div><button class="btn block" type="button" data-act="wxset">Change location</button></section>';
@@ -1747,8 +1765,55 @@ function hrRead(){
   document.querySelectorAll(".zp").forEach(el => { const x = parseInt(el.value, 10); if (Number.isFinite(x)) e["pct_" + m][+el.dataset.zi] = x; });
 }
 
+/* ---------- health and safety + terms (privacy policy: privacy.html) ----------
+   Hybrid gives general fitness and nutrition information (Florida's exemption for general wellness advice,
+   s. 468.505(1)(n)): it never presents itself as a dietitian or nutritionist and isn't for people whose doctor
+   is treating a condition with a special diet. */
+const LEGAL_DATE = "November 12, 2026", HELPLINE = "866-662-1235";
+function legalHtml(k){
+  const P = t => '<p>' + t + '</p>', L = items => '<ul>' + items.map(x => '<li>' + x + '</li>').join("") + '</ul>', H = t => '<h3>' + t + '</h3>';
+  if (k === "health") return H("General information only") +
+    P("Hybrid gives general fitness and nutrition information for healthy adults. It is not medical advice and doesn't replace a doctor, registered dietitian or other health professional. Hybrid is not a dietitian, nutritionist or nutrition counselor.") +
+    H("Check with a doctor first if you") + L(["are pregnant or breastfeeding", "have a heart, lung, kidney, liver or blood sugar condition, high blood pressure, or any other medical condition", "take medication that affects heart rate, blood sugar or appetite", "are coming back from an injury, surgery or illness", "haven't exercised in a long time"]) +
+    H("Don't use Hybrid's calorie targets if you") + L(["are under 18", "have, or have had, an eating disorder", "are being treated by a doctor for a condition that needs a special diet (for example diabetes or kidney disease)"]) +
+    H("Stop and get help") + P("Stop exercising and get medical help right away if you have chest pain or pressure, fainting, severe dizziness, trouble breathing, an irregular heartbeat, or sharp or unusual pain. In an emergency, call 911.") +
+    H("Numbers are estimates") + P("Calorie, macro, pace, heart rate zone, fitness and race time numbers are estimates and can be off. Food read from photos and text, coach notes and workout reviews are written by AI and can be wrong. Check food labels when you can, and listen to your body over the app.") +
+    H("Built-in safety limits") + L(["A weight-loss calorie target never goes below 1,500 calories a day (or your maintenance, if that's lower).", "The deficit is capped at 750 calories, and shrinks if you lose more than about 1% of your body weight in a week.", "Every 8th week is a maintenance week, and targets go to maintenance once you reach your goal.", "Goal weights more than 20% below your current weight aren't accepted."]) +
+    H("If food or weight feels stressful") + P("Talking to someone helps. The National Alliance for Eating Disorders helpline is free and staffed by licensed therapists: <a href=\"tel:18666621235\">" + HELPLINE + "</a> (Monday to Friday, 9 am to 7 pm ET).") +
+    '<p class="sub">Updated ' + LEGAL_DATE + '</p>';
+  if (k === "terms") return P("By creating an account or using Hybrid, you agree to these terms and to the <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">privacy policy</a>.") +
+    H("Who can use Hybrid") + P("You must be 18 or older.") +
+    H("Not medical or dietetic advice") + P("Hybrid provides general information only, as described in the Health and safety notice. Decisions about your training, eating and health are yours. Talk to a qualified professional before making changes, especially if you have a medical condition.") +
+    H("Use at your own risk") + P("Exercise and changes to how you eat carry risk, including injury. Hybrid is provided \"as is\", without warranties of any kind. To the fullest extent the law allows, Hybrid and its creator aren't liable for any injury, illness, loss or damage that comes from using the app or relying on its information.") +
+    H("AI features") + P("Food reading, coach notes and workout reviews are generated by AI. They can be inaccurate and aren't reviewed by a person before you see them.") +
+    H("Your account") + P("Keep your password private. Don't misuse the app, try to break it, or access other people's accounts. Hybrid may change or remove features, and may close accounts that misuse it. You can delete your account at any time in Settings.") +
+    H("Changes") + P("These terms may be updated. If something important changes, the app will ask you to agree again.") +
+    H("Questions") + P("Use Settings → Report a problem.") + '<p class="sub">Updated ' + LEGAL_DATE + '</p>';
+  return '';
+}
+const DOC_T = {health: "Health and safety", terms: "Terms of use"};
+function openDoc(k){
+  closeMenu();
+  const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
+  b.innerHTML = '<div class="sheet legal" role="dialog" aria-modal="true" aria-label="' + DOC_T[k] + '"><h2 class="sec-t" style="font-size:22px">' + DOC_T[k] + '</h2>' + legalHtml(k) + '<button class="btn block" type="button" data-act="close">Close</button></div>';
+  document.body.appendChild(b); b.querySelector("button").focus();
+}
+let consentv = null;
+const needsConsent = () => mode === "account" && me && !me.terms_at;
+function renderConsent(){
+  const c = consentv || (consentv = {});
+  return header() + '<section class="setup view legal"><h2 class="sec-t">Before you keep going</h2>' +
+    '<p class="sub">Hybrid gives general fitness and nutrition information for healthy adults. It isn\'t medical advice, and Hybrid isn\'t a dietitian or nutritionist.</p>' +
+    '<ul><li>Check with a doctor before starting, especially if you have a medical condition, take medication, or are pregnant.</li><li>Don\'t use the calorie targets if you have or had an eating disorder, or a doctor is treating you with a special diet.</li><li>Calories and AI food reads are estimates and can be wrong.</li></ul>' +
+    '<p class="sub"><button class="linkbtn inl" type="button" data-act="doc" data-k="health">Health and safety</button> · <button class="linkbtn inl" type="button" data-act="doc" data-k="terms">Terms</button> · <a class="linkbtn inl" href="privacy.html" target="_blank" rel="noopener">Privacy</a></p>' +
+    '<label class="agree"><input type="checkbox" id="c-agree"' + (c.on ? ' checked' : '') + '><span>I\'m 18 or older, and I agree to the Terms and the Health and safety notice.</span></label>' +
+    (c.err ? '<p class="err" role="alert">' + esc(c.err) + '</p>' : '') +
+    '<button class="btn primary block" type="button" data-act="consent"' + (c.busy ? ' disabled' : '') + '>Continue</button>' +
+    '<button class="linkbtn" type="button" data-act="logout" style="justify-self:center;color:var(--muted)">Log out</button></section>';
+}
+
 /* ---------- report a problem ---------- */
-const APP_VERSION = "29";
+const APP_VERSION = "30";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -1830,8 +1895,8 @@ async function pushOn(){
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 const SCR_T = {fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
   settings: "Settings", "set-notif": "Notifications", "set-watch": "Strava and watches", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
-  "set-hr": "Heart rate zones", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Hybrid works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup"};
-const SCR_UP = {"set-profile": "settings", "set-run": "settings", "set-about": "settings", "set-email": "settings", "set-password": "settings", "set-hr": "settings", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", "set-report": "settings", "set-reports": "settings", "set-account": "settings"};
+  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Hybrid works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup"};
+const SCR_UP = {"set-health-info": "settings", "set-terms": "settings", "set-profile": "settings", "set-run": "settings", "set-about": "settings", "set-email": "settings", "set-password": "settings", "set-hr": "settings", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", "set-report": "settings", "set-reports": "settings", "set-account": "settings"};
 let navDir = null;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function nav(dir, fn){
@@ -1902,12 +1967,21 @@ document.addEventListener("click", ev => {
   if (act === "actopen"){ const id = a.dataset.id; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actback"){ nav("back", () => { actSel = null; render(); }); return; }
   if (act === "afilt"){ actFilter = a.dataset.k; render(); return; }
+  if (act === "doc"){ openDoc(a.dataset.k); return; }
+  if (act === "consent"){
+    const c = consentv || (consentv = {}); c.on = !!($("#c-agree") || {}).checked;
+    if (!c.on){ c.err = "Please check the box to continue."; render(); return; }
+    c.busy = true; c.err = ""; render();
+    api("POST", "/api/account/terms", {agree: true}).then(j => { me.terms_at = j.terms_at; consentv = null; render(); window.scrollTo(0, 0); }).catch(e => { c.busy = false; c.err = e.message; render(); });
+    return;
+  }
   if (act === "pfsave"){
     const name = ($("#pf-name") || {}).value.trim(), w = parseFloat(($("#pf-w") || {}).value), gwRaw = ($("#pf-gw") || {}).value.trim(), gw = gwRaw ? parseFloat(gwRaw) : null;
     pf = {name, weight: ($("#pf-w") || {}).value, goalWeight: gwRaw};
     if (!name){ pf.err = "Enter your name."; render(); return; }
     if (!(w >= 70 && w <= 500)){ pf.err = "Enter your weight in pounds."; render(); return; }
     if (gw != null && !(gw >= 70 && gw <= 500)){ pf.err = "Enter a goal weight in pounds, or leave it empty."; render(); return; }
+    if (gw != null && gw < w * .8){ pf.err = "For a goal more than 20% below your current weight, please work with a doctor or registered dietitian. Hybrid won't set targets for it."; render(); return; }
     const prof = {...plan.profile, name, weight: Math.round(w * 10) / 10, goalWeight: gw == null ? null : Math.round(gw * 10) / 10}; delete prof.sample;
     const fin = () => { plan = buildPlan(prof); if (me) me.name = name; pf = null; save(); toast("Saved."); go("settings"); };
     if (mode === "account"){ pf.busy = true; render();

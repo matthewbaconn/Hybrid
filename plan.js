@@ -325,7 +325,7 @@ function deficitFor(plan, weights, date){
     const a = avgW(weights, addDays(plan.start, 7 * k - 1)), b = avgW(weights, addDays(plan.start, 7 * (k - 1) - 1));
     if (!a || !b) continue;
     const loss = b - a;
-    if (loss > 1.75){ d -= 150; last = "You lost " + loss.toFixed(1) + " lb last week, faster than muscle-safe, so the deficit is smaller."; }
+    if (loss > Math.min(1.75, W * .01)){ d -= 150; last = "You lost " + loss.toFixed(1) + " lb last week, faster than is safe for muscle, so the deficit is smaller."; }
     else if (loss < .4){ d += 150; last = "Weight held steady last week, so the deficit is a little bigger."; }
     else last = "Losing at a muscle-safe pace. Same deficit.";
     d = Math.max(250, Math.min(750, d));
@@ -343,7 +343,8 @@ function fuel(plan, weights, acts, date){
   const p = plan.profile, W = avgW(weights, date) || p.weight || 170, day = dayOf(plan, date);
   const df = deficitFor(plan, weights, date), hard = day && day.sessions.some(s => s.type === "long" || s.type === "workout" || s.type === "race");
   const def = hard ? Math.min(df.d, 250) : df.d, cutting = df.d > 0;
-  const base = Math.max(W * 10.5, W * 13 - def);
+  // safety floor: a cutting target never goes under 1,500 (or maintenance, if that's lower) or under ~10.5 cal per lb
+  const base = Math.max(W * 10.5, W * 13 - def, def > 0 ? Math.min(1500, W * 13) : 0);
   const dayActs = acts.filter(a => a.date === date);
   const train = dayActs.reduce((t, a) => t + burnOf(a, W), 0) * (cutting ? .75 : 1);
   const cal = Math.round((base + train) / 10) * 10;

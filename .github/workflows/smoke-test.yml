@@ -24,7 +24,8 @@ jobs:
           call(){ curl -sS -X "$1" "$API$2" -H "Origin: $ORIGIN" -H "Content-Type: application/json" ${TOKEN:+-H "Authorization: Bearer $TOKEN"} ${3:+--data-binary "$3"}; }
           email="test-$(date +%s)-$RANDOM@example.com"
           TOKEN=""
-          r=$(call POST /api/signup "{\"email\":\"$email\",\"password\":\"smoke-test-123\",\"name\":\"Test\"}")
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API/api/signup" -H "Origin: $ORIGIN" -H "Content-Type: application/json" -d "{\"email\":\"no-agree-$RANDOM@example.com\",\"password\":\"smoke-test-123\"}")" = 400 ] || { echo "::error::sign-up without agreeing to the terms was accepted"; exit 1; }
+          r=$(call POST /api/signup "{\"email\":\"$email\",\"password\":\"smoke-test-123\",\"name\":\"Test\",\"agree\":true}")
           TOKEN=$(echo "$r" | jq -r .token); [ "$TOKEN" != "null" ] || { echo "::error::signup failed: $r"; exit 1; }
           echo "signup ok"
           r=$(call POST /api/food/analyze '{"text":"3 scrambled eggs and 2 slices of whole wheat toast"}')

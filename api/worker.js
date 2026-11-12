@@ -57,7 +57,7 @@ async function newSession(env, userId){
 async function auth(req, env){
   const m = (req.headers.get("Authorization") || "").match(/^Bearer ([a-f0-9]{64})$/);
   if (!m) throw new HttpError(401, "Please log in.");
-  const row = await env.DB.prepare("SELECT u.id, u.email, u.name, s.expires FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?").bind(await sha256(m[1])).first();
+  const row = await env.DB.prepare("SELECT u.id, u.email, u.name, u.terms_at, s.expires FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?").bind(await sha256(m[1])).first();
   if (!row || row.expires < now()) throw new HttpError(401, "Your session ended. Please log in again.");
   return row;
 }
@@ -214,7 +214,9 @@ async function askCoach(env, system, data){
   const out = await r.json(), raw = (out.content || []).filter(c => c.type === "text").map(c => c.text).join("");
   try { const j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); await logEvent(env, "ai_coach", true); return j; } catch(e){ lastCoachError = "unreadable reply (" + out.stop_reason + "): " + raw.slice(0, 200); await logEvent(env, "ai_coach", false, lastCoachError); return null; }
 }
-const COACH_STYLE = "You are a friendly, plain-spoken running and strength coach writing inside a training app. No jargon (no 'Z2', 'ACWR', 'EF'), no emoji, no medical advice, never shame. Use the numbers you are given; don't invent any.";
+const COACH_STYLE = "You are a friendly, plain-spoken running and strength coach writing inside a training app. No jargon (no 'Z2', 'ACWR', 'EF'), no emoji, no medical advice, never shame. " +
+  "Safety rules: you are not a doctor, dietitian or nutritionist and never call yourself one. Don't diagnose, don't recommend supplements, medications or specific diets, and never suggest eating less than the app's calorie target, skipping meals or making up for food with extra exercise. " +
+  "If the numbers or notes hint at pain, injury, illness, dizziness, chest pain or very little sleep, say to take it easy and check with a doctor if it doesn't get better. Use the numbers you are given; don't invent any.";
 async function runReview(env, userId, U, act, today){
   const fbk = HP.feedback(U.plan, U.acts, HP.addDays(act.date, 1));
   const m = HP.dayMatches(U.plan, U.acts, act.date), idx = Object.keys(m).find(i => m[i].id === act.id);
@@ -351,10 +353,11 @@ async function route(req, env, path, ctx){
     const email = String(b.email || "").trim().toLowerCase(), password = String(b.password || ""), name = String(b.name || "").trim().slice(0, 30);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120) throw new HttpError(400, "Enter a valid email.");
     if (password.length < 8 || password.length > 200) throw new HttpError(400, "Use a password of at least 8 characters.");
+    if (b.agree !== true) throw new HttpError(400, "Please confirm you're 18 or older and agree to the terms.");
     if (await env.DB.prepare("SELECT 1 FROM users WHERE email = ?").bind(email).first()) throw new HttpError(409, "That email already has an account. Log in instead.");
-    const id = rand(12), salt = rand(16);
-    await env.DB.prepare("INSERT INTO users (id, email, name, pass_hash, salt, created) VALUES (?, ?, ?, ?, ?, ?)").bind(id, email, name, await hashPassword(password, salt), salt, now()).run();
-    return {token: await newSession(env, id), user: {id, email, name}};
+    const id = rand(12), salt = rand(16), t = now();
+    await env.DB.prepare("INSERT INTO users (id, email, name, pass_hash, salt, created, terms_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id, email, name, await hashPassword(password, salt), salt, t, t).run();
+    return {token: await newSession(env, id), user: {id, email, name, terms_at: t}};
   }
   if (M === "GET" && path === "/api/strava/callback"){
     const q = new URL(req.url).searchParams, st = q.get("state") || "";
@@ -504,7 +507,7 @@ async function route(req, env, path, ctx){
     const prof = p.results[0] ? JSON.parse(p.results[0].data) : null;
     const owner = await ownerId(env) === user.id;
     const reports = owner ? (await env.DB.prepare("SELECT id, email, text, info, created FROM reports ORDER BY created DESC LIMIT 50").all()).results : undefined;
-    return {user: userOut(user), profile: prof, done: d.results.map(r => r.key), food: f.results, checkins: c.results, weights: w.results, activities: a.results,
+    return {user: {...userOut(user), terms_at: user.terms_at || null}, profile: prof, done: d.results.map(r => r.key), food: f.results, checkins: c.results, weights: w.results, activities: a.results,
       strava: {available: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!s.results[0], name: s.results[0] ? s.results[0].athlete_name : "", last_sync: s.results[0] ? s.results[0].last_sync : null},
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
       settings: await settingsOf(env, user.id), push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY,
@@ -515,6 +518,11 @@ async function route(req, env, path, ctx){
     if (!name) throw new HttpError(400, "Enter your name.");
     await env.DB.prepare("UPDATE users SET name = ? WHERE id = ?").bind(name, user.id).run();
     return {user: {...userOut(user), name}};
+  }
+  if (M === "POST" && path === "/api/account/terms"){
+    const b = await body(req); if (b.agree !== true) throw new HttpError(400, "Please confirm to continue.");
+    const t = now(); await env.DB.prepare("UPDATE users SET terms_at = ? WHERE id = ?").bind(t, user.id).run();
+    return {terms_at: t};
   }
   if (M === "POST" && path === "/api/account/password"){
     await limit(env, "auth:" + (req.headers.get("CF-Connecting-IP") || "x"));

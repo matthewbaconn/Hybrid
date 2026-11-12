@@ -34,7 +34,12 @@ await check("Sample runner", async () => {
   await page.click('[data-act="sample"]'); await page.waitForSelector(".hub-hero"); for (const t of ["plan", "activities", "recovery", "training", "today"]){ await tab(t); await noOverflow(); }
   await settings(); await page.click('[data-act="authsignup"]'); await page.waitForSelector("#authform");
 });
-await check("Sign up", async () => { await page.fill("#a-name", "Nightly"); await page.fill("#a-email", email); await page.fill("#a-pass", pass); await page.click('#authform [type="submit"]'); await page.waitForSelector("h2.sec-t >> text=What are you training for?", {timeout: 15000}); });
+await check("Sign-up needs the 18+ / terms box", async () => { await page.fill("#a-name", "Nightly"); await page.fill("#a-email", email); await page.fill("#a-pass", pass); await page.click('#authform [type="submit"]');
+  await page.waitForSelector("#authform .err:not(:empty)", {timeout: 5000}); const t = await page.innerText("#authform .err"); if (!/18/.test(t)) throw new Error(t);
+  await page.click('[data-act="doc"][data-k="health"]'); await page.waitForSelector(".sheet.legal"); const h = await page.innerText(".sheet.legal"); await page.click('.sheet [data-act="close"]');
+  if (!/not a dietitian/.test(h) || !/866-662-1235/.test(h)) throw new Error("health notice text"); return "blocked until checked · notice opens";
+});
+await check("Sign up", async () => { await page.fill("#a-name", "Nightly"); await page.fill("#a-email", email); await page.fill("#a-pass", pass); await page.check("#a-agree"); await page.click('#authform [type="submit"]'); await page.waitForSelector("h2.sec-t >> text=What are you training for?", {timeout: 15000}); });
 await check("Build a plan (4 steps)", async () => {
   await page.click('label.opt:has(input[value="half"])');
   const race = new Date(Date.now() + 84 * 864e5).toISOString().slice(0, 10);
