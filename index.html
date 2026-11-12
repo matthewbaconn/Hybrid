@@ -620,6 +620,26 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .code{font:700 34px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;text-align:center;padding:14px;border-radius:8px;background:var(--sunk);user-select:all}
 .stbtn{border:0;padding:0;background:none;display:block;justify-self:center;line-height:0;border-radius:6px;transition:transform .08s ease,opacity .12s}.stbtn img{display:block;height:48px;width:auto}.stbtn:active{transform:scale(.97);opacity:.9}.stwrap{padding:0 0 16px;display:grid;border-bottom:1px solid var(--line)}.stbtn:disabled{opacity:.6}
 .cws{display:flex;width:fit-content;align-items:center;background:#fff;border-radius:4px;padding:5px 8px;margin-top:8px;font-style:normal;line-height:0}.cws img{height:10px;width:auto;display:block}
+
+/* settings cards + integrations (Endorphins-style) */
+.scards{display:grid;gap:12px}
+.scard{display:flex;align-items:center;gap:16px;width:100%;padding:22px 20px;border-radius:12px;text-align:left;color:var(--ink);background:linear-gradient(140deg,color-mix(in srgb,var(--accent) 16%,var(--surface)) 0%,var(--surface) 60%);border:1px solid rgba(255,255,255,.08);transition:transform .08s ease,background .12s}
+.scard div{flex:1;min-width:0}.scard b{display:block;font:700 19px/1.2 var(--f-display);letter-spacing:-.01em}.scard span{display:block;margin-top:6px;font-size:14px;line-height:1.4;color:var(--muted)}
+.scard>i{font-style:normal;color:var(--ink);font-size:24px;line-height:1;flex:none}.scard>i .ic{width:24px;height:24px}
+.scard.hi{border:1.5px solid color-mix(in srgb,var(--accent-2) 70%,transparent);background:linear-gradient(140deg,color-mix(in srgb,var(--accent) 34%,var(--surface)) 0%,color-mix(in srgb,var(--accent) 10%,var(--surface)) 100%)}
+.scard:active{transform:scale(.985)}
+.apps{display:grid;gap:12px}
+.apps h3{font:600 13px var(--f-body);color:var(--muted);margin:14px 4px 0;text-transform:uppercase;letter-spacing:.05em}
+.icard{display:grid;gap:12px;padding:16px 18px;border-radius:12px;background:linear-gradient(140deg,color-mix(in srgb,var(--accent) 8%,var(--surface)) 0%,var(--surface) 70%);border:1px solid rgba(255,255,255,.08)}
+.icard[role=button]{cursor:pointer}.icard[role=button]:active{transform:scale(.985)}
+.icard-r{display:flex;align-items:center;gap:16px}.icard-r>div{flex:1;min-width:0}
+.icard-r b{display:block;font:700 18px/1.2 var(--f-display)}.icard-r>div span{display:block;font-size:13.5px;line-height:1.4;color:var(--muted);margin-top:3px}.icard .atile{display:flex;align-items:center;justify-content:center;margin:0}.icard .atile .ic{display:block;margin:0;flex:none}
+.icard .atile{width:54px;height:54px;border-radius:12px;border:0}.icard .atile .ic{width:26px;height:26px}
+.icard .stbtn{justify-self:stretch}.icard .stbtn img{margin:0 auto}.icard .cws{margin:0 0 0 70px}
+.pill2{flex:none;font-style:normal;font-weight:600;font-size:13.5px;padding:7px 15px;border-radius:999px;border:1.5px solid rgba(255,255,255,.18);color:var(--muted);background:none;white-space:nowrap}
+.pill2.on{border-color:color-mix(in srgb,var(--long) 70%,transparent);color:var(--long);background:color-mix(in srgb,var(--long) 12%,transparent)}
+.pill2.soon{border-color:color-mix(in srgb,var(--work) 55%,transparent);color:var(--work)}
+.pill2.act{border-color:rgba(255,255,255,.3);color:var(--ink)}
 </style>
 </head>
 <body>
@@ -1945,22 +1965,32 @@ function settingsScreen(k){
   const row = (to, label, sub, icon, act, cls) => '<button class="srow' + (cls ? ' ' + cls : '') + '" type="button" data-act="' + (act || 'go') + '"' + (to ? ' data-scr="' + to + '"' : '') + '>' + ic(icon) + '<div><b>' + label + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</div>' + (to || act === "edit" ? '<i>›</i>' : '') + '</button>';
   const group = (title, rows) => '<section class="sgroup">' + (title ? '<h2>' + title + '</h2>' : '') + '<div class="slist">' + rows + '</div></section>';
   const pr = plan ? plan.profile : {}, nm = (me && me.name) || pr.name || "";
-  const help = group("Help", (API ? row("set-report", "Report a problem", "Something broken or confusing? Tell us.", "flag") : '') + (mode === "account" && isOwner ? row("set-reports", "Reported problems", reports.length + ' waiting', "bars") : '') + row("set-about", "How Hybrid works", "Your plan, readiness and calories, explained", "spark") +
+  const help = group("", (API ? row("set-report", "Report a problem", "Something broken or confusing? Tell us.", "flag") : '') + (mode === "account" && isOwner ? row("set-reports", "Reported problems", reports.length + ' waiting', "bars") : '') + row("set-about", "How Hybrid works", "Your plan, readiness and calories, explained", "spark") +
     row("set-health-info", "Health and safety", "Read before changing how you eat or train", "heart") + row("set-terms", "Terms of use", "", "flag") + '<a class="srow" href="privacy.html" target="_blank" rel="noopener">' + ic("lock") + '<div><b>Privacy policy</b><span>What we collect and how it\'s used</span></div><i>›</i></a>');
-  const training = group("Training", row("set-profile", "Body and goals", (pr.weight ? pr.weight + ' lb' : 'Weight not set') + (pr.goalWeight ? ' → ' + pr.goalWeight + ' lb' : ''), "scale") +
-    row("", "Race, training days and lifting", plan ? HP.raceName(pr) + (plan.raceDate ? ' · ' + fmtD(plan.raceDate) : '') + ' · rebuilds your plan' : '', "cal", "edit") +
+  const training = group("Your plan", row("", "Race, training days and lifting", plan ? HP.raceName(pr) + (plan.raceDate ? ' · ' + fmtD(plan.raceDate) : '') + ' · rebuilds your plan' : '', "cal", "edit") +
     row("set-hr", "Heart rate zones", hrSummary(), "heart") + row("set-run", "Running", 'Usual run time ' + hr12(+String(uset.run_time || "07:00").slice(0, 2)) + (wxLoc() ? ' · ' + esc(wxLoc().place || 'weather on') : ''), "sun"));
+  const card = (to, title, sub, icon, act) => '<button class="scard" type="button" data-act="' + (act || 'go') + '"' + (to ? ' data-scr="' + to + '"' : '') + '>' + '<div><b>' + title + '</b><span>' + sub + '</span></div><i>' + (icon ? ic(icon) : '›') + '</i></button>';
+  const invite = API ? card("", "Invite a friend", "Send them Hybrid. It's free to try.", "share", "invite").replace('class="scard"', 'class="scard hi"') : '';
+  const helpCard = card("set-help", "Help and support", "Report a problem, how Hybrid works, health and safety, terms and privacy");
+  const trainCard = card("set-train", "Coaching and training", plan ? esc(HP.raceName(pr)) + (plan.raceDate ? ' · ' + fmtD(plan.raceDate) : '') + ' · heart rate zones · run time' : 'Goal, heart rate zones and run time');
   if (k === "settings"){
-    if (mode === "account") return '<button class="me-card" type="button" data-act="go" data-scr="set-profile"><span class="avatar">' + esc((nm || me.email || "?").slice(0, 1).toUpperCase()) + '</span><div><b>' + esc(nm || "Add your name") + '</b><span>' + esc(me.email) + '</span></div><i>›</i></button>' +
-      training +
-      group("Connections", row("set-watch", "Connected apps", (strava.connected ? 'Strava connected' : 'Strava') + ' · Garmin coming soon · Apple Health and more', "watch")) +
-      group("Notifications", row("set-notif", "Notifications", pushState.on ? 'On' : 'Reminders and workout summaries', "bell")) +
-      help +
-      group("Account", row("set-email", "Email", esc(me.email), "user") + row("set-password", "Password", "Change your password", "gear") + row("set-account", "Delete account", "", "flag", "", "danger")) +
+    if (mode === "account") return '<button class="me-card" type="button" data-act="go" data-scr="set-acct"><span class="avatar">' + esc((nm || me.email || "?").slice(0, 1).toUpperCase()) + '</span><div><b>' + esc(nm || "Add your name") + '</b><span>' + esc(me.email) + '</span></div><i>›</i></button>' +
+      '<div class="scards">' + invite +
+      card("set-acct", "Account and profile", "Name, body and goals, email, password and account") +
+      card("set-watch", "Devices and apps", (strava.connected ? 'Strava linked' : 'Strava') + ' · Garmin coming soon · Apple Health and more') +
+      trainCard +
+      card("set-notif", "Notifications", pushState.on ? 'On · reminders and workout summaries' : 'Reminders and workout summaries') +
+      helpCard + '</div>' +
       group("", row("", "Log out", "", "logout", "logout"));
-    if (mode === "sample") return group("Sample runner", '<p class="sub" style="padding:16px 16px 4px">You\'re looking at a sample runner. Nothing here is saved.</p>' + row("", "Create a free account", "", "user", "authsignup") + row("", "Log in", "", "logout", "authlogin")) + training + help;
-    return training + group("Plan", row("", "Start over", "Your answers stay in this browser only.", "flag", "reset")) + help;
+    if (mode === "sample") return group("Sample runner", '<p class="sub" style="padding:16px 16px 4px">You\'re looking at a sample runner. Nothing here is saved.</p>' + row("", "Create a free account", "", "user", "authsignup") + row("", "Log in", "", "logout", "authlogin")) + '<div class="scards">' + trainCard + helpCard + '</div>';
+    return '<div class="scards">' + card("set-acct", "Profile", "Body and goals") + trainCard + helpCard + '</div>' + group("Plan", row("", "Start over", "Your answers stay in this browser only.", "flag", "reset"));
   }
+  if (k === "set-acct") return (mode === "account" ? group("Profile", row("set-profile", "Body and goals", (pr.weight ? pr.weight + ' lb' : 'Weight not set') + (pr.goalWeight ? ' → ' + pr.goalWeight + ' lb' : '') + (nm ? ' · ' + esc(nm) : ''), "scale")) +
+      group("Sign-in", row("set-email", "Email", esc(me.email), "user") + row("set-password", "Password", "Change your password", "lock")) +
+      group("", row("set-account", "Delete account", "Removes everything for good", "flag", "", "danger"))
+    : group("Profile", row("set-profile", "Body and goals", (pr.weight ? pr.weight + ' lb' : 'Weight not set') + (pr.goalWeight ? ' → ' + pr.goalWeight + ' lb' : ''), "scale")));
+  if (k === "set-train") return training;
+  if (k === "set-help") return help;
   if (k === "set-hr") return hrScreen();
   if (k === "set-health-info") return '<section class="card legal">' + legalHtml("health") + '</section>';
   if (k === "set-terms") return '<section class="card legal">' + legalHtml("terms") + '</section>';
@@ -1977,7 +2007,7 @@ function settingsScreen(k){
   if (k === "set-password") return acctForm("password");
   if (k === "set-account") return '<section class="card" style="--tone:var(--crit)"><div class="card-h"><span class="lbl">Delete account</span></div><p class="sub">Removes your plan, food, workouts and everything else for good. This can\'t be undone.</p><button class="btn block" type="button" data-act="delacct" style="color:var(--crit)">Delete my account</button></section>';
   if (k === "set-notif") return '<section class="card">' + notifHtml() + '</section>';
-  if (k === "set-watch") return '<section class="card">' + healthHtml() + '</section>' +
+  if (k === "set-watch") return healthHtml() +
     (strava.connected ? '<button class="btn block" type="button" data-act="stdisc">Disconnect Strava' + (strava.name ? ' (' + esc(strava.name) + ')' : '') + '</button>' : '');
   if (k === "set-health") return '<section class="card">' + healthSteps() + '</section>';
   if (k === "set-report") return reportForm();
@@ -2090,7 +2120,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "34";
+const APP_VERSION = "35";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2126,28 +2156,32 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
    BRAND_LOGOS; until then each app gets a plain initial tile. */
 const APPS = [
   {id: "strava", name: "Strava", group: "direct"},
-  {id: "garmin", name: "Garmin Connect", group: "direct"},
+  {id: "garmin", name: "Garmin", group: "direct"},
   {id: "apple-health", name: "Apple Health", group: "direct"},
   {id: "coros", name: "COROS", group: "strava"}, {id: "polar", name: "Polar", group: "strava"}, {id: "suunto", name: "Suunto", group: "strava"},
   {id: "wahoo", name: "Wahoo", group: "strava"}, {id: "zwift", name: "Zwift", group: "strava"},
   {id: "whoop", name: "WHOOP", group: "health"}, {id: "oura", name: "Oura", group: "health"}
 ];
 const BRAND_LOGOS = [];   // ids that have an official logo file in brand/ (e.g. "strava")
-function appTile(x){ return '<span class="atile">' + (BRAND_LOGOS.includes(x.id) ? '<img src="brand/' + x.id + '.png" alt="">' : '') + '<b>' + esc(x.name.slice(0, 1)) + '</b></span>'; }
+const APP_LOOK = {strava: ["#FC5200", "run"], garmin: ["#0A7BC1", "watch"], "apple-health": ["#2A1520", "heart", "#FF4F7B"], coros: ["#24262D", "watch", "#FF5A5A"], polar: ["#C8102E", "watch"], suunto: ["#1E1F24", "watch", "#E9EAEE"],
+  wahoo: ["#14161B", "bike", "#5AB0FF"], zwift: ["#F0631E", "bike"], whoop: ["#0E0E10", "heart", "#E9EAEE"], oura: ["#1A1B20", "moon", "#C9CBD3"]};
+function appTile(x){ const L = APP_LOOK[x.id] || ["#24262D", "watch"]; return '<span class="atile" style="background:' + L[0] + ';color:' + (L[2] || '#fff') + '">' + ic(L[1]) + '</span>'; }
 function healthHtml(){
-  const row = (x, sub, right) => '<div class="app">' + appTile(x) + '<div><b>' + esc(x.name) + '</b><span>' + sub + '</span></div>' + right + '</div>';
-  const chip = (t, cls) => '<em class="chip2 ' + (cls || '') + '">' + t + '</em>';
+  const pill = (t, cls) => '<em class="pill2 ' + (cls || '') + '">' + t + '</em>';
   const A = id => APPS.find(x => x.id === id);
-  const direct = row(A("strava"), (strava.connected ? "Connected" + (strava.name ? " as " + esc(strava.name) : "") + ". Workouts, routes and heart rate sync on their own." : "Workouts, routes and heart rate from any watch.") + (strava.connected ? '<i class="cws"><img src="brand/compatible-strava-orange.svg" alt="Compatible with Strava" width="437" height="37"></i>' : ''),
-      strava.connected ? chip("Connected", "on") : strava.available ? '' : chip("Unavailable")) +
-    (!strava.connected && strava.available ? '<div class="stwrap"><button class="stbtn" type="button" data-act="stconnect" aria-label="Connect with Strava"><img src="brand/strava-connect.svg" alt="Connect with Strava" width="237" height="48"></button></div>' : '') +
-    row(A("garmin"), "Approved by Garmin. Direct sync is on the way. For now, link Garmin to Strava.", chip("Coming soon", "soon")) +
-    row(A("apple-health"), "Sleep, resting heart rate and HRV from your iPhone.", SHORTCUT_URL ? '<button class="btn sm" type="button" data-act="hlsetup">Set up</button>' : chip("Coming soon", "soon"));
-  const via = (grp, note) => APPS.filter(x => x.group === grp).map(x => row(x, note, chip(grp === "strava" ? "Via Strava" : "Via Apple Health"))).join("");
-  return '<div class="apps"><h3>Connect directly</h3>' + direct +
-    '<h3>Works through Strava</h3>' + via("strava", "Link it to Strava once and workouts show up here.") +
-    '<h3>Works through Apple Health</h3>' + via("health", "Sleep and recovery come in with the Apple Health sync.") +
-    '<p class="sub">Linking a watch to Strava: in the Strava app, open Settings → Applications, Services, and Devices.</p></div>';
+  const card = (x, sub, right, extra, act) => '<div class="icard"' + (act ? ' data-act="' + act + '" role="button" tabindex="0"' : '') + '><div class="icard-r">' + appTile(x) + '<div><b>' + esc(x.name) + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</div>' + right + '</div>' + (extra || '') + '</div>';
+  const st = strava.connected
+    ? card(A("strava"), strava.name ? "Linked as " + esc(strava.name) : "Workouts, routes and heart rate sync on their own", pill("Linked", "on"), '<i class="cws"><img src="brand/compatible-strava-orange.svg" alt="Compatible with Strava" width="437" height="37"></i>')
+    : card(A("strava"), "Workouts, routes and heart rate from any watch", strava.available ? '' : pill("Unavailable"), strava.available ? '<button class="stbtn" type="button" data-act="stconnect" aria-label="Connect with Strava"><img src="brand/strava-connect.svg" alt="Connect with Strava" width="237" height="48"></button>' : '');
+  const ah = healthLink && healthLink.on;
+  const direct = st +
+    card(A("garmin"), "Approved by Garmin. Until direct sync is live, link it to Strava.", pill("Coming soon", "soon")) +
+    card(A("apple-health"), ah ? "Sleep, resting heart rate and HRV" : "Sleep, resting heart rate and HRV from your iPhone", SHORTCUT_URL ? (ah ? pill("Linked", "on") : '<button class="pill2 act" type="button" data-act="hlsetup">Set up</button>') : pill("Coming soon", "soon"), '', SHORTCUT_URL && ah ? "hlsetup" : "");
+  const via = (grp, note) => APPS.filter(x => x.group === grp).map(x => card(x, note, pill(grp === "strava" ? "Via Strava" : "Via Apple Health"))).join("");
+  return '<div class="apps">' + direct +
+    '<h3>Works through Strava</h3>' + via("strava", "Link it to Strava once") +
+    '<h3>Works through Apple Health</h3>' + via("health", "Sleep comes in with Apple Health") +
+    '<p class="sub" style="margin-top:6px">Linking a watch to Strava: in the Strava app, open Settings → Applications, Services, and Devices.</p></div>';
 }
 function healthSteps(){
   if (SHORTCUT_URL) return '<ol class="steps-plain"><li>Add the Hybrid Health shortcut. It\'s one tap.<a class="btn primary block" style="margin-top:10px" href="' + esc(SHORTCUT_URL) + '" target="_blank" rel="noopener">Get the shortcut</a></li>' +
@@ -2191,9 +2225,9 @@ async function pushOn(){
 }
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 const SCR_T = {fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
-  settings: "Settings", "set-notif": "Notifications", "set-watch": "Connected apps", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
-  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Hybrid works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew"};
-const SCR_UP = {"set-health-info": "settings", "set-terms": "settings", "set-profile": "settings", "set-run": "settings", "set-about": "settings", "set-email": "settings", "set-password": "settings", "set-hr": "settings", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", "set-report": "settings", "set-reports": "settings", "set-account": "settings", meals: "fuel", crew: "crews"};
+  settings: "Settings", "set-notif": "Notifications", "set-watch": "Devices and apps", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
+  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Hybrid works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew"};
+const SCR_UP = {"set-acct": "settings", "set-train": "settings", "set-help": "settings", "set-health-info": "set-help", "set-terms": "set-help", "set-about": "set-help", "set-report": "set-help", "set-reports": "set-help", "set-profile": "set-acct", "set-email": "set-acct", "set-password": "set-acct", "set-account": "set-acct", "set-hr": "set-train", "set-run": "set-train", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", meals: "fuel", crew: "crews"};
 let navDir = null;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function nav(dir, fn){
@@ -2270,6 +2304,13 @@ document.addEventListener("click", ev => {
   if (act === "actopen"){ const id = a.dataset.id; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actback"){ nav("back", () => { actSel = null; render(); }); return; }
   if (act === "afilt"){ actFilter = a.dataset.k; render(); return; }
+  if (act === "invite"){
+    const url = location.origin + location.pathname, msg = "I've been training with Hybrid. It builds a plan for your race, sets your food targets and adjusts when you're tired. Try it free: " + url;
+    if (navigator.share) navigator.share({title: "Hybrid", text: msg}).catch(() => {});
+    else if (navigator.clipboard) navigator.clipboard.writeText(msg).then(() => toast("Invite copied. Paste it in a text."), () => toast(url));
+    else toast(url);
+    return;
+  }
   if (act === "racefind"){ readStepSoft(); openRaceSearch(); return; }
   if (act === "rspick"){
     const r = rsv && rsv.res && rsv.res[+a.dataset.i]; if (!r) return;
@@ -2366,7 +2407,7 @@ document.addEventListener("click", ev => {
     if (gw != null && !(gw >= 70 && gw <= 500)){ pf.err = "Enter a goal weight in pounds, or leave it empty."; render(); return; }
     if (gw != null && gw < w * .8){ pf.err = "For a goal more than 20% below your current weight, please work with a doctor or registered dietitian. Hybrid won't set targets for it."; render(); return; }
     const prof = {...plan.profile, name, weight: Math.round(w * 10) / 10, goalWeight: gw == null ? null : Math.round(gw * 10) / 10}; delete prof.sample;
-    const fin = () => { plan = buildPlan(prof); if (me) me.name = name; pf = null; save(); toast("Saved."); go("settings"); };
+    const fin = () => { plan = buildPlan(prof); if (me) me.name = name; pf = null; save(); toast("Saved."); go("set-acct"); };
     if (mode === "account"){ pf.busy = true; render();
       Promise.all([api("PUT", "/api/account", {name}), api("PUT", "/api/profile", {profile: prof})]).then(fin).catch(e => { pf.busy = false; pf.err = e.message; render(); }); }
     else fin();
@@ -2378,7 +2419,7 @@ document.addEventListener("click", ev => {
     if (v.kind === "email") v.email = body.email;
     if (v.kind === "password" && body.next.length < 8){ v.err = "Use a new password of at least 8 characters."; render(); return; }
     v.busy = true; render();
-    api("POST", v.kind === "email" ? "/api/account/email" : "/api/account/password", body).then(j => { if (j.user) me = j.user; af = null; toast(v.kind === "email" ? "Email updated." : "Password changed."); go("settings"); })
+    api("POST", v.kind === "email" ? "/api/account/email" : "/api/account/password", body).then(j => { if (j.user) me = j.user; af = null; toast(v.kind === "email" ? "Email updated." : "Password changed."); go("set-acct"); })
       .catch(e => { v.busy = false; v.err = e.message; render(); });
     return;
   }
@@ -2405,7 +2446,7 @@ document.addEventListener("click", ev => {
     if (!(base >= (m === "lthr" ? 100 : 120) && base <= (m === "lthr" ? 220 : 230))){ e.err = "Enter your " + (m === "lthr" ? "threshold" : "max") + " heart rate in bpm."; render(); return; }
     if (!pc.every((x, i) => x >= 30 && x <= 120 && (!i || x > pc[i - 1]))){ e.err = "Each zone has to end higher than the one before."; render(); return; }
     const body = {hr_method: m, ["hr_" + m]: base, ["hr_pct_" + m]: pc};
-    const done_ = () => { hrEdit = null; toast("Heart rate zones saved."); go("settings"); };
+    const done_ = () => { hrEdit = null; toast("Heart rate zones saved."); go("set-train"); };
     if (mode === "account") api("PUT", "/api/settings", body).then(j => { uset = j.settings || uset; done_(); }).catch(err => { e.err = err.message; render(); });
     else { try { localStorage.setItem("hybrid-hr", JSON.stringify({...hrLocal(), ...body})); } catch(x){} done_(); }
     return;

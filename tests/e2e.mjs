@@ -126,17 +126,17 @@ await check("Meal prep, barcode and crews screens", async () => {
   if (!/nickname/i.test(c) || !/never|Nothing else/i.test(c)) throw new Error(c.slice(0, 120)); await noOverflow(); return "meal prep form, barcode button, private crews";
 });
 await check("Edit profile", async () => {
-  await settings(); await open("set-profile"); await page.fill("#pf-name", "Nightly Two"); await page.fill("#pf-gw", "174"); await page.click('[data-act="pfsave"]');
-  await page.waitForSelector(".me-card >> text=Nightly Two", {timeout: 10000}); await back(); await tab("today"); const h = await page.innerText(".hello h1"); if (!/Nightly Two/.test(h)) throw new Error(h); return h;
+  await settings(); await open("set-acct"); await open("set-profile"); await page.fill("#pf-name", "Nightly Two"); await page.fill("#pf-gw", "174"); await page.click('[data-act="pfsave"]');
+  await page.waitForSelector(".scrbar >> text=Account and profile", {timeout: 10000}); await back(); await page.waitForSelector(".me-card >> text=Nightly Two", {timeout: 10000}); await back(); await tab("today"); const h = await page.innerText(".hello h1"); if (!/Nightly Two/.test(h)) throw new Error(h); return h;
 });
 await check("Heart rate zones", async () => {
-  await settings(); await open("set-hr"); await page.click('[data-act="hrm"][data-m="lthr"]'); await page.fill("#hr-base", "172"); await page.click('[data-act="hrsave"]');
-  await page.waitForSelector(".scrbar >> text=Settings", {timeout: 10000}); const t = await page.innerText('[data-scr="set-hr"]'); await back();
+  await settings(); await open("set-train"); await open("set-hr"); await page.click('[data-act="hrm"][data-m="lthr"]'); await page.fill("#hr-base", "172"); await page.click('[data-act="hrsave"]');
+  await page.waitForSelector(".scrbar >> text=Coaching and training", {timeout: 10000}); const t = await page.innerText('[data-scr="set-hr"]'); await back(); await back();
   if (!/172/.test(t)) throw new Error(t); return t.replace(/\n/g, " ");
 });
 await check("Report a problem", async () => {
-  await settings(); await open("set-report"); await page.fill("#rp-text", "Nightly test report. Please ignore.");
-  await page.click('[data-act="rpsend"]'); await page.waitForSelector(".view >> text=Thanks, got it", {timeout: 15000}); await back(); await back(); return "sent";
+  await settings(); await open("set-help"); await open("set-report"); await page.fill("#rp-text", "Nightly test report. Please ignore.");
+  await page.click('[data-act="rpsend"]'); await page.waitForSelector(".view >> text=Thanks, got it", {timeout: 15000}); await back(); await back(); await back(); return "sent";
 });
 await check("Settings: notifications", async () => {
   await settings(); await open("set-notif"); await page.waitForSelector(".nset", {timeout: 5000}); const t = await page.innerText(".nset"); await back(); await back();
@@ -152,7 +152,7 @@ await check("Log out and back in (data kept)", async () => {
   if (after !== before) throw new Error("food items " + before + " → " + after); return after + " food items, weight " + w;
 });
 await check("Delete account", async () => {
-  await settings(); await open("set-account"); await page.click('[data-act="delacct"]'); await page.click('[data-act="delacct"]');
+  await settings(); await open("set-acct"); await open("set-account"); await page.click('[data-act="delacct"]'); await page.click('[data-act="delacct"]');
   await page.waitForSelector(".welcome h1", {timeout: 10000});
   await page.click('[data-act="authlogin"]'); await page.fill("#a-email", email); await page.fill("#a-pass", pass); await page.click('#authform [type="submit"]');
   await page.waitForSelector("#authform .err:not(:empty)", {timeout: 10000}); return await page.innerText("#authform .err");
