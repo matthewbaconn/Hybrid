@@ -82,7 +82,7 @@ async function analyze(env, user, b){
   const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-    body: JSON.stringify({model: env.MODEL || "claude-sonnet-5-5", max_tokens: 800, system: PROMPT, messages: [{role: "user", content}]})
+    body: JSON.stringify({model: env.MODEL || "claude-sonnet-5-5", max_tokens: 2000, system: PROMPT, messages: [{role: "user", content}]})
   });
   if (!r.ok){ const t = (await r.text()).slice(0, 300); console.log("anthropic error", r.status, t); await logEvent(env, "ai_food", false, r.status + " " + t); throw new HttpError(502, "Couldn't read that right now. Try again in a minute."); }
   const out = await r.json();
