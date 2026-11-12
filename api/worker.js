@@ -84,11 +84,11 @@ async function analyze(env, user, b){
     headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
     body: JSON.stringify({model: env.MODEL || "claude-sonnet-5-5", max_tokens: 800, system: PROMPT, messages: [{role: "user", content}]})
   });
-  if (!r.ok){ console.log("anthropic error", r.status, (await r.text()).slice(0, 300)); throw new HttpError(502, "Couldn't read that right now. Try again in a minute."); }
+  if (!r.ok){ const t = (await r.text()).slice(0, 300); console.log("anthropic error", r.status, t); await logEvent(env, "ai_food", false, r.status + " " + t); throw new HttpError(502, "Couldn't read that right now. Try again in a minute."); }
   const out = await r.json();
   const raw = (out.content || []).filter(c => c.type === "text").map(c => c.text).join("");
   let parsed;
-  try { parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch { throw new HttpError(502, "Couldn't read that. Try a clearer photo or add a few words."); }
+  try { parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); await logEvent(env, "ai_food", true); } catch { await logEvent(env, "ai_food", false, "unreadable: " + raw.slice(0, 150)); throw new HttpError(502, "Couldn't read that. Try a clearer photo or add a few words."); }
   const items = (Array.isArray(parsed.items) ? parsed.items : []).slice(0, 12)
     .map(x => ({name: String(x.name || "").slice(0, 80), cal: n0(x.cal), protein: n0(x.protein), carbs: n0(x.carbs), fat: n0(x.fat)})).filter(x => x.name);
   return {items, note: typeof parsed.note === "string" ? parsed.note.slice(0, 200) : ""};
@@ -104,7 +104,7 @@ async function stravaToken(env, link){
   if (link.expires_at > Date.now() / 1000 + 120) return link.access_token;
   const r = await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/token", {method: "POST", headers: {"Content-Type": "application/json"},
     body: JSON.stringify({client_id: env.STRAVA_CLIENT_ID, client_secret: env.STRAVA_CLIENT_SECRET, grant_type: "refresh_token", refresh_token: link.refresh_token})});
-  if (!r.ok) throw new HttpError(502, "Strava needs you to reconnect. Open Settings and connect Strava again.");
+  if (!r.ok){ await logEvent(env, "strava_token", false, "refresh HTTP " + r.status); throw new HttpError(502, "Strava needs you to reconnect. Open Settings and connect Strava again."); }
   const j = await r.json();
   await env.DB.prepare("UPDATE strava_links SET access_token = ?, refresh_token = ?, expires_at = ? WHERE user_id = ?").bind(j.access_token, j.refresh_token, j.expires_at, link.user_id).run();
   return j.access_token;
@@ -115,8 +115,8 @@ async function stravaSync(env, user, ctx){
   const tok = await stravaToken(env, link), base = env.STRAVA_BASE || STRAVA;
   const since = link.last_sync ? Math.floor(Date.parse(link.last_sync) / 1000) - 3 * 86400 : Math.floor(Date.now() / 1000) - 30 * 86400;
   const r = await fetch(base + "/api/v3/athlete/activities?per_page=100&after=" + since, {headers: {Authorization: "Bearer " + tok}});
-  if (r.status === 429) throw new HttpError(429, "Strava is busy. Try again in a few minutes.");
-  if (!r.ok) throw new HttpError(502, "Couldn't reach Strava right now.");
+  if (r.status === 429){ await logEvent(env, "strava_sync", false, "429 rate limited"); throw new HttpError(429, "Strava is busy. Try again in a few minutes."); }
+  if (!r.ok){ await logEvent(env, "strava_sync", false, "HTTP " + r.status); throw new HttpError(502, "Couldn't reach Strava right now."); }
   const list = await r.json(), t = now();
   const known = new Set((await env.DB.prepare("SELECT ext_id FROM activities WHERE user_id = ? AND source = 'strava'").bind(user.id).all()).results.map(x => x.ext_id));
   const ops = list.slice(0, 100).map(a => env.DB.prepare(
@@ -138,12 +138,13 @@ async function stravaSync(env, user, ctx){
     } catch(e){ break; }
   }
   const fresh = list.filter(a => !known.has(String(a.id))).map(a => String(a.id));
+  await logEvent(env, "strava_sync", true, list.length + " seen, " + fresh.length + " new");
   if (fresh.length && ctx) ctx.waitUntil(afterNewActivities(env, user.id, fresh, "strava").catch(e => console.log("after-sync", e && e.stack || e)));
   return {synced: list.length, fresh: fresh.length, last_sync: t};
 }
 
 /* ---------- each person's data, in their own time zone ---------- */
-const DEFAULT_SETTINGS = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", n_morning: true, n_run: true, n_weekly: true, n_bed: true};
+const DEFAULT_SETTINGS = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", run_time: "07:00", n_morning: true, n_run: true, n_weekly: true, n_bed: true};
 function localNow(tz){
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false, weekday: "short"})
     .formatToParts(new Date()).map(p => [p.type, p.value]));
@@ -185,6 +186,10 @@ async function coachUsage(env, userId){
   return true;
 }
 let lastCoachError = "";
+/* health log for the nightly check: cron runs, Strava notices and syncs, notifications, AI calls */
+async function logEvent(env, kind, ok, detail){
+  try { await env.DB.prepare("INSERT INTO events (ts, kind, ok, detail) VALUES (?, ?, ?, ?)").bind(now(), kind, ok ? 1 : 0, detail ? String(detail).slice(0, 300) : null).run(); } catch(e){}
+}
 // trim to the last full sentence that fits
 const clip = (t, n) => { if (t.length <= n) return t; const c = t.slice(0, n), i = Math.max(c.lastIndexOf(". "), c.lastIndexOf("! "), c.lastIndexOf("? ")); return i > 40 ? c.slice(0, i + 1) : c.replace(/\s+\S*$/, "") + "…"; };
 async function askCoach(env, system, data){
@@ -192,9 +197,9 @@ async function askCoach(env, system, data){
   const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {method: "POST",
     headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
     body: JSON.stringify({model: env.COACH_MODEL || "claude-haiku-5-5", max_tokens: 500, system, messages: [{role: "user", content: JSON.stringify(data)}]})});
-  if (!r.ok){ const t = (await r.text()).slice(0, 300); console.log("coach error", r.status, t); lastCoachError = "api " + r.status + " " + t; return null; }
+  if (!r.ok){ const t = (await r.text()).slice(0, 300); console.log("coach error", r.status, t); lastCoachError = "api " + r.status + " " + t; await logEvent(env, "ai_coach", false, lastCoachError); return null; }
   const out = await r.json(), raw = (out.content || []).filter(c => c.type === "text").map(c => c.text).join("");
-  try { return JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch(e){ lastCoachError = "unreadable reply (" + out.stop_reason + "): " + raw.slice(0, 200); return null; }
+  try { const j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); await logEvent(env, "ai_coach", true); return j; } catch(e){ lastCoachError = "unreadable reply (" + out.stop_reason + "): " + raw.slice(0, 200); await logEvent(env, "ai_coach", false, lastCoachError); return null; }
 }
 const COACH_STYLE = "You are a friendly, plain-spoken running and strength coach writing inside a training app. No jargon (no 'Z2', 'ACWR', 'EF'), no emoji, no medical advice, never shame. Use the numbers you are given; don't invent any.";
 async function runReview(env, userId, U, act, today){
@@ -256,10 +261,10 @@ async function pushTo(env, userId, msg){
       const payload = await buildPushPayload({data: JSON.stringify({url: (env.APP_URL || "") + "#today", ...msg}), options: {ttl: 6 * 3600, urgency: "normal", topic: (msg.tag || "hybrid").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 32)}},
         {endpoint: s.endpoint, expirationTime: null, keys: {p256dh: s.p256dh, auth: s.auth}}, vapid);
       const r = await fetch(s.endpoint, payload);
-      if (r.status === 404 || r.status === 410) await env.DB.prepare("DELETE FROM push_subs WHERE endpoint = ?").bind(s.endpoint).run();
-      else if (r.ok) sent++;
-      else console.log("push failed", r.status, (await r.text()).slice(0, 200));
-    } catch(e){ console.log("push error", e && e.message); }
+      if (r.status === 404 || r.status === 410){ await env.DB.prepare("DELETE FROM push_subs WHERE endpoint = ?").bind(s.endpoint).run(); await logEvent(env, "push", false, "expired subscription removed (" + r.status + ")"); }
+      else if (r.ok){ sent++; await logEvent(env, "push", true, msg.tag || ""); }
+      else { const t = (await r.text()).slice(0, 200); console.log("push failed", r.status, t); await logEvent(env, "push", false, r.status + " " + t); }
+    } catch(e){ console.log("push error", e && e.message); await logEvent(env, "push", false, "error " + (e && e.message)); }
   }
   return sent;
 }
@@ -290,6 +295,9 @@ function weeklySummary(U, today){
   return {title: "Week done: " + Math.round(extraMi * 10) / 10 + " of " + Math.round(plannedMi * 10) / 10 + " mi", body: lines.join("\n"), tag: "weekly-" + today};
 }
 async function cron(env, ctx){
+  await logEvent(env, "cron", true);
+  await env.DB.prepare("DELETE FROM events WHERE ts < ?").bind(new Date(Date.now() - 21 * 864e5).toISOString()).run();
+  await env.DB.prepare("DELETE FROM notif_log WHERE day < ?").bind(new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)).run();
   const users = (await env.DB.prepare("SELECT DISTINCT u.id FROM users u LEFT JOIN push_subs p ON p.user_id = u.id LEFT JOIN strava_links s ON s.user_id = u.id WHERE p.user_id IS NOT NULL OR s.user_id IS NOT NULL").all()).results;
   for (const {id} of users){
     try {
@@ -313,7 +321,7 @@ async function cron(env, ctx){
       if (st.n_weekly && L.weekday === "Mon" && inWindow(L.hm, "12:00") && await once(env, id, "weekly", L.date)){
         const u = await U(); if (u) await pushTo(env, id, weeklySummary(u, L.date));
       }
-    } catch(e){ console.log("cron user", id, e && e.stack || e); }
+    } catch(e){ console.log("cron user", id, e && e.stack || e); await logEvent(env, "cron_user", false, String(e && e.message || e)); }
   }
 }
 
@@ -359,6 +367,7 @@ async function route(req, env, path, ctx){
     }
     if (M === "POST"){
       const ev = await body(req);
+      ctx.waitUntil(logEvent(env, "strava_notice", true, ev.object_type + " " + ev.aspect_type));
       if (ev.object_type === "activity" && ev.owner_id){
         const link = await env.DB.prepare("SELECT user_id FROM strava_links WHERE athlete_id = ?").bind(String(ev.owner_id)).first();
         if (link){
@@ -473,7 +482,9 @@ async function route(req, env, path, ctx){
   if (M === "PUT" && path === "/api/settings"){
     const b = await body(req), cur = await settingsOf(env, user.id), next = {...cur};
     if (typeof b.tz === "string" && b.tz.length < 60){ try { new Intl.DateTimeFormat("en", {timeZone: b.tz}); next.tz = b.tz; } catch(e){} }
-    for (const k of ["morning", "bedtime"]) if (/^([01]\d|2[0-3]):[0-5]\d$/.test(b[k] || "")) next[k] = b[k];
+    for (const k of ["morning", "bedtime", "run_time"]) if (/^([01]\d|2[0-3]):[0-5]\d$/.test(b[k] || "")) next[k] = b[k];
+    if (b.lat === null){ delete next.lat; delete next.lon; }
+    else if (Number.isFinite(+b.lat) && Number.isFinite(+b.lon) && Math.abs(+b.lat) <= 90 && Math.abs(+b.lon) <= 180){ next.lat = Math.round(+b.lat * 100) / 100; next.lon = Math.round(+b.lon * 100) / 100; if (typeof b.place === "string") next.place = b.place.slice(0, 60); }
     for (const k of ["n_morning", "n_run", "n_weekly", "n_bed"]) if (typeof b[k] === "boolean") next[k] = b[k];
     await env.DB.prepare("INSERT INTO settings (user_id, data) VALUES (?, ?) ON CONFLICT (user_id) DO UPDATE SET data = excluded.data").bind(user.id, JSON.stringify(next)).run();
     return {settings: next};
@@ -529,6 +540,7 @@ export default {
     catch (e){
       if (e instanceof HttpError) return reply(h, {error: e.message}, e.status);
       console.log("server error", e && e.stack || e);
+      ctx.waitUntil(logEvent(env, "server_error", false, req.method + " " + path + ": " + String(e && e.message || e)));
       return reply(h, {error: "Something went wrong on our side. Try again."}, 500);
     }
   }

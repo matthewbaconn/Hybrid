@@ -4,6 +4,7 @@ name: Test the live API
 # saves food, loads it back, then deletes the account. Run it from the Actions tab any time.
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read

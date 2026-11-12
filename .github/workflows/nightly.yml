@@ -1,0 +1,44 @@
+name: Nightly check
+
+# Every night at ~1:30 am Eastern: live API test, a real-browser test of every screen on the live
+# site, and a server health report. The nightly Claude maintenance task reads these results.
+on:
+  schedule:
+    - cron: "33 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    uses: ./.github/workflows/smoke-test.yml
+    secrets: inherit
+
+  browser:
+    uses: ./.github/workflows/e2e.yml
+    secrets: inherit
+
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
+      STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install wrangler
+        working-directory: api
+        run: npm install --no-save --no-audit --no-fund wrangler@4
+      - name: Point wrangler at the live database
+        working-directory: api
+        run: |
+          id=$(npx wrangler d1 list --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s).find(d=>d.name==="hybrid");process.stdout.write(x?x.uuid:"")})')
+          sed -i "s/REPLACED_BY_DEPLOY_WORKFLOW/$id/" wrangler.toml
+      - name: Health report
+        run: bash tests/health.sh

@@ -340,5 +340,52 @@ function fuel(plan, weights, acts, date){
     planned: Math.round(plannedBurn(day, W) * (cutting ? .75 : 1) / 10) * 10, logged: dayActs.length > 0};
 }
 
-root.HP = {pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
+/* ---------- heat (same table as Strong at 180): temp + dew point -> slowdown ---------- */
+const HEAT = [[100, 0], [110, .005], [120, .01], [130, .02], [140, .03], [150, .045], [160, .06], [170, .08], [180, .10]];
+function heatPct(tf, df){
+  if (tf == null || df == null) return 0; const x = tf + df;
+  if (x <= HEAT[0][0]) return 0;
+  for (let i = 1; i < HEAT.length; i++){ const [a, pa] = HEAT[i - 1], [b, pb] = HEAT[i]; if (x <= b) return pa + (pb - pa) * (x - a) / (b - a); }
+  return HEAT[HEAT.length - 1][1];
+}
+/* best 3-hour window to run, 5 am–8 pm, today or tomorrow (cooler, drier, less rain wins) */
+function bestWindow(hours, fromKey, lastDay){
+  const H = hours.filter(x => x && x.t >= fromKey && x.t.slice(0, 10) <= lastDay && x.temp_f != null).sort((a, b) => a.t.localeCompare(b.t));
+  let best = null;
+  for (let i = 0; i + 2 < H.length; i++){
+    const w = H.slice(i, i + 3), h0 = +w[0].t.slice(11, 13);
+    if (h0 < 5 || h0 > 17 || w[2].t.slice(0, 10) !== w[0].t.slice(0, 10) || +w[2].t.slice(11, 13) !== h0 + 2) continue;
+    const t = w.map(x => x.feels_f != null ? x.feels_f : x.temp_f), dw = w.map(x => x.dew_f || 0), pr = w.map(x => x.precip_pct || 0);
+    const score = t.reduce((a, b) => a + b, 0) / 3 + Math.max(0, Math.max(...dw) - 60) * .6 + Math.max(...pr) * .12 + (w[0].t.slice(0, 10) === fromKey.slice(0, 10) ? 0 : 2);
+    if (!best || score < best.score) best = {score, day: w[0].t.slice(0, 10), h0, lo: Math.round(Math.min(...w.map(x => x.temp_f))), hi: Math.round(Math.max(...w.map(x => x.temp_f)))};
+  }
+  return best;
+}
+
+/* ---------- fuel tips around sessions (guidance only) ---------- */
+function sessionMinutes(plan, s){ if (s.type === "lift") return 50; const P = plan.P; const avg = s.type === "workout" ? (P.E[0] + (P[s.k] && !Array.isArray(P[s.k]) ? P[s.k] : P.E[0])) / 2 : s.type === "race" ? P.G : (P.E[0] + P.E[1]) / 2; return Math.round((s.mi || 0) * avg / 60); }
+function fuelTip(plan, s){
+  const m = sessionMinutes(plan, s);
+  const before = s.type === "lift" ? "1–2 h before: a normal meal with protein, or a shake and a banana 45 min before."
+    : s.type === "easy" && m < 60 ? "Light snack or nothing if it's early. Water is enough during."
+    : s.type === "race" ? "Race morning: 2–3 h before, an easy carb breakfast (bagel, banana, honey) with water. Nothing new."
+    : "60–90 min before: an easy carb snack, like toast with honey or a banana.";
+  let during = "", gels = 0, grams = 0;
+  if (s.type !== "lift" && m >= 75){
+    grams = Math.round((m - 45) / 60 * 45 / 5) * 5; gels = Math.max(1, Math.ceil(grams / 25));
+    const every = Math.max(25, Math.round((m - 40) / gels / 5) * 5);
+    during = "During: about " + grams + " g of carbs (" + gels + " gel" + (gels === 1 ? "" : "s") + "). First one around minute 40, then every " + every + " min, with water.";
+  }
+  const after = s.type === "lift" ? "After: 30–40 g of protein within 2 hours." : m >= 60 || s.type === "workout" || s.type === "race" ? "After: carbs and 30 g of protein within an hour." : "";
+  return {before, during, after, gels, grams, minutes: m};
+}
+/* goal splits for race day: even pace */
+function raceSplits(plan){
+  const p = plan.profile, r = RACES[p.goal]; if (!r || !r.mi) return null;
+  const goal = p.goalSec || plan.pred[p.goal], pace = goal / r.mi;
+  const marks = {"5k": [1, 2, 3, r.mi], "10k": [1, 2, 3, 4, 5, 6, r.mi], "half": [1, 3, 5, 8, 10, r.mi], "marathon": [5, 10, 13.1, 15, 20, r.mi]}[p.goal];
+  return {goal, pace, rows: marks.map(mi => ({mi: Math.round(mi * 100) / 100, time: mi * pace}))};
+}
+
+root.HP = {heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
 })(typeof globalThis !== "undefined" ? globalThis : self);
