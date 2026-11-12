@@ -116,7 +116,14 @@ await check("Today overview", async () => {
 await check("Settings: Watch", async () => {
   await settings(); await shot("07-settings"); await open("set-watch"); const t = await page.innerText(".apps");
   const strava = await page.locator('[data-act="stconnect"]').count(); await back(); await back();
-  if (!/Apple Health/.test(t) || !/Strava/.test(t)) throw new Error(t.slice(0, 120)); if (!strava) throw new Error("Connect Strava button missing"); return "Strava + sleep/heart rate shown";
+  if (!/Apple Health/.test(t) || !/Strava/.test(t) || !/In review/.test(t)) throw new Error(t.slice(0, 120)); if (!strava) throw new Error("Connect Strava button missing"); return "Strava + sleep/heart rate shown";
+});
+await check("Meal prep, barcode and crews screens", async () => {
+  await tab("today"); await open("fuel"); if (!(await page.locator("#food-barcode").count())) throw new Error("no barcode button");
+  await open("meals"); const m = await page.innerText("#app"); await back(); await back();
+  if (!/Make (my|a meal prep) plan|Make a new plan/.test(m)) throw new Error(m.slice(0, 120));
+  await tab("activities"); await open("crews"); const c = await page.innerText("#app"); await back();
+  if (!/nickname/i.test(c) || !/never|Nothing else/i.test(c)) throw new Error(c.slice(0, 120)); await noOverflow(); return "meal prep form, barcode button, private crews";
 });
 await check("Edit profile", async () => {
   await settings(); await open("set-profile"); await page.fill("#pf-name", "Nightly Two"); await page.fill("#pf-gw", "174"); await page.click('[data-act="pfsave"]');

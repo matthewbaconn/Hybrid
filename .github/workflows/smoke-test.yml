@@ -67,6 +67,12 @@ jobs:
           echo "name and password changes work"
           call POST /api/report '{"text":"Nightly test report. Please ignore.","screen":"today"}' | jq -e .ok > /dev/null || { echo "::error::problem report failed"; exit 1; }
           echo "problem report saved"
+          call PUT /api/lifts '{"date":"2026-01-05","sets":[{"ex":"Back squat","weight":135,"hit":true}]}' | jq -e .ok > /dev/null || { echo "::error::lift log failed"; exit 1; }
+          c=$(call POST /api/crews '{"name":"Nightly crew","metric":"workouts","nickname":"Tester"}'); echo "$c" | jq -e '.crews[0].code and .crews[0].members == 1 and (.crews[0].board[0] | keys | sort) == ["nickname","value","you"]' > /dev/null || { echo "::error::crew create failed or shared too much: $c"; exit 1; }
+          cid=$(echo "$c" | jq -r '.crews[0].id'); call POST "/api/crews/$cid/leave" '{}' | jq -e '.crews | length == 0' > /dev/null || { echo "::error::crew leave failed"; exit 1; }
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API/api/races/search" -H "Origin: $ORIGIN" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"q":"x"}')" = 400 ] || { echo "::error::race search accepted an empty search"; exit 1; }
+          call GET /api/me | jq -e '(.lifts | length) == 1 and (.crews | length) == 0' > /dev/null || { echo "::error::/me missing lifts or crews"; exit 1; }
+          echo "strength log, crews and race search guard work"
           if [ "$(echo "$me" | jq .strava.available)" = true ]; then
             u=$(call POST /api/strava/start | jq -r .url)
             echo "$u" | grep -q "redirect_uri=https%3A%2F%2Fhybrid-api.hybridapp.workers.dev%2Fapi%2Fstrava%2Fcallback" || { echo "::error::Strava start URL looks wrong: $u"; exit 1; }

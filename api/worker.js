@@ -161,6 +161,25 @@ function localNow(tz){
     .formatToParts(new Date()).map(p => [p.type, p.value]));
   return {date: parts.year + "-" + parts.month + "-" + parts.day, hm: (parts.hour === "24" ? "00" : parts.hour) + ":" + parts.minute, weekday: parts.weekday};
 }
+/* crew leaderboard: nickname + one weekly total per member. Nothing else about anyone is shared. */
+async function crewsFor(env, userId, weekOf){
+  const mine = (await env.DB.prepare("SELECT c.id, c.name, c.code, c.owner_id, c.metric, m.nickname FROM crews c JOIN crew_members m ON m.crew_id = c.id WHERE m.user_id = ? ORDER BY c.created").bind(userId).all()).results;
+  if (!mine.length) return [];
+  const st = await settingsOf(env, userId), today = localNow(st.tz).date;
+  const d = new Date(today + "T12:00:00Z"), mon = new Date(d.getTime() - ((d.getUTCDay() + 6) % 7) * 864e5).toISOString().slice(0, 10), sun = new Date(Date.parse(mon + "T12:00:00Z") + 6 * 864e5).toISOString().slice(0, 10);
+  const out = [];
+  for (const c of mine){
+    const rows = (await env.DB.prepare("SELECT m.user_id, m.nickname, " +
+      "COALESCE((SELECT SUM(minutes) FROM activities a WHERE a.user_id = m.user_id AND a.date BETWEEN ? AND ?), 0) AS minutes, " +
+      "COALESCE((SELECT COUNT(*) FROM activities a WHERE a.user_id = m.user_id AND a.date BETWEEN ? AND ?), 0) AS workouts, " +
+      "COALESCE((SELECT SUM(mi) FROM activities a WHERE a.user_id = m.user_id AND a.type = 'run' AND a.date BETWEEN ? AND ?), 0) AS run_miles, " +
+      "COALESCE((SELECT COUNT(DISTINCT date) FROM activities a WHERE a.user_id = m.user_id AND a.date BETWEEN ? AND ?), 0) AS days " +
+      "FROM crew_members m WHERE m.crew_id = ?").bind(mon, sun, mon, sun, mon, sun, mon, sun, c.id).all()).results;
+    const board = rows.map(r => ({nickname: r.nickname, value: Math.round((r[c.metric] || 0) * 10) / 10, you: r.user_id === userId})).sort((a, b) => b.value - a.value);
+    out.push({id: c.id, name: c.name, code: c.code, metric: c.metric, owner: c.owner_id === userId, nickname: c.nickname, week: mon, members: board.length, board});
+  }
+  return out;
+}
 async function settingsOf(env, userId){
   const row = await env.DB.prepare("SELECT data FROM settings WHERE user_id = ?").bind(userId).first();
   let s = {}; try { s = row ? JSON.parse(row.data) : {}; } catch(e){}
@@ -497,12 +516,14 @@ async function route(req, env, path, ctx){
       env.DB.prepare("SELECT id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, work_pace, CASE WHEN date >= ? THEN laps END AS laps, CASE WHEN date >= ? THEN poly END AS poly, start_local, elev_ft, sport, max_hr FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(since, since, user.id, since120),
       env.DB.prepare("SELECT athlete_name, last_sync FROM strava_links WHERE user_id = ?").bind(user.id)
     ]);
-    const [rv, cn, ps, ik, hd] = await env.DB.batch([
+    const [rv, cn, ps, ik, hd, ll, mp] = await env.DB.batch([
       env.DB.prepare("SELECT activity_id, data FROM reviews WHERE user_id = ? AND date >= ?").bind(user.id, since),
       env.DB.prepare("SELECT date, kind, data FROM coach_notes WHERE user_id = ? AND date >= ?").bind(user.id, new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10)),
       env.DB.prepare("SELECT COUNT(*) AS n FROM push_subs WHERE user_id = ?").bind(user.id),
       env.DB.prepare("SELECT last_used FROM import_keys WHERE user_id = ?").bind(user.id),
-      env.DB.prepare("SELECT date, sleep_h, rhr, hrv, steps, active_cal, sleep_score, bb, stress, source FROM health_daily WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since)
+      env.DB.prepare("SELECT date, sleep_h, rhr, hrv, steps, active_cal, sleep_score, bb, stress, source FROM health_daily WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since),
+      env.DB.prepare("SELECT date, ex, weight, hit FROM lift_logs WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since120),
+      env.DB.prepare("SELECT data FROM meal_plans WHERE user_id = ?").bind(user.id)
     ]);
     const prof = p.results[0] ? JSON.parse(p.results[0].data) : null;
     const owner = await ownerId(env) === user.id;
@@ -511,7 +532,7 @@ async function route(req, env, path, ctx){
       strava: {available: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!s.results[0], name: s.results[0] ? s.results[0].athlete_name : "", last_sync: s.results[0] ? s.results[0].last_sync : null},
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
       settings: await settingsOf(env, user.id), push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY,
-      owner, reports, health: hd.results, health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
+      owner, reports, health: hd.results, lifts: ll.results, mealplan: mp.results[0] ? JSON.parse(mp.results[0].data) : null, crews: await crewsFor(env, user.id), health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
   }
   if (M === "PUT" && path === "/api/account"){
     const b = await body(req), name = String(b.name ?? "").trim().slice(0, 30);
@@ -620,6 +641,7 @@ async function route(req, env, path, ctx){
     for (const k of ["n_morning", "n_run", "n_weekly", "n_bed"]) if (typeof b[k] === "boolean") next[k] = b[k];
     // heart rate zones: % of max HR or of lactate threshold HR
     if (b.hr_method === "max" || b.hr_method === "lthr") next.hr_method = b.hr_method;
+    if (b.sweat_oz === null) delete next.sweat_oz; else if (b.sweat_oz >= 5 && b.sweat_oz <= 80) next.sweat_oz = Math.round(b.sweat_oz);
     if (b.hr_max === null) delete next.hr_max; else if (b.hr_max >= 120 && b.hr_max <= 230) next.hr_max = Math.round(b.hr_max);
     if (b.hr_lthr === null) delete next.hr_lthr; else if (b.hr_lthr >= 100 && b.hr_lthr <= 220) next.hr_lthr = Math.round(b.hr_lthr);
     for (const k of ["hr_pct_max", "hr_pct_lthr"]) if (Array.isArray(b[k]) && b[k].length === 4 && b[k].every((x, i) => Number.isFinite(x) && x >= 30 && x <= 120 && (!i || x > b[k][i - 1]))) next[k] = b[k].map(x => Math.round(x));
@@ -658,11 +680,131 @@ async function route(req, env, path, ctx){
     await env.DB.batch([env.DB.prepare("DELETE FROM strava_links WHERE user_id = ?").bind(user.id), env.DB.prepare("DELETE FROM activities WHERE user_id = ? AND source = 'strava'").bind(user.id)]);
     return {ok: true};
   }
+  /* ---------- race search: Claude + web search, so it covers races worldwide ---------- */
+  if (M === "POST" && path === "/api/races/search"){
+    await limit(env, "ai:" + user.id);
+    const b = await body(req), q = String(b.q || "").trim().slice(0, 120);
+    if (q.length < 3) throw new HttpError(400, "Type a race name, city or sport.");
+    if (!env.ANTHROPIC_API_KEY) throw new HttpError(503, "Race search isn't set up yet.");
+    const st = await settingsOf(env, user.id), today = localNow(st.tz).date, day = "race:" + today;
+    const used = await env.DB.prepare("SELECT count FROM ai_usage WHERE user_id = ? AND day = ?").bind(user.id, day).first("count");
+    if (used >= 15) throw new HttpError(429, "That's the most race searches for today. Try again tomorrow, or type the date yourself.");
+    await env.DB.prepare("INSERT INTO ai_usage (user_id, day, count) VALUES (?, ?, 1) ON CONFLICT (user_id, day) DO UPDATE SET count = count + 1").bind(user.id, day).run();
+    const SPORTS = ["5k", "10k", "half", "marathon", "50k", "hyrox", "tri_sprint", "tri_olympic", "tri_half", "tri_full", "swim", "bike", "other"];
+    const system = "You find real, upcoming endurance races for a training app. Today is " + today + ". Search the web, then reply with ONLY a JSON object and nothing else: " +
+      '{"races":[{"name":"...","date":"YYYY-MM-DD","city":"City, Country","sport":"one of ' + SPORTS.join("|") + '","url":"https://..."}]}. ' +
+      "Up to 6 races, soonest first, only dates after today and within 18 months. Only include a race if a search result shows its date; never guess a date. " +
+      "sport: 5k/10k/half/marathon/50k for runs (50k = trail or ultra), hyrox, tri_sprint/tri_olympic/tri_half (70.3)/tri_full (140.6), swim, bike (cycling), otherwise other. url: the official race page if you found it. If nothing matches, return {\"races\":[]}.";
+    const callModel = async model => {
+      const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {method: "POST",
+        headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+        body: JSON.stringify({model, max_tokens: 2500, system, tools: [{type: "web_search_20250305", name: "web_search", max_uses: 4}], messages: [{role: "user", content: "Find races: " + q + (b.sport && SPORTS.includes(b.sport) ? " (sport: " + b.sport + ")" : "")}]})});
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error((j.error && j.error.message) || "search failed (" + r.status + ")");
+      return (j.content || []).filter(c => c.type === "text").map(c => c.text).join("\n");
+    };
+    let text;
+    try { text = await callModel(env.SEARCH_MODEL || "claude-haiku-5-5"); }
+    catch(e){ try { text = await callModel(env.MODEL || "claude-sonnet-5-5"); } catch(e2){ await logEvent(env, "race_search", false, String(e2.message || e2).slice(0, 120)); throw new HttpError(502, "Race search didn't work just now. Try again, or type the date yourself."); } }
+    let out = [];
+    try { const m = text.match(/\{[\s\S]*\}/); out = (JSON.parse(m ? m[0] : "{}").races || []); } catch(e){ out = []; }
+    const clean = out.filter(x => x && isDate(String(x.date)) && String(x.date) > today && x.name).slice(0, 6).map(x => ({
+      name: String(x.name).slice(0, 80), date: String(x.date), city: String(x.city || "").slice(0, 60),
+      sport: SPORTS.includes(x.sport) ? x.sport : "other", url: /^https:\/\//.test(String(x.url || "")) ? String(x.url).slice(0, 300) : ""}));
+    await logEvent(env, "race_search", true, clean.length + " found");
+    return {races: clean};
+  }
+
+  /* ---------- strength log (weights per exercise, for progressive overload) ---------- */
+  if (M === "PUT" && path === "/api/lifts"){
+    const b = await body(req);
+    if (!isDate(b.date) || !Array.isArray(b.sets) || b.sets.length > 20) throw new HttpError(400, "Bad lift log.");
+    const ops = b.sets.filter(x => x && String(x.ex || "").trim()).map(x => {
+      const w = x.weight === null || x.weight === "" ? null : Number(x.weight);
+      if (w != null && !(w >= 0 && w <= 2000)) throw new HttpError(400, "Weights should be in pounds.");
+      return env.DB.prepare("INSERT INTO lift_logs (user_id, date, ex, weight, hit, updated) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, date, ex) DO UPDATE SET weight = excluded.weight, hit = excluded.hit, updated = excluded.updated")
+        .bind(user.id, b.date, String(x.ex).trim().slice(0, 60), w, x.hit === false ? 0 : 1, now());
+    });
+    if (ops.length) await env.DB.batch(ops);
+    return {ok: true};
+  }
+
+  /* ---------- meal prep + grocery list (AI) ---------- */
+  if (M === "POST" && path === "/api/mealplan"){
+    await limit(env, "ai:" + user.id);
+    if (!env.ANTHROPIC_API_KEY) throw new HttpError(503, "Meal prep isn't set up yet.");
+    const b = await body(req), cal = Math.round(Number(b.cal)), pro = Math.round(Number(b.protein));
+    if (!(cal >= 1500 && cal <= 6000) || !(pro >= 40 && pro <= 400)) throw new HttpError(400, "Missing calorie target.");
+    const diet = ["any", "vegetarian", "vegan", "pescatarian", "dairy-free", "gluten-free"].includes(b.diet) ? b.diet : "any";
+    const avoid = String(b.avoid || "").replace(/[^\w ,'-]/g, "").slice(0, 120), time = b.time === "quick" ? "quick (20 min or less per prep session)" : "normal";
+    const st = await settingsOf(env, user.id), today = localNow(st.tz).date, day = "meal:" + today;
+    const used = await env.DB.prepare("SELECT count FROM ai_usage WHERE user_id = ? AND day = ?").bind(user.id, day).first("count");
+    if (used >= 3) throw new HttpError(429, "You've made 3 meal plans today. Try again tomorrow.");
+    await env.DB.prepare("INSERT INTO ai_usage (user_id, day, count) VALUES (?, ?, 1) ON CONFLICT (user_id, day) DO UPDATE SET count = count + 1").bind(user.id, day).run();
+    const system = "You write simple, budget-friendly meal prep plans for a training app. General healthy-eating ideas for active adults, not a medical or therapeutic diet. " +
+      "Reply with ONLY JSON: {\"preps\":[{\"label\":\"Prep 1 · Sun (covers Mon–Wed)\",\"meals\":[{\"slot\":\"Breakfast|Lunch|Dinner|Snack\",\"name\":\"...\",\"cal\":0,\"protein\":0,\"how\":\"one short sentence\"}]}],\"grocery\":[{\"section\":\"Produce|Protein|Dairy & eggs|Grains & bread|Pantry|Frozen\",\"items\":[\"2 lb chicken thighs\"]}],\"tips\":[\"...\"]}. " +
+      "Two preps (Sun covers Mon–Wed, Wed covers Thu–Sat), 4 meals each that repeat on those days. Each day's 4 meals should add up to about the calorie and protein targets (within 10%). " +
+      "Grocery amounts must cover all the days. Common grocery-store foods only. 2–3 short tips. Never go below the calorie target.";
+    const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {method: "POST",
+      headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+      body: JSON.stringify({model: env.MODEL || "claude-sonnet-5-5", max_tokens: 4000, system,
+        messages: [{role: "user", content: "Daily target about " + cal + " calories and " + pro + " g protein. Diet: " + diet + ". Avoid: " + (avoid || "nothing") + ". Cooking time: " + time + "."}]})});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok){ await logEvent(env, "ai_meal", false, String((j.error && j.error.message) || r.status).slice(0, 120)); throw new HttpError(502, "Couldn't make a plan just now. Try again in a minute."); }
+    let plan; try { const t = (j.content || []).filter(c => c.type === "text").map(c => c.text).join(""); plan = JSON.parse(t.match(/\{[\s\S]*\}/)[0]); } catch(e){ plan = null; }
+    if (!plan || !Array.isArray(plan.preps) || !Array.isArray(plan.grocery)){ await logEvent(env, "ai_meal", false, "bad json"); throw new HttpError(502, "Couldn't make a plan just now. Try again in a minute."); }
+    const data = {id: rand(6), created: now(), cal, protein: pro, diet, avoid, preps: plan.preps.slice(0, 3), grocery: plan.grocery.slice(0, 8), tips: (plan.tips || []).slice(0, 3)};
+    await env.DB.prepare("INSERT INTO meal_plans (user_id, data, created) VALUES (?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET data = excluded.data, created = excluded.created").bind(user.id, JSON.stringify(data), now()).run();
+    await logEvent(env, "ai_meal", true, "");
+    return {mealplan: data};
+  }
+
+  /* ---------- crews: private groups that only see nicknames + weekly totals ---------- */
+  const CREW_METRICS = ["minutes", "workouts", "run_miles", "days"];
+  const nick = x => String(x || "").trim().replace(/\s+/g, " ").slice(0, 20);
+  if (M === "GET" && path === "/api/crews") return {crews: await crewsFor(env, user.id, String(new URL(req.url).searchParams.get("week") || ""))};
+  if (M === "POST" && path === "/api/crews"){
+    const b = await body(req), name = String(b.name || "").trim().slice(0, 30), nn = nick(b.nickname);
+    if (!name || !nn) throw new HttpError(400, "Add a crew name and your nickname.");
+    if ((await env.DB.prepare("SELECT COUNT(*) AS n FROM crew_members WHERE user_id = ?").bind(user.id).first("n")) >= 10) throw new HttpError(400, "You can be in up to 10 crews.");
+    const id = rand(8), code = Array.from(crypto.getRandomValues(new Uint8Array(6)), x => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 32]).join("");
+    await env.DB.batch([env.DB.prepare("INSERT INTO crews (id, name, code, owner_id, metric, created) VALUES (?, ?, ?, ?, ?, ?)").bind(id, name, code, user.id, CREW_METRICS.includes(b.metric) ? b.metric : "minutes", now()),
+      env.DB.prepare("INSERT INTO crew_members (crew_id, user_id, nickname, joined) VALUES (?, ?, ?, ?)").bind(id, user.id, nn, now())]);
+    return {crews: await crewsFor(env, user.id)};
+  }
+  if (M === "POST" && path === "/api/crews/join"){
+    await limit(env, "crewjoin:" + user.id);
+    const b = await body(req), code = String(b.code || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, ""), nn = nick(b.nickname);
+    if (!nn) throw new HttpError(400, "Pick a nickname.");
+    const c = await env.DB.prepare("SELECT id FROM crews WHERE code = ?").bind(code).first();
+    if (!c) throw new HttpError(404, "No crew with that code. Check it with whoever sent it.");
+    const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM crew_members WHERE crew_id = ?").bind(c.id).first("n");
+    if (n >= 50) throw new HttpError(400, "That crew is full.");
+    if ((await env.DB.prepare("SELECT COUNT(*) AS n FROM crew_members WHERE user_id = ?").bind(user.id).first("n")) >= 10) throw new HttpError(400, "You can be in up to 10 crews.");
+    await env.DB.prepare("INSERT INTO crew_members (crew_id, user_id, nickname, joined) VALUES (?, ?, ?, ?) ON CONFLICT (crew_id, user_id) DO UPDATE SET nickname = excluded.nickname").bind(c.id, user.id, nn, now()).run();
+    return {crews: await crewsFor(env, user.id)};
+  }
+  const mc = path.match(/^\/api\/crews\/([a-f0-9]{16})(\/leave|\/nickname|\/metric)?$/);
+  if (mc){
+    const crew = await env.DB.prepare("SELECT c.* FROM crews c JOIN crew_members m ON m.crew_id = c.id WHERE c.id = ? AND m.user_id = ?").bind(mc[1], user.id).first();
+    if (!crew) throw new HttpError(404, "Crew not found.");
+    if (M === "POST" && mc[2] === "/leave"){
+      await env.DB.prepare("DELETE FROM crew_members WHERE crew_id = ? AND user_id = ?").bind(crew.id, user.id).run();
+      const next = await env.DB.prepare("SELECT user_id FROM crew_members WHERE crew_id = ? ORDER BY joined LIMIT 1").bind(crew.id).first();
+      if (!next) await env.DB.prepare("DELETE FROM crews WHERE id = ?").bind(crew.id).run();
+      else if (crew.owner_id === user.id) await env.DB.prepare("UPDATE crews SET owner_id = ? WHERE id = ?").bind(next.user_id, crew.id).run();
+      return {crews: await crewsFor(env, user.id)};
+    }
+    if (M === "PUT" && mc[2] === "/nickname"){ const nn = nick((await body(req)).nickname); if (!nn) throw new HttpError(400, "Pick a nickname."); await env.DB.prepare("UPDATE crew_members SET nickname = ? WHERE crew_id = ? AND user_id = ?").bind(nn, crew.id, user.id).run(); return {crews: await crewsFor(env, user.id)}; }
+    if (M === "PUT" && mc[2] === "/metric"){ if (crew.owner_id !== user.id) throw new HttpError(403, "Only the person who made the crew can change the challenge."); const m = (await body(req)).metric; if (!CREW_METRICS.includes(m)) throw new HttpError(400, "Pick a challenge."); await env.DB.prepare("UPDATE crews SET metric = ? WHERE id = ?").bind(m, crew.id).run(); return {crews: await crewsFor(env, user.id)}; }
+  }
   if (M === "DELETE" && path === "/api/account"){
     const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
     if (link){ try { const tok = await stravaToken(env, link); await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/deauthorize", {method: "POST", headers: {Authorization: "Bearer " + tok}}); } catch(e){} }
-    await env.DB.batch(["sessions", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily", "reports", "link_keys"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
-      .concat([env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id)]));
+    await env.DB.batch(["sessions", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily", "reports", "link_keys", "lift_logs", "meal_plans", "crew_members"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
+      .concat([env.DB.prepare("DELETE FROM crews WHERE id NOT IN (SELECT crew_id FROM crew_members)"),
+        env.DB.prepare("UPDATE crews SET owner_id = (SELECT user_id FROM crew_members m WHERE m.crew_id = crews.id ORDER BY joined LIMIT 1) WHERE owner_id = ?").bind(user.id),
+        env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id)]));
     return {ok: true};
   }
   throw new HttpError(404, "Not found.");
