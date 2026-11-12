@@ -30,7 +30,7 @@ grep '^FLAG' /tmp/health_counts.txt | sed 's/^FLAG //' | while read -r l; do ech
 errs=$(q "SELECT ts, kind, detail FROM events WHERE ok = 0 AND ts >= datetime('now', '-1 day') ORDER BY ts DESC LIMIT 15")
 [ "$errs" != "[]" ] && { echo "Recent failures: $errs"; echo "Recent failures (newest first):" >> "$GITHUB_STEP_SUMMARY"; echo '```' >> "$GITHUB_STEP_SUMMARY"; echo "$errs" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>JSON.parse(s).forEach(e=>console.log(e.ts+"  "+e.kind+"  "+(e.detail||""))))' >> "$GITHUB_STEP_SUMMARY"; echo '```' >> "$GITHUB_STEP_SUMMARY"; }
 
-stats=$(q "SELECT (SELECT COUNT(*) FROM users) AS users, (SELECT COUNT(*) FROM profiles) AS plans, (SELECT COUNT(*) FROM strava_links) AS strava, (SELECT COUNT(DISTINCT user_id) FROM push_subs) AS push_users, (SELECT COUNT(*) FROM sessions WHERE expires > datetime('now')) AS sessions")
+stats=$(q "SELECT (SELECT COUNT(*) FROM users WHERE email NOT LIKE '%@example.com') AS real_users, (SELECT COUNT(*) FROM users WHERE email NOT LIKE '%@example.com' AND created > datetime('now', '-1 day')) AS new_today, (SELECT COUNT(*) FROM users) AS users, (SELECT COUNT(*) FROM profiles) AS plans, (SELECT COUNT(*) FROM strava_links) AS strava, (SELECT COUNT(DISTINCT user_id) FROM push_subs) AS push_users, (SELECT COUNT(*) FROM sessions WHERE expires > datetime('now')) AS sessions")
 good "Accounts: $stats"
 # test accounts delete themselves, and their reports with them; this clears anything left behind
 q "DELETE FROM reports WHERE text LIKE 'Nightly test report.%'" > /dev/null || true
