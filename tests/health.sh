@@ -8,7 +8,7 @@ problems=0; warn(){ echo "::warning::$1"; echo "- ⚠️ $1" >> "$GITHUB_STEP_SU
 echo "## Hybrid health report" >> "$GITHUB_STEP_SUMMARY"
 
 # custom domains: website and app answer and look right
-for pair in "https://hybridrunnin.com/|Train for anything" "https://app.hybridrunnin.com/|Hybrid" "https://app.hybridrunnin.com/plan.js|root.HP" "https://hybridrunnin.com/today.jpg|"; do
+for pair in "https://hybridrunnin.com/|Train for anything" "https://hybrdrunning.com/|Train for anything" "https://app.hybrdrunning.com/|HYBRD" "https://app.hybrdrunning.com/plan.js|root.HP" "https://hybrdrunning.com/today.jpg|"; do
   u=${pair%%|*}; want=${pair#*|}
   body=$(curl -s -L --max-time 20 -w '\n%{http_code}' "$u"); code=${body##*$'\n'}
   if [ "$code" != 200 ]; then bad "$u answered HTTP $code"; elif [ -n "$want" ] && ! grep -q "$want" <<<"$body"; then bad "$u didn't look right"; else good "$u is up"; fi

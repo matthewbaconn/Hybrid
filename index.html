@@ -735,11 +735,11 @@ const SAMPLE = {name:"Jordan", sample:true, goal:"half", raceDate: addDays(monda
 const API = "https://hybrid-api.hybridapp.workers.dev";
 const tokenStore = { get(){ try { return localStorage.getItem("hp-token"); } catch(e){ return null; } },
   set(t){ try { t ? localStorage.setItem("hp-token", t) : localStorage.removeItem("hp-token"); } catch(e){} } };
-// Hybrid moved from matthewbaconn.github.io/Hybrid to app.hybridrunnin.com: the old address forwards here and carries the login along
+// the app lives at app.hybrdrunning.com: the old addresses (github.io, app.hybridrunnin.com) forward here and carry the login along
 let movedHere = false;
 if (/^#move=[a-f0-9]{20,}$/.test(location.hash)){ tokenStore.set(location.hash.slice(6)); movedHere = true; try { history.replaceState(null, "", location.pathname + location.search + "#today"); } catch(e){} }
 else if (location.hash === "#moved"){ movedHere = true; try { history.replaceState(null, "", location.pathname + location.search + "#today"); } catch(e){} }
-if (location.hostname === "matthewbaconn.github.io"){ const t0 = tokenStore.get(); location.replace("https://app.hybridrunnin.com/" + location.search + (t0 && /^[a-f0-9]{20,}$/.test(t0) ? "#move=" + t0 : "#moved")); }
+if (location.hostname === "matthewbaconn.github.io" || location.hostname === "app.hybridrunnin.com"){ const t0 = tokenStore.get(); location.replace("https://app.hybrdrunning.com/" + location.search + (t0 && /^[a-f0-9]{20,}$/.test(t0) ? "#move=" + t0 : "#moved")); }
 let token = API ? tokenStore.get() : null, me = null, mode = API ? "none" : "local", loading = !!token, authv = null;
 let S = API ? {} : (store.get() || {});
 let plan = S.profile ? buildPlan(S.profile) : null;
@@ -2254,7 +2254,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "44";
+const APP_VERSION = "45";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2852,7 +2852,7 @@ function hideSplash(){
   setTimeout(() => { el.classList.add("out"); el.addEventListener("animationend", () => el.remove(), {once: true}); setTimeout(() => el.remove(), 700); }, wait);
 }
 if (splashReady) hideSplash(); else setTimeout(hideSplash, 4000);
-if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); garminReturn(); if (movedHere) setTimeout(() => toast("HYBRD has a new home: app.hybridrunnin.com. If you added it to your Home Screen, add this one again."), 600); autoSync(true); if (pushOK()) checkPush().then(() => { safeRender(); setTimeout(askNotif, 1800); }); })
+if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); garminReturn(); if (movedHere) setTimeout(() => toast("HYBRD has a new address: app.hybrdrunning.com. If you added it to your Home Screen, add this one again."), 600); autoSync(true); if (pushOK()) checkPush().then(() => { safeRender(); setTimeout(askNotif, 1800); }); })
   .catch(e => { loading = false; if (token){ mode = "none"; plan = null; } render(); hideSplash(); toast(e.message); });
 })();
 </script>

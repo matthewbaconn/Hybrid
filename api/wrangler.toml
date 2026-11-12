@@ -2,11 +2,15 @@ name = "hybrid-api"
 main = "worker.js"
 compatibility_date = "2026-06-01"
 workers_dev = true
-# hybridrunnin.com = website, app.hybridrunnin.com = the app (both proxied from GitHub Pages by this Worker)
+# hybrdrunning.com = website, app.hybrdrunning.com = the app (both proxied from GitHub Pages by this Worker).
+# The old hybridrunnin.com addresses forward to the new ones.
 routes = [
   { pattern = "hybridrunnin.com", custom_domain = true },
   { pattern = "www.hybridrunnin.com", custom_domain = true },
-  { pattern = "app.hybridrunnin.com", custom_domain = true }
+  { pattern = "app.hybridrunnin.com", custom_domain = true },
+  { pattern = "hybrdrunning.com", custom_domain = true },
+  { pattern = "www.hybrdrunning.com", custom_domain = true },
+  { pattern = "app.hybrdrunning.com", custom_domain = true }
 ]
 
 [[d1_databases]]
@@ -25,7 +29,7 @@ namespace_id = "1101"
   period = 60
 
 [vars]
-APP_URL = "https://app.hybridrunnin.com/"
+APP_URL = "https://app.hybrdrunning.com/"
 
 [triggers]
 crons = ["*/15 * * * *"]

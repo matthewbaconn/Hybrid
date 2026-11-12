@@ -5,7 +5,7 @@ const HP = globalThis.HP;
 // Runs on Cloudflare Workers with a D1 database (binding DB). Secrets: ANTHROPIC_API_KEY.
 // Auth: email + password (PBKDF2-SHA256, per-user salt); sessions are random bearer tokens,
 // stored only as SHA-256 hashes, valid 90 days.
-const ORIGINS = ["https://app.hybridrunnin.com", "https://matthewbaconn.github.io", "http://localhost:8000", "http://127.0.0.1:8000"];
+const ORIGINS = ["https://app.hybrdrunning.com", "https://app.hybridrunnin.com", "https://matthewbaconn.github.io", "http://localhost:8000", "http://127.0.0.1:8000"];
 const AI_PER_DAY = 30;            // photo/text food reads per person per day (protects the API bill)
 const MAX_IMAGE_B64 = 2_000_000;
 const SESSION_DAYS = 90;
@@ -107,15 +107,18 @@ const STRAVA = "https://www.strava.com";
 const TYPE_MAP = t => /Run/.test(t) ? "run" : /Ride|Cycl|Bike/.test(t) ? "bike" : /Swim/.test(t) ? "swim" : /Weight|Workout|Crossfit|HIIT|Strength/.test(t) ? "lift" : "other";
 function appUrl(env, q, ret){ return (ret || env.APP_URL || "https://matthewbaconn.github.io/Hybrid/") + "?strava=" + q + "#today"; }
 // the app's address the person started from, so sign-ins send them back to the same place (old github.io or the new domain)
-function retFor(req){ const o = req.headers.get("Origin") || ""; return o === "https://app.hybridrunnin.com" ? o + "/" : o === "https://matthewbaconn.github.io" ? o + "/Hybrid/" : null; }
-/* ---------- hybridrunnin.com: the website and the app, served from GitHub Pages ---------- */
+function retFor(req){ const o = req.headers.get("Origin") || ""; return o === "https://app.hybrdrunning.com" || o === "https://app.hybridrunnin.com" ? o + "/" : o === "https://matthewbaconn.github.io" ? o + "/Hybrid/" : null; }
+/* ---------- hybrdrunning.com: the website and the app, served from GitHub Pages ----------
+   The old hybridrunnin.com website forwards to the new one. The old app address still serves the app,
+   which then moves itself (and the person's login) to app.hybrdrunning.com. */
+const SITE_HOSTS = new Set(["hybrdrunning.com", "www.hybrdrunning.com", "app.hybrdrunning.com", "hybridrunnin.com", "www.hybridrunnin.com", "app.hybridrunnin.com"]);
 const PAGES = "https://matthewbaconn.github.io/Hybrid";
 async function site(req, host){
   const u = new URL(req.url);
-  if (host === "www.hybridrunnin.com") return Response.redirect("https://hybridrunnin.com" + u.pathname + u.search, 301);
+  if (host === "www.hybrdrunning.com" || host === "hybridrunnin.com" || host === "www.hybridrunnin.com") return Response.redirect("https://hybrdrunning.com" + u.pathname + u.search, 301);
   if (req.method !== "GET" && req.method !== "HEAD") return new Response("Method not allowed", {status: 405});
   const shared = /^\/(brand\/|privacy\.html$|icon-|apple-touch-icon)/.test(u.pathname);
-  const target = PAGES + (host === "app.hybridrunnin.com" || shared ? "" : "/home") + u.pathname + u.search;
+  const target = PAGES + (host.startsWith("app.") || shared ? "" : "/home") + u.pathname + u.search;
   const r = await fetch(target, {headers: {"Accept": req.headers.get("Accept") || "*/*"}, redirect: "manual", cf: {cacheTtl: 60, cacheEverything: true}});
   const h = new Headers(r.headers);
   const loc = h.get("Location");
@@ -1044,7 +1047,7 @@ export default {
   async scheduled(event, env, ctx){ ctx.waitUntil(cron(env, ctx)); },
   async fetch(req, env, ctx){
     const host = new URL(req.url).hostname;
-    if (host === "hybridrunnin.com" || host === "www.hybridrunnin.com" || host === "app.hybridrunnin.com"){
+    if (SITE_HOSTS.has(host)){
       try { return await site(req, host); } catch(e){ return new Response("HYBRD is having a moment. Try again in a minute.", {status: 502}); }
     }
     const h = corsFor(req), path = new URL(req.url).pathname.replace(/\/+$/, "");
