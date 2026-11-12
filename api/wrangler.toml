@@ -25,7 +25,7 @@ namespace_id = "1101"
   period = 60
 
 [vars]
-APP_URL = "https://matthewbaconn.github.io/Hybrid/"
+APP_URL = "https://app.hybridrunnin.com/"
 
 [triggers]
 crons = ["*/15 * * * *"]

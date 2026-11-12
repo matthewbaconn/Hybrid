@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 5
     env:
       API: https://hybrid-api.hybridapp.workers.dev
-      ORIGIN: https://matthewbaconn.github.io
+      ORIGIN: https://app.hybridrunnin.com
     steps:
       - uses: actions/checkout@v4
       - name: Run

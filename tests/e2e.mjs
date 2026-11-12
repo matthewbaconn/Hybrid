@@ -1,9 +1,9 @@
 // Real-browser test of every screen of Hybrid. Runs against the live site and live API by default.
-//   SITE=https://matthewbaconn.github.io/Hybrid/ node tests/e2e.mjs
+//   SITE=https://app.hybridrunnin.com/ node tests/e2e.mjs
 // Uses a throwaway account (deleted at the end) and the real AI, weather and database.
 import { chromium } from "playwright";
 import fs from "fs";
-const SITE = process.env.SITE || "https://matthewbaconn.github.io/Hybrid/";
+const SITE = process.env.SITE || "https://app.hybridrunnin.com/";
 const SHOTS = process.env.SHOTS || "e2e-shots";
 const FAST = !!process.env.LOCAL;          // local runs: no internet weather/AI waits
 fs.mkdirSync(SHOTS, {recursive: true});
