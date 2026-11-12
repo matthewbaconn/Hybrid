@@ -114,7 +114,7 @@ await check("Today overview", async () => {
   await noOverflow(); await shot("08-today-overview"); return "check-in → fuel → workout → tiles";
 });
 await check("Settings: Watch", async () => {
-  await settings(); await shot("07-settings"); await open("set-watch"); const t = await page.innerText(".hlink");
+  await settings(); await shot("07-settings"); await open("set-watch"); const t = await page.innerText(".apps");
   const strava = await page.locator('[data-act="stconnect"]').count(); await back(); await back();
   if (!/Apple Health/.test(t) || !/Strava/.test(t)) throw new Error(t.slice(0, 120)); if (!strava) throw new Error("Connect Strava button missing"); return "Strava + sleep/heart rate shown";
 });

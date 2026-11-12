@@ -298,6 +298,17 @@ button{cursor:pointer}
 .legal a{color:var(--accent-2)}
 .coach small.ai{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
 
+.apps{display:grid;gap:4px}
+.apps h3{font:600 13px var(--f-body);color:var(--muted);margin:16px 0 4px} .apps h3:first-child{margin-top:0}
+.app{display:flex;align-items:center;gap:14px;padding:12px 0}
+.app + .app{border-top:1px solid rgba(255,255,255,.06)}
+.app > div{flex:1;min-width:0} .app > div b{display:block;font-weight:600;font-size:15px} .app > div span{display:block;font-size:12.5px;color:var(--muted);line-height:1.4}
+.atile{position:relative;flex:none;width:44px;height:44px;border-radius:10px;background:var(--sunk);border:1px solid rgba(255,255,255,.08);display:grid;place-items:center;overflow:hidden}
+.atile b{font:800 18px var(--f-display);color:var(--ink)} .atile img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--sunk);padding:6px}
+.chip2{flex:none;font-style:normal;font-size:12px;font-weight:600;padding:5px 10px;border-radius:999px;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.chip2.on{background:color-mix(in srgb,var(--long) 18%,transparent);color:var(--long)} .chip2.soon{background:color-mix(in srgb,var(--work) 16%,transparent);color:var(--work)}
+.btn.sm{min-height:36px;padding:0 14px;flex:none}
+
 /* pull down to refresh */
 #ptr{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 6px);z-index:30;width:38px;height:38px;margin-left:-19px;border-radius:50%;background:var(--surface);border:1px solid rgba(255,255,255,.08);
   display:grid;place-items:center;opacity:0;transform:translateY(-50px);will-change:transform,opacity;pointer-events:none}
@@ -1676,7 +1687,7 @@ function settingsScreen(k){
   if (k === "settings"){
     if (mode === "account") return '<button class="me-card" type="button" data-act="go" data-scr="set-profile"><span class="avatar">' + esc((nm || me.email || "?").slice(0, 1).toUpperCase()) + '</span><div><b>' + esc(nm || "Add your name") + '</b><span>' + esc(me.email) + '</span></div><i>›</i></button>' +
       training +
-      group("Connections", row("set-watch", "Strava and watches", strava.connected ? 'Strava connected' : 'Connect Strava for workouts and maps', "watch")) +
+      group("Connections", row("set-watch", "Connected apps", (strava.connected ? 'Strava connected' : 'Strava') + ' · Garmin coming soon · Apple Health and more', "watch")) +
       group("Notifications", row("set-notif", "Notifications", pushState.on ? 'On' : 'Reminders and workout summaries', "bell")) +
       help +
       group("Account", row("set-email", "Email", esc(me.email), "user") + row("set-password", "Password", "Change your password", "gear") + row("set-account", "Delete account", "", "flag", "", "danger")) +
@@ -1813,7 +1824,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "30";
+const APP_VERSION = "31";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -1844,13 +1855,31 @@ async function healthSync(){
   location.href = "shortcuts://run-shortcut?name=" + encodeURIComponent(SHORTCUT_NAME) + "&input=text&text=" + encodeURIComponent(k);
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && healthPending && Date.now() - healthPending < 10 * 60e3){ healthPending = 0; [1200, 5000].forEach(ms => setTimeout(refreshMe, ms)); } });
+/* Connected apps. Logos: drop the official files from each brand's press/brand kit into brand/<id>.png
+   (Strava's API terms ask for its official "Connect with Strava" / "Powered by Strava" artwork) and they show up
+   here by themselves; until then each app gets a plain initial tile. */
+const APPS = [
+  {id: "strava", name: "Strava", group: "direct"},
+  {id: "garmin", name: "Garmin Connect", group: "direct"},
+  {id: "apple-health", name: "Apple Health", group: "direct"},
+  {id: "coros", name: "COROS", group: "strava"}, {id: "polar", name: "Polar", group: "strava"}, {id: "suunto", name: "Suunto", group: "strava"},
+  {id: "wahoo", name: "Wahoo", group: "strava"}, {id: "zwift", name: "Zwift", group: "strava"},
+  {id: "whoop", name: "WHOOP", group: "health"}, {id: "oura", name: "Oura", group: "health"}
+];
+function appTile(x){ return '<span class="atile"><img src="brand/' + x.id + '.png" alt="" onerror="this.remove()"><b>' + esc(x.name.slice(0, 1)) + '</b></span>'; }
 function healthHtml(){
-  const row = (t, sub, right) => '<div class="wl"><div><b>' + t + '</b><span>' + sub + '</span></div>' + right + '</div>';
-  return '<div class="hlink">' +
-    row("Strava", strava.connected ? "Connected" + (strava.name ? " as " + esc(strava.name) : "") + " · workouts and maps come in by themselves" : "Workouts, maps and heart rate from any watch",
-      strava.connected ? '<em class="ok">On</em>' : strava.available ? '<button class="btn" type="button" data-act="stconnect">Connect</button>' : '') +
-    row("Apple Health", "Sleep, resting heart rate and HRV", SHORTCUT_URL ? '<button class="btn" type="button" data-act="hlsetup">Set up</button>' : '<em>Soon</em>') +
-    '<p class="sub">Garmin, COROS or Apple Watch? Connect your watch to Strava once (in the Strava app: Settings → Applications, Services, and Devices) and your workouts show up here.</p></div>';
+  const row = (x, sub, right) => '<div class="app">' + appTile(x) + '<div><b>' + esc(x.name) + '</b><span>' + sub + '</span></div>' + right + '</div>';
+  const chip = (t, cls) => '<em class="chip2 ' + (cls || '') + '">' + t + '</em>';
+  const A = id => APPS.find(x => x.id === id);
+  const direct = row(A("strava"), strava.connected ? "Connected" + (strava.name ? " as " + esc(strava.name) : "") + ". Workouts, routes and heart rate sync on their own." : "Workouts, routes and heart rate from any watch.",
+      strava.connected ? chip("Connected", "on") : strava.available ? '<button class="btn sm" type="button" data-act="stconnect">Connect</button>' : chip("Unavailable")) +
+    row(A("garmin"), "Direct Garmin sync is on the way. Until then, link Garmin to Strava and your workouts come through.", chip("Coming soon", "soon")) +
+    row(A("apple-health"), "Sleep, resting heart rate and HRV from your iPhone.", SHORTCUT_URL ? '<button class="btn sm" type="button" data-act="hlsetup">Set up</button>' : chip("Coming soon", "soon"));
+  const via = (grp, note) => APPS.filter(x => x.group === grp).map(x => row(x, note, chip(grp === "strava" ? "Via Strava" : "Via Apple Health"))).join("");
+  return '<div class="apps"><h3>Connect directly</h3>' + direct +
+    '<h3>Works through Strava</h3>' + via("strava", "Link it to Strava once and workouts show up here.") +
+    '<h3>Works through Apple Health</h3>' + via("health", "Sleep and recovery come in with the Apple Health sync.") +
+    '<p class="sub">Linking a watch to Strava: in the Strava app, open Settings → Applications, Services, and Devices.</p></div>';
 }
 function healthSteps(){
   if (SHORTCUT_URL) return '<ol class="steps-plain"><li>Add the Hybrid Health shortcut. It\'s one tap.<a class="btn primary block" style="margin-top:10px" href="' + esc(SHORTCUT_URL) + '" target="_blank" rel="noopener">Get the shortcut</a></li>' +
@@ -1894,7 +1923,7 @@ async function pushOn(){
 }
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 const SCR_T = {fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
-  settings: "Settings", "set-notif": "Notifications", "set-watch": "Strava and watches", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
+  settings: "Settings", "set-notif": "Notifications", "set-watch": "Connected apps", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
   "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Hybrid works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup"};
 const SCR_UP = {"set-health-info": "settings", "set-terms": "settings", "set-profile": "settings", "set-run": "settings", "set-about": "settings", "set-email": "settings", "set-password": "settings", "set-hr": "settings", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", "set-report": "settings", "set-reports": "settings", "set-account": "settings"};
 let navDir = null;
