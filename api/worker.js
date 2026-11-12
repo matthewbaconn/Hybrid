@@ -5,7 +5,7 @@ const HP = globalThis.HP;
 // Runs on Cloudflare Workers with a D1 database (binding DB). Secrets: ANTHROPIC_API_KEY.
 // Auth: email + password (PBKDF2-SHA256, per-user salt); sessions are random bearer tokens,
 // stored only as SHA-256 hashes, valid 90 days.
-const ORIGINS = ["https://matthewbaconn.github.io", "http://localhost:8000", "http://127.0.0.1:8000"];
+const ORIGINS = ["https://app.hybridrunnin.com", "https://matthewbaconn.github.io", "http://localhost:8000", "http://127.0.0.1:8000"];
 const AI_PER_DAY = 30;            // photo/text food reads per person per day (protects the API bill)
 const MAX_IMAGE_B64 = 2_000_000;
 const SESSION_DAYS = 90;
@@ -105,7 +105,24 @@ async function analyze(env, user, b){
    Domain must be this Worker's host. New Strava apps allow 1 connected athlete until Strava approves more. */
 const STRAVA = "https://www.strava.com";
 const TYPE_MAP = t => /Run/.test(t) ? "run" : /Ride|Cycl|Bike/.test(t) ? "bike" : /Swim/.test(t) ? "swim" : /Weight|Workout|Crossfit|HIIT|Strength/.test(t) ? "lift" : "other";
-function appUrl(env, q){ return (env.APP_URL || "https://matthewbaconn.github.io/Hybrid/") + "?strava=" + q + "#today"; }
+function appUrl(env, q, ret){ return (ret || env.APP_URL || "https://matthewbaconn.github.io/Hybrid/") + "?strava=" + q + "#today"; }
+// the app's address the person started from, so sign-ins send them back to the same place (old github.io or the new domain)
+function retFor(req){ const o = req.headers.get("Origin") || ""; return o === "https://app.hybridrunnin.com" ? o + "/" : o === "https://matthewbaconn.github.io" ? o + "/Hybrid/" : null; }
+/* ---------- hybridrunnin.com: the website and the app, served from GitHub Pages ---------- */
+const PAGES = "https://matthewbaconn.github.io/Hybrid";
+async function site(req, host){
+  const u = new URL(req.url);
+  if (host === "www.hybridrunnin.com") return Response.redirect("https://hybridrunnin.com" + u.pathname + u.search, 301);
+  if (req.method !== "GET" && req.method !== "HEAD") return new Response("Method not allowed", {status: 405});
+  const shared = /^\/(brand\/|privacy\.html$|icon-|apple-touch-icon)/.test(u.pathname);
+  const target = PAGES + (host === "app.hybridrunnin.com" || shared ? "" : "/home") + u.pathname + u.search;
+  const r = await fetch(target, {headers: {"Accept": req.headers.get("Accept") || "*/*"}, redirect: "manual", cf: {cacheTtl: 60, cacheEverything: true}});
+  const h = new Headers(r.headers);
+  const loc = h.get("Location");
+  if (loc){ const l = new URL(loc, target); h.set("Location", "https://" + host + l.pathname.replace(/^\/Hybrid(\/home)?/, "") + l.search); }
+  h.delete("x-github-request-id"); h.set("X-Content-Type-Options", "nosniff");
+  return new Response(r.body, {status: r.status, headers: h});
+}
 async function stravaToken(env, link){
   if (link.expires_at > Date.now() / 1000 + 120) return link.access_token;
   const r = await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/token", {method: "POST", headers: {"Content-Type": "application/json"},
@@ -485,9 +502,9 @@ async function route(req, env, path, ctx){
   }
   if (M === "GET" && path === "/api/garmin/callback"){
     const q = new URL(req.url).searchParams, st = q.get("state") || "";
-    const row = await env.DB.prepare("SELECT user_id, created, verifier FROM oauth_states WHERE state = ?").bind(st).first();
+    const row = await env.DB.prepare("SELECT user_id, created, verifier, ret FROM oauth_states WHERE state = ?").bind(st).first();
     await env.DB.prepare("DELETE FROM oauth_states WHERE state = ? OR created < ?").bind(st, new Date(Date.now() - 3600e3).toISOString()).run();
-    const go = code => Response.redirect((env.APP_URL || "https://matthewbaconn.github.io/Hybrid/") + "?garmin=" + code + "#today", 302);
+    const go = code => Response.redirect(((row && row.ret) || env.APP_URL || "https://matthewbaconn.github.io/Hybrid/") + "?garmin=" + code + "#today", 302);
     if (!row || !row.verifier || Date.parse(row.created) < Date.now() - 1800e3) return go("expired");
     if (q.get("error") || !q.get("code")) return go("cancelled");
     const cb = new URL(req.url).origin + "/api/garmin/callback";
@@ -518,9 +535,9 @@ async function route(req, env, path, ctx){
   }
   if (M === "GET" && path === "/api/strava/callback"){
     const q = new URL(req.url).searchParams, st = q.get("state") || "";
-    const row = await env.DB.prepare("SELECT user_id, created FROM oauth_states WHERE state = ?").bind(st).first();
+    const row = await env.DB.prepare("SELECT user_id, created, ret FROM oauth_states WHERE state = ?").bind(st).first();
     await env.DB.prepare("DELETE FROM oauth_states WHERE state = ? OR created < ?").bind(st, new Date(Date.now() - 3600e3).toISOString()).run();
-    const go = code => Response.redirect(appUrl(env, code), 302);
+    const go = code => Response.redirect(appUrl(env, code, row && row.ret), 302);
     if (!row || Date.parse(row.created) < Date.now() - 1800e3) return go("expired");
     if (q.get("error") || !q.get("code")) return go("cancelled");
     if (!/activity:read/.test(q.get("scope") || "")) return go("noscope");
@@ -809,7 +826,7 @@ async function route(req, env, path, ctx){
   if (M === "POST" && path === "/api/garmin/start"){
     if (!env.GARMIN_CLIENT_ID || !env.GARMIN_CLIENT_SECRET) throw new HttpError(503, "Garmin connection isn't set up yet.");
     const st = rand(16), verifier = b64url(crypto.getRandomValues(new Uint8Array(48))), challenge = b64url(await crypto.subtle.digest("SHA-256", enc.encode(verifier)));
-    await env.DB.prepare("INSERT INTO oauth_states (state, user_id, created, verifier) VALUES (?, ?, ?, ?)").bind(st, user.id, now(), verifier).run();
+    await env.DB.prepare("INSERT INTO oauth_states (state, user_id, created, verifier, ret) VALUES (?, ?, ?, ?, ?)").bind(st, user.id, now(), verifier, retFor(req)).run();
     const cb = new URL(req.url).origin + "/api/garmin/callback";
     return {url: (env.GARMIN_AUTH_URL || GARMIN_AUTH) + "?response_type=code&client_id=" + encodeURIComponent(env.GARMIN_CLIENT_ID) + "&code_challenge=" + challenge + "&code_challenge_method=S256&redirect_uri=" + encodeURIComponent(cb) + "&state=" + st};
   }
@@ -817,7 +834,7 @@ async function route(req, env, path, ctx){
   if (M === "POST" && path === "/api/strava/start"){
     if (!env.STRAVA_CLIENT_ID) throw new HttpError(503, "Strava connection isn't set up yet.");
     const st = rand(16);
-    await env.DB.prepare("INSERT INTO oauth_states (state, user_id, created) VALUES (?, ?, ?)").bind(st, user.id, now()).run();
+    await env.DB.prepare("INSERT INTO oauth_states (state, user_id, created, ret) VALUES (?, ?, ?, ?)").bind(st, user.id, now(), retFor(req)).run();
     const cb = new URL(req.url).origin + "/api/strava/callback";
     return {url: (env.STRAVA_BASE || STRAVA) + "/oauth/mobile/authorize?client_id=" + encodeURIComponent(env.STRAVA_CLIENT_ID) + "&response_type=code&approval_prompt=auto&scope=activity:read_all&redirect_uri=" + encodeURIComponent(cb) + "&state=" + st};
   }
@@ -962,6 +979,10 @@ async function route(req, env, path, ctx){
 export default {
   async scheduled(event, env, ctx){ ctx.waitUntil(cron(env, ctx)); },
   async fetch(req, env, ctx){
+    const host = new URL(req.url).hostname;
+    if (host === "hybridrunnin.com" || host === "www.hybridrunnin.com" || host === "app.hybridrunnin.com"){
+      try { return await site(req, host); } catch(e){ return new Response("Hybrid is having a moment. Try again in a minute.", {status: 502}); }
+    }
     const h = corsFor(req), path = new URL(req.url).pathname.replace(/\/+$/, "");
     if (req.method === "OPTIONS") return new Response(null, {status: 204, headers: h});
     try { const out = await route(req, env, path, ctx); return out instanceof Response ? out : reply(h, out); }

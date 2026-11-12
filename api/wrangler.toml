@@ -2,6 +2,12 @@ name = "hybrid-api"
 main = "worker.js"
 compatibility_date = "2026-06-01"
 workers_dev = true
+# hybridrunnin.com = website, app.hybridrunnin.com = the app (both proxied from GitHub Pages by this Worker)
+routes = [
+  { pattern = "hybridrunnin.com", custom_domain = true },
+  { pattern = "www.hybridrunnin.com", custom_domain = true },
+  { pattern = "app.hybridrunnin.com", custom_domain = true }
+]
 
 [[d1_databases]]
 binding = "DB"
@@ -23,3 +29,4 @@ APP_URL = "https://matthewbaconn.github.io/Hybrid/"
 
 [triggers]
 crons = ["*/15 * * * *"]
+
