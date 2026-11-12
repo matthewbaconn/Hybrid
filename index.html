@@ -697,6 +697,7 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .inst{background:color-mix(in srgb,var(--accent) 12%,#14161C)}
 .scard{background:var(--surface)} .scard.hi{background:color-mix(in srgb,var(--accent) 14%,var(--surface))} .icard{background:var(--surface)}
 .rg-w circle{filter:none!important}
+a.scard{text-decoration:none;color:var(--ink)}
 </style>
 </head>
 <body>
@@ -1637,6 +1638,7 @@ function crewHtml(){
 
 /* ============ icons ============ */
 const IC = {
+  mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
   bolt:'<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
   gear:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
   fork:'<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
@@ -2123,7 +2125,7 @@ function settingsScreen(k){
       group("", row("set-account", "Delete account", "Removes everything for good", "flag", "", "danger"))
     : group("Profile", row("set-profile", "Body and goals", (pr.weight ? pr.weight + ' lb' : 'Weight not set') + (pr.goalWeight ? ' → ' + pr.goalWeight + ' lb' : ''), "scale")));
   if (k === "set-train") return training;
-  if (k === "set-help") return help;
+  if (k === "set-help") return '<div class="scards" style="margin-bottom:14px">' + mailCard() + '</div>' + help;
   if (k === "set-hr") return hrScreen();
   if (k === "set-health-info") return '<section class="card legal">' + legalHtml("health") + '</section>';
   if (k === "set-terms") return '<section class="card legal">' + legalHtml("terms") + '</section>';
@@ -2254,7 +2256,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "45";
+const APP_VERSION = "46";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2429,8 +2431,11 @@ function renderMore(){
   h += '<a class="scard" href="https://www.instagram.com/hybrdrunning/" target="_blank" rel="noopener"><i class="mi">' + ic("camera") + '</i><div><b>Follow @HybrdRunning</b><span>Tips, new features and early access news on Instagram</span></div><i>›</i></a>';
   h += card("go", "Settings", "Account, devices and apps, notifications", "gear", "settings");
   h += card("go", "Help and support", "Report a problem, health and safety, terms and privacy", "heart", "set-help");
+  h += mailCard();
   return h + '</div>';
 }
+const CONTACT = "hybridrunning@gmail.com";
+const mailCard = () => '<a class="scard" href="mailto:' + CONTACT + '?subject=' + encodeURIComponent("HYBRD question") + '"><i class="mi">' + ic("mail") + '</i><div><b>Email us</b><span>' + CONTACT + ' · questions, ideas, anything</span></div><i>›</i></a>';
 const FAQ = [
   ["How is my plan built?", "From your goal, your current fitness and the days you can train. It builds up for a few weeks, takes an easier week every fourth week, and eases off before race day. Everyday plans mix strength and cardio and keep building in 12-week blocks."],
   ["Can I change my goal or race?", "Yes. More → Change goal or start a new plan. Your plan rebuilds from this week on, and your logged workouts and food stay."],
