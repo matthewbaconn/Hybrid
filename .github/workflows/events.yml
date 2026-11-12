@@ -17,6 +17,11 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: 20}
       - run: cd api && npm install --no-save --no-audit --no-fund wrangler@4 >/dev/null
+      - name: Point wrangler at the live database
+        working-directory: api
+        run: |
+          id=$(npx wrangler d1 list --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s).find(d=>d.name==="hybrid");process.stdout.write(x?x.uuid:"")})')
+          sed -i "s/REPLACED_BY_DEPLOY_WORKFLOW/$id/" wrangler.toml
       - name: Events from the last 3 days
         env: {KINDS: "${{ inputs.kinds }}"}
         run: |
