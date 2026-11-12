@@ -491,7 +491,7 @@ async function route(req, env, path, ctx){
     const [c, w, a, s] = await env.DB.batch([
       env.DB.prepare("SELECT date, sleep_h, sleep_q, soreness, energy, stress FROM checkins WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since),
       env.DB.prepare("SELECT date, lb FROM weights WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since120),
-      env.DB.prepare("SELECT id, source, date, type, name, mi, minutes, cal, avg_hr, work_pace, laps, poly, start_local, elev_ft, sport, max_hr FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(user.id, since),
+      env.DB.prepare("SELECT id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, work_pace, CASE WHEN date >= ? THEN laps END AS laps, CASE WHEN date >= ? THEN poly END AS poly, start_local, elev_ft, sport, max_hr FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(since, since, user.id, since120),
       env.DB.prepare("SELECT athlete_name, last_sync FROM strava_links WHERE user_id = ?").bind(user.id)
     ]);
     const [rv, cn, ps, ik, hd] = await env.DB.batch([
@@ -509,6 +509,35 @@ async function route(req, env, path, ctx){
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
       settings: await settingsOf(env, user.id), push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY,
       owner, reports, health: hd.results, health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
+  }
+  if (M === "PUT" && path === "/api/account"){
+    const b = await body(req), name = String(b.name ?? "").trim().slice(0, 30);
+    if (!name) throw new HttpError(400, "Enter your name.");
+    await env.DB.prepare("UPDATE users SET name = ? WHERE id = ?").bind(name, user.id).run();
+    return {user: {...userOut(user), name}};
+  }
+  if (M === "POST" && path === "/api/account/password"){
+    await limit(env, "auth:" + (req.headers.get("CF-Connecting-IP") || "x"));
+    const b = await body(req), cur = String(b.current || ""), next = String(b.next || "");
+    const u = await env.DB.prepare("SELECT salt, pass_hash FROM users WHERE id = ?").bind(user.id).first();
+    if (!u || !safeEqual(await hashPassword(cur, u.salt), u.pass_hash)) throw new HttpError(400, "Your current password is wrong.");
+    if (next.length < 8 || next.length > 200) throw new HttpError(400, "Use a new password of at least 8 characters.");
+    const salt = rand(16), tok = (req.headers.get("Authorization") || "").slice(7);
+    await env.DB.batch([
+      env.DB.prepare("UPDATE users SET pass_hash = ?, salt = ? WHERE id = ?").bind(await hashPassword(next, salt), salt, user.id),
+      env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND token_hash != ?").bind(user.id, await sha256(tok))   // signs out other phones
+    ]);
+    return {ok: true};
+  }
+  if (M === "POST" && path === "/api/account/email"){
+    await limit(env, "auth:" + (req.headers.get("CF-Connecting-IP") || "x"));
+    const b = await body(req), email = String(b.email || "").trim().toLowerCase(), pw = String(b.password || "");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120) throw new HttpError(400, "Enter a valid email.");
+    const u = await env.DB.prepare("SELECT salt, pass_hash FROM users WHERE id = ?").bind(user.id).first();
+    if (!u || !safeEqual(await hashPassword(pw, u.salt), u.pass_hash)) throw new HttpError(400, "Your password is wrong.");
+    if (await env.DB.prepare("SELECT 1 FROM users WHERE email = ? AND id != ?").bind(email, user.id).first()) throw new HttpError(409, "That email is already used by another account.");
+    await env.DB.prepare("UPDATE users SET email = ? WHERE id = ?").bind(email, user.id).run();
+    return {user: {...userOut(user), email}};
   }
   if (M === "PUT" && path === "/api/profile"){
     const b = await body(req), s = JSON.stringify(b.profile || null);

@@ -93,7 +93,7 @@ await check("Plan tab", async () => {
   await page.click('[data-act="wk"][data-dir="1"]'); await page.waitForTimeout(200); const tips = await page.locator(".fueltip").count(); await shot("04-plan"); return n + " days · " + tips + " fuel tips next week";
 });
 await check("Recovery tab", async () => { await tab("recovery"); await noOverflow(); await page.waitForSelector(".rings"); await shot("05-recovery"); return (await page.innerText(".verdict b")); });
-await check("Training tab", async () => { await tab("training"); await noOverflow(); await shot("06-training"); const cards = [];
+await check("Progress tab", async () => { await tab("training"); await noOverflow(); await page.waitForSelector(".prog-top"); if ((await page.locator(".pc").count()) < 6) throw new Error("progress cards missing"); await page.click('[data-act="pwk"][data-i="10"]'); await page.waitForTimeout(150); await shot("06-progress"); const cards = [];
   for (const k of ["races", "paces", "miles", "body", "setup"]){ await open("t-" + k); await noOverflow(); cards.push(...await page.locator(".card-h .lbl").allInnerTexts()); await back(); } for (const need of ["Race predictions", "Your training paces", "Weekly miles", "Calories · last 7 days", "Calorie check · 14 days"]) if (!cards.some(c => c.toLowerCase() === need.toLowerCase())) throw new Error("missing " + need); return cards.length + " cards"; });
 await check("Activities tab (feed + detail)", async () => {
   await tab("activities"); await noOverflow(); await page.waitForSelector(".actc", {timeout: 5000}); const n = await page.locator(".actc").count(); await shot("06b-activities");
@@ -112,6 +112,10 @@ await check("Settings: Watch", async () => {
   await settings(); await shot("07-settings"); await open("set-watch"); const t = await page.innerText(".hlink");
   const strava = await page.locator('[data-act="stconnect"]').count(); await back(); await back();
   if (!/Sleep and heart rate/.test(t) || !/Strava/.test(t)) throw new Error(t.slice(0, 120)); if (!strava) throw new Error("Connect Strava button missing"); return "Strava + sleep/heart rate shown";
+});
+await check("Edit profile", async () => {
+  await settings(); await open("set-profile"); await page.fill("#pf-name", "Nightly Two"); await page.fill("#pf-gw", "174"); await page.click('[data-act="pfsave"]');
+  await page.waitForSelector(".me-card >> text=Nightly Two", {timeout: 10000}); await back(); await tab("today"); const h = await page.innerText(".hello h1"); if (!/Nightly Two/.test(h)) throw new Error(h); return h;
 });
 await check("Heart rate zones", async () => {
   await settings(); await open("set-hr"); await page.click('[data-act="hrm"][data-m="lthr"]'); await page.fill("#hr-base", "172"); await page.click('[data-act="hrsave"]');

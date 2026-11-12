@@ -59,6 +59,11 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' "$API/api/import?key=hl_wrongwrongwrongwrongwrong&weight=180")" = 401 ] || { echo "::error::a wrong Apple Health link was accepted"; exit 1; }
           [ "$(call GET /api/me | jq .health_link.on)" = true ] || { echo "::error::Apple Health link not shown as on"; exit 1; }
           echo "Apple Health link works (weight, sleep, resting HR, HRV, steps)"
+          call PUT /api/account '{"name":"Smoke Two"}' | jq -e '.user.name == "Smoke Two"' > /dev/null || { echo "::error::name change failed"; exit 1; }
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API/api/account/password" -H "Origin: $ORIGIN" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"current":"wrong-pass","next":"another-pass-1"}')" = 400 ] || { echo "::error::wrong current password was accepted"; exit 1; }
+          call POST /api/account/password '{"current":"smoke-test-123","next":"smoke-test-456"}' | jq -e .ok > /dev/null || { echo "::error::password change failed"; exit 1; }
+          call POST /api/account/password '{"current":"smoke-test-456","next":"smoke-test-123"}' | jq -e .ok > /dev/null || { echo "::error::password change back failed"; exit 1; }
+          echo "name and password changes work"
           call POST /api/report '{"text":"Nightly test report. Please ignore.","screen":"today"}' | jq -e .ok > /dev/null || { echo "::error::problem report failed"; exit 1; }
           echo "problem report saved"
           if [ "$(echo "$me" | jq .strava.available)" = true ]; then
