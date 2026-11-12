@@ -347,6 +347,7 @@ button{cursor:pointer}
 .srow .ic{color:var(--muted);width:20px;height:20px}
 .srow div{flex:1;min-width:0} .srow b{display:block;font-weight:600;font-size:15.5px} .srow span{display:block;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
 .srow > i{font-style:normal;color:var(--muted);font-size:20px}
+a.srow{text-decoration:none;box-sizing:border-box}
 .srow.danger b{color:var(--crit)}
 .seg{display:grid;grid-template-columns:1fr 1fr;background:var(--sunk);border-radius:6px;padding:3px;gap:3px}
 .seg button{border:0;background:none;border-radius:4px;min-height:40px;font-weight:600;font-size:14px;color:var(--muted)}
@@ -1243,6 +1244,7 @@ const IC = {
   link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   heart:'<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
   check:'<path d="M20 6 9 17l-5-5"/>',
+  lock:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   scale:'<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 9a4 4 0 0 1 8 0"/><path d="m12 9 1.5-2"/>',
   watch:'<circle cx="12" cy="12" r="6"/><path d="M12 10v2l1 1"/><path d="m16.13 7.66-.81-4.05a2 2 0 0 0-2-1.61h-2.68a2 2 0 0 0-2 1.61l-.78 4.05M7.88 16.36l.8 4a2 2 0 0 0 2 1.61h2.72a2 2 0 0 0 2-1.61l.81-4.05"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
@@ -1651,7 +1653,7 @@ function settingsScreen(k){
   const row = (to, label, sub, icon, act, cls) => '<button class="srow' + (cls ? ' ' + cls : '') + '" type="button" data-act="' + (act || 'go') + '"' + (to ? ' data-scr="' + to + '"' : '') + '>' + ic(icon) + '<div><b>' + label + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</div>' + (to || act === "edit" ? '<i>›</i>' : '') + '</button>';
   const group = (title, rows) => '<section class="sgroup">' + (title ? '<h2>' + title + '</h2>' : '') + '<div class="slist">' + rows + '</div></section>';
   const pr = plan ? plan.profile : {}, nm = (me && me.name) || pr.name || "";
-  const help = group("Help", (API ? row("set-report", "Report a problem", "Something broken or confusing? Tell us.", "flag") : '') + (mode === "account" && isOwner ? row("set-reports", "Reported problems", reports.length + ' waiting', "bars") : '') + row("set-about", "How Hybrid works", "Your plan, readiness and calories, explained", "spark"));
+  const help = group("Help", (API ? row("set-report", "Report a problem", "Something broken or confusing? Tell us.", "flag") : '') + (mode === "account" && isOwner ? row("set-reports", "Reported problems", reports.length + ' waiting', "bars") : '') + row("set-about", "How Hybrid works", "Your plan, readiness and calories, explained", "spark") + '<a class="srow" href="privacy.html" target="_blank" rel="noopener">' + ic("lock") + '<div><b>Privacy policy</b><span>What we collect and how it\'s used</span></div><i>›</i></a>');
   const training = group("Training", row("set-profile", "Body and goals", (pr.weight ? pr.weight + ' lb' : 'Weight not set') + (pr.goalWeight ? ' → ' + pr.goalWeight + ' lb' : ''), "scale") +
     row("", "Race, run days and lifting", plan ? RACES[pr.goal].name + (plan.raceDate ? ' · ' + fmtD(plan.raceDate) : '') + ' · rebuilds your plan' : '', "cal", "edit") +
     row("set-hr", "Heart rate zones", hrSummary(), "heart") + row("set-run", "Running", 'Usual run time ' + hr12(+String(uset.run_time || "07:00").slice(0, 2)) + (wxLoc() ? ' · ' + esc(wxLoc().place || 'weather on') : ''), "sun"));
