@@ -6,3 +6,8 @@ api/.dev.vars
 api/.wrangler/
 node_modules
 e2e-shots/
+
+# Vesper private memory and local Claude settings (repo is public)
+.claude/MEMORY.md
+.claude/settings.local.json
+CLAUDE.local.md

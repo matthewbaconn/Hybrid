@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./node_modules/**)",
+      "Read(./api/node_modules/**)",
+      "Read(./.wrangler/**)",
+      "Read(./api/.wrangler/**)",
+      "Read(./dist/**)",
+      "Read(./.next/**)",
+      "Read(./**/package-lock.json)",
+      "Read(./**/pnpm-lock.yaml)",
+      "Read(./**/yarn.lock)",
+      "Read(./**/*.log)",
+      "Read(./e2e-shots/**)",
+      "Read(./splash/**)",
+      "Read(./vendor/**)",
+      "Read(./.dev.vars)",
+      "Read(./api/.dev.vars)"
+    ]
+  }
+}
