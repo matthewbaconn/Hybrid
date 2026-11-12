@@ -184,6 +184,7 @@ async function coachUsage(env, userId){
   await env.DB.prepare("INSERT INTO ai_usage (user_id, day, count) VALUES (?, ?, 1) ON CONFLICT (user_id, day) DO UPDATE SET count = count + 1").bind(userId, "coach:" + day).run();
   return true;
 }
+let lastCoachError = "";
 // trim to the last full sentence that fits
 const clip = (t, n) => { if (t.length <= n) return t; const c = t.slice(0, n), i = Math.max(c.lastIndexOf(". "), c.lastIndexOf("! "), c.lastIndexOf("? ")); return i > 40 ? c.slice(0, i + 1) : c.replace(/\s+\S*$/, "") + "…"; };
 async function askCoach(env, system, data){
@@ -191,9 +192,9 @@ async function askCoach(env, system, data){
   const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {method: "POST",
     headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
     body: JSON.stringify({model: env.COACH_MODEL || "claude-haiku-5-5", max_tokens: 500, system, messages: [{role: "user", content: JSON.stringify(data)}]})});
-  if (!r.ok){ console.log("coach error", r.status, (await r.text()).slice(0, 200)); return null; }
+  if (!r.ok){ const t = (await r.text()).slice(0, 300); console.log("coach error", r.status, t); lastCoachError = "api " + r.status + " " + t; return null; }
   const out = await r.json(), raw = (out.content || []).filter(c => c.type === "text").map(c => c.text).join("");
-  try { return JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch(e){ return null; }
+  try { return JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch(e){ lastCoachError = "unreadable reply (" + out.stop_reason + "): " + raw.slice(0, 200); return null; }
 }
 const COACH_STYLE = "You are a friendly, plain-spoken running and strength coach writing inside a training app. No jargon (no 'Z2', 'ACWR', 'EF'), no emoji, no medical advice, never shame. Use the numbers you are given; don't invent any.";
 async function runReview(env, userId, U, act, today){
@@ -445,7 +446,7 @@ async function route(req, env, path, ctx){
     if (!isDate(b.date) || !(h >= 0 && h <= 16) || [b.sleep_q, b.soreness, b.energy, b.stress].some(x => k(x) == null)) throw new HttpError(400, "Answer every question.");
     await env.DB.prepare("INSERT INTO checkins (user_id, date, sleep_h, sleep_q, soreness, energy, stress) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, date) DO UPDATE SET sleep_h = excluded.sleep_h, sleep_q = excluded.sleep_q, soreness = excluded.soreness, energy = excluded.energy, stress = excluded.stress")
       .bind(user.id, b.date, Math.round(h * 4) / 4, k(b.sleep_q), k(b.soreness), k(b.energy), k(b.stress)).run();
-    if (await coachUsage(env, user.id)){ const note = await morningNote(env, user.id, b.date).catch(e => { console.log("morning note", e && e.stack || e); return null; }); return {ok: true, note}; }
+    if (await coachUsage(env, user.id)){ lastCoachError = ""; const note = await morningNote(env, user.id, b.date).catch(e => { lastCoachError = String(e && e.message || e); return null; }); return note ? {ok: true, note} : {ok: true, note: null, note_issue: lastCoachError.slice(0, 300) || "no plan"}; }
     return {ok: true};
   }
   if (M === "PUT" && path === "/api/weight"){
