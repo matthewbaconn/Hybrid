@@ -642,6 +642,11 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .pill2.act{border-color:rgba(255,255,255,.3);color:var(--ink)}
 .sub-t{font:700 17px var(--f-display);margin:8px 0 -2px}.hgt{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hgt .unit{display:flex;align-items:center;gap:6px;color:var(--muted)}.hgt input{min-width:0;width:100%}
 :root{--walk:#5EEAD4;--cardio:#F472B6}.t-walk{--tc:var(--walk)} .t-cardio{--tc:var(--cardio)}
+.gbadge img{height:11px}.badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.gmbtn{display:flex;align-items:center;justify-content:center;gap:9px;width:237px;height:48px;justify-self:center;border:0;border-radius:6px;background:#000;color:#fff;font:600 13px/1 var(--f-body);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;transition:transform .08s ease,opacity .12s}
+.gmbtn img{height:15px;width:auto;display:block;margin-top:1px}.gmbtn:active{transform:scale(.97);opacity:.9}.gmbtn:disabled{opacity:.6}
+.icard .gmbtn{justify-self:center}.icard .stbtn img{height:48px}
+.gsrc{height:9px;width:auto;display:block}.src.src-garmin{display:flex;align-items:center;padding:6px 8px}
 </style>
 </head>
 <body>
@@ -793,7 +798,7 @@ function workoutCard(){
   const matchedIds = new Set(Object.values(dayMatches(TODAY)).map(a => a.id));
   const extraReviews = list.filter(a => reviewFor(a)).map(a => reviewHtml(reviewFor(a))).join("");
   h += list.length ? '<ul class="fl">' + list.map(a => '<li class="act t-' + (a.type === "run" ? "easy" : a.type === "lift" ? "lift" : "long") + '"><div class="fi"><b>' + esc(a.name) + '</b><span>' + actLine(a) + '</span></div>' +
-      '<span class="src src-' + a.source + '">' + (a.source === "strava" ? 'Strava' : a.source === "garmin" ? 'Garmin' : 'Logged') + '</span>' +
+      '<span class="src src-' + a.source + '">' + (a.source === "strava" ? 'Strava' : a.source === "garmin" ? '<img class="gsrc" src="brand/garmin-white.png" alt="Garmin" width="463" height="72">' : 'Logged') + '</span>' +
       (a.source === "manual" ? '<button class="x" type="button" data-act="adel" data-id="' + esc(a.id) + '" aria-label="Remove ' + esc(a.name) + '">✕</button>' : '') + '</li>').join("") + '</ul>' + extraReviews
     : '<p class="sub">Nothing logged yet today. Finished workouts add calories to today\'s target and check off your plan.</p>';
   if (aw.open){
@@ -879,7 +884,7 @@ function renderActivities(){
     'No activities yet. Log a workout on the Today tab' + (mode === "account" ? ' or sync Strava' : '') + '.') + '</p></section>';
   else h += list.slice(0, 40).map(actCard).join("");
   if (strava.connected) h += '<button class="linkbtn" type="button" data-act="stsync" style="justify-self:center">Sync Strava now · ' + agoText(strava.last_sync) + '</button>';
-  if (strava.connected) h += '<div style="display:grid;justify-items:center">' + '<i class="cws"><img src="brand/compatible-strava-orange.svg" alt="Compatible with Strava" width="437" height="37"></i>' + '</div>';
+  if (strava.connected || garmin.connected) h += '<div class="badges">' + (strava.connected ? '<i class="cws"><img src="brand/compatible-strava-orange.svg" alt="Compatible with Strava" width="437" height="37"></i>' : '') + (garmin.connected ? '<i class="cws gbadge"><img src="brand/garmin-black.png" alt="Garmin" width="463" height="72"></i>' : '') + '</div>';
   h += crewCardHtml();
   return h;
 }
@@ -2140,7 +2145,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "37";
+const APP_VERSION = "38";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2195,8 +2200,8 @@ function healthHtml(){
     : card(A("strava"), "Workouts, routes and heart rate from any watch", strava.available ? '' : pill("Unavailable"), strava.available ? '<button class="stbtn" type="button" data-act="stconnect" aria-label="Connect with Strava"><img src="brand/strava-connect.svg" alt="Connect with Strava" width="237" height="48"></button>' : '');
   const ah = healthLink && healthLink.on;
   const direct = st +
-    (garmin.connected ? card(A("garmin"), "Workouts, sleep, resting heart rate and HRV" + (garmin.last_push ? " · last data " + agoText(garmin.last_push) : " · waiting for your next watch sync"), pill("Linked", "on"))
-      : garmin.available && mode === "account" ? card(A("garmin"), "Workouts, sleep, resting heart rate and HRV, straight from Garmin Connect", '<button class="pill2 act" type="button" data-act="gmconnect">Connect</button>')
+    (garmin.connected ? card(A("garmin"), garmin.last_push ? "Linked · last data " + agoText(garmin.last_push) : "Linked · data comes in after your next watch sync", pill("Linked", "on"), '<i class="cws gbadge"><img src="brand/garmin-black.png" alt="Garmin" width="463" height="72"></i>')
+      : garmin.available && mode === "account" ? card(A("garmin"), "Workouts, sleep, resting heart rate and HRV", '', '<button class="gmbtn" type="button" data-act="gmconnect" aria-label="Connect with Garmin"><span>Connect with</span><img src="brand/garmin-white.png" alt="Garmin" width="463" height="72"></button>')
       : card(A("garmin"), "Direct sync is on the way. For now, link Garmin to Strava.", pill("Coming soon", "soon"))) +
     card(A("apple-health"), ah ? "Sleep, resting heart rate and HRV" : "Sleep, resting heart rate and HRV from your iPhone", SHORTCUT_URL ? (ah ? pill("Linked", "on") : '<button class="pill2 act" type="button" data-act="hlsetup">Set up</button>') : pill("Coming soon", "soon"), '', SHORTCUT_URL && ah ? "hlsetup" : "");
   const via = (grp, note) => APPS.filter(x => x.group === grp).map(x => card(x, note, pill(grp === "strava" ? "Via Strava" : "Via Apple Health"))).join("");
