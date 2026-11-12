@@ -116,7 +116,7 @@ await check("Today overview", async () => {
 await check("Settings: Watch", async () => {
   await settings(); await shot("07-settings"); await open("set-watch"); const t = await page.innerText(".apps");
   const strava = await page.locator('[data-act="stconnect"]').count(); await back(); await back();
-  if (!/Apple Health/.test(t) || !/Strava/.test(t) || !/In review/.test(t)) throw new Error(t.slice(0, 120)); if (!strava) throw new Error("Connect Strava button missing"); return "Strava + sleep/heart rate shown";
+  if (!/Apple Health/.test(t) || !/Strava/.test(t) || !/Coming soon/.test(t)) throw new Error(t.slice(0, 120)); if (!strava) throw new Error("Connect Strava button missing"); return "Strava + sleep/heart rate shown";
 });
 await check("Meal prep, barcode and crews screens", async () => {
   await tab("today"); await open("fuel"); if (!(await page.locator("#food-barcode").count())) throw new Error("no barcode button");

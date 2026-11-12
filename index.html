@@ -618,6 +618,7 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .board.big li{padding:14px 0;font-size:16px}
 .crewc{cursor:pointer}
 .code{font:700 34px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;text-align:center;padding:14px;border-radius:8px;background:var(--sunk);user-select:all}
+.stbtn{border:0;padding:0;background:none;display:block;justify-self:center;line-height:0;border-radius:6px;transition:transform .08s ease,opacity .12s}.stbtn img{display:block;height:48px;width:auto}.stbtn:active{transform:scale(.97);opacity:.9}.stwrap{padding:0 0 16px;display:grid;border-bottom:1px solid var(--line)}.stbtn:disabled{opacity:.6}
 </style>
 </head>
 <body>
@@ -780,7 +781,7 @@ function workoutCard(){
       '<p class="err" role="alert">' + esc(aw.err) + '</p><div class="fbtns"><button class="btn" type="button" data-act="atoggle">Cancel</button><button class="btn primary" type="button" data-act="asave"' + (aw.busy ? ' disabled' : '') + '>Save workout</button></div></div>';
   } else h += '<button class="btn block" type="button" data-act="atoggle">' + ic("plus") + 'Log a workout</button>';
   if (mode === "account" && strava.available && !strava.connected)
-    h += '<div class="stv"><button class="btn strava block" type="button" data-act="stconnect">Connect Strava</button><p class="sub">Runs, rides and lifts come in automatically. Garmin, COROS or Apple Watch? Turn on their upload to Strava and they come through too.</p></div>';
+    h += '<div class="stv"><button class="stbtn" type="button" data-act="stconnect" aria-label="Connect with Strava"><img src="brand/strava-connect.svg" alt="Connect with Strava" width="237" height="48"></button><p class="sub">Runs, rides and lifts come in automatically. Garmin, COROS or Apple Watch? Turn on their upload to Strava and they come through too.</p></div>';
   else if (strava.connected) h += '<button class="linkbtn" type="button" data-act="stsync">Sync Strava now</button>';
   else if (mode !== "account") h += '<p class="fnote">' + (mode === "sample" ? 'Create an account to connect Strava.' : 'Log workouts by hand here.') + '</p>';
   return h + '</section>';
@@ -851,7 +852,7 @@ function renderActivities(){
   h += '<div class="afilt" role="group" aria-label="Filter activities">' + F.map(([k, l]) => '<button type="button" data-act="afilt" data-k="' + k + '" aria-pressed="' + (actFilter === k) + '">' + l + '</button>').join("") + '</div>';
   const list = all.filter(a => actFilter === "all" || (actFilter === "other" ? !["run", "lift"].includes(a.type) : a.type === actFilter));
   if (!list.length) h += '<section class="card"><p class="sub">' + (all.length ? 'Nothing here for this filter.' :
-    mode === "account" && strava.available && !strava.connected ? 'Connect Strava and your runs show up here with a map of your route. Garmin, COROS and Apple Watch work through Strava too.</p><button class="btn strava block" type="button" data-act="stconnect">Connect Strava</button><p class="sub">You can also log workouts by hand on the Today tab.' :
+    mode === "account" && strava.available && !strava.connected ? 'Connect Strava and your runs show up here with a map of your route. Garmin, COROS and Apple Watch work through Strava too.</p><button class="stbtn" type="button" data-act="stconnect" aria-label="Connect with Strava"><img src="brand/strava-connect.svg" alt="Connect with Strava" width="237" height="48"></button><p class="sub">You can also log workouts by hand on the Today tab.' :
     'No activities yet. Log a workout on the Today tab' + (mode === "account" ? ' or sync Strava' : '') + '.') + '</p></section>';
   else h += list.slice(0, 40).map(actCard).join("");
   if (strava.connected) h += '<button class="linkbtn" type="button" data-act="stsync" style="justify-self:center">Sync Strava now · ' + agoText(strava.last_sync) + '</button>';
@@ -872,7 +873,7 @@ function actDetail(a){
       '<p class="sub">Lap distances: ' + laps.slice(0, 12).map(l => r2(l[0] / 1609.34)).join(", ") + (laps.length > 12 ? '…' : '') + ' mi</p></section>';
   }
   if (a.source === "manual") h += '<button class="btn block" type="button" data-act="adel" data-id="' + esc(a.id) + '" style="color:var(--crit)">Delete this workout</button>';
-  if (a.source === "strava" && a.ext_id) h += '<a class="linkbtn" style="justify-self:center" href="https://www.strava.com/activities/' + esc(a.ext_id) + '" target="_blank" rel="noopener">View on Strava</a>';
+  if (a.source === "strava" && a.ext_id) h += '<a class="linkbtn" style="justify-self:center" href="https://www.strava.com/activities/' + esc(a.ext_id) + '" target="_blank" rel="noopener" style="justify-self:center;color:#FC5200">View on Strava</a>';
   return h;
 }
 /* maps: the route is drawn right away; dark street tiles load on top when the card scrolls into view */
@@ -1950,7 +1951,7 @@ function settingsScreen(k){
   if (k === "settings"){
     if (mode === "account") return '<button class="me-card" type="button" data-act="go" data-scr="set-profile"><span class="avatar">' + esc((nm || me.email || "?").slice(0, 1).toUpperCase()) + '</span><div><b>' + esc(nm || "Add your name") + '</b><span>' + esc(me.email) + '</span></div><i>›</i></button>' +
       training +
-      group("Connections", row("set-watch", "Connected apps", (strava.connected ? 'Strava connected' : 'Strava') + ' · Garmin in review · Apple Health and more', "watch")) +
+      group("Connections", row("set-watch", "Connected apps", (strava.connected ? 'Strava connected' : 'Strava') + ' · Garmin coming soon · Apple Health and more', "watch")) +
       group("Notifications", row("set-notif", "Notifications", pushState.on ? 'On' : 'Reminders and workout summaries', "bell")) +
       help +
       group("Account", row("set-email", "Email", esc(me.email), "user") + row("set-password", "Password", "Change your password", "gear") + row("set-account", "Delete account", "", "flag", "", "danger")) +
@@ -2087,7 +2088,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "32";
+const APP_VERSION = "33";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2136,8 +2137,9 @@ function healthHtml(){
   const chip = (t, cls) => '<em class="chip2 ' + (cls || '') + '">' + t + '</em>';
   const A = id => APPS.find(x => x.id === id);
   const direct = row(A("strava"), strava.connected ? "Connected" + (strava.name ? " as " + esc(strava.name) : "") + ". Workouts, routes and heart rate sync on their own." : "Workouts, routes and heart rate from any watch.",
-      strava.connected ? chip("Connected", "on") : strava.available ? '<button class="btn sm" type="button" data-act="stconnect">Connect</button>' : chip("Unavailable")) +
-    row(A("garmin"), "Garmin is reviewing our connection. You can connect here once it's approved. Until then, link Garmin to Strava and your workouts come through.", chip("In review", "soon")) +
+      strava.connected ? chip("Connected", "on") : strava.available ? '' : chip("Unavailable")) +
+    (!strava.connected && strava.available ? '<div class="stwrap"><button class="stbtn" type="button" data-act="stconnect" aria-label="Connect with Strava"><img src="brand/strava-connect.svg" alt="Connect with Strava" width="237" height="48"></button></div>' : '') +
+    row(A("garmin"), "Approved by Garmin. Direct sync is on the way. For now, link Garmin to Strava.", chip("Coming soon", "soon")) +
     row(A("apple-health"), "Sleep, resting heart rate and HRV from your iPhone.", SHORTCUT_URL ? '<button class="btn sm" type="button" data-act="hlsetup">Set up</button>' : chip("Coming soon", "soon"));
   const via = (grp, note) => APPS.filter(x => x.group === grp).map(x => row(x, note, chip(grp === "strava" ? "Via Strava" : "Via Apple Health"))).join("");
   return '<div class="apps"><h3>Connect directly</h3>' + direct +
