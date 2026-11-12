@@ -334,6 +334,7 @@ button{cursor:pointer}
 .nask{text-align:center;padding-top:26px}.nask h2{font:700 21px/1.2 var(--f-display);margin:12px 0 8px}.nask p{color:var(--muted);font-size:14.5px;line-height:1.5;margin:0 0 18px}.nask .btn+.btn{margin-top:8px}
 .nask-i{width:54px;height:54px;margin:0 auto;border-radius:14px;background:var(--accent);display:grid;place-items:center;color:#fff}.nask-i svg{width:26px;height:26px}
 .mlist li{align-items:flex-start}.mlist .fi span{display:block}.mtags{display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex:none}
+.cityrow{display:flex;gap:8px}.cityrow input{flex:1;min-width:0}.cityrow .btn{flex:none;padding:0 12px;font-size:14px}
 #app.swiping{will-change:transform;box-shadow:-18px 0 30px rgba(0,0,0,.45)} #app.swipe-settle{transition:transform .2s cubic-bezier(.2,.8,.2,1),opacity .2s}
 
 /* opening animation: red screen, a lightning bolt strikes, the screen flashes and HYBRD lands (transform/opacity only, so it stays smooth) */
@@ -2017,7 +2018,9 @@ function renderSetup(){
     const mk = !!(RACES[p.goal] || {}).kind, fit = p.goal === "everyday";
     body = '<h2 class="sec-t">' + (fit ? 'When can you work out?' : mk ? 'When can you train?' : 'When can you run?') + '</h2>' +
       '<div class="q"><span class="ql">' + (mk ? 'Training days' : 'Run days') + ' (pick 3–6)</span>' + optList("days", DAYS.map((d, i) => [i, d]), p.days, "checkbox") + '</div>' +
-      '<div class="q"><label for="s-long">' + (fit ? 'Day for a longer session' : mk ? 'Long session day' : 'Long run day') + '</label><select id="s-long">' + p.days.slice().sort((a, b) => a - b).map(d => '<option value="' + d + '"' + (d === p.longDay ? ' selected' : '') + '>' + DAYF[d] + '</option>').join("") + '</select></div>';
+      '<div class="q"><label for="s-long">' + (fit ? 'Day for a longer session' : mk ? 'Long session day' : 'Long run day') + '</label><select id="s-long">' + p.days.slice().sort((a, b) => a - b).map(d => '<option value="' + d + '"' + (d === p.longDay ? ' selected' : '') + '>' + DAYF[d] + '</option>').join("") + '</select></div>' +
+      '<div class="q"><label for="s-city">Where do you usually train? <small>Optional</small></label><small class="hint" style="margin:0">Used for the weather, the best time to run, and heat-adjusted paces.</small>' +
+      '<div class="cityrow"><input id="s-city" autocomplete="address-level2" placeholder="City, e.g. Vero Beach, FL" value="' + esc(st.city != null ? st.city : ((wxLoc() || {}).place || "")) + '"><button class="btn" type="button" data-act="sgeo">' + (st.geoBusy ? 'Finding…' : 'Use my location') + '</button></div></div>';
   }
   return header() + '<section class="setup view">' + bars + body + '<p class="err" id="s-err" role="alert">' + esc(st.err || "") + '</p><div class="nav"><button class="btn" type="button" data-act="prev">Back</button><button class="btn primary" type="button" data-act="next">' + (st.step === 3 ? 'Build my plan' : 'Next') + '</button></div></section>';
 }
@@ -2053,6 +2056,7 @@ function readStep(){
     const ld = document.getElementById("s-long"); p.longDay = ld ? +ld.value : p.longDay;
     if (p.days.length < 3 || p.days.length > 6) return "Pick between 3 and 6 days.";
     if (!p.days.includes(p.longDay)) p.longDay = p.days.includes(6) ? 6 : p.days.includes(5) ? 5 : p.days[p.days.length - 1];
+    const ce = document.getElementById("s-city"); if (ce){ setup.city = ce.value.trim().slice(0, 80); if (setup.city !== "Your location") delete setup.geo; }
   }
   return "";
 }
@@ -2291,7 +2295,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "48";
+const APP_VERSION = "49";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2475,7 +2479,7 @@ function renderMore(){
 const CONTACT = "hybridrunning@gmail.com";
 const mailCard = () => '<a class="scard" href="mailto:' + CONTACT + '?subject=' + encodeURIComponent("HYBRD question") + '"><i class="mi">' + ic("mail") + '</i><div><b>Email us</b><span>' + CONTACT + ' · questions, ideas, anything</span></div><i>›</i></a>';
 /* owner only: everyone who signed up */
-let mem = null;
+let mem = null, mailv = {};
 function membersHtml(){
   if (!isOwner) return '<section class="card"><p class="sub">Not available.</p></section>';
   if (!mem || mem.stale){ if (!mem || !mem.busy){ mem = {busy: true, list: mem && mem.list}; api("GET", "/api/admin/members").then(j => { mem = {list: j.members}; if (scr === "members") render(); }).catch(e => { mem = {err: e.message}; if (scr === "members") render(); }); } }
@@ -2485,8 +2489,15 @@ function membersHtml(){
   const ago = d => { if (!d) return "never"; const x = daysBetween(d.slice(0, 10), TODAY); return x <= 0 ? "today" : x === 1 ? "yesterday" : x + " days ago"; };
   let h = '<section class="card"><div class="wkstats"><div><span>Members</span><b>' + L.length + '</b></div><div><span>New this week</span><b>' + n(m => m.created.slice(0, 10) > wk) + '</b></div><div><span>Active this week</span><b>' + n(m => m.last_seen && m.last_seen.slice(0, 10) > wk) + '</b></div></div>' +
     '<div class="wkstats"><div><span>Strava</span><b>' + n(m => m.strava) + '</b></div><div><span>Garmin</span><b>' + n(m => m.garmin) + '</b></div><div><span>With a plan</span><b>' + n(m => m.goal) + '</b></div></div><p class="sub">Only you can see this screen.</p></section>';
+  const reach = L.filter(m => !m.no_mail).length, mv = mailv;
+  h += '<section class="card form"><div class="card-h" style="--tone:var(--accent-2)">' + ic("mail") + '<span class="lbl">Email everyone</span><span class="r">' + reach + ' will get it</span></div>' +
+    (mv.done ? '<p class="okmark" role="status">' + esc(mv.done) + '</p>' : '') +
+    '<label>Subject<input id="ml-subj" maxlength="120" value="' + esc(mv.subject || "") + '" placeholder="New in HYBRD: race search"></label>' +
+    '<label>Message<small>Type {name} and each person sees their own first name. Links work. Every email has an unsubscribe link.</small><textarea id="ml-body" rows="7" maxlength="8000" placeholder="Hey {name},&#10;&#10;…">' + esc(mv.message || "") + '</textarea></label>' +
+    (mv.err ? '<p class="err" role="alert">' + esc(mv.err) + '</p>' : '') +
+    '<div class="fbtns"><button class="btn" type="button" data-act="mltest"' + (mv.busy ? ' disabled' : '') + '>Send me a test</button><button class="btn primary" type="button" data-act="mlsend"' + (mv.busy ? ' disabled aria-busy="true"' : '') + '>' + (mv.busy ? 'Sending…' : 'Send to ' + reach) + '</button></div></section>';
   h += '<section class="card"><ul class="fl mlist">' + L.map(m => '<li><div class="fi"><b>' + esc(m.name || m.email.split("@")[0]) + '</b><span>' + esc(m.email) + '</span><span>' + (m.goal ? esc(m.goal) + (m.race_date ? ' · ' + fmtD(m.race_date) : '') : 'No plan yet') + ' · joined ' + fmtD(m.created.slice(0, 10)) + ' · seen ' + ago(m.last_seen) + '</span></div>' +
-    '<span class="mtags">' + (m.strava ? '<em class="chip2" style="color:#FC5200">Strava</em>' : '') + (m.garmin ? '<em class="chip2">Garmin</em>' : '') + '</span></li>').join("") + '</ul></section>';
+    '<span class="mtags">' + (m.strava ? '<em class="chip2" style="color:#FC5200">Strava</em>' : '') + (m.garmin ? '<em class="chip2">Garmin</em>' : '') + (m.no_mail ? '<em class="chip2">No emails</em>' : '') + '</span></li>').join("") + '</ul></section>';
   return h;
 }
 const FAQ = [
@@ -2526,6 +2537,14 @@ document.addEventListener("click", ev => {
     setup.err = ""; setup.step++;
     if (setup.step === 4){
       const prof = {...setup.p, start: mondayOf(TODAY)}; delete prof.sample;
+      // training location: from "Use my location", or look up the typed city (doesn't hold up the plan)
+      const cur = (wxLoc() || {}).place || "", city = setup.city || "";
+      const geo = setup.geo;
+      if (geo) setTimeout(() => setWxLoc(geo.lat, geo.lon, "Your location"), 1200);
+      else if (city && city !== cur) fetch("https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=" + encodeURIComponent(city.split(",")[0].trim())).then(r => r.json()).then(j => {
+        const want = (city.split(",")[1] || "").trim().toLowerCase(), list = j.results || [], g = list.find(x => want && ((x.admin1 || "").toLowerCase().startsWith(want) || (x.admin1_code || "").toLowerCase() === want || (x.country_code || "").toLowerCase() === want)) || list[0];
+        if (g) setTimeout(() => setWxLoc(g.latitude, g.longitude, g.name + (g.admin1 ? ", " + g.admin1 : "")), 1200);
+      }).catch(() => {});
       render();
       const wait = new Promise(r => setTimeout(r, 900));
       const saving = mode === "account" ? api("PUT", "/api/profile", {profile: prof, resetFrom: TODAY}) : Promise.resolve();
@@ -2806,6 +2825,26 @@ document.addEventListener("click", ev => {
     if (!navigator.geolocation){ wxErr = "This phone can't share location here. Type your city instead."; wxState = "pick"; render(); return; }
     a.disabled = true; a.textContent = "Finding you…";
     navigator.geolocation.getCurrentPosition(pos => setWxLoc(pos.coords.latitude, pos.coords.longitude, "Your location"), () => { wxErr = "Location wasn't shared. Type your city instead."; wxState = "pick"; render(); }, {timeout: 10000, maximumAge: 3600e3});
+    return;
+  }
+  if (act === "mltest" || act === "mlsend"){
+    const subject = ((document.getElementById("ml-subj") || {}).value || "").trim(), message = ((document.getElementById("ml-body") || {}).value || "").trim(), test = act === "mltest";
+    mailv = {subject, message};
+    if (!subject || message.length < 5){ mailv.err = "Add a subject and a message."; render(); return; }
+    const reach = (mem && mem.list || []).filter(m => !m.no_mail).length;
+    if (!test && !confirm("Send \"" + subject + "\" to " + reach + " members? This can't be undone.")) return;
+    mailv.busy = true; render();
+    api("POST", "/api/admin/mail", {subject, message, test}).then(j => {
+      mailv = test ? {subject, message, done: "Test sent to your email. Check it, then send to everyone."} : {done: "Sent to " + j.sent + " member" + (j.sent === 1 ? "" : "s") + (j.failed ? " · " + j.failed + " failed" : "") + "."};
+      render();
+    }).catch(e => { mailv.busy = false; mailv.err = e.message; render(); });
+    return;
+  }
+  if (act === "sgeo"){
+    if (!navigator.geolocation){ setup.err = "This phone can't share location here. Type your city instead."; render(); return; }
+    readStep(); setup.geoBusy = true; render();
+    navigator.geolocation.getCurrentPosition(pos => { setup.geoBusy = false; setup.geo = {lat: pos.coords.latitude, lon: pos.coords.longitude}; setup.city = "Your location"; render(); },
+      () => { setup.geoBusy = false; setup.err = "Location wasn't shared. Type your city instead."; render(); }, {timeout: 10000, maximumAge: 3600e3});
     return;
   }
   if (act === "wxcity"){

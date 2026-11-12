@@ -541,6 +541,35 @@ async function tellOwnerSignup(env, name, email){
     await logEvent(env, "signup_notice", !!(r && r.ok), r ? "HTTP " + r.status : "net");
   }
 }
+/* ---------- owner: email updates to every member (Resend batch API), each with its own unsubscribe link ---------- */
+async function mailSig(env, uid){ return (await sha256("unsub:" + uid + ":" + (env.RESEND_API_KEY || ""))).slice(0, 24); }
+const API_BASE = env => env.API_URL || "https://hybrid-api.hybridapp.workers.dev";
+async function sendUpdate(env, owner, subject, message, test){
+  const list = test ? [owner] : (await env.DB.prepare("SELECT id, email, name FROM users WHERE email NOT LIKE '%@example.com' AND no_mail = 0 ORDER BY created").all()).results;
+  const esc2 = x => String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const linkify = t => t.replace(/https?:\/\/[^\s<]+/g, u => '<a href="' + u + '" style="color:#800000">' + u + '</a>');
+  const addr = env.MAIL_ADDRESS || "";
+  let sent = 0, failed = 0;
+  for (let i = 0; i < list.length; i += 100){
+    const batch = [];
+    for (const u of list.slice(i, i + 100)){
+      const first = String(u.name || "").trim().split(/\s+/)[0] || "there";
+      const body = message.replace(/\{name\}/g, first), unsub = API_BASE(env) + "/api/unsubscribe?u=" + u.id + "&s=" + (await mailSig(env, u.id));
+      const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;font-size:16px;line-height:1.55">' +
+        '<div style="background:#BE383E;color:#fff;font-weight:800;font-size:22px;letter-spacing:-.02em;padding:14px 18px;border-radius:6px;margin-bottom:22px">HYBRD</div>' +
+        body.split(/\n{2,}/).map(par => '<p style="margin:0 0 14px">' + linkify(esc2(par)).replace(/\n/g, "<br>") + '</p>').join("") +
+        '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Open HYBRD</a></p>' +
+        '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this because you have a HYBRD Running account.' + (addr ? ' ' + esc2(addr) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe</a></p></div>';
+      batch.push({from: env.MAIL_FROM || "HYBRD Running <no-reply@hybrdrunning.com>", to: [u.email], reply_to: "hybridrunning@gmail.com", subject: (test ? "[Test] " : "") + subject,
+        html, text: body + "\n\nOpen HYBRD: https://app.hybrdrunning.com/\n\n" + (addr ? addr + "\n" : "") + "Unsubscribe: " + unsub,
+        headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}});
+    }
+    const r = await fetch((env.RESEND_URL || "https://api.resend.com/emails").replace(/\/emails$/, "/emails/batch"), {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"}, body: JSON.stringify(batch)}).catch(() => null);
+    if (r && r.ok) sent += batch.length; else { failed += batch.length; await logEvent(env, "bulk_mail", false, r ? "HTTP " + r.status + " " + (await r.text()).slice(0, 150) : "net"); }
+  }
+  await logEvent(env, "bulk_mail", failed === 0, (test ? "test " : "") + sent + " sent, " + failed + " failed");
+  return {sent, failed, total: list.length};
+}
 /* ---------- Strong at 180 food estimates (Matthew's own plan page) ----------
    A tiny MCP server the plan page calls through a claude.ai custom connector named "HYBRD Food",
    so food estimates run on this app's Anthropic key instead of the claude.ai plan's usage.
@@ -734,6 +763,14 @@ async function route(req, env, path, ctx){
   }
 
   // forgot password: email a one-time link (always answers the same, so it can't be used to test which emails have accounts)
+  if (path === "/api/unsubscribe"){
+    const q = new URL(req.url).searchParams, uid = String(q.get("u") || ""), sig = String(q.get("s") || "");
+    const ok = /^[a-f0-9]{8,64}$/.test(uid) && env.RESEND_API_KEY && safeEqual(sig, await mailSig(env, uid));
+    if (ok) await env.DB.prepare("UPDATE users SET no_mail = 1 WHERE id = ?").bind(uid).run();
+    if (M === "POST") return new Response(null, {status: ok ? 200 : 400});   // one-click unsubscribe from the mail app
+    return new Response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>HYBRD</title><body style="font-family:-apple-system,sans-serif;background:#0A0B0F;color:#fff;display:grid;place-items:center;min-height:90vh;margin:0;text-align:center;padding:20px"><div><div style="background:#BE383E;display:inline-block;font-weight:800;font-size:22px;padding:12px 18px;border-radius:6px">HYBRD</div><h1 style="font-size:22px">' +
+      (ok ? "You're unsubscribed" : "That link didn't work") + '</h1><p style="color:#9aa">' + (ok ? "You won't get HYBRD update emails anymore. Password resets still come through." : "Email hybridrunning@gmail.com and we'll take you off the list.") + '</p></div>', {status: ok ? 200 : 400, headers: {"Content-Type": "text/html; charset=utf-8"}});
+  }
   if (M === "POST" && path === "/api/password/forgot"){
     await limit(env, "auth:" + (req.headers.get("CF-Connecting-IP") || "x"));
     const b = await body(req), email = String(b.email || "").trim().toLowerCase().slice(0, 200);
@@ -1125,14 +1162,23 @@ async function route(req, env, path, ctx){
     if (M === "PUT" && mc[2] === "/nickname"){ const nn = nick((await body(req)).nickname); if (!nn) throw new HttpError(400, "Pick a nickname."); await env.DB.prepare("UPDATE crew_members SET nickname = ? WHERE crew_id = ? AND user_id = ?").bind(nn, crew.id, user.id).run(); return {crews: await crewsFor(env, user.id)}; }
     if (M === "PUT" && mc[2] === "/metric"){ if (crew.owner_id !== user.id) throw new HttpError(403, "Only the person who made the crew can change the challenge."); const m = (await body(req)).metric; if (!CREW_METRICS.includes(m)) throw new HttpError(400, "Pick a challenge."); await env.DB.prepare("UPDATE crews SET metric = ? WHERE id = ?").bind(m, crew.id).run(); return {crews: await crewsFor(env, user.id)}; }
   }
+  if (M === "POST" && path === "/api/admin/mail"){
+    const own = await ownerId(env); if (user.id !== own) throw new HttpError(403, "Not allowed.");
+    if (!env.RESEND_API_KEY) throw new HttpError(503, "Email isn't set up.");
+    const b = await body(req), subject = String(b.subject || "").trim().slice(0, 120), message = String(b.message || "").trim().slice(0, 8000);
+    if (!subject || message.length < 5) throw new HttpError(400, "Add a subject and a message.");
+    if (!b.test){ const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM events WHERE kind = 'bulk_mail' AND detail NOT LIKE 'test%' AND ts > ?").bind(new Date(Date.now() - 864e5).toISOString()).first(); if (n && n.n >= 3) throw new HttpError(429, "That's 3 updates today. Send the next one tomorrow."); }
+    const me2 = await env.DB.prepare("SELECT id, email, name FROM users WHERE id = ?").bind(user.id).first();
+    return await sendUpdate(env, me2, subject, message, !!b.test);
+  }
   if (M === "GET" && path === "/api/admin/members"){
     if (user.id !== (await ownerId(env))) throw new HttpError(403, "Not allowed.");
     const rows = (await env.DB.prepare(
-      "SELECT u.name, u.email, u.created, p.data AS profile, (SELECT 1 FROM strava_links s WHERE s.user_id = u.id) AS strava, (SELECT 1 FROM garmin_links g WHERE g.user_id = u.id) AS garmin, " +
+      "SELECT u.name, u.email, u.created, u.no_mail, p.data AS profile, (SELECT 1 FROM strava_links s WHERE s.user_id = u.id) AS strava, (SELECT 1 FROM garmin_links g WHERE g.user_id = u.id) AS garmin, " +
       "(SELECT MAX(created) FROM sessions x WHERE x.user_id = u.id) AS last_login, (SELECT MAX(date) FROM food f WHERE f.user_id = u.id) AS last_food, (SELECT MAX(date) FROM activities a WHERE a.user_id = u.id) AS last_act " +
       "FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.email NOT LIKE '%@example.com' ORDER BY u.created DESC").all()).results;
     return {members: rows.map(r => { let pr = null; try { pr = r.profile ? JSON.parse(r.profile) : null; } catch(e){}
-      return {name: r.name, email: r.email, created: r.created, strava: !!r.strava, garmin: !!r.garmin, goal: pr ? HP.raceName(pr) : null, race_date: pr && pr.raceDate || null,
+      return {name: r.name, email: r.email, created: r.created, no_mail: !!r.no_mail, strava: !!r.strava, garmin: !!r.garmin, goal: pr ? HP.raceName(pr) : null, race_date: pr && pr.raceDate || null,
         last_seen: [r.last_login, r.last_food, r.last_act].filter(Boolean).sort().pop() || null}; })};
   }
   if (M === "DELETE" && path === "/api/account"){
