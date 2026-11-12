@@ -718,6 +718,49 @@ async function route(req, env, path, ctx){
     return {token: await newSession(env, u.id), user: userOut(u)};
   }
 
+  // forgot password: email a one-time link (always answers the same, so it can't be used to test which emails have accounts)
+  if (M === "POST" && path === "/api/password/forgot"){
+    await limit(env, "auth:" + (req.headers.get("CF-Connecting-IP") || "x"));
+    const b = await body(req), email = String(b.email || "").trim().toLowerCase().slice(0, 200);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new HttpError(400, "Enter the email you signed up with.");
+    if (!env.RESEND_API_KEY) throw new HttpError(503, "Password reset by email isn't set up yet. Email hybridrunning@gmail.com and we'll help.");
+    const u = await env.DB.prepare("SELECT id, name FROM users WHERE email = ?").bind(email).first();
+    if (u){
+      const recent = await env.DB.prepare("SELECT COUNT(*) AS n FROM pw_resets WHERE user_id = ? AND expires > ?").bind(u.id, new Date().toISOString()).first();
+      if (!recent || recent.n < 3){
+        const code = rand(32), link = (env.APP_URL || "https://app.hybrdrunning.com/") + "#reset=" + code;
+        await env.DB.prepare("INSERT INTO pw_resets (token_hash, user_id, expires) VALUES (?, ?, ?)").bind(await sha256(code), u.id, new Date(Date.now() + 3600e3).toISOString()).run();
+        const hi = u.name ? "Hi " + String(u.name).split(" ")[0].replace(/[<>&"]/g, "") + "," : "Hi,";
+        const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111">' +
+          '<div style="background:#BE383E;color:#fff;font-weight:800;font-size:22px;letter-spacing:-.02em;padding:14px 18px;border-radius:6px">HYBRD</div>' +
+          '<p style="font-size:16px;margin:22px 0 8px">' + hi + '</p><p style="font-size:16px;line-height:1.5;margin:0 0 20px">Tap the button to pick a new password. The link works once and expires in 1 hour.</p>' +
+          '<p><a href="' + link + '" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:13px 22px;border-radius:6px">Choose a new password</a></p>' +
+          '<p style="font-size:13px;color:#666;line-height:1.5;margin-top:24px">If you didn\'t ask for this, ignore this email. Your password stays the same.</p></div>';
+        const r = await fetch(env.RESEND_URL || "https://api.resend.com/emails", {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"},
+          body: JSON.stringify({from: env.MAIL_FROM || "HYBRD Running <no-reply@hybrdrunning.com>", to: [email], reply_to: "hybridrunning@gmail.com", subject: "Reset your HYBRD password", html,
+            text: hi + "\n\nOpen this link to pick a new password (works once, expires in 1 hour):\n" + link + "\n\nIf you didn't ask for this, ignore this email."})}).catch(() => null);
+        await logEvent(env, "pw_reset_mail", !!(r && r.ok), r ? (r.ok ? "sent" : "HTTP " + r.status + " " + (await r.text()).slice(0, 120)) : "net");
+      }
+    }
+    return {ok: true};
+  }
+  if (M === "POST" && path === "/api/password/reset"){
+    await limit(env, "auth:" + (req.headers.get("CF-Connecting-IP") || "x"));
+    const b = await body(req), code = String(b.code || ""), next = String(b.password || "");
+    if (!/^[a-f0-9]{64}$/.test(code)) throw new HttpError(400, "That reset link isn't valid. Ask for a new one.");
+    if (next.length < 8 || next.length > 200) throw new HttpError(400, "Use a password of at least 8 characters.");
+    const row = await env.DB.prepare("SELECT * FROM pw_resets WHERE token_hash = ?").bind(await sha256(code)).first();
+    if (!row || row.used || row.expires < new Date().toISOString()) throw new HttpError(400, "That reset link has expired or was already used. Ask for a new one.");
+    const salt = rand(16);
+    await env.DB.batch([
+      env.DB.prepare("UPDATE users SET pass_hash = ?, salt = ? WHERE id = ?").bind(await hashPassword(next, salt), salt, row.user_id),
+      env.DB.prepare("UPDATE pw_resets SET used = 1 WHERE user_id = ?").bind(row.user_id),
+      env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(row.user_id)   // signs out every phone
+    ]);
+    const u = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(row.user_id).first();
+    await logEvent(env, "pw_reset", true);
+    return {token: await newSession(env, u.id), user: userOut(u)};
+  }
   if (M === "POST" && path === "/api/report"){
     // works signed in or not (sample runner too)
     await limit(env, "report:" + (req.headers.get("CF-Connecting-IP") || "x"));
@@ -1071,7 +1114,7 @@ async function route(req, env, path, ctx){
     const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
     if (link){ try { const tok = await stravaToken(env, link); await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/deauthorize", {method: "POST", headers: {Authorization: "Bearer " + tok}}); } catch(e){} }
     await garminForget(env, user.id, true);
-    await env.DB.batch(["sessions", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily", "reports", "link_keys", "lift_logs", "meal_plans", "crew_members"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
+    await env.DB.batch(["sessions", "pw_resets", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily", "reports", "link_keys", "lift_logs", "meal_plans", "crew_members"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
       .concat([env.DB.prepare("DELETE FROM crews WHERE id NOT IN (SELECT crew_id FROM crew_members)"),
         env.DB.prepare("UPDATE crews SET owner_id = (SELECT user_id FROM crew_members m WHERE m.crew_id = crews.id ORDER BY joined LIMIT 1) WHERE owner_id = ?").bind(user.id),
         env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id)]));

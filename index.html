@@ -741,7 +741,12 @@ let movedHere = false;
 if (/^#move=[a-f0-9]{20,}$/.test(location.hash)){ tokenStore.set(location.hash.slice(6)); movedHere = true; try { history.replaceState(null, "", location.pathname + location.search + "#today"); } catch(e){} }
 else if (location.hash === "#moved"){ movedHere = true; try { history.replaceState(null, "", location.pathname + location.search + "#today"); } catch(e){} }
 if (location.hostname === "matthewbaconn.github.io" || location.hostname === "app.hybridrunnin.com"){ const t0 = tokenStore.get(); location.replace("https://app.hybrdrunning.com/" + location.search + (t0 && /^[a-f0-9]{20,}$/.test(t0) ? "#move=" + t0 : "#moved")); }
+// "forgot password" email link: #reset=<code> opens the new-password form
+let resetCode = null;
+if (/^#reset=[a-f0-9]{64}$/.test(location.hash)){ resetCode = location.hash.slice(7); try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} }
 let token = API ? tokenStore.get() : null, me = null, mode = API ? "none" : "local", loading = !!token, authv = null;
+if (resetCode && API){ token = null; loading = false; authv = {view: "reset", code: resetCode}; }
+addEventListener("hashchange", () => { if (/^#reset=[a-f0-9]{64}$/.test(location.hash)) location.reload(); });
 let S = API ? {} : (store.get() || {});
 let plan = S.profile ? buildPlan(S.profile) : null;
 let tab = "today", wkSel = null, setup = null, toastT = null, scr = null;
@@ -2054,6 +2059,16 @@ function readStep(){
 /* ============ main render ============ */
 function renderAuth(){
   const a = authv, up = a.view === "signup";
+  if (a.view === "forgot") return header() + '<form class="setup view" id="authform" novalidate><h2 class="sec-t">Reset your password</h2>' +
+    (a.sent ? '<p class="sub">If there\'s an account for <b style="color:var(--ink)">' + esc(a.email) + '</b>, we just emailed it a link to pick a new password. It expires in 1 hour. Check your spam folder if you don\'t see it.</p><button class="btn primary block" type="button" data-act="authlogin">Back to log in</button>'
+      : '<p class="sub">Enter the email you signed up with and we\'ll send you a link to pick a new password.</p><div class="q"><label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" value="' + esc(a.email || "") + '"></div>' +
+        '<p class="err" role="alert">' + esc(a.err || "") + '</p><button class="btn primary block" type="submit"' + (a.busy ? ' disabled aria-busy="true"' : '') + '>' + (a.busy ? 'Sending…' : 'Email me a link') + '</button>' +
+        '<button class="linkbtn" type="button" data-act="authlogin" style="justify-self:center">Back to log in</button>') + '</form>';
+  if (a.view === "reset") return header() + '<form class="setup view" id="authform" novalidate><h2 class="sec-t">Pick a new password</h2>' +
+    '<div class="q"><label for="a-pass">New password</label><input id="a-pass" type="password" autocomplete="new-password" minlength="8"><p class="hint" style="margin-top:0">At least 8 characters.</p></div>' +
+    '<div class="q"><label for="a-pass2">Type it again</label><input id="a-pass2" type="password" autocomplete="new-password" minlength="8"></div>' +
+    '<p class="err" role="alert">' + esc(a.err || "") + '</p><button class="btn primary block" type="submit"' + (a.busy ? ' disabled aria-busy="true"' : '') + '>' + (a.busy ? 'Saving…' : 'Save and log in') + '</button>' +
+    '<button class="linkbtn" type="button" data-act="authback" style="justify-self:center;color:var(--muted)">Cancel</button></form>';
   return header() + '<form class="setup view" id="authform" novalidate><h2 class="sec-t">' + (up ? 'Create your account' : 'Welcome back') + '</h2>' +
     (up ? '<div class="q"><label for="a-name">First name</label><input id="a-name" autocomplete="given-name" maxlength="30" value="' + esc(a.name || "") + '"></div>' : '') +
     '<div class="q"><label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" value="' + esc(a.email || "") + '"></div>' +
@@ -2061,12 +2076,31 @@ function renderAuth(){
     (up ? '<label class="agree"><input type="checkbox" id="a-agree"' + (a.agree ? ' checked' : '') + '><span>I\'m 18 or older, and I agree to the <button class="linkbtn inl" type="button" data-act="doc" data-k="terms">Terms</button> and the <button class="linkbtn inl" type="button" data-act="doc" data-k="health">Health and safety notice</button>.</span></label>' : '') +
     '<p class="err" role="alert">' + esc(a.err || "") + '</p>' +
     '<button class="btn primary block" type="submit"' + (a.busy ? ' disabled aria-busy="true"' : '') + '>' + (a.busy ? 'One moment…' : up ? 'Create account' : 'Log in') + '</button>' +
+    (up ? '' : '<button class="linkbtn" type="button" data-act="authforgot" style="justify-self:center">Forgot your password?</button>') +
     '<button class="linkbtn" type="button" data-act="' + (up ? 'authlogin' : 'authsignup') + '" style="justify-self:center">' + (up ? 'Already have an account? Log in' : 'New here? Create an account') + '</button>' +
     (up ? '<p class="sub" style="text-align:center">Your plan and food log are saved to your account so they follow you to any phone. You can delete your account and everything in it from Settings. <a class="linkbtn inl" href="privacy.html" target="_blank" rel="noopener">Privacy</a></p>' : '') +
     '<button class="linkbtn" type="button" data-act="authback" style="justify-self:center;color:var(--muted)">Back</button></form>';
 }
 async function submitAuth(){
   const a = authv, up = a.view === "signup", v = id => (document.getElementById(id) || {}).value || "";
+  if (a.view === "forgot"){
+    a.email = v("a-email").trim(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a.email)){ a.err = "Enter the email you signed up with."; render(); return; }
+    a.busy = true; a.err = ""; render();
+    try { await api("POST", "/api/password/forgot", {email: a.email}); a.sent = true; } catch(e){ a.err = e.message; }
+    a.busy = false; render(); return;
+  }
+  if (a.view === "reset"){
+    const p1 = v("a-pass"), p2 = v("a-pass2");
+    if (p1.length < 8){ a.err = "Use at least 8 characters."; render(); return; }
+    if (p1 !== p2){ a.err = "Those two don't match. Type them again."; render(); return; }
+    a.busy = true; a.err = ""; render();
+    try {
+      const j = await api("POST", "/api/password/reset", {code: a.code, password: p1});
+      token = j.token; tokenStore.set(token); authv = null; loading = true; render();
+      loadAccount(await api("GET", "/api/me")); loading = false; tab = "today"; render(); window.scrollTo(0, 0); autoSync(true); toast("Password changed. You're logged in.");
+    } catch(e){ loading = false; a.busy = false; a.err = e.message; authv = a; render(); }
+    return;
+  }
   a.name = v("a-name").trim(); a.email = v("a-email").trim(); const pw = v("a-pass"); a.agree = !!(document.getElementById("a-agree") || {}).checked;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email)){ a.err = "Enter a valid email."; render(); return; }
   if (pw.length < 8){ a.err = up ? "Use a password of at least 8 characters." : "Enter your password."; render(); return; }
@@ -2256,7 +2290,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "46";
+const APP_VERSION = "47";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2687,6 +2721,7 @@ document.addEventListener("click", ev => {
   }
   if (act === "authsignup" || act === "authlogin"){ closeMenu(); scr = null; authv = {view: act === "authsignup" ? "signup" : "login", email: authv ? authv.email : ""}; render(); window.scrollTo(0, 0); return; }
   if (act === "authback"){ authv = null; render(); return; }
+  if (act === "authforgot"){ const em = ((document.getElementById("a-email") || {}).value || (authv && authv.email) || "").trim(); authv = {view: "forgot", email: em}; render(); window.scrollTo(0, 0); return; }
   if (act === "logout"){ closeMenu(); scr = null; const t = token; api("POST", "/api/logout").catch(() => {}).finally(() => { if (token === t) signedOut(); }); return; }
   if (act === "delacct"){
     if (a.dataset.sure !== "1"){ a.dataset.sure = "1"; a.textContent = "Tap again to delete everything"; return; }
