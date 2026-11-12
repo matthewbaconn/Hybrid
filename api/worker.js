@@ -457,9 +457,11 @@ async function pushTo(env, userId, msg){
   const subs = (await env.DB.prepare("SELECT * FROM push_subs WHERE user_id = ?").bind(userId).all()).results;
   const vapid = {subject: env.VAPID_SUBJECT || "mailto:hybrid-app@users.noreply.github.com", publicKey: env.VAPID_PUBLIC, privateKey: env.VAPID_PRIVATE};
   let sent = 0;
+  // Apple rejects some topics ("BadWebPushTopic"): send a short letters-and-digits one made from the tag
+  const topic = (await sha256(msg.tag || "hybrid")).slice(0, 24);
   for (const s of subs){
     try {
-      const payload = await buildPushPayload({data: JSON.stringify({url: (env.APP_URL || "") + "#today", ...msg}), options: {ttl: 6 * 3600, urgency: "normal", topic: (msg.tag || "hybrid").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 32)}},
+      const payload = await buildPushPayload({data: JSON.stringify({url: (env.APP_URL || "") + "#today", ...msg}), options: {ttl: 6 * 3600, urgency: "normal", topic}},
         {endpoint: s.endpoint, expirationTime: null, keys: {p256dh: s.p256dh, auth: s.auth}}, vapid);
       const r = await fetch(s.endpoint, payload);
       if (r.status === 404 || r.status === 410){ await env.DB.prepare("DELETE FROM push_subs WHERE endpoint = ?").bind(s.endpoint).run(); await logEvent(env, "push", false, "expired subscription removed (" + r.status + ")"); }
