@@ -88,6 +88,22 @@ await check("Plan tab", async () => {
 });
 await check("Recovery tab", async () => { await tab("recovery"); await noOverflow(); await page.waitForSelector(".rings"); await shot("05-recovery"); return (await page.innerText(".verdict b")); });
 await check("Training tab", async () => { await tab("training"); await noOverflow(); const cards = await page.locator(".card-h .lbl").allInnerTexts(); await shot("06-training"); for (const need of ["Race predictions", "Your training paces", "Weekly miles", "Calories · last 7 days", "Calorie check · 14 days"]) if (!cards.some(c => c.toLowerCase() === need.toLowerCase())) throw new Error("missing " + need); return cards.length + " cards"; });
+await check("Activities tab (feed + detail)", async () => {
+  await tab("activities"); await noOverflow(); await page.waitForSelector(".actc", {timeout: 5000}); const n = await page.locator(".actc").count(); await shot("06b-activities");
+  await page.click(".actc >> nth=0"); await page.waitForSelector(".adet-h", {timeout: 5000}); const t = await page.innerText(".adet-h h1"); await noOverflow(); await shot("06c-activity");
+  await page.click('[data-act="actback"]'); await page.waitForSelector(".afilt");
+  return n + " activit" + (n === 1 ? "y" : "ies") + " · opened " + t;
+});
+await check("Fuel + food at the top after check-in", async () => {
+  await tab("today"); const order = await page.$$eval("#app .view > section, #app .view > article", els => els.map(e => (e.querySelector(".card-h .lbl") || {}).textContent || ""));
+  const ci = order.findIndex(x => /readiness/i.test(x)), fu = order.findIndex(x => /fuel today/i.test(x));
+  if (ci < 0 || fu !== ci + 1) throw new Error(order.join(" > ")); if (!(await page.locator(".card:has(.left) .food-in").count())) throw new Error("food log not inside the fuel card");
+  return "readiness → fuel + food log";
+});
+await check("Settings: Garmin + Apple Health", async () => {
+  await page.click('[data-act="menu"]'); await page.waitForSelector(".sheet .hlink", {timeout: 5000}); const t = await page.innerText(".sheet .hlink"); await page.click('.sheet [data-act="close"]');
+  if (!/Apple Health/.test(t) || !/Strava/.test(t)) throw new Error(t.slice(0, 120)); return "shown";
+});
 await check("Settings: notifications + Strava", async () => {
   await tab("today"); await page.click('[data-act="menu"]'); await page.waitForSelector(".sheet .nset", {timeout: 5000}); const t = await page.innerText(".sheet .nset"); await shot("07-settings"); await page.click('.sheet [data-act="close"]');
   const strava = await page.locator('[data-act="stconnect"]').count(); if (!strava) throw new Error("Connect Strava button missing");

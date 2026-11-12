@@ -191,12 +191,50 @@ button{cursor:pointer}
 .kv dt{color:var(--muted)} .kv dd{margin:0;text-align:right;font-weight:500}
 
 /* tab bar */
-.tabbar{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:20;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:6px;
+.tabbar{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:20;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:6px;
   border:1px solid rgba(255,255,255,.09);border-radius:24px;background:#181B23;box-shadow:0 14px 34px rgba(0,0,0,.6);max-width:520px;margin:0 auto}
-.tabbar button{border:0;background:none;display:grid;justify-items:center;gap:5px;padding:9px 2px;border-radius:18px;color:var(--muted);font:600 12px/1 var(--f-body);min-width:0;transition:background-color .15s,color .15s}
+.tabbar button{border:0;background:none;display:grid;justify-items:center;gap:5px;padding:9px 0;border-radius:18px;color:var(--muted);font:600 11px/1 var(--f-body);letter-spacing:-.01em;min-width:0;transition:background-color .15s,color .15s}
 .tabbar button .ic{width:19px;height:19px}
-.tabbar [data-tab="today"]{--tabc:var(--accent)} .tabbar [data-tab="plan"]{--tabc:var(--easy)} .tabbar [data-tab="recovery"]{--tabc:var(--long)} .tabbar [data-tab="training"]{--tabc:var(--work)}
+.tabbar [data-tab="today"]{--tabc:var(--accent)} .tabbar [data-tab="plan"]{--tabc:var(--easy)} .tabbar [data-tab="recovery"]{--tabc:var(--long)} .tabbar [data-tab="training"]{--tabc:var(--work)} .tabbar [data-tab="activities"]{--tabc:var(--lift)}
 .tabbar button[aria-current="page"]{background:var(--tabc);color:#0A0B0F}
+
+/* food log inside the fuel card */
+.food-in{display:grid;gap:14px;border-top:1px solid rgba(255,255,255,.08);padding-top:18px;margin-top:2px}
+/* activities */
+.afilt{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.afilt button{border:0;border-radius:999px;padding:9px 15px;background:var(--sunk);color:var(--muted);font:600 13.5px var(--f-body);white-space:nowrap}
+.afilt button[aria-pressed="true"]{background:var(--lift);color:#0A0B0F}
+.wsum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.wsum div{background:var(--sunk);border-radius:14px;padding:12px}
+.wsum span{display:block;font-size:12px;color:var(--muted)} .wsum b{font:800 21px/1.2 var(--f-display);white-space:nowrap}
+.actc{cursor:pointer;padding:0;overflow:hidden;gap:0}
+.actc .ah{display:flex;gap:12px;align-items:center;padding:18px 18px 0}
+.actc .aic{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--tc) 18%,transparent);color:var(--tc)}
+.actc .aic .ic{width:20px;height:20px}
+.actc .ah b{display:block;font-weight:600;font-size:14px} .actc .ah span{font-size:13px;color:var(--muted)}
+.actc h3{margin:12px 18px 0;font:800 21px/1.2 var(--f-display);letter-spacing:-.01em;overflow-wrap:anywhere}
+.ast{display:flex;flex-wrap:wrap;gap:6px 26px;padding:12px 18px 16px}
+.ast span{display:block;font-size:12.5px;color:var(--muted)} .ast b{font:700 20px/1.25 var(--f-display);white-space:nowrap}
+.amap{height:200px;background:#0F1218;position:relative;border-top:1px solid rgba(255,255,255,.06)}
+.amap.big{height:300px;border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.07)}
+.amap > svg{position:absolute;inset:0;width:100%;height:100%}
+.amap .leaflet-container,.amap.leaflet-container{background:#0F1218;font:11px var(--f-body)}
+.amap .leaflet-control-attribution{background:rgba(10,11,15,.7)!important;color:var(--muted)!important}
+.amap .leaflet-control-attribution a{color:var(--muted)!important}
+.adet-h{display:flex;align-items:center;gap:10px}
+.adet-h .arrow{flex:none}
+.adet-h h1{font:800 24px/1.2 var(--f-display);margin:0;overflow-wrap:anywhere}
+.agrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 10px}
+.agrid span{display:block;font-size:12.5px;color:var(--muted)} .agrid b{font:700 20px/1.25 var(--f-display)}
+.splits{display:grid;gap:6px;font-size:14px}
+.splits .sp{display:grid;grid-template-columns:34px 52px 1fr 46px;gap:10px;align-items:center}
+.splits .sp.hd{font-size:12px;color:var(--muted)}
+.splits .sp i{display:block;height:10px;border-radius:999px;background:var(--easy)}
+.splits .sp em{font-style:normal;text-align:right;color:var(--muted)}
+.hlink{display:grid;gap:10px}
+.hlink input{font-size:13px}
+.hlink ol{margin:0;padding-left:20px;display:grid;gap:6px;font-size:13.5px;color:var(--muted)}
+.hlink ol b{color:var(--ink)}
 
 /* setup */
 .setup{display:grid;gap:22px}
@@ -358,7 +396,7 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 
 /* sheet + toast */
 .back{position:fixed;inset:0;background:rgba(0,0,0,.66);z-index:40;display:grid;align-items:end;justify-items:center;padding:12px}
-.sheet{width:100%;max-width:480px;background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:20px;display:grid;gap:12px;margin-bottom:env(safe-area-inset-bottom,0px)}
+.sheet{width:100%;max-width:480px;background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:20px;display:grid;gap:12px;margin-bottom:env(safe-area-inset-bottom,0px);max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:50;background:#232736;border:1px solid var(--line);border-radius:14px;padding:12px 16px;font-size:14px;max-width:min(92vw,420px);box-shadow:0 12px 30px rgba(0,0,0,.5)}
 
 .view{animation:in .28s cubic-bezier(.2,.8,.2,1) backwards}
@@ -373,6 +411,7 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 <nav class="tabbar" id="tabbar" aria-label="Sections" hidden>
   <button type="button" data-tab="today"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg><span>Today</span></button>
   <button type="button" data-tab="plan"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Plan</span></button>
+  <button type="button" data-tab="activities"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h8.5a3.5 3.5 0 0 0 0-7h-9a3.5 3.5 0 0 1 0-7H16"/></svg><span>Activities</span></button>
   <button type="button" data-tab="recovery"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg><span>Recovery</span></button>
   <button type="button" data-tab="training"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg><span>Training</span></button>
 </nav>
@@ -424,7 +463,7 @@ function loadAccount(j){
   clearObj(checkins); (j.checkins || []).forEach(c => checkins[c.date] = c);
   clearObj(weights); (j.weights || []).forEach(w => weights[w.date] = w.lb);
   acts = j.activities || []; strava = j.strava || strava;
-  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach;
+  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; healthLink = j.health_link || {on: false};
   plan = j.profile ? buildPlan(j.profile) : null;
   setup = plan ? null : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
 }
@@ -516,6 +555,144 @@ function workoutCard(){
   else if (mode !== "account") h += '<p class="fnote">' + (mode === "sample" ? 'Create an account to connect Strava.' : 'Log workouts by hand here.') + '</p>';
   return h + '</section>';
 }
+/* ---------- activities feed with route maps (like Strava) ---------- */
+let actSel = null, actFilter = "all";
+const polyCache = new Map();
+function decodePoly(str){
+  if (polyCache.has(str)) return polyCache.get(str);
+  let i = 0, lat = 0, lng = 0; const out = [];
+  while (i < str.length){
+    for (const k of [0, 1]){ let b, sh = 0, r = 0; do { b = str.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while (b >= 32 && i <= str.length); const d = r & 1 ? ~(r >> 1) : r >> 1; if (k) lng += d; else lat += d; }
+    out.push([lat / 1e5, lng / 1e5]);
+  }
+  polyCache.set(str, out); return out;
+}
+const ptsOf = a => a.pts || (a.poly ? decodePoly(a.poly) : null);
+const ACT_TONE = {run: "easy", lift: "lift", bike: "work", swim: "accent-2", other: "long"};
+const ACT_IC = {run: "run", lift: "dumbbell", bike: "bike", swim: "wave", other: "watch"};
+function durTxt(min){ min = Math.round(min || 0); return min >= 60 ? Math.floor(min / 60) + 'h ' + (min % 60) + 'm' : min + 'm'; }
+function whenTxt(a){
+  const d = a.date, back = daysBetween(d, TODAY), t = (a.start_local || "").slice(11, 16);
+  const day = back === 0 ? "Today" : back === 1 ? "Yesterday" : back < 7 ? DAYF[dow(d)] : fmtD(d);
+  if (!t) return day;
+  const [hh, mm] = t.split(":").map(Number);
+  return day + ' at ' + ((hh % 12) || 12) + ':' + pad(mm) + (hh < 12 ? ' AM' : ' PM');
+}
+function actStats(a, big){
+  const st = [];
+  if (a.mi > 0) st.push(["Distance", r2(a.mi) + ' mi']);
+  if (a.type === "run" && a.mi > 0 && a.minutes > 0) st.push(["Pace", fmtPace(a.minutes * 60 / a.mi) + '/mi']);
+  if (a.type === "bike" && a.mi > 0 && a.minutes > 0) st.push(["Speed", (Math.round(a.mi / a.minutes * 600) / 10) + ' mph']);
+  if (a.minutes) st.push(["Time", durTxt(a.minutes)]);
+  if (big || st.length < 3){ if (a.avg_hr) st.push(["Avg HR", a.avg_hr + ' bpm']); }
+  if (big){ if (a.max_hr) st.push(["Max HR", a.max_hr + ' bpm']); if (a.elev_ft) st.push(["Elevation", comma(a.elev_ft) + ' ft']); if (a.cal) st.push(["Calories", comma(a.cal)]); if (a.work_pace) st.push(["Rep pace", fmtPace(a.work_pace) + '/mi']); }
+  else if (st.length < 3 && a.cal) st.push(["Calories", comma(a.cal)]);
+  return big ? st : st.slice(0, 3);
+}
+function routeSvg(pts){
+  if (!pts || pts.length < 2) return '';
+  let a = 90, b = -90, c = 180, d = -180; pts.forEach(([y, x]) => { a = Math.min(a, y); b = Math.max(b, y); c = Math.min(c, x); d = Math.max(d, x); });
+  const k = Math.cos((a + b) / 2 * Math.PI / 180), w = Math.max((d - c) * k, 1e-5), h = Math.max(b - a, 1e-5), s = Math.min(300 / w, 160 / h);
+  const xy = ([y, x]) => ((x - c) * k * s + (340 - w * s) / 2).toFixed(1) + ',' + ((b - y) * s + (200 - h * s) / 2).toFixed(1);
+  const step = Math.max(1, Math.floor(pts.length / 400)), path = pts.filter((_, i) => i % step === 0 || i === pts.length - 1).map(xy).join(' ');
+  return '<svg viewBox="0 0 340 200" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><polyline points="' + path + '" fill="none" stroke="var(--accent)" stroke-width="7" stroke-opacity=".25" stroke-linejoin="round" stroke-linecap="round"/><polyline points="' + path + '" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+}
+function actCard(a){
+  const pts = ptsOf(a), tone = ACT_TONE[a.type] || "long", src = a.source === "strava" ? "Strava" : a.source === "sample" ? "Sample" : "Logged";
+  return '<article class="card actc" style="--tc:var(--' + tone + ')" data-act="actopen" data-id="' + esc(a.id) + '" tabindex="0" role="button" aria-label="Open ' + esc(a.name) + '">' +
+    '<div class="ah"><span class="aic">' + ic(ACT_IC[a.type] || "watch") + '</span><div><b>' + esc((me && me.name) || (plan && plan.profile.name) || "You") + '</b><span>' + whenTxt(a) + ' · ' + src + '</span></div></div>' +
+    '<h3>' + esc(a.name) + '</h3><div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
+    (pts && pts.length > 1 ? '<div class="amap" data-map="' + esc(a.id) + '">' + routeSvg(pts) + '</div>' : '') + '</article>';
+}
+function feedActs(){
+  let list = acts.slice();
+  if (mode === "sample" || (mode === "local" && !list.length && plan && plan.profile.sample)) list = list.concat(sampleActs());
+  return list.sort((x, y) => (y.start_local || y.date + "T99").localeCompare(x.start_local || x.date + "T99"));
+}
+function renderActivities(){
+  const all = feedActs();
+  if (actSel){ const a = all.find(x => x.id === actSel); if (a) return actDetail(a); actSel = null; }
+  const ws = mondayOf(TODAY), wk = all.filter(a => a.date >= ws && a.date <= TODAY);
+  const wmi = wk.reduce((t, a) => t + (a.type === "run" ? a.mi || 0 : 0), 0), wmin = wk.reduce((t, a) => t + (a.minutes || 0), 0);
+  let h = '<h2 class="sec-t">Activities</h2>';
+  h += '<section class="card" style="--tone:var(--lift)"><div class="card-h">' + ic("bars") + '<span class="lbl">This week</span><span class="r">' + wk.length + ' activit' + (wk.length === 1 ? 'y' : 'ies') + '</span></div>' +
+    '<div class="wsum"><div><span>Run miles</span><b>' + r2(wmi) + '</b></div><div><span>Time</span><b>' + durTxt(wmin) + '</b></div><div><span>Activities</span><b>' + wk.length + '</b></div></div></section>';
+  const F = [["all", "All"], ["run", "Runs"], ["lift", "Strength"], ["other", "Other"]];
+  h += '<div class="afilt" role="group" aria-label="Filter activities">' + F.map(([k, l]) => '<button type="button" data-act="afilt" data-k="' + k + '" aria-pressed="' + (actFilter === k) + '">' + l + '</button>').join("") + '</div>';
+  const list = all.filter(a => actFilter === "all" || (actFilter === "other" ? !["run", "lift"].includes(a.type) : a.type === actFilter));
+  if (!list.length) h += '<section class="card"><p class="sub">' + (all.length ? 'Nothing here for this filter.' :
+    mode === "account" && strava.available && !strava.connected ? 'Connect Strava and your runs show up here with a map of your route. Garmin, COROS and Apple Watch work through Strava too.</p><button class="btn strava block" type="button" data-act="stconnect">Connect Strava</button><p class="sub">You can also log workouts by hand on the Today tab.' :
+    'No activities yet. Log a workout on the Today tab' + (mode === "account" ? ' or sync Strava' : '') + '.') + '</p></section>';
+  else h += list.slice(0, 40).map(actCard).join("");
+  if (strava.connected) h += '<button class="linkbtn" type="button" data-act="stsync" style="justify-self:center">Sync Strava now · ' + agoText(strava.last_sync) + '</button>';
+  return h;
+}
+function actDetail(a){
+  const pts = ptsOf(a), tone = ACT_TONE[a.type] || "long", rv = reviewFor(a);
+  let h = '<div class="adet-h"><button class="arrow" type="button" data-act="actback" aria-label="Back to activities">‹</button><div><h1>' + esc(a.name) + '</h1><span class="sub">' + whenTxt(a) + ' · ' + (a.source === "strava" ? 'Strava' : a.source === "sample" ? 'Sample' : 'Logged by hand') + '</span></div></div>';
+  if (pts && pts.length > 1) h += '<div class="amap big" data-map="' + esc(a.id) + '" data-big="1">' + routeSvg(pts) + '</div>';
+  h += '<section class="card" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv) : '') + '</section>';
+  let laps = null; try { laps = a.laps ? (typeof a.laps === "string" ? JSON.parse(a.laps) : a.laps) : null; } catch(e){}
+  laps = (laps || []).filter(l => l[0] > 50 && l[1] > 0);
+  if (a.type === "run" && laps.length > 1){
+    const paces = laps.map(l => l[1] / (l[0] / 1609.34)), fast = Math.min(...paces), slow = Math.max(...paces);
+    h += '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("bars") + '<span class="lbl">Splits</span><span class="r">' + laps.length + ' laps</span></div><div class="splits"><div class="sp hd"><span>Lap</span><span>Pace</span><span></span><em>HR</em></div>' +
+      laps.map((l, i) => '<div class="sp"><span>' + (i + 1) + '</span><b>' + fmtPace(paces[i]) + '</b><i style="width:' + (slow > fast ? 35 + 65 * (slow - paces[i]) / (slow - fast) : 100) + '%"></i><em>' + (l[2] || '–') + '</em></div>').join("") + '</div>' +
+      '<p class="sub">Lap distances: ' + laps.slice(0, 12).map(l => r2(l[0] / 1609.34)).join(", ") + (laps.length > 12 ? '…' : '') + ' mi</p></section>';
+  }
+  if (a.source === "manual") h += '<button class="btn block" type="button" data-act="adel" data-id="' + esc(a.id) + '" style="color:var(--crit)">Delete this workout</button>';
+  if (a.source === "strava" && a.ext_id) h += '<a class="linkbtn" style="justify-self:center" href="https://www.strava.com/activities/' + esc(a.ext_id) + '" target="_blank" rel="noopener">View on Strava</a>';
+  return h;
+}
+/* maps: the route is drawn right away; dark street tiles load on top when the card scrolls into view */
+let LP = null, mapObs = null;
+function leaflet(){
+  if (window.L) return Promise.resolve(window.L);
+  if (LP) return LP;
+  LP = new Promise((ok, no) => {
+    const c = document.createElement("link"); c.rel = "stylesheet"; c.href = "vendor/leaflet.css"; document.head.appendChild(c);
+    const s = document.createElement("script"); s.src = "vendor/leaflet.js"; s.onload = () => ok(window.L); s.onerror = () => { LP = null; no(new Error("map")); }; document.head.appendChild(s);
+  });
+  return LP;
+}
+function mountMaps(){
+  const els = [...document.querySelectorAll(".amap[data-map]")];
+  if (!els.length) return;
+  if (mapObs) mapObs.disconnect();
+  const go = el => leaflet().then(L => {
+    if (!el.isConnected || el._map) return;
+    const a = feedActs().find(x => x.id === el.dataset.map), pts = a && ptsOf(a); if (!pts) return;
+    const big = !!el.dataset.big, cs = getComputedStyle(document.documentElement);
+    const col = (cs.getPropertyValue("--accent-2") || "#3DB8FF").trim(), glow = (cs.getPropertyValue("--accent") || "#3D7BFF").trim();
+    el.innerHTML = "";
+    const m = L.map(el, {zoomControl: false, attributionControl: true, dragging: big, touchZoom: big, doubleClickZoom: big, scrollWheelZoom: false, boxZoom: false, keyboard: false, tap: false});
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {subdomains: "abcd", maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(m);
+    m.attributionControl.setPrefix(false);
+    L.polyline(pts, {color: glow, weight: 9, opacity: .3, interactive: false}).addTo(m);
+    const line = L.polyline(pts, {color: col, weight: 4, opacity: 1, interactive: false}).addTo(m);
+    L.circleMarker(pts[0], {radius: 6, color: "#0A0B0F", weight: 2, fillColor: "#34D399", fillOpacity: 1, interactive: false}).addTo(m);
+    L.circleMarker(pts[pts.length - 1], {radius: 6, color: "#0A0B0F", weight: 2, fillColor: "#FF4D5E", fillOpacity: 1, interactive: false}).addTo(m);
+    m.fitBounds(line.getBounds(), {padding: [22, 22]});
+    el.querySelectorAll(".leaflet-control-attribution a").forEach(x => { x.target = "_blank"; x.rel = "noopener"; x.addEventListener("click", e => e.stopPropagation()); });
+    el._map = m;
+  }).catch(() => {});
+  if ("IntersectionObserver" in window){
+    mapObs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting){ mapObs.unobserve(e.target); go(e.target); } }), {rootMargin: "300px"});
+    els.forEach(el => mapObs.observe(el));
+  } else els.forEach(go);
+}
+/* sample runner: a few made-up activities so the tab isn't empty */
+function loopPts(lat, lng, w, h, n){ const out = []; for (let i = 0; i <= n; i++){ const t = i / n * 4, side = Math.floor(t) % 4, f = t - Math.floor(t);
+  const p = side === 0 ? [lat, lng + w * f] : side === 1 ? [lat - h * f, lng + w] : side === 2 ? [lat - h, lng + w * (1 - f)] : [lat - h * (1 - f), lng]; out.push([p[0] + Math.sin(i * 1.7) * 0.00002, p[1] + Math.cos(i * 1.3) * 0.00002]); } return out; }
+function sampleActs(){
+  const loop = loopPts(27.6531, -80.4402, .0105, .0072, 120), out = loopPts(27.6448, -80.3972, .0032, .028, 160);
+  return [
+    {id: "s1", source: "sample", date: addDays(TODAY, -1), start_local: addDays(TODAY, -1) + "T06:12", type: "run", name: "Morning easy run", mi: 5.1, minutes: 46, avg_hr: 142, max_hr: 158, elev_ft: 24, cal: 520, pts: loop.concat(loop.slice(1))},
+    {id: "s2", source: "sample", date: addDays(TODAY, -2), start_local: addDays(TODAY, -2) + "T17:40", type: "lift", name: "Upper body strength", mi: 0, minutes: 52, avg_hr: 118, cal: 310},
+    {id: "s3", source: "sample", date: addDays(TODAY, -3), start_local: addDays(TODAY, -3) + "T06:05", type: "run", name: "Tempo by the beach", mi: 6.2, minutes: 50, avg_hr: 161, max_hr: 176, elev_ft: 18, cal: 690, pts: out}
+  ];
+}
+
 /* Strava sync, same rhythm as Strong at 180: when the app opens, whenever you come back to it
    (at most every 45 s), and every 10 min while it's open. A sync never redraws over something
    you're typing: it waits until you leave the field. */
@@ -771,7 +948,7 @@ async function addFood(meal, items){
   items.forEach((x, i) => list.push({id: Date.now().toString(36) + i, meal, name: String(x.name).slice(0, 80), cal: n0(x.cal), protein: n0(x.protein), carbs: n0(x.carbs), fat: n0(x.fat)}));
   save();
 }
-function fuelCard(f){
+function fuelCard(f, extra){
   const e = eaten(TODAY), left = f.cal - e.cal, pc = (a, b) => b ? Math.min(100, a / b * 100) : 0;
   const mac = (k, a, b, c) => '<div class="mac" style="--mc:var(--' + c + ')"><span>' + k + '</span><b>' + a + '<small> / ' + b + ' g</small></b><div class="bar"><i style="width:' + pc(a, b) + '%"></i></div></div>';
   return '<section class="card" style="--tone:var(--accent-2)"><div class="card-h">' + ic("fork") + '<span class="lbl">Fuel today</span><span class="r">' + (f.brk ? 'Diet break' : f.cut ? f.deficit + ' cal deficit' : 'Maintenance') + '</span></div>' +
@@ -779,9 +956,9 @@ function fuelCard(f){
     '<span class="sub">' + comma(e.cal) + ' eaten of ' + comma(f.cal) + ' (estimate)</span><div class="bar"><i style="width:' + pc(e.cal, f.cal) + '%' + (left < 0 ? ';background:var(--crit)' : '') + '"></i></div></div>' +
     '<div class="macs">' + mac("Protein", e.protein, f.pro, "lift") + mac("Carbs", e.carbs, f.carb, "work") + mac("Fat", e.fat, f.fat, "easy") + '</div>' +
     '<p class="sub">' + (f.logged ? 'Base ' + comma(f.base) + ' + training ' + comma(f.train) + ' = ' + comma(f.cal) + '.' : f.planned ? 'Base ' + comma(f.base) + '. Today\'s training adds about +' + comma(f.planned) + ' once you log it.' : 'Base ' + comma(f.base) + ' on a rest day.') +
-      (f.brk ? ' ' + esc(f.why) : f.cut ? ' Includes a ' + f.deficit + '-calorie deficit toward your goal weight.' + (f.why ? ' ' + esc(f.why) : '') : f.why ? ' ' + esc(f.why) : '') + '</p></section>';
+      (f.brk ? ' ' + esc(f.why) : f.cut ? ' Includes a ' + f.deficit + '-calorie deficit toward your goal weight.' + (f.why ? ' ' + esc(f.why) : '') : f.why ? ' ' + esc(f.why) : '') + '</p>' + (extra || '') + '</section>';
 }
-function foodCard(){
+function foodCard(inner){
   const list = food[fdate] || [], ai = aiOn(), meal = fs.meal || mealNow();
   const back = daysBetween(fdate, TODAY), dayLbl = back === 0 ? "Today" : back === 1 ? "Yesterday" : DAYF[dow(fdate)] + ", " + fmtD(fdate);
   const e = eaten(fdate), tgt = plan ? fuelFor(plan.profile, dayOf(fdate), fdate).cal : 0;
@@ -804,7 +981,8 @@ function foodCard(){
     form += '<p class="fnote">' + (mode === "sample" ? 'Create an account to log food with a photo. Sample entries aren\'t saved.' : 'Photo logging is being set up. Enter the numbers for now.') + '</p>' + manual + '<p class="err" role="alert">' + esc(fs.err) + '</p>';
   }
   form += '</div>';
-  return '<section class="card" style="--tone:var(--long)"><div class="card-h">' + ic("camera") + '<span class="lbl">Food log</span><span class="r">' + (list.length ? list.length + ' item' + (list.length === 1 ? '' : 's') : 'nothing yet') + '</span></div>' + nav + rows + form + '</section>';
+  const top = '<div class="card-h" style="--tone:var(--long)">' + ic("camera") + '<span class="lbl">Food log</span><span class="r">' + (list.length ? list.length + ' item' + (list.length === 1 ? '' : 's') : 'nothing yet') + '</span></div>' + nav + rows + form;
+  return inner ? '<div class="food-in">' + top + '</div>' : '<section class="card" style="--tone:var(--long)">' + top + '</section>';
 }
 
 /* ============ icons ============ */
@@ -821,6 +999,9 @@ const IC = {
   scale:'<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 9a4 4 0 0 1 8 0"/><path d="m12 9 1.5-2"/>',
   watch:'<circle cx="12" cy="12" r="6"/><path d="M12 10v2l1 1"/><path d="m16.13 7.66-.81-4.05a2 2 0 0 0-2-1.61h-2.68a2 2 0 0 0-2 1.61l-.78 4.05M7.88 16.36l.8 4a2 2 0 0 0 2 1.61h2.72a2 2 0 0 0 2-1.61l.81-4.05"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
+  run:'<path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z"/><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z"/><path d="M16 17h4M4 13h4"/>',
+  bike:'<circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/>',
+  wave:'<path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>',
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
   pin:'<path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
   spark:'<path d="M9.94 14.06 4 20M14 4l1.5 4.5L20 10l-4.5 1.5L14 16l-1.5-4.5L8 10l4.5-1.5z"/>',
@@ -920,11 +1101,11 @@ function renderToday(){
   if (TODAY < first){ h += '<section class="card"><h2 class="sec-t">Your plan starts ' + fmtD(first) + '</h2><p class="sub">Keep running easy until then. Open the Plan tab to see week 1.</p></section>'; return h; }
   if (TODAY > last){ h += '<section class="card"><h2 class="sec-t">Plan complete</h2><p class="sub">Nice work. Open settings to build your next plan.</p></section>'; return h; }
   const day = dayOf(TODAY), t = dayType(day);
-  h += checkinCard() + weatherCard();
+  const f = fuelFor(p, day, TODAY), fuelFood = fuelCard(f, foodCard(true)), checkedIn = !!checkins[TODAY] && !ci;
+  h += checkinCard() + (checkedIn ? fuelFood : '') + weatherCard();
   h += '<article class="card hero t-' + t + '"><header class="hero-h"><div><div class="d">Today</div><div class="dd">' + DAYF[dow(TODAY)] + ', ' + fmtD(TODAY) + '</div></div><span class="chip">' + TYPE[t] + '</span></header><div class="hero-b">' +
     (day.sessions.length ? day.sessions.map((s, i) => sessHtml(s, TODAY + "-" + i, true)).join("") : '<div class="sess"><h3 class="sess-t">Rest day</h3><p class="muted">An easy walk or mobility is plenty. Sleep and food do the work today.</p></div>') + '</div></article>';
-  const f = fuelFor(p, day, TODAY);
-  h += workoutCard() + fuelCard(f) + foodCard() + weighCard();
+  h += workoutCard() + (checkedIn ? '' : fuelFood) + weighCard();
   const tm = dayOf(addDays(TODAY, 1));
   if (tm){ const tt = dayType(tm); h += '<section class="card"><div class="card-h" style="--tone:var(--muted)">' + ic("cal") + '<span class="lbl">Tomorrow</span></div><div class="mini t-' + tt + '"><div><b>' + esc(tm.sessions.length ? tm.sessions.map(s => s.title).join(" + ") : "Rest day") + '</b><span>' + DAYF[dow(addDays(TODAY, 1))] + '</span></div></div></section>'; }
   if (w){
@@ -1085,7 +1266,8 @@ function render(){
   if (!plan){ setup = {step: -1, p: blankProfile()}; return render(); }
   bar.hidden = false;
   bar.querySelectorAll("[data-tab]").forEach(b => b.dataset.tab === tab ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
-  app.innerHTML = header() + '<div class="view" style="display:grid;gap:22px">' + (tab === "plan" ? renderPlan() : tab === "recovery" ? renderRecovery() : tab === "training" ? renderTraining() : renderToday()) + '</div>';
+  app.innerHTML = header() + '<div class="view" style="display:grid;gap:22px">' + (tab === "plan" ? renderPlan() : tab === "recovery" ? renderRecovery() : tab === "training" ? renderTraining() : tab === "activities" ? renderActivities() : renderToday()) + '</div>';
+  if (tab === "activities") mountMaps();
 }
 function toast(msg){
   let t = $(".toast"); if (!t){ t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
@@ -1096,7 +1278,7 @@ function openMenu(){
   const b = document.createElement("div"); b.className = "back";
   const body = mode === "account"
     ? '<p class="sub">Signed in as <b style="color:var(--ink)">' + esc(me.email) + '</b></p><button class="btn block" type="button" data-act="edit">Edit goals and rebuild plan</button>' +
-      notifHtml() +
+      notifHtml() + healthHtml() +
       (strava.connected ? '<button class="btn block" type="button" data-act="stdisc">Disconnect Strava' + (strava.name ? ' (' + esc(strava.name) + ')' : '') + '</button>' : '') +
       '<button class="btn block" type="button" data-act="logout">Log out</button><button class="btn block" type="button" data-act="delacct" style="color:var(--crit)">Delete my account</button>'
     : mode === "sample"
@@ -1104,6 +1286,26 @@ function openMenu(){
     : '<button class="btn block" type="button" data-act="edit">Edit goals and rebuild plan</button><button class="btn block" type="button" data-act="reset">Start over</button><p class="sub">Your answers stay in this browser only.</p>';
   b.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-label="Settings"><h2 class="sec-t" style="font-size:20px">Settings</h2>' + body + '<button class="btn block" type="button" data-act="close">Close</button></div>';
   document.body.appendChild(b); b.querySelector("button").focus();
+}
+/* ---------- Garmin + Apple Health (until direct connections are approved) ---------- */
+let healthKey = null, healthLink = {on: false};
+function healthHtml(){
+  let h = '<div class="nset hlink"><div class="card-h" style="--tone:var(--long)">' + ic("link") + '<span class="lbl">Garmin + Apple Health</span></div>' +
+    '<p class="sub"><b style="color:var(--ink)">Workouts:</b> in the Strava app go to Settings → Applications, Services, and Devices → Connect a device, and pick <b style="color:var(--ink)">Garmin</b> or <b style="color:var(--ink)">Health</b> (Apple Watch). Every workout then goes Garmin/Apple → Strava → Hybrid, with your route map.</p>' +
+    '<p class="sub"><b style="color:var(--ink)">Weigh-ins from Apple Health</b> (smart scale, Garmin Index scale, anything that writes your weight to Health): make your personal link, then an iPhone Shortcut sends your newest weight each morning.</p>';
+  if (healthKey){
+    const url = API + "/api/import?key=" + healthKey + "&weight=";
+    h += '<input id="hl-url" readonly value="' + esc(url) + '" aria-label="Your personal Apple Health link"><button class="btn primary block" type="button" data-act="hlcopy">Copy link</button>' +
+      '<ol><li>Open <b>Shortcuts</b> → <b>Automation</b> → <b>+</b> → <b>Time of Day</b> (e.g. 9:00 AM, daily) → <b>Run Immediately</b>.</li>' +
+      '<li>Add <b>Find Health Samples</b>: Type is <b>Weight</b>, sort by <b>Start Date</b>, <b>Latest First</b>, limit <b>1</b>.</li>' +
+      '<li>Add <b>Get Contents of URL</b>. Paste the link, then tap right after <b>weight=</b> and pick the <b>Health Samples</b> variable.</li>' +
+      '<li>Tap ▶ to test. Your weight shows up in Hybrid.</li></ol>' +
+      '<p class="sub">Keep this link private: anyone with it can add weigh-ins to your account. It\'s only shown once.</p>';
+  } else if (healthLink.on){
+    h += '<p class="sub">Your link is on' + (healthLink.last_used ? ' · last weigh-in sent ' + agoText(healthLink.last_used) : ' · nothing sent yet') + '.</p>' +
+      '<div class="fbtns"><button class="btn" type="button" data-act="hlmake">Make a new link</button><button class="btn" type="button" data-act="hloff">Turn off</button></div>';
+  } else h += '<button class="btn block" type="button" data-act="hlmake">Make my Apple Health link</button>';
+  return h + '</div>';
 }
 /* ---------- notifications (web push) ---------- */
 const pushOK = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
@@ -1133,12 +1335,13 @@ async function pushOn(){
 }
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 function setTab(t, scroll){
-  if (!["today","plan","recovery","training"].includes(t)) t = "today";
-  tab = t; if (t !== "plan") wkSel = null;
+  if (!["today","plan","activities","recovery","training"].includes(t)) t = "today";
+  tab = t; if (t !== "plan") wkSel = null; if (t !== "activities") actSel = null;
   try { if (location.hash !== "#" + t) history.replaceState(null, "", "#" + t); } catch(e){}
   render(); if (scroll) window.scrollTo(0, 0);
 }
 
+document.addEventListener("keydown", ev => { if ((ev.key === "Enter" || ev.key === " ") && ev.target.classList && ev.target.classList.contains("actc")){ ev.preventDefault(); ev.target.click(); } });
 document.addEventListener("click", ev => {
   const tb = ev.target.closest("[data-tab]"); if (tb && tb.closest("#tabbar")){ setTab(tb.dataset.tab, true); return; }
   if (ev.target.classList && ev.target.classList.contains("back")){ closeMenu(); return; }
@@ -1168,6 +1371,12 @@ document.addEventListener("click", ev => {
     if (mode === "account") api("PUT", "/api/done", {key: k, done: on}).catch(e => { if (on) delete done[k]; else done[k] = 1; render(); toast(e.message); });
     return;
   }
+  if (act === "actopen"){ actSel = a.dataset.id; render(); window.scrollTo(0, 0); return; }
+  if (act === "actback"){ actSel = null; render(); return; }
+  if (act === "afilt"){ actFilter = a.dataset.k; render(); return; }
+  if (act === "hlmake"){ api("POST", "/api/import-key").then(j => { healthKey = j.key; healthLink = {on: true, last_used: null}; closeMenu(); openMenu(); }).catch(e => toast(e.message)); return; }
+  if (act === "hloff"){ if (!confirm("Turn off the Apple Health link? Your Shortcut will stop sending weigh-ins.")) return; api("DELETE", "/api/import-key").then(() => { healthKey = null; healthLink = {on: false}; closeMenu(); openMenu(); }).catch(e => toast(e.message)); return; }
+  if (act === "hlcopy"){ const v = ($("#hl-url") || {}).value || ""; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast("Link copied."), () => { const el = $("#hl-url"); if (el){ el.focus(); el.select(); } toast("Press and hold the link to copy it."); }); return; }
   if (act === "wk"){ const cur = wkSel != null ? wkSel : Math.max(0, weekOf(TODAY)); wkSel = Math.max(0, Math.min(plan.weeks.length - 1, cur + +a.dataset.dir)); render(); return; }
   if (act === "goday"){ const el = document.getElementById("d-" + a.dataset.date); if (el) el.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"start"}); return; }
   if (act === "fadd"){
@@ -1304,7 +1513,7 @@ document.addEventListener("keydown", ev => { if (ev.key === "Escape") closeMenu(
 document.addEventListener("submit", ev => { if (ev.target.id === "authform"){ ev.preventDefault(); if (!authv.busy) submitAuth(); } });
 window.addEventListener("hashchange", () => { if (!setup && plan) setTab(location.hash.slice(1), true); });
 
-tab = ["today","plan","recovery","training"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "today";
+tab = ["today","plan","activities","recovery","training"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "today";
 render();
 if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); stravaReturn(); autoSync(true); if (pushOK()) checkPush().then(() => safeRender()); })
   .catch(e => { loading = false; if (token){ mode = "none"; plan = null; } render(); toast(e.message); });

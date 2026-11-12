@@ -113,17 +113,22 @@ async function stravaSync(env, user, ctx){
   const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
   if (!link) throw new HttpError(400, "Strava isn't connected.");
   const tok = await stravaToken(env, link), base = env.STRAVA_BASE || STRAVA;
-  const since = link.last_sync ? Math.floor(Date.parse(link.last_sync) / 1000) - 3 * 86400 : Math.floor(Date.now() / 1000) - 30 * 86400;
+  // first sync, or older runs still missing their route map: look back 60 days, otherwise 3 days before the last sync
+  const d60 = new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10);
+  const noMap = await env.DB.prepare("SELECT 1 FROM activities WHERE user_id = ? AND source = 'strava' AND start_local IS NULL AND date >= ? LIMIT 1").bind(user.id, d60).first();
+  const since = link.last_sync && !noMap ? Math.floor(Date.parse(link.last_sync) / 1000) - 3 * 86400 : Math.floor(Date.now() / 1000) - 60 * 86400;
   const r = await fetch(base + "/api/v3/athlete/activities?per_page=100&after=" + since, {headers: {Authorization: "Bearer " + tok}});
   if (r.status === 429){ await logEvent(env, "strava_sync", false, "429 rate limited"); throw new HttpError(429, "Strava is busy. Try again in a few minutes."); }
   if (!r.ok){ await logEvent(env, "strava_sync", false, "HTTP " + r.status); throw new HttpError(502, "Couldn't reach Strava right now."); }
   const list = await r.json(), t = now();
   const known = new Set((await env.DB.prepare("SELECT ext_id FROM activities WHERE user_id = ? AND source = 'strava'").bind(user.id).all()).results.map(x => x.ext_id));
   const ops = list.slice(0, 100).map(a => env.DB.prepare(
-    "INSERT INTO activities (id, user_id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, created) VALUES (?, ?, 'strava', ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
-    "ON CONFLICT (user_id, source, ext_id) DO UPDATE SET date = excluded.date, type = excluded.type, name = excluded.name, mi = excluded.mi, minutes = excluded.minutes, cal = CASE WHEN excluded.cal > 0 THEN excluded.cal ELSE activities.cal END, avg_hr = excluded.avg_hr")
+    "INSERT INTO activities (id, user_id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, poly, start_local, elev_ft, sport, max_hr, created) VALUES (?, ?, 'strava', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+    "ON CONFLICT (user_id, source, ext_id) DO UPDATE SET date = excluded.date, type = excluded.type, name = excluded.name, mi = excluded.mi, minutes = excluded.minutes, cal = CASE WHEN excluded.cal > 0 THEN excluded.cal ELSE activities.cal END, avg_hr = excluded.avg_hr, " +
+    "poly = excluded.poly, start_local = excluded.start_local, elev_ft = excluded.elev_ft, sport = excluded.sport, max_hr = excluded.max_hr")
     .bind(rand(10), user.id, String(a.id), String(a.start_date_local || "").slice(0, 10), TYPE_MAP(a.sport_type || a.type || ""), String(a.name || "Activity").slice(0, 80),
-      Math.round((a.distance || 0) / 1609.34 * 100) / 100, Math.round((a.moving_time || 0) / 60), n0(a.calories || (a.kilojoules ? a.kilojoules * 1.1 : 0)), n0(a.average_heartrate), t));
+      Math.round((a.distance || 0) / 1609.34 * 100) / 100, Math.round((a.moving_time || 0) / 60), n0(a.calories || (a.kilojoules ? a.kilojoules * 1.1 : 0)), n0(a.average_heartrate),
+      (a.map && a.map.summary_polyline || "").slice(0, 20000) || null, String(a.start_date_local || "").slice(0, 16), Math.round((a.total_elevation_gain || 0) * 3.281), String(a.sport_type || a.type || "").slice(0, 30), n0(a.max_heartrate), t));
   ops.push(env.DB.prepare("UPDATE strava_links SET last_sync = ? WHERE user_id = ?").bind(t, user.id));
   await env.DB.batch(ops);
   // lap splits for runs from the last 2 weeks that don't have them yet (needed to check workout reps)
@@ -359,6 +364,24 @@ async function route(req, env, path, ctx){
       .bind(row.user_id, String(a.id || ""), ((a.firstname || "") + " " + (a.lastname || "")).trim().slice(0, 60), j.access_token, j.refresh_token, j.expires_at).run();
     return go("connected");
   }
+  if ((M === "GET" || M === "POST") && path === "/api/import"){
+    // iPhone Shortcut: .../api/import?key=…&weight=195.2 lb  (weigh-ins from Apple Health, Garmin Index scale, etc.)
+    const q = new URL(req.url).searchParams, b = M === "POST" ? await body(req).catch(() => ({})) : {};
+    const key = String(q.get("key") || b.key || "");
+    await limit(env, "import:" + (req.headers.get("CF-Connecting-IP") || "x"));
+    const row = key.length > 20 ? await env.DB.prepare("SELECT user_id FROM import_keys WHERE key_hash = ?").bind(await sha256(key)).first() : null;
+    if (!row) throw new HttpError(401, "That link isn't valid anymore. Make a new one in Hybrid settings.");
+    const raw = String(q.get("weight") ?? b.weight ?? "").replace(",", "."), m = raw.match(/\d+(\.\d+)?/);
+    let lb = m ? Number(m[0]) : NaN; if (/kg/i.test(raw)) lb *= 2.20462;
+    if (!(lb >= 70 && lb <= 500)) throw new HttpError(400, "Send a weight in pounds, like weight=195.2");
+    const st = await settingsOf(env, row.user_id), dq = String(q.get("date") || b.date || "").slice(0, 10);
+    const date = isDate(dq) ? dq : localNow(st.tz).date;
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO weights (user_id, date, lb) VALUES (?, ?, ?) ON CONFLICT (user_id, date) DO UPDATE SET lb = excluded.lb").bind(row.user_id, date, Math.round(lb * 10) / 10),
+      env.DB.prepare("UPDATE import_keys SET last_used = ? WHERE user_id = ?").bind(now(), row.user_id)]);
+    await logEvent(env, "health_import", true, "weight");
+    return {ok: true, date, lb: Math.round(lb * 10) / 10};
+  }
   if (path === "/api/strava/webhook"){
     if (M === "GET"){
       const q = new URL(req.url).searchParams;
@@ -407,19 +430,21 @@ async function route(req, env, path, ctx){
     const [c, w, a, s] = await env.DB.batch([
       env.DB.prepare("SELECT date, sleep_h, sleep_q, soreness, energy, stress FROM checkins WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since),
       env.DB.prepare("SELECT date, lb FROM weights WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since120),
-      env.DB.prepare("SELECT id, source, date, type, name, mi, minutes, cal, avg_hr, work_pace, laps FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(user.id, since),
+      env.DB.prepare("SELECT id, source, date, type, name, mi, minutes, cal, avg_hr, work_pace, laps, poly, start_local, elev_ft, sport, max_hr FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(user.id, since),
       env.DB.prepare("SELECT athlete_name, last_sync FROM strava_links WHERE user_id = ?").bind(user.id)
     ]);
-    const [rv, cn, ps] = await env.DB.batch([
+    const [rv, cn, ps, ik] = await env.DB.batch([
       env.DB.prepare("SELECT activity_id, data FROM reviews WHERE user_id = ? AND date >= ?").bind(user.id, since),
       env.DB.prepare("SELECT date, kind, data FROM coach_notes WHERE user_id = ? AND date >= ?").bind(user.id, new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10)),
-      env.DB.prepare("SELECT COUNT(*) AS n FROM push_subs WHERE user_id = ?").bind(user.id)
+      env.DB.prepare("SELECT COUNT(*) AS n FROM push_subs WHERE user_id = ?").bind(user.id),
+      env.DB.prepare("SELECT last_used FROM import_keys WHERE user_id = ?").bind(user.id)
     ]);
     const prof = p.results[0] ? JSON.parse(p.results[0].data) : null;
     return {user: userOut(user), profile: prof, done: d.results.map(r => r.key), food: f.results, checkins: c.results, weights: w.results, activities: a.results,
       strava: {available: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!s.results[0], name: s.results[0] ? s.results[0].athlete_name : "", last_sync: s.results[0] ? s.results[0].last_sync : null},
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
-      settings: await settingsOf(env, user.id), push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY};
+      settings: await settingsOf(env, user.id), push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY,
+      health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
   }
   if (M === "PUT" && path === "/api/profile"){
     const b = await body(req), s = JSON.stringify(b.profile || null);
@@ -458,6 +483,12 @@ async function route(req, env, path, ctx){
     if (await coachUsage(env, user.id)){ lastCoachError = ""; const note = await morningNote(env, user.id, b.date).catch(e => { lastCoachError = String(e && e.message || e); return null; }); return note ? {ok: true, note} : {ok: true, note: null, note_issue: lastCoachError.slice(0, 300) || "no plan"}; }
     return {ok: true};
   }
+  if (M === "POST" && path === "/api/import-key"){
+    const key = "hl_" + rand(24);
+    await env.DB.prepare("INSERT INTO import_keys (user_id, key_hash, created) VALUES (?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET key_hash = excluded.key_hash, created = excluded.created, last_used = NULL").bind(user.id, await sha256(key), now()).run();
+    return {key};
+  }
+  if (M === "DELETE" && path === "/api/import-key"){ await env.DB.prepare("DELETE FROM import_keys WHERE user_id = ?").bind(user.id).run(); return {ok: true}; }
   if (M === "PUT" && path === "/api/weight"){
     const b = await body(req), lb = Number(b.lb);
     if (!isDate(b.date)) throw new HttpError(400, "Bad date.");
@@ -524,7 +555,7 @@ async function route(req, env, path, ctx){
   if (M === "DELETE" && path === "/api/account"){
     const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
     if (link){ try { const tok = await stravaToken(env, link); await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/deauthorize", {method: "POST", headers: {Authorization: "Bearer " + tok}}); } catch(e){} }
-    await env.DB.batch(["sessions", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
+    await env.DB.batch(["sessions", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
       .concat([env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id)]));
     return {ok: true};
   }
