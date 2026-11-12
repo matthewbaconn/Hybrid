@@ -383,7 +383,6 @@ async function route(req, env, path, ctx){
     await limit(env, "import:" + (req.headers.get("CF-Connecting-IP") || "x"));
     const kh = key.length > 20 ? await sha256(key) : null;
     let row = kh ? await env.DB.prepare("SELECT user_id, 'apple' AS kind FROM import_keys WHERE key_hash = ?").bind(kh).first() : null;
-    if (!row && kh) row = await env.DB.prepare("SELECT user_id, kind FROM link_keys WHERE key_hash = ?").bind(kh).first();
     if (!row) throw new HttpError(401, "That link isn't valid anymore. Make a new one in Hybrid settings.");
     const src = row.kind === "garmin" ? "garmin" : "apple";
     const get = k => { const v = q.get(k) ?? b[k]; return v == null ? "" : String(v).trim(); };
@@ -495,13 +494,12 @@ async function route(req, env, path, ctx){
       env.DB.prepare("SELECT id, source, date, type, name, mi, minutes, cal, avg_hr, work_pace, laps, poly, start_local, elev_ft, sport, max_hr FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(user.id, since),
       env.DB.prepare("SELECT athlete_name, last_sync FROM strava_links WHERE user_id = ?").bind(user.id)
     ]);
-    const [rv, cn, ps, ik, hd, gk] = await env.DB.batch([
+    const [rv, cn, ps, ik, hd] = await env.DB.batch([
       env.DB.prepare("SELECT activity_id, data FROM reviews WHERE user_id = ? AND date >= ?").bind(user.id, since),
       env.DB.prepare("SELECT date, kind, data FROM coach_notes WHERE user_id = ? AND date >= ?").bind(user.id, new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10)),
       env.DB.prepare("SELECT COUNT(*) AS n FROM push_subs WHERE user_id = ?").bind(user.id),
       env.DB.prepare("SELECT last_used FROM import_keys WHERE user_id = ?").bind(user.id),
-      env.DB.prepare("SELECT date, sleep_h, rhr, hrv, steps, active_cal, sleep_score, bb, stress, source FROM health_daily WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since),
-      env.DB.prepare("SELECT last_used FROM link_keys WHERE user_id = ? AND kind = 'garmin'").bind(user.id)
+      env.DB.prepare("SELECT date, sleep_h, rhr, hrv, steps, active_cal, sleep_score, bb, stress, source FROM health_daily WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since)
     ]);
     const prof = p.results[0] ? JSON.parse(p.results[0].data) : null;
     const owner = await ownerId(env) === user.id;
@@ -510,7 +508,7 @@ async function route(req, env, path, ctx){
       strava: {available: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!s.results[0], name: s.results[0] ? s.results[0].athlete_name : "", last_sync: s.results[0] ? s.results[0].last_sync : null},
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
       settings: await settingsOf(env, user.id), push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY,
-      owner, reports, health: hd.results, garmin_link: gk.results[0] ? {on: true, last_used: gk.results[0].last_used} : {on: false}, health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
+      owner, reports, health: hd.results, health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
   }
   if (M === "PUT" && path === "/api/profile"){
     const b = await body(req), s = JSON.stringify(b.profile || null);
@@ -554,13 +552,6 @@ async function route(req, env, path, ctx){
     await env.DB.prepare("INSERT INTO import_keys (user_id, key_hash, created) VALUES (?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET key_hash = excluded.key_hash, created = excluded.created, last_used = NULL").bind(user.id, await sha256(key), now()).run();
     return {key};
   }
-  if (M === "POST" && path === "/api/garmin-key"){
-    const key = "gk_" + rand(24);
-    await env.DB.batch([env.DB.prepare("DELETE FROM link_keys WHERE user_id = ? AND kind = 'garmin'").bind(user.id),
-      env.DB.prepare("INSERT INTO link_keys (key_hash, user_id, kind, created) VALUES (?, ?, 'garmin', ?)").bind(await sha256(key), user.id, now())]);
-    return {key};
-  }
-  if (M === "DELETE" && path === "/api/garmin-key"){ await env.DB.prepare("DELETE FROM link_keys WHERE user_id = ? AND kind = 'garmin'").bind(user.id).run(); return {ok: true}; }
   if (M === "DELETE" && path === "/api/import-key"){ await env.DB.prepare("DELETE FROM import_keys WHERE user_id = ?").bind(user.id).run(); return {ok: true}; }
   if (M === "PUT" && path === "/api/weight"){
     const b = await body(req), lb = Number(b.lb);

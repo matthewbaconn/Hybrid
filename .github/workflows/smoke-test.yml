@@ -59,11 +59,6 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' "$API/api/import?key=hl_wrongwrongwrongwrongwrong&weight=180")" = 401 ] || { echo "::error::a wrong Apple Health link was accepted"; exit 1; }
           [ "$(call GET /api/me | jq .health_link.on)" = true ] || { echo "::error::Apple Health link not shown as on"; exit 1; }
           echo "Apple Health link works (weight, sleep, resting HR, HRV, steps)"
-          gk=$(call POST /api/garmin-key | jq -r .key)
-          curl -sS "$API/api/import?key=$gk&sleep_score=81&rhr=41&bb=90" | jq -e '.saved.sleep_score == 81' > /dev/null || { echo "::error::Garmin import failed"; exit 1; }
-          curl -sS "$API/api/import?key=$key&rhr=60" > /dev/null
-          [ "$(call GET /api/me | jq '.health[-1].rhr')" = 41 ] || { echo "::error::Apple Health overrode Garmin"; exit 1; }
-          echo "Garmin numbers win over Apple Health"
           call POST /api/report '{"text":"Nightly test report. Please ignore.","screen":"today"}' | jq -e .ok > /dev/null || { echo "::error::problem report failed"; exit 1; }
           echo "problem report saved"
           if [ "$(echo "$me" | jq .strava.available)" = true ]; then
