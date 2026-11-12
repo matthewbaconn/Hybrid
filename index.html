@@ -666,6 +666,7 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .faq summary{cursor:pointer;list-style:none;padding:14px 26px 14px 0;font-weight:600;font-size:15.5px;position:relative}
 .faq summary::-webkit-details-marker{display:none}.faq summary::after{content:"+";position:absolute;right:2px;top:12px;color:var(--muted);font-size:20px;font-weight:400}
 .faq details[open] summary::after{content:"−"}.faq p{margin:0 0 14px;color:var(--muted);line-height:1.5;font-size:14.5px}
+.feelq{margin:10px 0 8px!important;font-weight:600;color:var(--ink)!important}.feel{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.feel button{border:1px solid var(--line);background:var(--sunk);color:var(--ink);border-radius:7px;padding:10px 2px;font:600 12.5px/1.1 var(--f-body)}.feel button:active{transform:scale(.96)}.feel button:disabled{opacity:.5}.feelnote{margin-top:8px;width:100%;min-height:40px;font-size:14px}
 </style>
 </head>
 <body>
@@ -748,7 +749,18 @@ let ci = null, wf = null, aw = {open: false, err: "", busy: false};
 let reviews = {}, notes = [], uset = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", n_morning: true, n_run: true, n_weekly: true, n_bed: true}, pushInfo = {key: null, devices: 0}, coachOn = false;
 const reviewFor = a => reviews[a.id] || null;
 const VCLS = {ok: "good", easy: "easy", hard: "warn", unknown: "muted", extra: "good"};
-function reviewHtml(rv){ return '<div class="coach">' + ic("spark") + '<div><small class="ai">AI coach · can be wrong</small><b>' + esc(rv.headline) + '</b>' + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + '</div></div>'; }
+function reviewHtml(rv, a){
+  if (rv.askFeel){
+    // Strava workout: rule-based summary, then the coach needs the person's own take (Strava data isn't sent to AI)
+    const id = a ? a.id : "";
+    return '<div class="coach">' + ic("spark") + '<div><b>' + esc(rv.headline) + '</b>' + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') +
+      (id && mode === "account" && coachOn ? '<p class="feelq">How did it feel? Your coach will take it from there.</p><div class="feel" role="group" aria-label="How did it feel">' +
+        [["easy", "Easy"], ["just right", "Just right"], ["hard", "Hard"], ["very hard", "Very hard"]].map(([k, l]) => '<button type="button" data-act="feel" data-id="' + esc(id) + '" data-f="' + k + '"' + (feelBusy === id ? ' disabled' : '') + '>' + l + '</button>').join("") + '</div>' +
+        '<input class="feelnote" id="fn-' + esc(id) + '" maxlength="300" placeholder="Anything else? Legs, pace, how you slept (optional)">' : '') + '</div></div>';
+  }
+  return '<div class="coach">' + ic("spark") + '<div><small class="ai">AI coach · can be wrong</small><b>' + esc(rv.headline) + '</b>' + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + (rv.feel ? '<p class="fine">From how you said it felt: ' + esc(rv.feel) + '.</p>' : '') + '</div></div>';
+}
+let feelBusy = null;
 let notePending = false;
 const morningNote = () => notes.find(n => n.date === TODAY && n.kind === "morning");   // check-in draft, weigh-in edit, workout form
 const actsOn = d => acts.filter(a => a.date === d);
@@ -820,7 +832,7 @@ function workoutCard(){
   let h = '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("watch") + '<span class="lbl">Today\'s workouts</span>' +
     (strava.connected ? '<span class="r">Strava · ' + agoText(strava.last_sync) + '</span>' : '') + '</div>';
   const matchedIds = new Set(Object.values(dayMatches(TODAY)).map(a => a.id));
-  const extraReviews = list.filter(a => reviewFor(a)).map(a => reviewHtml(reviewFor(a))).join("");
+  const extraReviews = list.filter(a => reviewFor(a)).map(a => reviewHtml(reviewFor(a), a)).join("");
   h += list.length ? '<ul class="fl">' + list.map(a => '<li class="act t-' + (a.type === "run" ? "easy" : a.type === "lift" ? "lift" : "long") + '"><div class="fi"><b>' + esc(a.name) + '</b><span>' + actLine(a) + '</span></div>' +
       '<span class="src src-' + a.source + '">' + (a.source === "strava" ? 'Strava' : a.source === "garmin" ? '<img class="gsrc" src="brand/garmin-white.png" alt="Garmin" width="463" height="72">' : 'Logged') + '</span>' +
       (a.source === "manual" ? '<button class="x" type="button" data-act="adel" data-id="' + esc(a.id) + '" aria-label="Remove ' + esc(a.name) + '">✕</button>' : '') + '</li>').join("") + '</ul>' + extraReviews
@@ -916,7 +928,7 @@ function actDetail(a){
   const pts = ptsOf(a), tone = ACT_TONE[a.type] || "long", rv = reviewFor(a);
   let h = '<div class="adet-h"><button class="arrow" type="button" data-act="actback" aria-label="Back to activities">‹</button><div><h1>' + esc(a.name) + '</h1><span class="sub">' + whenTxt(a) + ' · ' + (a.source === "strava" ? 'Strava' : a.source === "sample" ? 'Sample' : 'Logged by hand') + '</span></div></div>';
   if (pts && pts.length > 1) h += '<div class="amap big" data-map="' + esc(a.id) + '" data-big="1">' + routeSvg(pts) + '</div>';
-  h += '<section class="card" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv) : '') + '</section>';
+  h += '<section class="card" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv, a) : '') + '</section>';
   let laps = null; try { laps = a.laps ? (typeof a.laps === "string" ? JSON.parse(a.laps) : a.laps) : null; } catch(e){}
   laps = (laps || []).filter(l => l[0] > 50 && l[1] > 0);
   if (a.type === "run" && laps.length > 1){
@@ -1662,7 +1674,7 @@ function sessHtml(s, key, big){
     (!match && (big || date >= TODAY) ? fuelTipHtml(s) : '') +
     (match ? '<p class="matched">' + ic("check") + '<span>Done · ' + esc(match.name) + (actLine(match) ? ' · ' + actLine(match) : '') + '</span></p>' +
         (as && s.type !== "lift" ? '<div class="assess v-' + VERDICT[as.verdict][1] + '"><b>' + VERDICT[as.verdict][0] + '</b><span>' + esc(as.why) + '</span></div>' : '') +
-        (rv ? reviewHtml(rv) : '')
+        (rv ? reviewHtml(rv, match) : '')
       : '<div class="row"><button class="btn ' + (isDone ? 'done' : big ? 'primary' : '') + '" type="button" data-act="done" data-key="' + key + '">' + (isDone ? ic("check") + 'Done' : 'Mark as done') + '</button></div>') + '</div>';
 }
 function sessionCard(day){
@@ -2169,7 +2181,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "42";
+const APP_VERSION = "43";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2396,6 +2408,12 @@ document.addEventListener("click", ev => {
   if (act === "gmdisc"){
     if (!confirm("Disconnect Garmin? Hybrid stops getting your Garmin data and deletes the Garmin workouts and sleep it saved.")) return;
     api("POST", "/api/garmin/disconnect").then(() => { garmin.connected = false; acts = acts.filter(x => x.source !== "garmin"); refreshMe(); render(); toast("Garmin disconnected."); }).catch(e => toast(e.message)); return;
+  }
+  if (act === "feel"){
+    const id = a.dataset.id, note = (($("#fn-" + id) || {}).value || "").trim(); feelBusy = id; render();
+    api("POST", "/api/review/feel", {activity_id: id, feel: a.dataset.f, note}).then(j => { reviews[id] = j.review; feelBusy = null; render(); toast("Coach note added."); })
+      .catch(e => { feelBusy = null; render(); toast(e.message); });
+    return;
   }
   if (act === "invite"){
     const url = location.origin + location.pathname, msg = "I've been training with Hybrid. It builds a plan for your race, sets your food targets and adjusts when you're tired. Try it free: " + url;

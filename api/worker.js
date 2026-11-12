@@ -292,10 +292,10 @@ async function crewsFor(env, userId, weekOf){
   const out = [];
   for (const c of mine){
     const rows = (await env.DB.prepare("SELECT m.user_id, m.nickname, " +
-      "COALESCE((SELECT SUM(minutes) FROM activities a WHERE a.user_id = m.user_id AND a.date BETWEEN ? AND ?), 0) AS minutes, " +
-      "COALESCE((SELECT COUNT(*) FROM activities a WHERE a.user_id = m.user_id AND a.date BETWEEN ? AND ?), 0) AS workouts, " +
-      "COALESCE((SELECT SUM(mi) FROM activities a WHERE a.user_id = m.user_id AND a.type = 'run' AND a.date BETWEEN ? AND ?), 0) AS run_miles, " +
-      "COALESCE((SELECT COUNT(DISTINCT date) FROM activities a WHERE a.user_id = m.user_id AND a.date BETWEEN ? AND ?), 0) AS days " +
+      "COALESCE((SELECT SUM(minutes) FROM activities a WHERE a.user_id = m.user_id AND a.source != 'strava' AND a.date BETWEEN ? AND ?), 0) AS minutes, " +
+      "COALESCE((SELECT COUNT(*) FROM activities a WHERE a.user_id = m.user_id AND a.source != 'strava' AND a.date BETWEEN ? AND ?), 0) AS workouts, " +
+      "COALESCE((SELECT SUM(mi) FROM activities a WHERE a.user_id = m.user_id AND a.source != 'strava' AND a.type = 'run' AND a.date BETWEEN ? AND ?), 0) AS run_miles, " +
+      "COALESCE((SELECT COUNT(DISTINCT date) FROM activities a WHERE a.user_id = m.user_id AND a.source != 'strava' AND a.date BETWEEN ? AND ?), 0) AS days " +
       "FROM crew_members m WHERE m.crew_id = ?").bind(mon, sun, mon, sun, mon, sun, mon, sun, c.id).all()).results;
     const board = rows.map(r => ({nickname: r.nickname, value: Math.round((r[c.metric] || 0) * 10) / 10, you: r.user_id === userId})).sort((a, b) => b.value - a.value);
     out.push({id: c.id, name: c.name, code: c.code, metric: c.metric, owner: c.owner_id === userId, nickname: c.nickname, week: mon, members: board.length, board});
@@ -358,20 +358,37 @@ async function askCoach(env, system, data){
 const COACH_STYLE = "You are a friendly, plain-spoken running and strength coach writing inside a training app. No jargon (no 'Z2', 'ACWR', 'EF'), no emoji, no medical advice, never shame. " +
   "Safety rules: you are not a doctor, dietitian or nutritionist and never call yourself one. Don't diagnose, don't recommend supplements, medications or specific diets, and never suggest eating less than the app's calorie target, skipping meals or making up for food with extra exercise. " +
   "If the numbers or notes hint at pain, injury, illness, dizziness, chest pain or very little sleep, say to take it easy and check with a doctor if it doesn't get better. Use the numbers you are given; don't invent any.";
-async function runReview(env, userId, U, act, today){
-  const fbk = HP.feedback(U.plan, U.acts, HP.addDays(act.date, 1));
+// Strava's API terms don't allow Strava data in AI prompts (not even data derived from it). So:
+//  - Garmin / hand-logged workouts: the AI coach sees the workout numbers.
+//  - Strava workouts: a rule-based summary right away (no AI), then the AI coaches only from what the
+//    person tells us about the session ("how did it feel" + their own words) and the planned session.
+const noStrava = U => ({...U, acts: U.acts.filter(a => a.source !== "strava")});
+async function runReview(env, userId, U, act, today, feel){
+  const strava = act.source === "strava", A = noStrava(U);
+  const fbkAll = HP.feedback(U.plan, U.acts, HP.addDays(act.date, 1));
   const m = HP.dayMatches(U.plan, U.acts, act.date), idx = Object.keys(m).find(i => m[i].id === act.id);
   const day = HP.dayOf(U.plan, act.date), s = idx != null && day ? day.sessions[idx] : null;
-  const as = s ? fbk.assess[act.date + "-" + idx] : null;
-  const next = HP.feedback(U.plan, U.acts, HP.addDays(act.date, 1)), nextKeys = Object.keys(next.notes).slice(0, 2).map(k => next.notes[k]);
+  const as = s ? fbkAll.assess[act.date + "-" + idx] : null;
+  const next = HP.feedback(U.plan, (strava ? A : U).acts, HP.addDays(act.date, 1)), nextKeys = Object.keys(next.notes).slice(0, 2).map(k => next.notes[k]);
   const pace = act.mi > 0 && act.minutes > 0 ? HP.fmtPace(act.minutes * 60 / act.mi) + "/mi" : null;
-  const data = {activity: {name: act.name, type: act.type, miles: act.mi, minutes: act.minutes, avg_pace: pace, avg_hr: act.avg_hr || null},
-    planned: s ? {title: s.title, steps: s.steps.map(x => x[0]), type: s.type} : null, check: as ? {verdict: as.verdict, explanation: as.why} : null,
-    pace_changes_for_next_workouts_s_per_mi: next.offs, upcoming_notes: nextKeys, tomorrow: sessionsText(U, HP.addDays(act.date, 1), next)};
-  const out = await askCoach(env, COACH_STYLE + ' Write a post-workout summary. Reply with ONLY JSON: {"headline":"2-5 word verdict","numbers":"key numbers joined with \' · \'","meaning":"one sentence under 25 words on what it means","next":"one sentence under 25 words on what comes next"}', data);
-  const review = out && out.headline ? {headline: String(out.headline).slice(0, 60), numbers: clip(String(out.numbers || ""), 140), meaning: clip(String(out.meaning || ""), 240), next: clip(String(out.next || ""), 240), verdict: as ? as.verdict : "extra", title: s ? s.title : act.name}
-    : {headline: as ? ({ok: "On target", easy: "Came in fast", hard: "Too hard", unknown: "Done"})[as.verdict] : "Done", numbers: [act.mi ? act.mi + " mi" : "", pace || "", act.avg_hr ? act.avg_hr + " bpm" : ""].filter(Boolean).join(" · "),
-       meaning: as ? as.why : "", next: nextKeys[0] || "Next sessions stay as planned.", verdict: as ? as.verdict : "extra", title: s ? s.title : act.name};
+  const ruleBased = {headline: as ? ({ok: "On target", easy: "Came in fast", hard: "Too hard", unknown: "Done"})[as.verdict] : "Done", numbers: [act.mi ? act.mi + " mi" : "", pace || "", act.avg_hr ? act.avg_hr + " bpm" : ""].filter(Boolean).join(" · "),
+    meaning: as ? as.why : "", next: nextKeys[0] || "Next sessions stay as planned.", verdict: as ? as.verdict : "extra", title: s ? s.title : act.name};
+  let review;
+  if (strava && !feel) review = {...ruleBased, askFeel: true};
+  else {
+    const data = strava
+      ? {planned: s ? {title: s.title, steps: s.steps.map(x => x[0]), type: s.type} : {title: "Extra workout"}, athlete_says: {how_it_felt: feel.feel, notes: feel.note || ""}, tomorrow: sessionsText(U, HP.addDays(act.date, 1), next)}
+      : {activity: {name: act.name, type: act.type, miles: act.mi, minutes: act.minutes, avg_pace: pace, avg_hr: act.avg_hr || null},
+         planned: s ? {title: s.title, steps: s.steps.map(x => x[0]), type: s.type} : null, check: as ? {verdict: as.verdict, explanation: as.why} : null,
+         pace_changes_for_next_workouts_s_per_mi: next.offs, upcoming_notes: nextKeys, tomorrow: sessionsText(U, HP.addDays(act.date, 1), next)};
+    const prompt = strava
+      ? COACH_STYLE + ' Write short post-workout coaching from what the athlete says about how the session felt, compared with what was planned. You do not have their workout numbers, so do not mention or invent any. Reply with ONLY JSON: {"headline":"2-5 word verdict","meaning":"one sentence under 25 words on what their feedback means","next":"one sentence under 25 words on what to do next"}'
+      : COACH_STYLE + ' Write a post-workout summary. Reply with ONLY JSON: {"headline":"2-5 word verdict","numbers":"key numbers joined with \' · \'","meaning":"one sentence under 25 words on what it means","next":"one sentence under 25 words on what comes next"}';
+    const out = await askCoach(env, prompt, data);
+    review = out && out.headline
+      ? {headline: String(out.headline).slice(0, 60), numbers: strava ? ruleBased.numbers : clip(String(out.numbers || ""), 140), meaning: clip(String(out.meaning || ""), 240), next: clip(String(out.next || ""), 240), verdict: as ? as.verdict : "extra", title: s ? s.title : act.name, ...(strava ? {feel: feel.feel} : {})}
+      : {...ruleBased, ...(strava ? {feel: feel.feel} : {})};
+  }
   await env.DB.prepare("INSERT INTO reviews (activity_id, user_id, date, data, created) VALUES (?, ?, ?, ?, ?) ON CONFLICT (activity_id) DO UPDATE SET data = excluded.data")
     .bind(act.id, userId, act.date, JSON.stringify(review), now()).run();
   return review;
@@ -381,13 +398,14 @@ async function afterNewActivities(env, userId, ids, source){
   if (!U) return;
   const fresh = U.acts.filter(a => (source === "manual" ? ids.includes(a.id) : ids.includes(a.ext_id)) && a.date >= HP.addDays(L.date, -2));
   for (const a of fresh.slice(0, 3)){
-    if (!(await coachUsage(env, userId))) break;
+    if (a.source !== "strava" && !(await coachUsage(env, userId))) break;
     const rv = await runReview(env, userId, U, a, L.date);
-    if (st.n_run) await pushTo(env, userId, {title: rv.title + ": " + rv.headline, body: [rv.numbers, rv.next].filter(Boolean).join("\n"), tag: "run-" + a.id});
+    if (st.n_run) await pushTo(env, userId, {title: rv.title + ": " + rv.headline, body: rv.askFeel ? [rv.numbers, "How did it feel? Tap to tell your coach."].filter(Boolean).join("\n") : [rv.numbers, rv.next].filter(Boolean).join("\n"), tag: "run-" + a.id});
   }
 }
 async function morningNote(env, userId, today){
-  const U = await loadUser(env, userId, today); if (!U) return null;
+  const U0 = await loadUser(env, userId, today); if (!U0) return null;
+  const U = noStrava(U0);   // Strava data never goes into AI prompts
   const fbk = HP.feedback(U.plan, U.acts, today), c = U.checkins[today], sig = HP.devSignals(U.dev, today), r = HP.readiness(c, sig), f = HP.fuel(U.plan, U.weights, U.acts, today);
   const yday = HP.addDays(today, -1), fy = HP.fuel(U.plan, U.weights, U.acts, yday);
   const recent = U.acts.filter(a => a.date >= HP.addDays(today, -3) && a.date < today).map(a => a.name + " " + (a.mi ? a.mi + " mi" : a.minutes + " min"));
@@ -822,6 +840,16 @@ async function route(req, env, path, ctx){
     await limit(env, "push:" + user.id);
     const n = await pushTo(env, user.id, {title: "Notifications are on", body: "You'll get your morning check-in, run summaries, a Monday recap and a bedtime reminder.", tag: "test"});
     return {sent: n};
+  }
+  if (M === "POST" && path === "/api/review/feel"){
+    const b = await body(req), FEELS = ["easy", "just right", "hard", "very hard"];
+    if (!FEELS.includes(b.feel)) throw new HttpError(400, "Pick how it felt.");
+    const note = String(b.note || "").trim().slice(0, 300);
+    const st = await settingsOf(env, user.id), L = localNow(st.tz), U = await loadUser(env, user.id, L.date);
+    const act = U && U.acts.find(a => a.id === String(b.activity_id || ""));
+    if (!act) throw new HttpError(404, "Workout not found.");
+    if (!(await coachUsage(env, user.id))) throw new HttpError(429, "That's the most coach notes for today. Try again tomorrow.");
+    return {review: await runReview(env, user.id, U, act, L.date, {feel: b.feel, note})};
   }
   if (M === "POST" && path === "/api/garmin/start"){
     if (!env.GARMIN_CLIENT_ID || !env.GARMIN_CLIENT_SECRET) throw new HttpError(503, "Garmin connection isn't set up yet.");
