@@ -1856,8 +1856,8 @@ async function healthSync(){
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && healthPending && Date.now() - healthPending < 10 * 60e3){ healthPending = 0; [1200, 5000].forEach(ms => setTimeout(refreshMe, ms)); } });
 /* Connected apps. Logos: drop the official files from each brand's press/brand kit into brand/<id>.png
-   (Strava's API terms ask for its official "Connect with Strava" / "Powered by Strava" artwork) and they show up
-   here by themselves; until then each app gets a plain initial tile. */
+   (Strava's API terms ask for its official "Connect with Strava" / "Powered by Strava" artwork) and add the id to
+   BRAND_LOGOS; until then each app gets a plain initial tile. */
 const APPS = [
   {id: "strava", name: "Strava", group: "direct"},
   {id: "garmin", name: "Garmin Connect", group: "direct"},
@@ -1866,7 +1866,8 @@ const APPS = [
   {id: "wahoo", name: "Wahoo", group: "strava"}, {id: "zwift", name: "Zwift", group: "strava"},
   {id: "whoop", name: "WHOOP", group: "health"}, {id: "oura", name: "Oura", group: "health"}
 ];
-function appTile(x){ return '<span class="atile"><img src="brand/' + x.id + '.png" alt="" onerror="this.remove()"><b>' + esc(x.name.slice(0, 1)) + '</b></span>'; }
+const BRAND_LOGOS = [];   // ids that have an official logo file in brand/ (e.g. "strava")
+function appTile(x){ return '<span class="atile">' + (BRAND_LOGOS.includes(x.id) ? '<img src="brand/' + x.id + '.png" alt="">' : '') + '<b>' + esc(x.name.slice(0, 1)) + '</b></span>'; }
 function healthHtml(){
   const row = (x, sub, right) => '<div class="app">' + appTile(x) + '<div><b>' + esc(x.name) + '</b><span>' + sub + '</span></div>' + right + '</div>';
   const chip = (t, cls) => '<em class="chip2 ' + (cls || '') + '">' + t + '</em>';
