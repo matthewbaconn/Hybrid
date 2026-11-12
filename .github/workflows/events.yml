@@ -1,0 +1,25 @@
+name: Recent server events
+# Manual: prints the server's own event log (no personal data: kind, ok, short error text) for debugging.
+on:
+  workflow_dispatch:
+    inputs:
+      kinds:
+        description: "Event kinds, SQL LIKE patterns separated by commas"
+        default: "ai_%,race%,garmin%"
+jobs:
+  events:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: cd api && npm install --no-save --no-audit --no-fund wrangler@4 >/dev/null
+      - name: Events from the last 3 days
+        env: {KINDS: "${{ inputs.kinds }}"}
+        run: |
+          cd api
+          where=$(echo "$KINDS" | tr ',' '\n' | sed "s/[^a-z_%]//g" | awk 'NF{printf "%skind LIKE '\''%s'\''", (n++?" OR ":""), $0}')
+          npx wrangler d1 execute hybrid --remote --command "SELECT ts, kind, ok, detail FROM events WHERE ($where) AND ts > datetime('now','-3 days') ORDER BY ts DESC LIMIT 80"
