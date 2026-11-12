@@ -647,6 +647,7 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .gmbtn img{height:15px;width:auto;display:block;margin-top:1px}.gmbtn:active{transform:scale(.97);opacity:.9}.gmbtn:disabled{opacity:.6}
 .icard .gmbtn{justify-self:center}.icard .stbtn img{height:48px}
 .gsrc{height:9px;width:auto;display:block}.src.src-garmin{display:flex;align-items:center;padding:6px 8px}
+.ahbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:237px;height:48px;justify-self:center;border:0;border-radius:6px;background:#fff;color:#111;font:600 13px/1 var(--f-body);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;transition:transform .08s ease,opacity .12s}.ahbtn .ic{width:20px;height:20px;color:#FF2D55}.ahbtn:active{transform:scale(.97);opacity:.9}
 </style>
 </head>
 <body>
@@ -2145,7 +2146,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "38";
+const APP_VERSION = "39";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2203,7 +2204,8 @@ function healthHtml(){
     (garmin.connected ? card(A("garmin"), garmin.last_push ? "Linked · last data " + agoText(garmin.last_push) : "Linked · data comes in after your next watch sync", pill("Linked", "on"), '<i class="cws gbadge"><img src="brand/garmin-black.png" alt="Garmin" width="463" height="72"></i>')
       : garmin.available && mode === "account" ? card(A("garmin"), "Workouts, sleep, resting heart rate and HRV", '', '<button class="gmbtn" type="button" data-act="gmconnect" aria-label="Connect with Garmin"><span>Connect with</span><img src="brand/garmin-white.png" alt="Garmin" width="463" height="72"></button>')
       : card(A("garmin"), "Direct sync is on the way. For now, link Garmin to Strava.", pill("Coming soon", "soon"))) +
-    card(A("apple-health"), ah ? "Sleep, resting heart rate and HRV" : "Sleep, resting heart rate and HRV from your iPhone", SHORTCUT_URL ? (ah ? pill("Linked", "on") : '<button class="pill2 act" type="button" data-act="hlsetup">Set up</button>') : pill("Coming soon", "soon"), '', SHORTCUT_URL && ah ? "hlsetup" : "");
+    card(A("apple-health"), ah ? "Linked · sleep, resting heart rate and HRV from your iPhone" : "Sleep, resting heart rate and HRV from your iPhone", SHORTCUT_URL ? (ah ? pill("Linked", "on") : '') : pill("Coming soon", "soon"),
+      SHORTCUT_URL && !ah ? '<button class="ahbtn" type="button" data-act="hlsetup">' + ic("heart") + '<span>Set up Apple Health</span></button>' : '', SHORTCUT_URL && ah ? "hlsetup" : "");
   const via = (grp, note) => APPS.filter(x => x.group === grp).map(x => card(x, note, pill(grp === "strava" ? "Via Strava" : "Via Apple Health"))).join("");
   return '<div class="apps">' + direct +
     '<h3>Works through Strava</h3>' + via("strava", "Link it to Strava once") +
