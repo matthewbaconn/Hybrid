@@ -35,8 +35,11 @@ const RACES = { "5k": {name:"5K", mi:3.107}, "10k": {name:"10K", mi:6.214}, "hal
   "tri_half": {name:"Half-distance triathlon (70.3)", short:"70.3", kind:"tri", swimYd:2112, bikeMi:56, mi:13.1, hours:[6, 12]},
   "tri_full": {name:"Full-distance triathlon (140.6)", short:"140.6", kind:"tri", swimYd:4224, bikeMi:112, mi:26.2, hours:[7, 15]},
   "swim": {name:"Swim event", kind:"swim", mi:0, hours:[2.5, 6]},
-  "bike": {name:"Cycling event", kind:"bike", mi:0, hours:[3, 10]}
+  "bike": {name:"Cycling event", kind:"bike", mi:0, hours:[3, 10]},
+  // everyday fitness: strength + cardio, no race (lose, maintain or gain weight)
+  "everyday": {name:"Everyday fitness", kind:"fit", mi:0, hours:[1.5, 6]}
 };
+const BODY_GOAL = {lose: "lose weight", maintain: "maintain", gain: "gain weight"};
 const SWIM_EVENTS = {"1500": ["1500 m / 1 mile swim", 1640], "5000": ["5K swim", 5468], "10000": ["10K swim", 10936]};
 const BIKE_EVENTS = {"31": ["50K ride (31 mi)", 31], "62": ["Metric century (62 mi)", 62], "100": ["Century ride (100 mi)", 100]};
 function raceName(p){
@@ -44,6 +47,7 @@ function raceName(p){
   if (p.raceName) return p.raceName;
   if (p.goal === "swim") return (SWIM_EVENTS[p.swimEvent || "1500"] || SWIM_EVENTS["1500"])[0];
   if (p.goal === "bike") return (BIKE_EVENTS[p.bikeEvent || "62"] || BIKE_EVENTS["62"])[0];
+  if (p.goal === "everyday") return "Get fitter" + (BODY_GOAL[p.bodyGoal] && p.bodyGoal !== "maintain" ? " · " + BODY_GOAL[p.bodyGoal] : "");
   return R.name;
 }
 const isMulti = goal => !!(RACES[goal] && RACES[goal].kind);
@@ -67,6 +71,8 @@ function fitnessFrom(p){
 const LIFTS = {
   lower: {title:"Strength · lower body", steps:["Back squat 4 × 5","Romanian deadlift 3 × 8","Walking lunge 3 × 10 / leg","Calf raise 3 × 15","Plank 3 × 45 s"]},
   upper: {title:"Strength · upper body", steps:["Bench press 4 × 6","Pull-ups 4 × max (leave 1–2 in the tank)","Overhead press 3 × 8","Dumbbell row 3 × 10","Curls + triceps 3 × 12"]},
+  easyA: {title:"Strength · full body A", steps:["Goblet squat 3 × 10","Dumbbell bench press 3 × 10","Dumbbell row 3 × 10 / arm","Glute bridge 3 × 12","Plank 3 × 30 s"]},
+  easyB: {title:"Strength · full body B", steps:["Dumbbell Romanian deadlift 3 × 10","Incline push-ups 3 × 10","Lat pulldown or band row 3 × 12","Reverse lunge 3 × 8 / leg","Dead bug 3 × 8 / side"]},
   full:  {title:"Strength · full body", steps:["Trap-bar deadlift 4 × 5","Push-ups 3 × 12","Goblet squat 3 × 10","Single-arm row 3 × 10","Side plank 3 × 30 s / side"]},
   dura:  {title:"Strength · running legs", steps:["Step-ups 3 × 8 / leg","Single-leg RDL 3 × 8 / leg","Bulgarian split squat 3 × 8 / leg","Hip thrust 3 × 10","Copenhagen plank 3 × 20 s / side"]},
   size:  {title:"Strength · upper size", steps:["Incline dumbbell press 4 × 10","Lat pulldown 4 × 10","Lateral raise 3 × 15","Cable row 3 × 12","Arms superset 3 × 12"]}
@@ -234,7 +240,7 @@ function buildPlan(p, today){
    `mi` and a pace key so paces, feedback and heat work as usual. Weekly hours ramp like running miles
    (every 4th week lighter), then taper. Effort is described in plain words. */
 const SWIM_PACE = {new: 165, ok: 130, strong: 105};   // seconds per 100 yd including short rests
-const TAPER_W = {hyrox: [.6], tri_sprint: [.6], tri_olympic: [.65], tri_half: [.75, .55], tri_full: [.75, .6, .45], swim: [.6], bike: [.65]};
+const TAPER_W = {everyday: [], hyrox: [.6], tri_sprint: [.6], tri_olympic: [.65], tri_half: [.75, .55], tri_full: [.75, .6, .45], swim: [.6], bike: [.65]};
 const LONG_RIDE = {tri_sprint: 100, tri_olympic: 150, tri_half: 225, tri_full: 330};   // peak long ride, minutes
 const LONG_RUN_CAP = {hyrox: 9, tri_sprint: 6, tri_olympic: 9, tri_half: 13, tri_full: 18};
 const hm = m => { m = Math.round(m / 5) * 5; return m >= 60 ? Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60) + " min" : "") : m + " min"; };
@@ -243,11 +249,12 @@ function buildMulti(p, today){
   P.G = P.T;
   const easyPace = (P.E[0] + P.E[1]) / 2, runMin = mi => Math.round(mi * easyPace / 60);
   let start = p.start || mondayOf(today), N, raceDate = null;
-  if (p.raceDate){ raceDate = p.raceDate; N = Math.floor(daysBetween(start, raceDate) / 7) + 1; if (N > 24){ start = addDays(mondayOf(raceDate), -23 * 7); N = 24; } }
-  else N = 12;
+  if (p.raceDate && kind !== "fit"){ raceDate = p.raceDate; N = Math.floor(daysBetween(start, raceDate) / 7) + 1; if (N > 24){ start = addDays(mondayOf(raceDate), -23 * 7); N = 24; } }
+  else N = kind === "fit" ? 52 : 12;   // everyday plans run a year in 12-week blocks
   const TW = TAPER_W[goal] || [.65], tw = Math.min(TW.length, Math.max(0, N - 2)), B = Math.max(1, N - tw);
   const swimEv = goal === "swim" ? (p.swimEvent || "1500") : null;
-  const [hLo, hHi] = swimEv ? ({"1500": [2, 4], "5000": [3, 6], "10000": [4, 8]}[swimEv] || R.hours) : R.hours, h0 = Math.max(hLo * .7, Math.min(hHi, p.hours || (p.weekly ? p.weekly * easyPace / 3600 + 1 : hLo)));
+  const fitH = kind === "fit" ? ({new: 1.5, some: 2.5, regular: 4})[p.fitLevel] || 2.5 : null;
+  const [hLo, hHi] = swimEv ? ({"1500": [2, 4], "5000": [3, 6], "10000": [4, 8]}[swimEv] || R.hours) : R.hours, h0 = Math.max(hLo * .7, Math.min(hHi, fitH || p.hours || (p.weekly ? p.weekly * easyPace / 3600 + 1 : hLo)));
   let hPeak = Math.min(hHi, Math.max(hLo, h0 * 1.5)); hPeak = Math.max(h0, Math.min(hPeak, h0 * Math.pow(1.1, Math.max(1, B - 1))));
   const days = p.days.slice().sort((a, b) => a - b), longDay = p.longDay;
   const gap = (a, b) => Math.min(Math.abs(a - b), 7 - Math.abs(a - b));
@@ -259,7 +266,12 @@ function buildMulti(p, today){
   for (let i = 0; i < N; i++){
     const ws = addDays(start, i * 7);
     let phase, H;
-    if (i < B){
+    if (kind === "fit"){
+      const ci = i % 12, cyc = Math.floor(i / 12);
+      phase = ci < 4 ? "Base" : ci < 9 ? "Build" : "Peak";
+      H = Math.min(hHi, (h0 + (hPeak - h0) * ci / 11) * Math.min(1.3, 1 + .1 * cyc));
+      if (ci % 4 === 3){ H *= .8; phase += " · lighter"; }
+    } else if (i < B){
       phase = i < B * .4 ? "Base" : i < B * .85 ? "Build" : "Peak";
       H = h0 + (hPeak - h0) * (B === 1 ? 1 : i / (B - 1));
       if (i % 4 === 3 && i < B - 1){ H *= .8; phase += " · lighter"; }
@@ -331,6 +343,32 @@ function buildMulti(p, today){
         list.push({s: S("swim", (longSet ? "Long swim" : thr ? "Threshold swim" : "Technique swim") + " · " + y + " yd", y / 100 * swimPace / 60, set, longSet ? "Builds the endurance to swim the whole distance steady." : "Short repeats with rest build speed and good form.", {yd: y}), long: k === 0, hard: thr});
       }
       list.push({s: S("lift", "Dryland strength · 35 min", 35, ["Pull-ups or lat pulldown 3 × 8", "Push-ups 3 × 12", "Band pull-aparts 3 × 15", "Goblet squat 3 × 10", "Dead bug 3 × 10 / side"], "Strong lats and core hold your stroke together when tired.")});
+    } else if (kind === "fit"){
+      const lvl = p.fitLevel || "some", cardio = p.cardio || "walk", bg = p.bodyGoal || "maintain", newbie = lvl === "new" || p.liftExp === "New";
+      const nL = Math.max(1, Math.min(days.length - 1, 4, Math.max(p.lifts === 0 ? 1 : 2, p.lifts || 0) + (bg === "gain" && days.length >= 5 ? 1 : 0)));
+      const LK = newbie ? ["easyA", "easyB", "easyA", "easyB"] : nL >= 4 ? ["upper", "lower", "upper", "lower"] : nL === 3 ? ["full", "upper", "lower"] : ["full", "lower"];
+      const liftMin = newbie ? 40 : 50;
+      for (let k = 0; k < nL; k++){ const L = LIFTS[LK[k]]; list.push({s: S("lift", L.title + (light ? " · light" : ""), liftMin, light ? L.steps.map(x => x.replace(/^(.*?)(\d) ×/, (m, a, n) => a + Math.max(2, n - 1) + " ×")) : L.steps,
+        bg === "gain" ? "Lifting is what turns extra food into muscle instead of fat. Add a little weight or a rep each week." : bg === "lose" ? "Lifting keeps your muscle while you lose fat, so the weight that comes off is the right kind." : "Strength keeps you capable, protects your joints and raises the calories you burn at rest."), hard: !newbie && k === 0}); }
+      const nC = Math.max(1, days.length - nL) + (bg === "lose" && (days.length >= 5 || days.length - nL < 2) && !light ? 1 : 0), cMins = Math.max(nC * 20, mins - nL * liftMin);
+      const mods = cardio === "mix" ? ["walk", "bike", "run"] : [cardio];
+      const circuit = bg !== "gain" && nC >= 2 && ph !== "Base" && !light;
+      for (let k = 0; k < nC; k++){
+        const isLong = k === 0, mode = mods[k % mods.length];
+        if (circuit && k === nC - 1){
+          list.push({s: S("cardio", "Circuit · 25 min", 25, ["Warm up: 5 min brisk walk or easy cardio", (ph === "Peak" ? "5" : "4") + " rounds, 40 s on and 20 s off: bodyweight squats · push-ups (on your knees is fine) · mountain climbers · reverse lunges · plank", "Cool down: 5 min easy walk"], "Short circuits build fitness fast and need no equipment."), hard: true});
+          continue;
+        }
+        let m = Math.round(cMins / nC * (isLong && nC > 1 ? 1.35 : nC > 1 ? .85 : 1));
+        m = Math.max(20, Math.min(isLong ? 120 : 60, m));
+        let ss;
+        if (mode === "walk") ss = S("walk", (isLong ? "Long walk" : "Brisk walk") + " · " + hm(m), m, [isLong ? "Comfortable pace. Bring a friend, a podcast or a hilly route." : "Walk briskly: talking takes a little effort", m >= 40 && !isLong ? "Add hills or stairs for a few minutes if you have them" : "Easy last 5 minutes"], "Walking burns calories and builds your heart without beating up your joints.", isLong ? {long: true} : {});
+        else if (mode === "bike") ss = S("bike", (isLong ? "Long ride" : "Easy ride") + " · " + hm(m), m, ["Easy to steady: you can talk in sentences", isLong ? "Outdoors or an indoor bike both count" : "Last 10 minutes a little stronger if you feel good"], "Cycling builds fitness with very little stress on your knees.", isLong ? {long: true} : {});
+        else if (lvl === "regular"){ const mi = half(Math.max(2, Math.min(isLong ? 8 : 5, m * 60 / easyPace))); ss = {...runEasy(mi, isLong ? "Long easy run" : "Easy run", "Easy running builds your engine. Keep it conversational."), ...(isLong ? {long: true} : {})}; }
+        else { const wk_ = Math.min(8, 1 + Math.floor(i / 2)), run = Math.min(5, Math.max(1, Math.round(wk_ * .6))), walk = Math.max(1, 3 - Math.floor(wk_ / 3)), rounds = Math.max(4, Math.round((m - 10) / (run + walk)));
+          ss = {type: "easy", title: "Walk-run · " + hm(m), mi: 0, k: "E", min: m, steps: [["Warm up: 5 min brisk walk", null, null], [rounds + " × (run " + run + " min easy, walk " + walk + " min)", null, null], ["Cool down: 5 min walk", null, null]], why: "Short runs with walking breaks build up your running safely. The runs get longer every couple of weeks.", ...(isLong ? {long: true} : {})}; }
+        list.push({s: ss, ...(isLong && nC > 1 ? {long: true} : {})});
+      }
     } else {
       const peakRide = Math.min(330, bikeEventMi * .8 / 15 * 60), longRide = Math.max(45, Math.min(peakRide * (light ? .7 : 1), prevRide + 30, Math.max(60, mins * .4))); if (!light) prevRide = Math.max(prevRide, longRide);
       list.push({s: S("bike", "Long ride · " + hm(longRide), longRide, ["Steady, conversational (zone 2)", longRide >= 120 && ph !== "Base" ? "Last hour a little stronger, still controlled" : "Smooth cadence, 85–90 rpm", longRide >= 75 ? "Eat 40–60 g of carbs an hour, drink every 15 min" : "Bring a bottle"], "Time in the saddle is what gets you through a long event.", {long: true, bmi: Math.round(longRide / 60 * 15)}), long: true});
@@ -342,7 +380,7 @@ function buildMulti(p, today){
     }
     // extra lifting days the person asked for (multisport: at most 2, HYROX 3)
     const wantL = Math.min(kind === "hyrox" ? 3 : 2, p.lifts || 0), haveL = list.filter(x => x.s.type === "lift").length, LK = ["full", "upper", "lower"];
-    for (let k = haveL; k < wantL && raceIdx == null; k++){ const L = LIFTS[LK[k % 3]]; list.push({s: S("lift", L.title + (light ? " · light" : ""), 45, L.steps, "Strength keeps you durable while endurance volume climbs.")}); }
+    for (let k = haveL; k < wantL && raceIdx == null && kind !== "fit"; k++){ const L = LIFTS[LK[k % 3]]; list.push({s: S("lift", L.title + (light ? " · light" : ""), 45, L.steps, "Strength keeps you durable while endurance volume climbs.")}); }
     // place: race week fixed → long on long day (+ brick) → second long next to it → hard days spread out → the rest on the emptiest days (max 2 a day)
     const put = (d, s) => wk[d].sessions.push(s), free = days.filter(d => d !== raceIdx);
     list.filter(x => x.fixed != null).forEach(x => put(x.fixed, x.s));
@@ -362,7 +400,7 @@ function buildMulti(p, today){
       });
     }
     const totMin = wk.reduce((a, d) => a + d.sessions.reduce((b, s) => b + (s.min || 0), 0), 0);
-    weeks.push({n: i + 1, start: ws, phase, miles: half(wk.reduce((a, d) => a + d.sessions.reduce((b, s) => b + (s.mi || 0), 0), 0)), hours: Math.round(totMin / 6) / 10, days: wk});
+    weeks.push({n: i + 1, start: ws, phase: kind === "fit" ? phase.replace("Base", "Foundation").replace("Peak", "Push") : phase, miles: half(wk.reduce((a, d) => a + d.sessions.reduce((b, s) => b + (s.mi || 0), 0), 0)), hours: Math.round(totMin / 6) / 10, days: wk});
   }
   return {profile: p, P, pred: fit.pred, weeks, start, raceDate, created: today, multi: kind};
 }
@@ -391,15 +429,15 @@ function readiness(c, sig){
   return {score, level, word: ["Ready to train", "Go easier today", "Recovery day"][level], tone: ["long", "work", "race"][level], watch: sig && sig.notes.length ? sig.notes : null};
 }
 const ADJ = {
-  1: {swim: "Easier today: swim the main set at a steady effort and skip the last third.", bike: "Easier today: keep the whole ride easy and cut 20–30 min.", hyrox: "Easier today: half the rounds, at a steady effort.", workout: "Easier today: do one rep fewer and run the reps at the slow end of the range.", long: "Easier today: cut 2 mi and keep every mile easy.", race: "", easy: "Keep it strictly conversational. Slow is fine.", lift: "Drop one set from each exercise."},
-  2: {swim: "Recovery day: an easy 20 min swim, or rest.", bike: "Recovery day: 30–40 min very easy spin, or rest.", hyrox: "Recovery day: skip the stations. An easy 20–30 min walk or spin instead.", workout: "Recovery day: swap this for 30–40 min very easy, or rest. Move the workout to a later day this week.", long: "Recovery day: make it half the distance, all easy, or move it.", race: "", easy: "Make it 20–30 min very easy, or rest.", lift: "Skip it, or keep it light and short."}
+  1: {walk: "Easier today: a shorter, relaxed walk is plenty.", cardio: "Easier today: 2–3 rounds at a steady effort, or swap it for a walk.", swim: "Easier today: swim the main set at a steady effort and skip the last third.", bike: "Easier today: keep the whole ride easy and cut 20–30 min.", hyrox: "Easier today: half the rounds, at a steady effort.", workout: "Easier today: do one rep fewer and run the reps at the slow end of the range.", long: "Easier today: cut 2 mi and keep every mile easy.", race: "", easy: "Keep it strictly conversational. Slow is fine.", lift: "Drop one set from each exercise."},
+  2: {walk: "Recovery day: a gentle 15–20 min walk, or rest.", cardio: "Recovery day: skip the circuit. An easy walk instead.", swim: "Recovery day: an easy 20 min swim, or rest.", bike: "Recovery day: 30–40 min very easy spin, or rest.", hyrox: "Recovery day: skip the stations. An easy 20–30 min walk or spin instead.", workout: "Recovery day: swap this for 30–40 min very easy, or rest. Move the workout to a later day this week.", long: "Recovery day: make it half the distance, all easy, or move it.", race: "", easy: "Make it 20–30 min very easy, or rest.", lift: "Skip it, or keep it light and short."}
 };
 function dayMatches(plan, acts, date){
   const day = dayOf(plan, date); if (!day) return {};
   const as = acts.filter(a => a.date === date), pools = {run: as.filter(a => a.type === "run"), lift: as.filter(a => a.type === "lift"), bike: as.filter(a => a.type === "bike"), swim: as.filter(a => a.type === "swim"), other: as.filter(a => a.type === "other" || a.type === "lift")}, used = new Set(), m = {};
   const take = k => { const a = (pools[k] || []).find(x => !used.has(x)); if (a) used.add(a); return a; };
   day.sessions.forEach((s, i) => {
-    const k = s.type === "lift" ? "lift" : s.type === "bike" ? "bike" : s.type === "swim" ? "swim" : s.type === "hyrox" ? "other" : "run";
+    const k = s.type === "lift" ? "lift" : s.type === "bike" ? "bike" : s.type === "swim" ? "swim" : s.type === "hyrox" || s.type === "walk" || s.type === "cardio" ? "other" : "run";
     const a = take(k) || (s.type === "race" && s.multi ? as.find(x => !used.has(x)) : null);
     if (a){ used.add(a); m[i] = a; }
   });
@@ -481,7 +519,7 @@ function withExtraRep(steps){
    Logged training adds its calories (75% of them while cutting). */
 function deficitFor(plan, weights, date){
   const p = plan.profile, goal = p.goalWeight, W = avgW(weights, date) || p.weight;
-  if (!goal || !W) return {d: 0, why: ""};
+  if (!goal || !W || p.bodyGoal === "gain" || p.bodyGoal === "maintain") return {d: 0, why: ""};
   if (W <= goal + .3) return {d: 0, why: "You've reached your goal weight, so targets are at maintenance."};
   const wi = Math.max(0, weekIdx(plan, date));
   if (wi > 0 && (wi + 1) % 8 === 0) return {d: 0, brk: true, why: "Diet break week: maintenance calories to recharge. The deficit returns next week."};
@@ -498,24 +536,51 @@ function deficitFor(plan, weights, date){
   }
   return {d, why: last};
 }
+/* gaining: start +300 a day. After each full week: gained more than ~0.75 lb (or 0.5% of body weight) -> −100;
+   under 0.15 lb -> +100; kept 150–500. Stops at the goal weight if one is set. */
+function surplusFor(plan, weights, date){
+  const p = plan.profile, W = avgW(weights, date) || p.weight;
+  if (p.bodyGoal !== "gain" || !W) return {s: 0, why: ""};
+  if (p.goalWeight && W >= p.goalWeight - .3) return {s: 0, why: "You've reached your goal weight, so targets are at maintenance."};
+  const wi = Math.max(0, weekIdx(plan, date)); let s = 300, last = "";
+  for (let k = 1; k <= wi; k++){
+    const a = avgW(weights, addDays(plan.start, 7 * k - 1)), b = avgW(weights, addDays(plan.start, 7 * (k - 1) - 1));
+    if (!a || !b) continue;
+    const gain = a - b;
+    if (gain > Math.max(.75, W * .005)){ s -= 100; last = "You gained " + gain.toFixed(1) + " lb last week, faster than muscle can grow, so the surplus is smaller."; }
+    else if (gain < .15){ s += 100; last = "Weight held steady last week, so the surplus is a little bigger."; }
+    else last = "Gaining at a lean pace. Same surplus.";
+    s = Math.max(150, Math.min(500, s));
+  }
+  return {s, why: last};
+}
+/* resting burn (Mifflin-St Jeor) from height, weight, age and sex; null without height and age */
+function bmrOf(p, W){
+  if (!(p.heightIn > 0 && p.age > 0 && W > 0)) return null;
+  return 10 * W / 2.2046 + 6.25 * p.heightIn * 2.54 - 5 * p.age + (p.sex === "m" ? 5 : p.sex === "f" ? -161 : -78);
+}
+const DAILY = {sit: [1.2, "mostly sitting"], some: [1.35, "on your feet some of the day"], feet: [1.5, "on your feet most of the day"]};
 function burnOf(a, W){
   const restPerMin = W * 11 / 1440;
   if (a.cal > 0) return Math.max(0, a.cal - (a.minutes || 0) * restPerMin);
   if (a.type === "run") return (a.mi || 0) * W * .72 || (a.minutes || 0) * 10;
   return (a.minutes || 0) * ({bike: 8, swim: 9, lift: 5, other: 5})[a.type];
 }
-function plannedBurn(day, W){ return day ? day.sessions.reduce((t, s) => t + (s.type === "lift" ? (s.min || 50) * 5 : s.type === "bike" ? s.min * 8 : s.type === "swim" ? s.min * 9 : s.type === "hyrox" ? s.min * 10 : s.type === "race" && s.multi ? s.min * 9 : (s.mi || 0) * W * .72), 0) : 0; }
+function plannedBurn(day, W){ return day ? day.sessions.reduce((t, s) => t + (s.type === "lift" ? (s.min || 50) * 5 : s.type === "bike" ? s.min * 8 : s.type === "swim" ? s.min * 9 : s.type === "hyrox" ? s.min * 10 : s.type === "walk" ? s.min * 4.5 : s.type === "cardio" ? s.min * 9 : s.type === "easy" && !s.mi && s.min ? s.min * 8 : s.type === "race" && s.multi ? s.min * 9 : (s.mi || 0) * W * .72), 0) : 0; }
 function fuel(plan, weights, acts, date){
   const p = plan.profile, W = avgW(weights, date) || p.weight || 170, day = dayOf(plan, date);
-  const df = deficitFor(plan, weights, date), hard = day && day.sessions.some(s => s.type === "long" || s.type === "workout" || s.type === "race" || s.type === "hyrox" || s.long);
-  const def = hard ? Math.min(df.d, 250) : df.d, cutting = df.d > 0;
-  // safety floor: a cutting target never goes under 1,500 (or maintenance, if that's lower) or under ~10.5 cal per lb
-  const base = Math.max(W * 10.5, W * 13 - def, def > 0 ? Math.min(1500, W * 13) : 0);
+  const df = deficitFor(plan, weights, date), sf = surplusFor(plan, weights, date), hard = day && day.sessions.some(s => s.type === "long" || s.type === "workout" || s.type === "race" || s.type === "hyrox" || s.long);
+  const def = hard ? Math.min(df.d, 250) : df.d, cutting = df.d > 0, sur = sf.s, gaining = sur > 0;
+  // maintenance: resting burn x daily activity when height and age are known, otherwise ~13 cal per lb
+  const bmr = bmrOf(p, W), maint = bmr ? bmr * (DAILY[p.daily] || DAILY.some)[0] : W * 13;
+  // safety floor: never under resting burn (or ~10.5 cal/lb), and a cutting target never under 1,500 (or maintenance, if that's lower)
+  const base = Math.max(bmr ? bmr : W * 10.5, maint - def + sur, def > 0 ? Math.min(1500, maint) : 0);
   const dayActs = acts.filter(a => a.date === date);
   const train = dayActs.reduce((t, a) => t + burnOf(a, W), 0) * (cutting ? .75 : 1);
   const cal = Math.round((base + train) / 10) * 10;
-  const pro = r5(W * .9), fat = r5(Math.max(55, W * .3)), carb = r5(Math.max(100, (cal - pro * 4 - fat * 9) / 4));
-  return {cal, pro, carb, fat, cut: cutting, deficit: def, brk: !!df.brk, why: df.why, base: Math.round(base / 10) * 10, train: Math.round(train / 10) * 10,
+  const pro = r5(W * (gaining ? 1 : .9)), fat = r5(Math.max(55, W * .3)), carb = r5(Math.max(100, (cal - pro * 4 - fat * 9) / 4));
+  return {cal, pro, carb, fat, cut: cutting, deficit: def, gain: gaining, surplus: sur, brk: !!df.brk, why: gaining || p.bodyGoal === "gain" ? sf.why : df.why, base: Math.round(base / 10) * 10, train: Math.round(train / 10) * 10,
+    bmr: bmr ? Math.round(bmr / 10) * 10 : null, maint: Math.round(maint / 10) * 10, daily: bmr ? (DAILY[p.daily] || DAILY.some)[1] : null,
     planned: Math.round(plannedBurn(day, W) * (cutting ? .75 : 1) / 10) * 10, logged: dayActs.length > 0};
 }
 
@@ -545,6 +610,7 @@ function bestWindow(hours, fromKey, lastDay){
 function sessionMinutes(plan, s){ if (s.min) return s.min; if (s.type === "lift") return 50; const P = plan.P; const avg = s.type === "workout" ? (P.E[0] + (P[s.k] && !Array.isArray(P[s.k]) ? P[s.k] : P.E[0])) / 2 : s.type === "race" ? P.G : (P.E[0] + P.E[1]) / 2; return Math.round((s.mi || 0) * avg / 60); }
 function fuelTip(plan, s){
   const m = sessionMinutes(plan, s);
+  if (s.type === "walk") return {before: "No special food needed. Water if it's hot.", during: "", after: "", gels: 0, grams: 0, minutes: m};
   const before = s.type === "swim" ? "Early swim: a banana or toast is plenty. Later in the day: a normal meal 2 h before." : s.type === "lift" || s.type === "hyrox" ? "1–2 h before: a normal meal with protein, or a shake and a banana 45 min before."
     : s.type === "easy" && m < 60 ? "Light snack or nothing if it's early. Water is enough during."
     : s.type === "race" ? "Race morning: 2–3 h before, an easy carb breakfast (bagel, banana, honey) with water. Nothing new."
@@ -566,5 +632,5 @@ function raceSplits(plan){
   return {goal, pace, rows: marks.map(mi => ({mi: Math.round(mi * 100) / 100, time: mi * pace}))};
 }
 
-root.HP = {heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
+root.HP = {bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
 })(typeof globalThis !== "undefined" ? globalThis : self);

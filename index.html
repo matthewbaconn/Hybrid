@@ -640,6 +640,8 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .pill2.on{border-color:color-mix(in srgb,var(--long) 70%,transparent);color:var(--long);background:color-mix(in srgb,var(--long) 12%,transparent)}
 .pill2.soon{border-color:color-mix(in srgb,var(--work) 55%,transparent);color:var(--work)}
 .pill2.act{border-color:rgba(255,255,255,.3);color:var(--ink)}
+.sub-t{font:700 17px var(--f-display);margin:8px 0 -2px}.hgt{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hgt .unit{display:flex;align-items:center;gap:6px;color:var(--muted)}.hgt input{min-width:0;width:100%}
+:root{--walk:#5EEAD4;--cardio:#F472B6}.t-walk{--tc:var(--walk)} .t-cardio{--tc:var(--cardio)}
 </style>
 </head>
 <body>
@@ -1278,12 +1280,13 @@ async function addFood(meal, items){
 function fuelCard(f, extra){
   const e = eaten(TODAY), left = f.cal - e.cal, pc = (a, b) => b ? Math.min(100, a / b * 100) : 0;
   const mac = (k, a, b, c) => '<div class="mac" style="--mc:var(--' + c + ')"><span>' + k + '</span><b>' + a + '<small> / ' + b + ' g</small></b><div class="bar"><i style="width:' + pc(a, b) + '%"></i></div></div>';
-  return '<section class="card" style="--tone:var(--accent-2)"><div class="card-h">' + ic("fork") + '<span class="lbl">Fuel today</span><span class="r">' + (f.brk ? 'Diet break' : f.cut ? f.deficit + ' cal deficit' : 'Maintenance') + '</span></div>' +
+  return '<section class="card" style="--tone:var(--accent-2)"><div class="card-h">' + ic("fork") + '<span class="lbl">Fuel today</span><span class="r">' + (f.brk ? 'Diet break' : f.cut ? f.deficit + ' cal deficit' : f.gain ? '+' + f.surplus + ' cal to build' : 'Maintenance') + '</span></div>' +
     '<div class="left"><div class="big"><b class="' + (left < 0 ? 'over' : '') + '">' + comma(Math.abs(left)) + '</b><span>' + (left < 0 ? 'calories over' : 'calories left') + '</span></div>' +
     '<span class="sub">' + comma(e.cal) + ' eaten of ' + comma(f.cal) + ' (estimate)</span><div class="bar"><i style="width:' + pc(e.cal, f.cal) + '%' + (left < 0 ? ';background:var(--crit)' : '') + '"></i></div></div>' +
     '<div class="macs">' + mac("Protein", e.protein, f.pro, "lift") + mac("Carbs", e.carbs, f.carb, "work") + mac("Fat", e.fat, f.fat, "easy") + '</div>' +
     '<p class="sub">' + (f.logged ? 'Base ' + comma(f.base) + ' + training ' + comma(f.train) + ' = ' + comma(f.cal) + '.' : f.planned ? 'Base ' + comma(f.base) + '. Today\'s training adds about +' + comma(f.planned) + ' once you log it.' : 'Base ' + comma(f.base) + ' on a rest day.') +
-      (f.brk ? ' ' + esc(f.why) : f.cut ? ' Includes a ' + f.deficit + '-calorie deficit toward your goal weight.' + (f.why ? ' ' + esc(f.why) : '') : f.why ? ' ' + esc(f.why) : '') + '</p>' + (extra || '') +
+      (f.brk ? ' ' + esc(f.why) : f.cut ? ' Includes a ' + f.deficit + '-calorie deficit toward your goal weight.' + (f.why ? ' ' + esc(f.why) : '') : f.gain ? ' Includes ' + f.surplus + ' extra calories to build muscle.' + (f.why ? ' ' + esc(f.why) : '') : f.why ? ' ' + esc(f.why) : '') + '</p>' +
+      (f.bmr ? '<p class="fine">Resting burn (BMR) ' + comma(f.bmr) + ' from your height, weight, age and sex. With your day ' + esc(f.daily) + ', maintenance is about ' + comma(f.maint) + '.</p>' : plan && !plan.profile.sample ? '<p class="fine">Add your height and age in Settings → Account and profile → Body and goals for a more accurate base.</p>' : '') + (extra || '') +
       '<p class="fine">Estimates for healthy adults, not medical or nutrition advice. Check with your doctor before changing how you eat. <button class="linkbtn inl" type="button" data-act="doc" data-k="health">Health and safety</button></p></section>';
 }
 function foodCard(inner){
@@ -1546,8 +1549,8 @@ const IC = {
   dumbbell:'<path d="M14.4 14.4 9.6 9.6"/><path d="M18.66 21.49a2 2 0 1 1-2.83-2.83l-1.77 1.77a2 2 0 1 1-2.83-2.83l6.37-6.36a2 2 0 1 1 2.83 2.83l-1.77 1.77a2 2 0 1 1 2.83 2.83z"/><path d="m21.5 21.5-1.4-1.4M3.9 3.9 2.5 2.5"/><path d="M6.4 12.77a2 2 0 1 1-2.83-2.83l1.77-1.77a2 2 0 1 1-2.83-2.83l2.83-2.83a2 2 0 1 1 2.83 2.83l1.77-1.77a2 2 0 1 1 2.83 2.83z"/>'
 };
 const ic = (n, cls) => '<svg class="ic' + (cls ? " " + cls : "") + '" viewBox="0 0 24 24" aria-hidden="true">' + (IC[n] || "") + '</svg>';
-const TYPE = {easy:"Easy run", long:"Long run", workout:"Workout", race:"Race", lift:"Strength", rest:"Rest", swim:"Swim", bike:"Ride", hyrox:"HYROX"};
-const dayType = day => { const t = day.sessions.map(s => s.type); return t.includes("race") ? "race" : day.sessions.some(s => s.long && s.type === "bike") ? "bike" : day.sessions.some(s => s.long && s.type === "swim") ? "swim" : t.includes("long") ? "long" : t.includes("hyrox") ? "hyrox" : t.includes("bike") && !t.includes("workout") ? "bike" : t.includes("swim") && !t.includes("workout") && !t.includes("easy") ? "swim" : t.includes("workout") ? "workout" : t.includes("easy") ? "easy" : t.includes("lift") ? "lift" : "rest"; };
+const TYPE = {easy:"Easy run", long:"Long run", workout:"Workout", race:"Race", lift:"Strength", rest:"Rest", swim:"Swim", bike:"Ride", hyrox:"HYROX", walk:"Walk", cardio:"Circuit"};
+const dayType = day => { const t = day.sessions.map(s => s.type); return t.includes("race") ? "race" : day.sessions.some(s => s.long && s.type === "bike") ? "bike" : day.sessions.some(s => s.long && s.type === "swim") ? "swim" : t.includes("long") ? "long" : t.includes("hyrox") ? "hyrox" : t.includes("bike") && !t.includes("workout") ? "bike" : t.includes("swim") && !t.includes("workout") && !t.includes("easy") ? "swim" : t.includes("workout") ? "workout" : t.includes("cardio") ? "cardio" : t.includes("easy") ? "easy" : t.includes("walk") ? "walk" : t.includes("lift") ? "lift" : "rest"; };
 
 /* ============ rendering ============ */
 const app = $("#app"), bar = $("#tabbar");
@@ -1681,7 +1684,7 @@ function renderPlan(){
   const runs = w.days.reduce((a, d) => a + d.sessions.filter(s => s.type !== "lift").length, 0), lifts = w.days.reduce((a, d) => a + d.sessions.filter(s => s.type === "lift").length, 0);
   let h = '<section class="card"><div class="weekhead"><button class="arrow" type="button" data-act="wk" data-dir="-1" aria-label="Previous week"' + (wi === 0 ? ' disabled' : '') + '>‹</button><div class="mid"><b>Week ' + w.n + ' · ' + esc(w.phase) + '</b><span>' + fmtD(w.start) + ' – ' + fmtD(addDays(w.start, 6)) + '</span></div><button class="arrow" type="button" data-act="wk" data-dir="1" aria-label="Next week"' + (wi === plan.weeks.length - 1 ? ' disabled' : '') + '>›</button></div>' +
     '<div class="strip">' + w.days.map((d, k) => { const t = dayType(d); return '<button class="sd t-' + t + (d.date === TODAY ? ' now on' : '') + '" type="button" data-act="goday" data-date="' + d.date + '"><span>' + DAYS[k].slice(0, 1) + '</span><b>' + parseD(d.date).getUTCDate() + '</b><i></i></button>'; }).join("") + '</div>' +
-    (plan.multi ? '<div class="wkstats"><div><span>Hours</span><b>' + w.hours + '</b></div><div><span>Sessions</span><b>' + (runs + lifts) + '</b></div><div><span>Run miles</span><b>' + w.miles + '</b></div></div></section><div class="days">'
+    (plan.multi ? '<div class="wkstats"><div><span>Hours</span><b>' + w.hours + '</b></div><div><span>Sessions</span><b>' + (runs + lifts) + '</b></div>' + (plan.multi === "fit" ? '<div><span>Strength</span><b>' + w.days.reduce((t, d) => t + d.sessions.filter(x => x.type === "lift").length, 0) + '</b></div>' : '<div><span>Run miles</span><b>' + w.miles + '</b></div>') + '</div></section><div class="days">'
       : '<div class="wkstats"><div><span>Miles</span><b>' + w.miles + '</b></div><div><span>Runs</span><b>' + runs + '</b></div><div><span>Lifts</span><b>' + lifts + '</b></div></div></section><div class="days">');
   w.days.forEach((d, k) => {
     const t = dayType(d);
@@ -1833,9 +1836,9 @@ function optList(name, items, cur, type){ return '<div class="opts' + (name === 
 function renderSetup(){
   const st = setup, p = st.p;
   if (st.step === -1){
-    return header() + '<section class="setup view welcome"><h1>Your run + lift plan, built around your life.</h1><p class="lead">Answer a few questions and get a week-by-week plan with paces, strength days and fuel targets.</p>' +
-      '<ul class="feat"><li><i style="--c:var(--easy)">' + ic("cal") + '</i><div><b>A plan for your race</b><span>5K to marathon, HYROX, triathlon up to 140.6, swims and rides.</span></div></li>' +
-      '<li><i style="--c:var(--work)">' + ic("gauge") + '</i><div><b>Paces from your fitness</b><span>Every run has a target pace from a recent race.</span></div></li>' +
+    return header() + '<section class="setup view welcome"><h1>Your training plan, built around your life.</h1><p class="lead">Racing or just getting fitter, answer a few questions and get a week-by-week plan with strength days and food targets.</p>' +
+      '<ul class="feat"><li><i style="--c:var(--easy)">' + ic("cal") + '</i><div><b>Any goal</b><span>Lose, maintain or gain weight, or train for a race: 5K to marathon, HYROX, triathlon, swims and rides.</span></div></li>' +
+      '<li><i style="--c:var(--work)">' + ic("scale") + '</i><div><b>Food targets from your body</b><span>Calories from your height, weight, age and activity, adjusted as your weight changes.</span></div></li>' +
       '<li><i style="--c:var(--lift)">' + ic("dumbbell") + '</i><div><b>Strength built in</b><span>Lifting days that don\'t wreck your runs.</span></div></li>' +
       '<li><i style="--c:var(--long)">' + ic("heart") + '</i><div><b>Adapts to recovery</b><span>Connect Garmin or Strava in the full app.</span></div></li></ul>' +
       '<div class="nav" style="flex-direction:column">' + (API && mode !== "account"
@@ -1847,23 +1850,29 @@ function renderSetup(){
   const bars = '<div class="steps-bar" aria-hidden="true">' + [0,1,2,3].map(i => '<i class="' + (i <= st.step ? 'on' : '') + '"></i>').join("") + '</div>';
   let body = "";
   if (st.step === 0){
-    body = '<h2 class="sec-t">What are you training for?</h2>' +
+    const cg = p.goal === "everyday" ? "fit-" + (p.bodyGoal || "maintain") : p.goal, noRace = p.goal === "fitness" || p.goal === "everyday";
+    body = '<h2 class="sec-t">What\'s your goal?</h2>' +
       '<div class="q"><label for="s-name">First name</label><input id="s-name" autocomplete="given-name" placeholder="Optional" value="' + esc(p.name) + '"></div>' +
-      '<div class="q"><span class="ql">Running</span>' + optList("goal", [["5k","5K"],["10k","10K"],["half","Half marathon"],["marathon","Marathon"],["50k","50K trail / ultra"]], p.goal) + '</div>' +
-      '<div class="q"><span class="ql">HYROX and triathlon</span>' + optList("goal", [["hyrox","HYROX"],["tri_sprint","Sprint tri"],["tri_olympic","Olympic tri"],["tri_half","70.3"],["tri_full","140.6 (full)"]], p.goal) + '</div>' +
-      '<div class="q"><span class="ql">Swim, bike or general</span>' + optList("goal", [["swim","Swim event"],["bike","Cycling event"],["fitness","Just get fitter"]], p.goal) + '</div>' +
+      '<div class="q"><span class="ql">Get fitter and healthier</span><p class="hint">No race needed. Strength and cardio you can do from home or the gym, with food targets for your goal.</p>' + optList("goal", [["fit-lose","Lose weight"],["fit-maintain","Maintain and get fitter"],["fit-gain","Gain weight and muscle"]], cg) + '</div>' +
+      '<div class="q"><span class="ql">Running</span>' + optList("goal", [["5k","5K"],["10k","10K"],["half","Half marathon"],["marathon","Marathon"],["50k","50K trail / ultra"],["fitness","Run fitter, no race"]], cg) + '</div>' +
+      '<div class="q"><span class="ql">HYROX and triathlon</span>' + optList("goal", [["hyrox","HYROX"],["tri_sprint","Sprint tri"],["tri_olympic","Olympic tri"],["tri_half","70.3"],["tri_full","140.6 (full)"]], cg) + '</div>' +
+      '<div class="q"><span class="ql">Swim or bike</span>' + optList("goal", [["swim","Swim event"],["bike","Cycling event"]], cg) + '</div>' +
       (p.goal === "swim" ? '<div class="q"><span class="ql">Swim distance</span>' + optList("swimEvent", Object.entries(HP.SWIM_EVENTS).map(([k, v]) => [k, v[0]]), p.swimEvent || "1500") + '</div>' : '') +
       (p.goal === "bike" ? '<div class="q"><span class="ql">Ride distance</span>' + optList("bikeEvent", Object.entries(HP.BIKE_EVENTS).map(([k, v]) => [k, v[0]]), p.bikeEvent || "62") + '</div>' : '') +
-      (p.goal !== "fitness" ? (p.raceName ? '<div class="picked"><div><b>' + esc(p.raceName) + '</b><span>' + (p.raceCity ? esc(p.raceCity) + ' · ' : '') + DAYF[dow(p.raceDate)] + ', ' + fmtD(p.raceDate) + ' ' + String(p.raceDate).slice(0, 4) + '</span></div><button class="linkbtn" type="button" data-act="raceclear">Change</button></div>' : '') +
+      (!noRace ? (p.raceName ? '<div class="picked"><div><b>' + esc(p.raceName) + '</b><span>' + (p.raceCity ? esc(p.raceCity) + ' · ' : '') + DAYF[dow(p.raceDate)] + ', ' + fmtD(p.raceDate) + ' ' + String(p.raceDate).slice(0, 4) + '</span></div><button class="linkbtn" type="button" data-act="raceclear">Change</button></div>' : '') +
         (mode === "account" ? '<button class="btn block" type="button" data-act="racefind">' + ic("flag") + 'Find my race</button>' : '') +
         '<div class="two"><div class="q"><label for="s-date">Race date</label><input id="s-date" type="date" min="' + addDays(TODAY, 14) + '" value="' + esc(p.raceDate) + '"></div>' +
-        (["5k","10k","half","marathon","50k"].includes(p.goal) ? '<div class="q"><label for="s-goal">Goal time</label><input id="s-goal" inputmode="numeric" placeholder="' + ({"5k":"22:00","10k":"48:00","half":"1:45:00","marathon":"3:45:00","50k":"5:30:00"}[p.goal]) + '" value="' + (p.goalSec ? fmtTime(p.goalSec) : '') + '"></div>' : '<div></div>') + '</div><p class="hint">' + (["5k","10k","half","marathon","50k"].includes(p.goal) ? 'Goal time is optional. Just type the numbers; the colons fill in. Leave it blank to use your current fitness.' : 'Not sure of the exact date? Pick your best guess. You can change it later.') + '</p>' : '<p class="sub">You\'ll get a 12-week plan that ends with a 5K time trial to see your progress.</p>');
+        (["5k","10k","half","marathon","50k"].includes(p.goal) ? '<div class="q"><label for="s-goal">Goal time</label><input id="s-goal" inputmode="numeric" placeholder="' + ({"5k":"22:00","10k":"48:00","half":"1:45:00","marathon":"3:45:00","50k":"5:30:00"}[p.goal]) + '" value="' + (p.goalSec ? fmtTime(p.goalSec) : '') + '"></div>' : '<div></div>') + '</div><p class="hint">' + (["5k","10k","half","marathon","50k"].includes(p.goal) ? 'Goal time is optional. Just type the numbers; the colons fill in. Leave it blank to use your current fitness.' : 'Not sure of the exact date? Pick your best guess. You can change it later.') + '</p>' : p.goal === "everyday" ? '' : '<p class="sub">You\'ll get a 12-week plan that ends with a 5K time trial to see your progress.</p>');
   } else if (st.step === 1){
     const k = (RACES[p.goal] || {}).kind, noRun = k === "swim" || k === "bike";
-    const extra = k ? '<div class="q"><label for="s-hours">Hours of training a week right now</label><input id="s-hours" inputmode="decimal" placeholder="5" value="' + (p.hours ?? '') + '"><p class="hint" style="margin-top:0">All sports added up. A rough guess is fine.</p></div>' +
+    const extra = k && k !== "fit" ? '<div class="q"><label for="s-hours">Hours of training a week right now</label><input id="s-hours" inputmode="decimal" placeholder="5" value="' + (p.hours ?? '') + '"><p class="hint" style="margin-top:0">All sports added up. A rough guess is fine.</p></div>' +
         (k === "tri" || k === "swim" ? '<div class="q"><span class="ql">Swimming</span>' + optList("swimLevel", [["new","Learning (can\'t swim 400 yd nonstop)"],["ok","Comfortable"],["strong","Strong"]], p.swimLevel || "ok") + '</div>' : '') +
         (k === "tri" || k === "bike" ? '<div class="q"><label for="s-ride">Longest ride lately (mi)</label><input id="s-ride" inputmode="decimal" placeholder="20" value="' + (p.longRide ?? '') + '"></div>' : '') : '';
-    if (noRun) body = '<h2 class="sec-t">Where is your fitness now?</h2>' + extra;
+    if (k === "fit") body = '<h2 class="sec-t">Where are you starting?</h2>' +
+      '<div class="q"><span class="ql">How active are you right now?</span>' + optList("fitLevel", [["new","Not active right now"],["some","1–2 days a week"],["regular","3 or more days a week"]], p.fitLevel || "some") + '</div>' +
+      '<div class="q"><span class="ql">Favorite cardio</span>' + optList("cardio", [["walk","Walking"],["run","Running"],["bike","Cycling"],["mix","A mix"]], p.cardio || "walk") + '</div>' +
+      '<p class="hint">New to exercise? You\'ll start gently and build up every week. Running starts as walk-run intervals.</p>';
+    else if (noRun) body = '<h2 class="sec-t">Where is your fitness now?</h2>' + extra;
     else body = '<h2 class="sec-t">' + (k ? 'Where is your fitness now?' : 'Where is your running now?') + '</h2>' + extra +
       '<div class="two"><div class="q"><label for="s-weekly">Miles per week</label><input id="s-weekly" inputmode="decimal" placeholder="15" value="' + (p.weekly ?? '') + '"></div>' +
       '<div class="q"><label for="s-longest">Longest recent run (mi)</label><input id="s-longest" inputmode="decimal" placeholder="6" value="' + (p.longest ?? '') + '"></div></div>' +
@@ -1871,16 +1880,15 @@ function renderSetup(){
       (p.prDist && p.prDist !== "none" ? '<div class="q"><label for="s-pr">Your time</label><input id="s-pr" inputmode="numeric" placeholder="' + ({"5k":"24:30","10k":"52:00","half":"1:55:00","marathon":"4:10:00"}[p.prDist]) + '" value="' + (p.prSec ? fmtTime(p.prSec) : '') + '"></div>'
         : '<div class="q"><label for="s-easy">Typical easy pace (per mile)</label><input id="s-easy" inputmode="numeric" placeholder="10:30" value="' + (p.easyPace ? fmtPace(p.easyPace) : '') + '"></div>');
   } else if (st.step === 2){
-    body = '<h2 class="sec-t">Strength and body</h2>' +
+    body = '<h2 class="sec-t">' + (p.goal === "everyday" ? 'Strength and your body' : 'Strength and body') + '</h2>' +
       '<div class="q"><span class="ql">Lifting days per week</span>' + optList("lifts", [["0","None"],["1","1"],["2","2"],["3","3"],["4","4"]], p.lifts) + '</div>' +
       '<div class="q"><span class="ql">Lifting experience</span>' + optList("liftExp", [["New","New to it"],["Some","Some"],["Lots","Years"]], p.liftExp) + '</div>' +
-      '<div class="two"><div class="q"><label for="s-w">Weight (lb)</label><input id="s-w" inputmode="decimal" placeholder="Optional" value="' + (p.weight ?? '') + '"></div>' +
-      '<div class="q"><label for="s-gw">Goal weight (lb)</label><input id="s-gw" inputmode="decimal" placeholder="Optional" value="' + (p.goalWeight ?? '') + '"></div></div><p class="hint">Weight is only used for the daily fuel targets.</p>';
+      bodyFields(p, "s");
   } else if (st.step === 3){
-    const mk = !!(RACES[p.goal] || {}).kind;
-    body = '<h2 class="sec-t">' + (mk ? 'When can you train?' : 'When can you run?') + '</h2>' +
+    const mk = !!(RACES[p.goal] || {}).kind, fit = p.goal === "everyday";
+    body = '<h2 class="sec-t">' + (fit ? 'When can you work out?' : mk ? 'When can you train?' : 'When can you run?') + '</h2>' +
       '<div class="q"><span class="ql">' + (mk ? 'Training days' : 'Run days') + ' (pick 3–6)</span>' + optList("days", DAYS.map((d, i) => [i, d]), p.days, "checkbox") + '</div>' +
-      '<div class="q"><label for="s-long">' + (mk ? 'Long session day' : 'Long run day') + '</label><select id="s-long">' + p.days.slice().sort((a, b) => a - b).map(d => '<option value="' + d + '"' + (d === p.longDay ? ' selected' : '') + '>' + DAYF[d] + '</option>').join("") + '</select></div>';
+      '<div class="q"><label for="s-long">' + (fit ? 'Day for a longer session' : mk ? 'Long session day' : 'Long run day') + '</label><select id="s-long">' + p.days.slice().sort((a, b) => a - b).map(d => '<option value="' + d + '"' + (d === p.longDay ? ' selected' : '') + '>' + DAYF[d] + '</option>').join("") + '</select></div>';
   }
   return header() + '<section class="setup view">' + bars + body + '<p class="err" id="s-err" role="alert">' + esc(st.err || "") + '</p><div class="nav"><button class="btn" type="button" data-act="prev">Back</button><button class="btn primary" type="button" data-act="next">' + (st.step === 3 ? 'Build my plan' : 'Next') + '</button></div></section>';
 }
@@ -1888,13 +1896,18 @@ function readStep(){
   const st = setup, p = st.p, v = id => { const e = document.getElementById(id); return e ? e.value.trim() : ""; }, num = id => { const x = parseFloat(v(id)); return isFinite(x) ? x : null; };
   const radio = n => { const e = document.querySelector('input[name="' + n + '"]:checked'); return e ? e.value : null; };
   if (st.step === 0){
-    p.name = v("s-name").slice(0, 20); const ng = radio("goal") || p.goal; if (ng !== p.goal){ p.raceName = null; p.raceCity = null; p.raceUrl = null; } p.goal = ng;
+    p.name = v("s-name").slice(0, 20); let ng = radio("goal") || (p.goal === "everyday" ? "fit-" + (p.bodyGoal || "maintain") : p.goal);
+    if (/^fit-/.test(ng)){ p.bodyGoal = ng.slice(4); ng = "everyday"; if (p.bodyGoal === "maintain") p.goalWeight = null; }
+    if (ng !== p.goal){ p.raceName = null; p.raceCity = null; p.raceUrl = null; } p.goal = ng;
     p.swimEvent = radio("swimEvent") || p.swimEvent; p.bikeEvent = radio("bikeEvent") || p.bikeEvent;
-    if (p.goal !== "fitness" && document.getElementById("s-date")){ p.raceDate = v("s-date") || p.raceDate; const g = document.getElementById("s-goal") ? v("s-goal") : ""; p.goalSec = g ? parseTime(g) : null;
+    if (p.goal === "everyday"){ p.raceDate = null; p.goalSec = null; p.raceName = null; }
+    if (p.goal !== "fitness" && p.goal !== "everyday" && document.getElementById("s-date")){ p.raceDate = v("s-date") || p.raceDate; const g = document.getElementById("s-goal") ? v("s-goal") : ""; p.goalSec = g ? parseTime(g) : null;
       if (g && !p.goalSec) return "Type the goal time as numbers, like 14500 for 1:45:00.";
       if (!p.raceDate || p.raceDate < addDays(TODAY, 14)) return "Pick a race date at least 2 weeks away."; }
   } else if (st.step === 1){
     const k = (RACES[p.goal] || {}).kind;
+    if (k === "fit"){ p.fitLevel = radio("fitLevel") || p.fitLevel || "some"; p.cardio = radio("cardio") || p.cardio || "walk"; p.hours = null;
+      if (p.cardio === "run" && p.fitLevel === "regular"){ p.weekly = p.weekly || 8; p.longest = p.longest || 3; } p.prDist = "none"; p.prSec = null; return ""; }
     if (k){ p.hours = num("s-hours"); if (p.hours == null || p.hours < 0 || p.hours > 40) return "Enter roughly how many hours a week you train now (0 is fine).";
       p.swimLevel = radio("swimLevel") || p.swimLevel || "ok"; if (document.getElementById("s-ride")){ p.longRide = num("s-ride"); if (p.longRide != null && (p.longRide < 0 || p.longRide > 300)) return "Enter your longest ride in miles."; } }
     if (k === "swim" || k === "bike") return "";
@@ -1904,13 +1917,12 @@ function readStep(){
     if (document.getElementById("s-pr")){ const t = parseTime(v("s-pr")); if (v("s-pr") && !t) return "Type your time as numbers, like 2430 for 24:30."; p.prSec = t; if (!t) return "Add your race time, or pick None yet."; p.easyPace = null; }
     if (document.getElementById("s-easy")){ const t = parseTime(v("s-easy")); if (!t || t < 300 || t > 1200) return "Type your easy pace as numbers, like 1030 for 10:30."; p.easyPace = t; p.prSec = null; p.prDist = "none"; }
   } else if (st.step === 2){
-    p.lifts = +(radio("lifts") || 0); p.liftExp = radio("liftExp") || p.liftExp; p.weight = num("s-w"); p.goalWeight = num("s-gw");
-    if (p.weight && p.goalWeight && p.goalWeight < p.weight * .8) return "For a goal more than 20% below your current weight, please work with a doctor or registered dietitian. Leave goal weight empty, or pick one closer to your current weight.";
-    if (p.weight != null && (p.weight < 80 || p.weight > 400)) return "Weight should be in pounds.";
+    p.lifts = +(radio("lifts") || 0); p.liftExp = radio("liftExp") || p.liftExp;
+    const be = readBody(p, "s"); if (be) return be;
   } else if (st.step === 3){
     p.days = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(e => +e.value);
     const ld = document.getElementById("s-long"); p.longDay = ld ? +ld.value : p.longDay;
-    if (p.days.length < 3 || p.days.length > 6) return "Pick between 3 and 6 run days.";
+    if (p.days.length < 3 || p.days.length > 6) return "Pick between 3 and 6 days.";
     if (!p.days.includes(p.longDay)) p.longDay = p.days.includes(6) ? 6 : p.days.includes(5) ? 5 : p.days[p.days.length - 1];
   }
   return "";
@@ -2016,12 +2028,13 @@ function settingsScreen(k){
 }
 let pf = null;
 function profileForm(){
-  const pr = plan ? plan.profile : {}, v = pf || (pf = {name: (me && me.name) || pr.name || "", weight: pr.weight || "", goalWeight: pr.goalWeight || ""});
+  const pr = plan ? plan.profile : {}, v = pf || (pf = {name: (me && me.name) || pr.name || "", d: {...pr}}), d = v.d, ev = d.goal === "everyday";
   return '<section class="card form"><label>Name<input id="pf-name" autocomplete="given-name" value="' + esc(v.name) + '" maxlength="30"></label>' +
-    '<label>Current weight<small>Sets your starting calories. Daily weigh-ins on the Today tab keep it up to date.</small><span class="unit"><input id="pf-w" inputmode="decimal" value="' + esc(v.weight) + '" placeholder="180"> lb</span></label>' +
-    '<label>Goal weight<small>Leave empty to eat for maintenance.</small><span class="unit"><input id="pf-gw" inputmode="decimal" value="' + esc(v.goalWeight) + '" placeholder="Optional"> lb</span></label>' +
+    (ev ? '<div class="q"><span class="ql">Goal</span>' + optList("pfbg", [["lose","Lose weight"],["maintain","Maintain"],["gain","Gain weight"]], d.bodyGoal || "maintain") + '</div>' : '') +
+    bodyFields({...d, bodyGoal: ev ? "lose" : d.bodyGoal}, "pf") +
+    (ev ? '' : '<p class="fine">Goal weight: leave it empty to eat for maintenance.</p>') +
     (v.err ? '<p class="err" role="alert">' + esc(v.err) + '</p>' : '') + '<button class="btn primary block" type="button" data-act="pfsave"' + (v.busy ? ' disabled' : '') + '>' + (v.busy ? 'Saving…' : 'Save') + '</button></section>' +
-    '<section class="card"><p class="sub">Want a different race, race date, run days or lifting days? That rebuilds your plan from this week on. Your logs stay.</p><button class="btn block" type="button" data-act="edit">Change race and schedule</button></section>';
+    '<section class="card"><p class="sub">Want a different goal, race date, training days or lifting days? That rebuilds your plan from this week on. Your logs stay.</p><button class="btn block" type="button" data-act="edit">Change goal and schedule</button></section>';
 }
 let af = null;
 function acctForm(kind){
@@ -2120,7 +2133,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "35";
+const APP_VERSION = "36";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2400,16 +2413,15 @@ document.addEventListener("click", ev => {
     return;
   }
   if (act === "pfsave"){
-    const name = ($("#pf-name") || {}).value.trim(), w = parseFloat(($("#pf-w") || {}).value), gwRaw = ($("#pf-gw") || {}).value.trim(), gw = gwRaw ? parseFloat(gwRaw) : null;
-    pf = {name, weight: ($("#pf-w") || {}).value, goalWeight: gwRaw};
+    const name = ($("#pf-name") || {}).value.trim(), d = {...plan.profile}; delete d.sample;
+    if (d.goal === "everyday"){ const b = document.querySelector('input[name="pfbg"]:checked'); d.bodyGoal = b ? b.value : d.bodyGoal || "maintain"; }
+    pf = {name, d};
     if (!name){ pf.err = "Enter your name."; render(); return; }
-    if (!(w >= 70 && w <= 500)){ pf.err = "Enter your weight in pounds."; render(); return; }
-    if (gw != null && !(gw >= 70 && gw <= 500)){ pf.err = "Enter a goal weight in pounds, or leave it empty."; render(); return; }
-    if (gw != null && gw < w * .8){ pf.err = "For a goal more than 20% below your current weight, please work with a doctor or registered dietitian. Hybrid won't set targets for it."; render(); return; }
-    const prof = {...plan.profile, name, weight: Math.round(w * 10) / 10, goalWeight: gw == null ? null : Math.round(gw * 10) / 10}; delete prof.sample;
+    const e = readBody(d, "pf", d.goal !== "everyday"); if (e){ pf.err = e; render(); return; }
+    d.name = name; const prof = d;
     const fin = () => { plan = buildPlan(prof); if (me) me.name = name; pf = null; save(); toast("Saved."); go("set-acct"); };
     if (mode === "account"){ pf.busy = true; render();
-      Promise.all([api("PUT", "/api/account", {name}), api("PUT", "/api/profile", {profile: prof})]).then(fin).catch(e => { pf.busy = false; pf.err = e.message; render(); }); }
+      Promise.all([api("PUT", "/api/account", {name}), api("PUT", "/api/profile", {profile: prof})]).then(fin).catch(err => { pf.busy = false; pf.err = err.message; render(); }); }
     else fin();
     return;
   }
@@ -2588,6 +2600,45 @@ document.addEventListener("change", ev => {
   if (n === "goal" || n === "prDist" || n === "swimEvent" || n === "bikeEvent"){ readStepSoft(); render(); }
   if (n === "days"){ readStepSoft(); render(); }
 });
+/* height, weight, age, sex and daily activity: used for the resting burn (BMR) and daily calories */
+function bodyFields(p, pre){
+  const ft = p.heightIn ? Math.floor(p.heightIn / 12) : "", inch = p.heightIn ? Math.round((p.heightIn - ft * 12) * 10) / 10 : "", ev = p.goal === "everyday", bg = p.bodyGoal;
+  const showGoal = !ev || bg !== "maintain";
+  return '<h3 class="sub-t">Your body</h3><div class="two"><div class="q"><label for="' + pre + '-ft">Height</label><div class="hgt"><span class="unit"><input id="' + pre + '-ft" inputmode="numeric" placeholder="5" value="' + ft + '"> ft</span><span class="unit"><input id="' + pre + '-in" inputmode="decimal" placeholder="10" value="' + inch + '"> in</span></div></div>' +
+    '<div class="q"><label for="' + pre + '-age">Age</label><input id="' + pre + '-age" inputmode="numeric" placeholder="30" value="' + (p.age ?? '') + '"></div></div>' +
+    '<div class="two"><div class="q"><label for="' + pre + '-w">Weight (lb)</label><input id="' + pre + '-w" inputmode="decimal" placeholder="180" value="' + (p.weight ?? '') + '"></div>' +
+    (showGoal ? '<div class="q"><label for="' + pre + '-gw">Goal weight (lb)</label><input id="' + pre + '-gw" inputmode="decimal" placeholder="' + (ev && bg === "lose" ? 'Needed' : 'Optional') + '" value="' + (p.goalWeight ?? '') + '"></div>' : '<div></div>') + '</div>' +
+    '<div class="q"><span class="ql">Sex</span><p class="hint">Only used in the resting-calorie formula.</p>' + optList(pre + "sex", [["m","Male"],["f","Female"],["x","Prefer not to say"]], p.sex || "") + '</div>' +
+    '<div class="q"><span class="ql">Outside of workouts, your day is…</span>' + optList(pre + "daily", [["sit","Mostly sitting"],["some","On my feet some"],["feet","On my feet most of the day"]], p.daily || "some") + '</div>' +
+    '<p class="hint">Hybrid works out your resting burn (BMR) from your height, weight, age and sex, adds your daily activity and workouts, then sets food targets for your goal.</p>';
+}
+function readBody(p, pre, optional){
+  const v = id => { const e = document.getElementById(id); return e ? e.value.trim() : ""; }, num = id => { const x = parseFloat(v(id)); return isFinite(x) ? x : null; };
+  const radio = n => { const e = document.querySelector('input[name="' + n + '"]:checked'); return e ? e.value : null; };
+  const ft = num(pre + "-ft"), inch = num(pre + "-in") || 0, w = num(pre + "-w"), age = num(pre + "-age"), gwEl = document.getElementById(pre + "-gw"), gw = gwEl ? num(pre + "-gw") : null;
+  const ev = p.goal === "everyday", bg = p.bodyGoal;
+  if (optional && ft == null && age == null){   // older profiles: height and age not given, keep the simple calorie estimate
+    if (!(w >= 80 && w <= 500)) return "Enter your weight in pounds.";
+    if (gw != null && !(gw >= 80 && gw <= 500)) return "Enter a goal weight in pounds, or leave it empty.";
+    if (gw != null && gw < w * .8) return "For a goal more than 20% below your current weight, please work with a doctor or registered dietitian. Hybrid won't set targets for it.";
+    p.weight = Math.round(w * 10) / 10; p.goalWeight = gw == null ? null : Math.round(gw * 10) / 10; p.sex = radio(pre + "sex") || p.sex; p.daily = radio(pre + "daily") || p.daily; return "";
+  }
+  if (!(ft >= 4 && ft <= 7) || inch < 0 || inch >= 12) return "Enter your height in feet and inches.";
+  const h = ft * 12 + inch; if (h < 54 || h > 90) return "Enter your height in feet and inches.";
+  if (!(w >= 80 && w <= 500)) return "Enter your weight in pounds.";
+  if (!(age >= 18 && age <= 100)) return "Hybrid is for adults 18 and older. Enter your age.";
+  p.heightIn = h; p.weight = Math.round(w * 10) / 10; p.age = Math.round(age); p.sex = radio(pre + "sex") || p.sex || "x"; p.daily = radio(pre + "daily") || p.daily || "some";
+  p.goalWeight = gw;
+  if (ev && bg === "lose" && gw == null) return "Add a goal weight so Hybrid can set your targets.";
+  if (ev && bg === "lose" && gw >= w) return "For losing weight, the goal should be below your current weight.";
+  if (ev && bg === "gain" && gw != null && gw <= w) return "For gaining, the goal should be above your current weight, or leave it empty.";
+  if (ev && bg === "maintain") p.goalWeight = null;
+  if (gw != null && !(gw >= 80 && gw <= 500)) return "Enter a goal weight in pounds, or leave it empty.";
+  if (gw != null && gw < w * .8) return "For a goal more than 20% below your current weight, please work with a doctor or registered dietitian. Pick a goal closer to your current weight.";
+  const minW = Math.ceil(18.5 * h * h / 703);
+  if (gw != null && gw < w && gw < minW) return "That goal is under a healthy weight for your height. Hybrid won't set targets below " + minW + " lb.";
+  return "";
+}
 function readStepSoft(){ const keep = setup.err; readStep(); setup.err = keep && ""; }
 document.addEventListener("keydown", ev => { if (ev.key === "Escape") closeMenu(); });
 document.addEventListener("touchstart", () => {}, {passive: true});

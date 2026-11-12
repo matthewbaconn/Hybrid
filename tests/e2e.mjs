@@ -39,7 +39,7 @@ await check("Sign-up needs the 18+ / terms box", async () => { await page.fill("
   await page.click('[data-act="doc"][data-k="health"]'); await page.waitForSelector(".sheet.legal"); const h = await page.innerText(".sheet.legal"); await page.click('.sheet [data-act="close"]');
   if (!/not a dietitian/.test(h) || !/866-662-1235/.test(h)) throw new Error("health notice text"); return "blocked until checked · notice opens";
 });
-await check("Sign up", async () => { await page.fill("#a-name", "Nightly"); await page.fill("#a-email", email); await page.fill("#a-pass", pass); await page.check("#a-agree"); await page.click('#authform [type="submit"]'); await page.waitForSelector("h2.sec-t >> text=What are you training for?", {timeout: 15000}); });
+await check("Sign up", async () => { await page.fill("#a-name", "Nightly"); await page.fill("#a-email", email); await page.fill("#a-pass", pass); await page.check("#a-agree"); await page.click('#authform [type="submit"]'); await page.waitForSelector("h2.sec-t >> text=What's your goal?", {timeout: 15000}); });
 await check("Build a plan (4 steps)", async () => {
   await page.click('label.opt:has(input[value="half"])');
   const race = new Date(Date.now() + 84 * 864e5).toISOString().slice(0, 10);
@@ -47,7 +47,7 @@ await check("Build a plan (4 steps)", async () => {
   if (await page.inputValue("#s-goal") !== "1:45:00") throw new Error("goal time didn't format: " + await page.inputValue("#s-goal"));
   await page.click('[data-act="next"]');
   await page.fill("#s-weekly", "22"); await page.fill("#s-longest", "8"); await page.click('label.opt:has(input[name="prDist"][value="10k"])'); await page.click("#s-pr"); await page.keyboard.type("4830");
-  await page.click('[data-act="next"]'); await page.click('label.opt:has(input[name="lifts"][value="3"])'); await page.fill("#s-w", "182"); await page.fill("#s-gw", "175");
+  await page.click('[data-act="next"]'); await page.click('label.opt:has(input[name="lifts"][value="3"])'); await page.fill("#s-ft", "5"); await page.fill("#s-in", "10"); await page.fill("#s-age", "30"); await page.fill("#s-w", "182"); await page.fill("#s-gw", "175");
   await page.click('[data-act="next"]'); await page.click('[data-act="next"]');
   await page.waitForSelector(".hub-hero", {timeout: 15000}); await noOverflow(); await shot("02-today");
   const t = await page.innerText(".hub-hero h3");
