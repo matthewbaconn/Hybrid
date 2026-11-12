@@ -532,9 +532,35 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 .sheet{width:100%;max-width:480px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:20px;display:grid;gap:12px;margin-bottom:env(safe-area-inset-bottom,0px);max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:50;background:#232736;border:1px solid var(--line);border-radius:6px;padding:12px 16px;font-size:14px;max-width:min(92vw,420px);box-shadow:0 12px 30px rgba(0,0,0,.5)}
 
-.view{animation:in .28s cubic-bezier(.2,.8,.2,1) backwards}
-@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.view{animation:none}.spin{animation-duration:2s}.btn{transition:none}}
+/* Screen changes: native slide/fade where the phone supports it (View Transitions), a light fallback otherwise.
+   Ordinary taps (picking an answer, saving) redraw instantly with no animation. */
+::view-transition-old(root),::view-transition-new(root){animation-duration:.32s;animation-timing-function:cubic-bezier(.22,1,.36,1);animation-fill-mode:both}
+html[data-nav="fwd"]::view-transition-old(root){animation-name:vt-out-l}
+html[data-nav="fwd"]::view-transition-new(root){animation-name:vt-in-r}
+html[data-nav="back"]::view-transition-old(root){animation-name:vt-out-r}
+html[data-nav="back"]::view-transition-new(root){animation-name:vt-in-l}
+html[data-nav="fade"]::view-transition-old(root){animation:vt-fade-out .16s ease-out both}
+html[data-nav="fade"]::view-transition-new(root){animation:vt-fade-in .22s cubic-bezier(.22,1,.36,1) both}
+.tabbar{view-transition-name:tabbar} ::view-transition-group(tabbar){animation:none}
+@keyframes vt-in-r{from{transform:translateX(28%);opacity:0}to{transform:none;opacity:1}}
+@keyframes vt-out-l{to{transform:translateX(-12%);opacity:0}}
+@keyframes vt-in-l{from{transform:translateX(-12%);opacity:0}to{transform:none;opacity:1}}
+@keyframes vt-out-r{to{transform:translateX(28%);opacity:0}}
+@keyframes vt-fade-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes vt-fade-out{to{opacity:0}}
+.view.nav-fwd{animation:vt-in-r .3s cubic-bezier(.22,1,.36,1) both}
+.view.nav-back{animation:vt-in-l .3s cubic-bezier(.22,1,.36,1) both}
+.view.nav-fade{animation:vt-fade-in .22s cubic-bezier(.22,1,.36,1) both}
+/* instant press feedback on everything tappable */
+button,a,[role="button"],.srow,.tl,.pc,.actc,.opt span{-webkit-tap-highlight-color:transparent}
+button,[role="button"],.opt span{transition:transform .14s cubic-bezier(.2,.8,.2,1),background-color .12s,opacity .12s,color .12s}
+button:active,.opt input:active + span{transform:scale(.96)}
+.btn:active{transform:scale(.96);filter:brightness(1.12)}
+.srow:active{background:rgba(255,255,255,.05);transform:none}
+.tl:active,.pc[data-act]:active,.actc:active,.hub-hero:active,.me-card:active{transform:scale(.985)}
+.tabbar button:active{transform:scale(.92)}
+.cio button:active{transform:scale(.92)}
+@media (prefers-reduced-motion:reduce){::view-transition-old(root),::view-transition-new(root){animation:none!important}.view[class*="nav-"]{animation:none}.spin{animation-duration:2s}button,[role="button"]{transition:none}}
 @media (max-width:370px){.wrap{padding-inline:14px}.card{padding:16px}.hero-b{padding:16px}.hero-h{padding:18px 16px}.hello h1{font-size:26px}.tile b{font-size:22px}.wkstats b{font-size:17px}}
 @media (min-width:700px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}.preds{grid-template-columns:repeat(4,minmax(0,1fr))}}
 </style>
@@ -1613,7 +1639,7 @@ function render(){
   bar.hidden = false;
   bar.querySelectorAll("[data-tab]").forEach(b => b.dataset.tab === tab ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   if (scr && !SCR_T[scr]) scr = null;
-  app.innerHTML = (scr ? '' : header()) + '<div class="view" style="display:grid;gap:22px">' + (scr ? renderScreen() : tab === "plan" ? renderPlan() : tab === "recovery" ? renderRecovery() : tab === "training" ? renderTraining() : tab === "activities" ? renderActivities() : renderToday()) + '</div>';
+  app.innerHTML = (scr ? '' : header()) + '<div class="view' + (navDir ? ' nav-' + navDir : '') + '" style="display:grid;gap:22px">' + (scr ? renderScreen() : tab === "plan" ? renderPlan() : tab === "recovery" ? renderRecovery() : tab === "training" ? renderTraining() : tab === "activities" ? renderActivities() : renderToday()) + '</div>';
   if (tab === "activities" && !scr) mountMaps();
 }
 function toast(msg){
@@ -1720,7 +1746,7 @@ function hrRead(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "28";
+const APP_VERSION = "29";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -1804,10 +1830,20 @@ const SCR_T = {fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", 
   settings: "Settings", "set-notif": "Notifications", "set-watch": "Strava and watches", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
   "set-hr": "Heart rate zones", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Hybrid works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup"};
 const SCR_UP = {"set-profile": "settings", "set-run": "settings", "set-about": "settings", "set-email": "settings", "set-password": "settings", "set-hr": "settings", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", "set-report": "settings", "set-reports": "settings", "set-account": "settings"};
+let navDir = null;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function nav(dir, fn){
+  if (reduceMotion){ fn(); return; }
+  if (document.startViewTransition && document.visibilityState === "visible"){
+    document.documentElement.dataset.nav = dir;
+    try { const t = document.startViewTransition(() => { fn(); }); t.finished.catch(() => {}).finally(() => { delete document.documentElement.dataset.nav; }); return; } catch(e){}
+  }
+  navDir = dir; fn(); navDir = null;
+}
 function go(s){
-  scr = s;
+  const dir = s === null || SCR_UP[scr] === s || (scr && !s) ? "back" : "fwd";
   if (s === "set-notif" && mode === "account" && pushOK() && !pushState.checked) checkPush().then(() => { if (scr === "set-notif") render(); });
-  render(); window.scrollTo(0, 0);
+  nav(dir, () => { scr = s; render(); window.scrollTo(0, 0); });
 }
 function renderScreen(){
   const s = scr, back = '<header class="scrbar"><button class="iconbtn" type="button" data-act="back" aria-label="Back">‹</button><h1>' + esc(SCR_T[s] || "") + '</h1></header>';
@@ -1822,7 +1858,8 @@ function renderScreen(){
   else h = settingsScreen(s);
   return back + h;
 }
-function setTab(t, scroll){
+function setTab(t, scroll){ nav("fade", () => setTab_(t, scroll)); }
+function setTab_(t, scroll){
   scr = null;
   if (!["today","plan","activities","recovery","training"].includes(t)) t = "today";
   tab = t; if (t !== "plan") wkSel = null; if (t !== "activities") actSel = null;
@@ -1860,8 +1897,8 @@ document.addEventListener("click", ev => {
     if (mode === "account") api("PUT", "/api/done", {key: k, done: on}).catch(e => { if (on) delete done[k]; else done[k] = 1; render(); toast(e.message); });
     return;
   }
-  if (act === "actopen"){ actSel = a.dataset.id; render(); window.scrollTo(0, 0); return; }
-  if (act === "actback"){ actSel = null; render(); return; }
+  if (act === "actopen"){ const id = a.dataset.id; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
+  if (act === "actback"){ nav("back", () => { actSel = null; render(); }); return; }
   if (act === "afilt"){ actFilter = a.dataset.k; render(); return; }
   if (act === "pfsave"){
     const name = ($("#pf-name") || {}).value.trim(), w = parseFloat(($("#pf-w") || {}).value), gwRaw = ($("#pf-gw") || {}).value.trim(), gw = gwRaw ? parseFloat(gwRaw) : null;
@@ -2051,6 +2088,7 @@ document.addEventListener("change", ev => {
 });
 function readStepSoft(){ const keep = setup.err; readStep(); setup.err = keep && ""; }
 document.addEventListener("keydown", ev => { if (ev.key === "Escape") closeMenu(); });
+document.addEventListener("touchstart", () => {}, {passive: true});
 ["gesturestart", "gesturechange", "gestureend"].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
 document.addEventListener("submit", ev => { if (ev.target.id === "authform"){ ev.preventDefault(); if (!authv.busy) submitAuth(); } });
 window.addEventListener("hashchange", () => { if (!setup && plan) setTab(location.hash.slice(1), true); });
