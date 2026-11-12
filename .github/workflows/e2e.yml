@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04     # the browser-test tool doesn't support the newest runner image yet
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
