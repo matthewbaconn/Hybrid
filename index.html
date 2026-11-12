@@ -648,6 +648,24 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .icard .gmbtn{justify-self:center}.icard .stbtn img{height:48px}
 .gsrc{height:9px;width:auto;display:block}.src.src-garmin{display:flex;align-items:center;padding:6px 8px}
 .ahbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:237px;height:48px;justify-self:center;border:0;border-radius:6px;background:#fff;color:#111;font:600 13px/1 var(--f-body);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;transition:transform .08s ease,opacity .12s}.ahbtn .ic{width:20px;height:20px;color:#FF2D55}.ahbtn:active{transform:scale(.97);opacity:.9}
+
+/* tab bar: Today in the middle, bigger */
+.tabbar{align-items:end}
+.tabbar .tb-today{position:relative;margin-top:-18px;padding:0;gap:6px;color:var(--ink);background:none!important}
+.tabbar .tb-today .ic{width:26px;height:26px;padding:15px;box-sizing:content-box;border-radius:16px;background:var(--accent);color:#fff;box-shadow:0 6px 18px rgba(128,0,0,.45),0 0 0 4px var(--bg)}
+.tabbar .tb-today[aria-current="page"] .ic{box-shadow:0 6px 18px rgba(128,0,0,.55),0 0 0 4px var(--bg),0 0 0 6px color-mix(in srgb,var(--accent-2) 70%,transparent)}
+.tabbar .tb-today[aria-current="page"]{color:var(--ink)!important}
+.tabbar [data-tab="more"]{--tabc:var(--muted)}
+.tabbar [data-tab="more"][aria-current="page"]{background:var(--surface-2,#2A2D36);color:var(--ink)}
+.segsw{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:10px;background:var(--surface);border:1px solid rgba(255,255,255,.06)}
+.segsw button{border:0;background:none;color:var(--muted);font:600 14px/1 var(--f-body);padding:11px 0;border-radius:7px;transition:background .15s,color .15s}
+.segsw button[aria-selected="true"]{background:var(--sunk);color:var(--ink)}
+.scard .mi{font-style:normal;flex:none;width:42px;height:42px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 22%,var(--sunk));color:var(--ink)}
+.scard .mi .ic{width:21px;height:21px}
+.faq details{border-top:1px solid var(--line);padding:2px 0}.faq details:first-child{border-top:0}
+.faq summary{cursor:pointer;list-style:none;padding:14px 26px 14px 0;font-weight:600;font-size:15.5px;position:relative}
+.faq summary::-webkit-details-marker{display:none}.faq summary::after{content:"+";position:absolute;right:2px;top:12px;color:var(--muted);font-size:20px;font-weight:400}
+.faq details[open] summary::after{content:"−"}.faq p{margin:0 0 14px;color:var(--muted);line-height:1.5;font-size:14.5px}
 </style>
 </head>
 <body>
@@ -656,11 +674,11 @@ button:active,.opt input:active + span{transform:scale(.96)}
 <div id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></div>
 <div class="wrap" id="app" aria-live="polite"></div>
 <nav class="tabbar" id="tabbar" aria-label="Sections" hidden>
-  <button type="button" data-tab="today"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg><span>Today</span></button>
   <button type="button" data-tab="plan"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Plan</span></button>
   <button type="button" data-tab="activities"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h8.5a3.5 3.5 0 0 0 0-7h-9a3.5 3.5 0 0 1 0-7H16"/></svg><span>Activities</span></button>
-  <button type="button" data-tab="recovery"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg><span>Recovery</span></button>
+  <button type="button" data-tab="today" class="tb-today"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg><span>Today</span></button>
   <button type="button" data-tab="training"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg><span>Progress</span></button>
+  <button type="button" data-tab="more"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>More</span></button>
 </nav>
 
 <script src="plan.js"></script>
@@ -1976,9 +1994,9 @@ function render(){
   if (setup){ bar.hidden = true; app.innerHTML = renderSetup(); return; }
   if (!plan){ setup = {step: -1, p: blankProfile()}; return render(); }
   bar.hidden = false;
-  bar.querySelectorAll("[data-tab]").forEach(b => b.dataset.tab === tab ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+  bar.querySelectorAll("[data-tab]").forEach(b => b.dataset.tab === (tab === "recovery" ? "training" : tab) ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   if (scr && !SCR_T[scr]) scr = null;
-  app.innerHTML = (scr ? '' : header()) + '<div class="view' + (navDir ? ' nav-' + navDir : '') + '" style="display:grid;gap:22px">' + (scr ? renderScreen() : tab === "plan" ? renderPlan() : tab === "recovery" ? renderRecovery() : tab === "training" ? renderTraining() : tab === "activities" ? renderActivities() : renderToday()) + '</div>';
+  app.innerHTML = (scr ? '' : header()) + '<div class="view' + (navDir ? ' nav-' + navDir : '') + '" style="display:grid;gap:22px">' + (scr ? renderScreen() : tab === "plan" ? renderPlan() : tab === "recovery" ? progSwitch("recovery") + renderRecovery() : tab === "training" ? progSwitch("training") + renderTraining() : tab === "more" ? renderMore() : tab === "activities" ? renderActivities() : renderToday()) + '</div>';
   if (tab === "activities" && !scr) mountMaps();
 }
 function toast(msg){
@@ -2146,7 +2164,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "39";
+const APP_VERSION = "40";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2255,7 +2273,7 @@ async function pushOn(){
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 const SCR_T = {fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
   settings: "Settings", "set-notif": "Notifications", "set-watch": "Devices and apps", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
-  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Hybrid works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew"};
+  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Hybrid works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew"};
 const SCR_UP = {"set-acct": "settings", "set-train": "settings", "set-help": "settings", "set-health-info": "set-help", "set-terms": "set-help", "set-about": "set-help", "set-report": "set-help", "set-reports": "set-help", "set-profile": "set-acct", "set-email": "set-acct", "set-password": "set-acct", "set-account": "set-acct", "set-hr": "set-train", "set-run": "set-train", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", meals: "fuel", crew: "crews"};
 let navDir = null;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -2279,6 +2297,7 @@ function renderScreen(){
   if (s === "fuel") h = (day ? fuelCard(fuelFor(p, day, TODAY)) : '') + foodCard() + '<div class="slist">' +
       (plan && plan.raceDate ? '<button class="srow" type="button" data-act="go" data-scr="fuelplan">' + ic("bolt") + '<div><b>Race fueling and hydration</b><span>Carbs, fluid and sodium per hour, plus a sweat test</span></div><i>›</i></button>' : '') +
       '<button class="srow" type="button" data-act="go" data-scr="meals">' + ic("fork") + '<div><b>Meal prep and grocery list</b><span>' + (mealplan ? 'Your plan is ready' : 'Two preps a week, sized to your targets') + '</span></div><i>›</i></button></div>';
+  else if (s === "faq") h = faqHtml();
   else if (s === "fuelplan") h = plan ? fuelPlanHtml() : '';
   else if (s === "meals") h = plan ? mealsHtml() : '';
   else if (s === "crews") h = crewsHtml();
@@ -2291,10 +2310,44 @@ function renderScreen(){
   else h = settingsScreen(s);
   return back + h;
 }
+function progSwitch(cur){
+  return '<div class="segsw" role="tablist" aria-label="Progress or recovery">' + [["training", "Progress"], ["recovery", "Recovery"]].map(([k, l]) => '<button type="button" role="tab" data-act="tab" data-tab2="' + k + '" aria-selected="' + (cur === k) + '">' + l + '</button>').join("") + '</div>';
+}
+function renderMore(){
+  const card = (act, title, sub, icon, scrTo, cls) => '<button class="scard' + (cls ? ' ' + cls : '') + '" type="button" data-act="' + act + '"' + (scrTo ? ' data-scr="' + scrTo + '"' : '') + '><i class="mi">' + ic(icon) + '</i><div><b>' + title + '</b><span>' + sub + '</span></div><i>›</i></button>';
+  let h = '<h2 class="sec-t">More</h2><div class="scards">';
+  if (mode === "account") h += card("racefind", "Find a race", "Search races anywhere in the world and build a plan for it", "flag", "", "hi");
+  h += card("edit", "Change goal or start a new plan", plan ? "Now: " + esc(HP.raceName(plan.profile)) + (plan.raceDate ? " · " + fmtD(plan.raceDate) : "") : "Pick a goal and your training days", "cal");
+  if (plan && plan.raceDate) h += card("go", "Race fueling and hydration", "Carbs, fluid and sodium per hour, and a sweat test", "bolt", "fuelplan");
+  h += card("go", "Meal prep and grocery list", "Two preps a week, sized to your targets", "fork", "meals");
+  if (mode === "account") h += card("go", "Crews", "Train with friends. They only see your nickname and weekly total", "user", "crews");
+  h += card("go", "FAQ", "How plans, calories, recovery and syncing work", "spark", "faq");
+  if (API) h += card("invite", "Invite a friend", "Send them Hybrid. It's free to try", "share");
+  h += card("go", "Settings", "Account, devices and apps, notifications", "gear", "settings");
+  h += card("go", "Help and support", "Report a problem, health and safety, terms and privacy", "heart", "set-help");
+  return h + '</div>';
+}
+const FAQ = [
+  ["How is my plan built?", "From your goal, your current fitness and the days you can train. It builds up for a few weeks, takes an easier week every fourth week, and eases off before race day. Everyday plans mix strength and cardio and keep building in 12-week blocks."],
+  ["Can I change my goal or race?", "Yes. More → Change goal or start a new plan. Your plan rebuilds from this week on, and your logged workouts and food stay."],
+  ["How do I find my race?", "More → Find a race. Search by name, city or sport and tap your race to set the date. Always double-check the date on the race's own website."],
+  ["How are my calories worked out?", "Your resting burn (BMR) comes from your height, weight, age and sex. Hybrid adds how active your day is and the workouts you log, then adjusts for your goal: a deficit to lose, a small surplus to gain. It never goes below safe minimums."],
+  ["What does readiness mean?", "A score from your morning check-in plus your watch's sleep, resting heart rate and HRV when linked. On low days the workout gets shorter or easier."],
+  ["Which watches work?", "Garmin and Strava connect directly. COROS, Polar, Suunto, Wahoo and Zwift come in through Strava. Apple Watch, WHOOP and Oura come in through Apple Health."],
+  ["I linked Garmin and Apple Health. Which numbers win?", "Garmin's sleep, sleep score, resting heart rate and HRV replace Apple Health's for the same day. Apple Health fills in anything Garmin didn't send."],
+  ["Why didn't my workout show up?", "Garmin and Strava send workouts after your watch syncs with their app. Open Garmin Connect or Strava on your phone, let it sync, then pull down on Hybrid to refresh."],
+  ["Who can see my data?", "Only you. Crews see just your nickname and one weekly total. Hybrid never sells your data or shows ads."],
+  ["Is this medical or nutrition advice?", "No. Hybrid gives general fitness and food guidance for healthy adults. If you have a health condition, are pregnant, or have a history of disordered eating, check with your doctor first."],
+  ["How do I delete my account?", "Settings → Account and profile → Delete account. Everything is removed, and linked apps are disconnected."]
+];
+function faqHtml(){
+  return '<section class="card faq">' + FAQ.map(([q, a]) => '<details><summary>' + esc(q) + '</summary><p>' + esc(a) + '</p></details>').join("") + '</section>' +
+    '<p class="sub" style="text-align:center">Still stuck? <button class="linkbtn inl" type="button" data-act="go" data-scr="set-report">Report a problem</button></p>';
+}
 function setTab(t, scroll){ nav("fade", () => setTab_(t, scroll)); }
 function setTab_(t, scroll){
   scr = null;
-  if (!["today","plan","activities","recovery","training"].includes(t)) t = "today";
+  if (!["today","plan","activities","recovery","training","more"].includes(t)) t = "today";
   tab = t; if (t !== "plan") wkSel = null; if (t !== "activities") actSel = null;
   try { if (location.hash !== "#" + t) history.replaceState(null, "", "#" + t); } catch(e){}
   render(); if (scroll) window.scrollTo(0, 0);
@@ -2345,13 +2398,14 @@ document.addEventListener("click", ev => {
     else toast(url);
     return;
   }
-  if (act === "racefind"){ readStepSoft(); openRaceSearch(); return; }
+  if (act === "racefind"){ if (setup) readStepSoft(); openRaceSearch(); return; }
   if (act === "rspick"){
     const r = rsv && rsv.res && rsv.res[+a.dataset.i]; if (!r) return;
     if (r.date < addDays(TODAY, 14)){ rsv.err = "That race is less than 2 weeks away, too soon to build a plan for. Pick a later race."; rsRender(); return; }
+    if (!setup){ const p0 = plan ? {...plan.profile} : blankProfile(); delete p0.sample; delete p0.start; if (p0.goal === "everyday" || p0.goal === "fitness") p0.goal = "half"; setup = {step: 0, p: p0}; scr = null; }
     if (r.sport && r.sport !== "other" && RACES[r.sport]) setup.p.goal = r.sport;
     Object.assign(setup.p, {raceDate: r.date, raceName: r.name, raceCity: r.city || null, raceUrl: r.url || null}); setup.err = "";
-    closeMenu(); render(); return;
+    closeMenu(); render(); window.scrollTo(0, 0); return;
   }
   if (act === "lopen"){ liftOpen[a.dataset.key] = 1; render(); return; }
   if (act === "lclose"){ delete liftOpen[a.dataset.key]; render(); return; }
@@ -2667,7 +2721,7 @@ document.addEventListener("touchstart", () => {}, {passive: true});
 document.addEventListener("submit", ev => { if (ev.target.id === "rs-form"){ ev.preventDefault(); if (!rsv.busy) rsSearch(); return; } if (ev.target.id === "authform"){ ev.preventDefault(); if (!authv.busy) submitAuth(); } });
 window.addEventListener("hashchange", () => { if (!setup && plan) setTab(location.hash.slice(1), true); });
 
-tab = ["today","plan","activities","recovery","training"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "today";
+tab = ["today","plan","activities","recovery","training","more"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "today";
 render();
 let upd = null; try { upd = JSON.parse(sessionStorage.getItem("hy-upd") || "null"); sessionStorage.removeItem("hy-upd"); } catch(e){}
 if (upd && Date.now() - upd.at < 30e3){

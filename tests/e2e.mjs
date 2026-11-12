@@ -21,7 +21,7 @@ const consoleErrors = [];
 page.on("pageerror", e => consoleErrors.push("[" + step + "] " + e.message));
 page.on("console", m => { if (m.type() === "error" && !/fonts\.g|favicon|ERR_NAME|net::ERR_FAILED.*open-meteo/.test(m.text()) && !(step === "Delete account" && /401/.test(m.text()))) consoleErrors.push("[" + step + "] " + m.text()); });
 const shot = n => page.screenshot({path: SHOTS + "/" + n + ".png", fullPage: true});
-const tab = async t => { await page.click('#tabbar [data-tab="' + t + '"]'); await page.waitForTimeout(400); };
+const tab = async t => { await page.click('#tabbar [data-tab="' + (t === "recovery" ? "training" : t) + '"]'); await page.waitForTimeout(400); if (t === "recovery"){ await page.click('.segsw [data-tab2="recovery"]'); await page.waitForTimeout(400); } };
 const open = async sc => { await page.click('[data-scr="' + sc + '"]'); await page.waitForSelector(".scrbar", {timeout: 5000}); await page.waitForTimeout(250); };
 const back = async () => { await page.click('[data-act="back"]'); await page.waitForTimeout(250); };
 const settings = async () => { await page.click('[data-act="menu"]'); await page.waitForSelector(".scrbar >> text=Settings", {timeout: 5000}); };
@@ -124,6 +124,10 @@ await check("Meal prep, barcode and crews screens", async () => {
   if (!/Make (my|a meal prep) plan|Make a new plan/.test(m)) throw new Error(m.slice(0, 120));
   await tab("activities"); await open("crews"); const c = await page.innerText("#app"); await back();
   if (!/nickname/i.test(c) || !/never|Nothing else/i.test(c)) throw new Error(c.slice(0, 120)); await noOverflow(); return "meal prep form, barcode button, private crews";
+});
+await check("More tab and FAQ", async () => {
+  await tab("more"); await noOverflow(); const t = await page.innerText("#app"); if (!/Find a race/.test(t) || !/Change goal/.test(t)) throw new Error(t.slice(0, 160));
+  await open("faq"); const n = await page.locator(".faq details").count(); await back(); await tab("today"); if (n < 5) throw new Error("FAQ has " + n + " questions"); return n + " FAQ questions";
 });
 await check("Edit profile", async () => {
   await settings(); await open("set-acct"); await open("set-profile"); await page.fill("#pf-name", "Nightly Two"); await page.fill("#pf-gw", "174"); await page.click('[data-act="pfsave"]');
