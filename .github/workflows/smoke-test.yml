@@ -40,6 +40,11 @@ jobs:
           n=$(call GET /api/me | jq '.food | length'); [ "$n" -ge 1 ] || { echo "::error::food not saved"; exit 1; }
           echo "saved and loaded back: $n item(s)"
           d=$(date +%F)
+          mon=$(date -d "$d -$(( ($(date +%u) + 6) % 7 )) days" +%F)
+          call PUT /api/profile "{\"profile\":{\"name\":\"Test\",\"goal\":\"half\",\"raceDate\":\"$(date -d "+12 weeks" +%F)\",\"weekly\":20,\"longest\":8,\"prDist\":\"10k\",\"prSec\":2900,\"lifts\":2,\"days\":[0,2,4,6],\"longDay\":6,\"weight\":180,\"goalWeight\":172,\"start\":\"$mon\"}}" | jq -e .ok > /dev/null
+          note=$(call PUT /api/checkin "{\"date\":\"$d\",\"sleep_h\":6,\"sleep_q\":3,\"soreness\":3,\"energy\":3,\"stress\":3}")
+          echo "morning coach note: $(echo "$note" | jq -c .note)"
+          [ "$(echo "$note" | jq -r '.note.headline // empty')" != "" ] || { echo "::error::no morning coach note: $note"; exit 1; }
           call PUT /api/checkin "{\"date\":\"$d\",\"sleep_h\":7,\"sleep_q\":4,\"soreness\":2,\"energy\":4,\"stress\":2}" | jq -e .ok > /dev/null
           call PUT /api/weight "{\"date\":\"$d\",\"lb\":181.4}" | jq -e .ok > /dev/null
           call POST /api/activity "{\"date\":\"$d\",\"type\":\"run\",\"mi\":3.1,\"minutes\":26}" | jq -e .activity.id > /dev/null
