@@ -1475,7 +1475,7 @@ function hrScreen(){
   h += '<section class="card"><div class="card-h"><span class="lbl">Your zones</span><span class="r">% of ' + (m === "lthr" ? 'threshold' : 'max') + '</span></div><div class="zones">' +
     HR_NAMES.map((n, i) => {
       const from = i === 0 ? (m === "max" ? 50 : null) : pct[i - 1], to = i < 4 ? pct[i] : (m === "max" ? 100 : null);
-      return '<div class="zr" style="--zc:var(--' + tone[i] + ')"><i>Z' + (i + 1) + '</i><div><b>' + n + '</b><span>' + (from == null ? 'under ' : from + '–') + (i < 4 ? '<input class="zp" data-zi="' + i + '" inputmode="numeric" value="' + to + '" aria-label="Zone ' + (i + 1) + ' top, percent">%' : (to == null ? '+' : to + '%')) + '</span></div><em>' +
+      return '<div class="zr" style="--zc:var(--' + tone[i] + ')"><i>Z' + (i + 1) + '</i><div><b>' + n + '</b><span>' + (i === 4 && to == null ? from + '%' : from == null ? 'under ' : from + '–') + (i < 4 ? '<input class="zp" data-zi="' + i + '" inputmode="numeric" value="' + to + '" aria-label="Zone ' + (i + 1) + ' top, percent">%' : (to == null ? ' and up' : to + '%')) + '</span></div><em>' +
         (z ? (z[i][0] == null ? '< ' + (z[i][1] + 1) : z[i][1] == null ? z[i][0] + '+' : z[i][0] + '–' + z[i][1]) + ' bpm' : '–') + '</em></div>';
     }).join("") + '</div><p class="sub">Tap a percentage to change where a zone ends.</p>' +
     (hrEdit.err ? '<p class="err" role="alert">' + esc(hrEdit.err) + '</p>' : '') +
