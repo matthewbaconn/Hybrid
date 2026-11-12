@@ -1,0 +1,49 @@
+name: Read problem reports (encrypted)
+# Problem reports are private. This copies them out of the database encrypted with a public key
+# given when the run is started, so only whoever holds the matching private key can read them.
+# Nothing readable goes into the (public) log.
+on:
+  workflow_dispatch:
+    inputs:
+      pubkey:
+        description: "Public key (PEM, base64-encoded) to encrypt the reports with"
+        required: true
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install wrangler
+        working-directory: api
+        run: npm install --no-save --no-audit --no-fund wrangler@4
+      - name: Point wrangler at the live database
+        working-directory: api
+        run: |
+          id=$(npx wrangler d1 list --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s).find(d=>d.name==="hybrid");process.stdout.write(x?x.uuid:"")})')
+          sed -i "s/REPLACED_BY_DEPLOY_WORKFLOW/$id/" wrangler.toml
+      - name: Export and encrypt
+        working-directory: api
+        env:
+          PUBKEY: ${{ inputs.pubkey }}
+        run: |
+          set -euo pipefail
+          umask 077; mkdir -p ../out
+          echo "$PUBKEY" | base64 -d > /tmp/pub.pem
+          npx wrangler d1 execute hybrid --remote --json --command "SELECT text, info, email, created FROM reports ORDER BY created DESC LIMIT 20" > /tmp/r.json 2>/dev/null
+          openssl rand -hex 32 > /tmp/k
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in /tmp/r.json -out ../out/reports.enc -pass file:/tmp/k
+          openssl pkeyutl -encrypt -pubin -inkey /tmp/pub.pem -in /tmp/k -out ../out/key.enc
+          shred -u /tmp/r.json /tmp/k
+          echo "Reports exported (encrypted)."
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reports-encrypted
+          path: out/
+          retention-days: 1
