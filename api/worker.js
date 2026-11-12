@@ -175,7 +175,7 @@ async function loadUser(env, userId, today){
     env.DB.prepare("SELECT date, sleep_h, sleep_q, soreness, energy, stress FROM checkins WHERE user_id = ? AND date >= ?").bind(userId, HP.addDays(today, -14)),
     env.DB.prepare("SELECT date, cal FROM food WHERE user_id = ? AND date >= ?").bind(userId, HP.addDays(today, -14)),
     env.DB.prepare("SELECT name FROM users WHERE id = ?").bind(userId),
-    env.DB.prepare("SELECT date, sleep_h, rhr, hrv, steps, active_cal FROM health_daily WHERE user_id = ? AND date >= ?").bind(userId, HP.addDays(today, -21))
+    env.DB.prepare("SELECT date, sleep_h, rhr, hrv, steps, active_cal, sleep_score, bb, stress, source FROM health_daily WHERE user_id = ? AND date >= ?").bind(userId, HP.addDays(today, -21))
   ]);
   if (!p.results[0]) return null;
   const profile = JSON.parse(p.results[0].data), plan = HP.buildPlan(profile, today);
@@ -255,7 +255,8 @@ async function morningNote(env, userId, today){
     calories_today_target: f.cal, protein_g: f.pro, yesterday: U.eaten[yday] ? {eaten: U.eaten[yday], target: fy.cal} : "no food logged",
     weight_7day_avg: a7 ? Math.round(a7 * 10) / 10 : null, weight_change_vs_last_week: a7 && a14 ? Math.round((a7 - a14) * 10) / 10 : null, goal_weight: U.profile.goalWeight || null,
     last_3_days: recent,
-    watch: sig ? {sleep_h: sig.sleep_h, resting_hr: sig.rhr, resting_hr_14day_avg: sig.rhrA ? Math.round(sig.rhrA) : null, hrv_ms: sig.hrv, hrv_14day_avg: sig.hrvA ? Math.round(sig.hrvA) : null, flags: sig.notes} : "no watch data today"};
+    watch: sig ? {sleep_h: sig.sleep_h, resting_hr: sig.rhr, resting_hr_14day_avg: sig.rhrA ? Math.round(sig.rhrA) : null, hrv_ms: sig.hrv, hrv_14day_avg: sig.hrvA ? Math.round(sig.hrvA) : null, flags: sig.notes,
+      sleep_score: (U.dev[today] || {}).sleep_score ?? null, body_battery_at_wake: (U.dev[today] || {}).bb ?? null, stress_avg: (U.dev[today] || {}).stress ?? null, source: (U.dev[today] || {}).source || null} : "no watch data today"};
   const out = await askCoach(env, COACH_STYLE + ' Write the morning check-in note. Reply with ONLY JSON: {"headline":"2-6 words","lines":["recovery read, under 20 words","today\'s session, under 20 words","fuel for today, under 20 words"]}. Three separate array items, one sentence each.', data);
   if (!out || !out.headline) return null;
   const note = {headline: String(out.headline).slice(0, 60), lines: (Array.isArray(out.lines) ? out.lines : []).slice(0, 3).map(x => clip(String(x), 220))};
@@ -380,8 +381,11 @@ async function route(req, env, path, ctx){
     const q = new URL(req.url).searchParams, b = M === "POST" ? await body(req).catch(() => ({})) : {};
     const key = String(q.get("key") || b.key || "");
     await limit(env, "import:" + (req.headers.get("CF-Connecting-IP") || "x"));
-    const row = key.length > 20 ? await env.DB.prepare("SELECT user_id FROM import_keys WHERE key_hash = ?").bind(await sha256(key)).first() : null;
+    const kh = key.length > 20 ? await sha256(key) : null;
+    let row = kh ? await env.DB.prepare("SELECT user_id, 'apple' AS kind FROM import_keys WHERE key_hash = ?").bind(kh).first() : null;
+    if (!row && kh) row = await env.DB.prepare("SELECT user_id, kind FROM link_keys WHERE key_hash = ?").bind(kh).first();
     if (!row) throw new HttpError(401, "That link isn't valid anymore. Make a new one in Hybrid settings.");
+    const src = row.kind === "garmin" ? "garmin" : "apple";
     const get = k => { const v = q.get(k) ?? b[k]; return v == null ? "" : String(v).trim(); };
     const nums = raw => raw.split(/[\n;|]+/).map(t => t.replace(/(\d),(\d{3})(?!\d)/g, "$1$2").replace(",", ".")).map(t => { const m = t.match(/-?\d+(\.\d+)?/); return m ? Number(m[0]) : NaN; }).filter(x => !isNaN(x));
     const sum = a => a.reduce((x, y) => x + y, 0), mean = a => a.length ? sum(a) / a.length : NaN;
@@ -399,21 +403,25 @@ async function route(req, env, path, ctx){
     };
     const saved = {}, st = await settingsOf(env, row.user_id), dq = (get("date") || "").slice(0, 10);
     const date = isDate(dq) ? dq : localNow(st.tz).date, ops = [];
-    const w = get("weight");
+    const w = get("weight"), softW = src === "garmin";   // Garmin weight only fills days with no weigh-in
     if (w){ let lb = nums(w).slice(-1)[0]; if (/kg/i.test(w)) lb *= 2.20462; if (lb >= 70 && lb <= 500){ saved.weight = Math.round(lb * 10) / 10;
-      ops.push(env.DB.prepare("INSERT INTO weights (user_id, date, lb) VALUES (?, ?, ?) ON CONFLICT (user_id, date) DO UPDATE SET lb = excluded.lb").bind(row.user_id, date, saved.weight)); } }
+      ops.push(env.DB.prepare(softW ? "INSERT INTO weights (user_id, date, lb) VALUES (?, ?, ?) ON CONFLICT (user_id, date) DO NOTHING" : "INSERT INTO weights (user_id, date, lb) VALUES (?, ?, ?) ON CONFLICT (user_id, date) DO UPDATE SET lb = excluded.lb").bind(row.user_id, date, saved.weight)); } }
     const sl = get("sleep"); if (sl){ const h = hours(sl); if (h >= 1 && h <= 16) saved.sleep_h = Math.round(h * 100) / 100; }
     const rh = get("rhr"); if (rh){ const v = mean(nums(rh)); if (v >= 25 && v <= 150) saved.rhr = Math.round(v); }
     const hv = get("hrv"); if (hv){ const v = mean(nums(hv)); if (v >= 5 && v <= 300) saved.hrv = Math.round(v); }
     const sp = get("steps"); if (sp){ const v = sum(nums(sp)); if (v >= 0 && v <= 150000) saved.steps = Math.round(v); }
+    for (const [k, col] of [["sleep_score", "sleep_score"], ["bb", "bb"], ["body_battery", "bb"], ["stress", "stress"]]){ const v = get(k); if (v){ const x = mean(nums(v)); if (x >= 0 && x <= 100) saved[col] = Math.round(x); } }
     const ac = get("active"); if (ac){ let v = sum(nums(ac)); if (/kj/i.test(ac)) v /= 4.184; if (v >= 0 && v <= 8000) saved.active_cal = Math.round(v); }
-    const dk = ["sleep_h", "rhr", "hrv", "steps", "active_cal"].filter(k => k in saved);
-    if (dk.length) ops.push(env.DB.prepare("INSERT INTO health_daily (user_id, date, sleep_h, rhr, hrv, steps, active_cal, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, date) DO UPDATE SET " +
-      dk.map(k => k + " = excluded." + k).join(", ") + ", updated = excluded.updated").bind(row.user_id, date, saved.sleep_h ?? null, saved.rhr ?? null, saved.hrv ?? null, saved.steps ?? null, saved.active_cal ?? null, now()));
-    if (!ops.length) throw new HttpError(400, "Nothing to save. Send weight=, sleep=, rhr=, hrv=, steps= or active= with a number.");
-    ops.push(env.DB.prepare("UPDATE import_keys SET last_used = ? WHERE user_id = ?").bind(now(), row.user_id));
+    // Garmin wins: Garmin numbers replace Apple Health ones; Apple Health only fills what Garmin left empty that day
+    const DK = ["sleep_h", "rhr", "hrv", "steps", "active_cal", "sleep_score", "bb", "stress"], dk = DK.filter(k => k in saved);
+    const set = k => src === "garmin" ? k + " = excluded." + k : k + " = CASE WHEN health_daily.source = 'garmin' AND health_daily." + k + " IS NOT NULL THEN health_daily." + k + " ELSE excluded." + k + " END";
+    if (dk.length) ops.push(env.DB.prepare("INSERT INTO health_daily (user_id, date, " + DK.join(", ") + ", source, updated) VALUES (?, ?, " + DK.map(() => "?").join(", ") + ", ?, ?) ON CONFLICT (user_id, date) DO UPDATE SET " +
+      dk.map(set).join(", ") + ", source = CASE WHEN health_daily.source = 'garmin' OR excluded.source = 'garmin' THEN 'garmin' ELSE excluded.source END, updated = excluded.updated")
+      .bind(row.user_id, date, ...DK.map(k => saved[k] ?? null), src, now()));
+    if (!ops.length) throw new HttpError(400, "Nothing to save. Send weight=, sleep=, sleep_score=, rhr=, hrv=, bb=, stress=, steps= or active= with a number.");
+    ops.push(src === "garmin" ? env.DB.prepare("UPDATE link_keys SET last_used = ? WHERE key_hash = ?").bind(now(), kh) : env.DB.prepare("UPDATE import_keys SET last_used = ? WHERE user_id = ?").bind(now(), row.user_id));
     await env.DB.batch(ops);
-    await logEvent(env, "health_import", true, Object.keys(saved).join(","));
+    await logEvent(env, "health_import", true, src + ": " + Object.keys(saved).join(","));
     return {ok: true, date, saved};
   }
   if (path === "/api/strava/webhook"){
@@ -487,12 +495,13 @@ async function route(req, env, path, ctx){
       env.DB.prepare("SELECT id, source, date, type, name, mi, minutes, cal, avg_hr, work_pace, laps, poly, start_local, elev_ft, sport, max_hr FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(user.id, since),
       env.DB.prepare("SELECT athlete_name, last_sync FROM strava_links WHERE user_id = ?").bind(user.id)
     ]);
-    const [rv, cn, ps, ik, hd] = await env.DB.batch([
+    const [rv, cn, ps, ik, hd, gk] = await env.DB.batch([
       env.DB.prepare("SELECT activity_id, data FROM reviews WHERE user_id = ? AND date >= ?").bind(user.id, since),
       env.DB.prepare("SELECT date, kind, data FROM coach_notes WHERE user_id = ? AND date >= ?").bind(user.id, new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10)),
       env.DB.prepare("SELECT COUNT(*) AS n FROM push_subs WHERE user_id = ?").bind(user.id),
       env.DB.prepare("SELECT last_used FROM import_keys WHERE user_id = ?").bind(user.id),
-      env.DB.prepare("SELECT date, sleep_h, rhr, hrv, steps, active_cal FROM health_daily WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since)
+      env.DB.prepare("SELECT date, sleep_h, rhr, hrv, steps, active_cal, sleep_score, bb, stress, source FROM health_daily WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since),
+      env.DB.prepare("SELECT last_used FROM link_keys WHERE user_id = ? AND kind = 'garmin'").bind(user.id)
     ]);
     const prof = p.results[0] ? JSON.parse(p.results[0].data) : null;
     const owner = await ownerId(env) === user.id;
@@ -501,7 +510,7 @@ async function route(req, env, path, ctx){
       strava: {available: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!s.results[0], name: s.results[0] ? s.results[0].athlete_name : "", last_sync: s.results[0] ? s.results[0].last_sync : null},
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
       settings: await settingsOf(env, user.id), push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY,
-      owner, reports, health: hd.results, health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
+      owner, reports, health: hd.results, garmin_link: gk.results[0] ? {on: true, last_used: gk.results[0].last_used} : {on: false}, health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
   }
   if (M === "PUT" && path === "/api/profile"){
     const b = await body(req), s = JSON.stringify(b.profile || null);
@@ -545,6 +554,13 @@ async function route(req, env, path, ctx){
     await env.DB.prepare("INSERT INTO import_keys (user_id, key_hash, created) VALUES (?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET key_hash = excluded.key_hash, created = excluded.created, last_used = NULL").bind(user.id, await sha256(key), now()).run();
     return {key};
   }
+  if (M === "POST" && path === "/api/garmin-key"){
+    const key = "gk_" + rand(24);
+    await env.DB.batch([env.DB.prepare("DELETE FROM link_keys WHERE user_id = ? AND kind = 'garmin'").bind(user.id),
+      env.DB.prepare("INSERT INTO link_keys (key_hash, user_id, kind, created) VALUES (?, ?, 'garmin', ?)").bind(await sha256(key), user.id, now())]);
+    return {key};
+  }
+  if (M === "DELETE" && path === "/api/garmin-key"){ await env.DB.prepare("DELETE FROM link_keys WHERE user_id = ? AND kind = 'garmin'").bind(user.id).run(); return {ok: true}; }
   if (M === "DELETE" && path === "/api/import-key"){ await env.DB.prepare("DELETE FROM import_keys WHERE user_id = ?").bind(user.id).run(); return {ok: true}; }
   if (M === "PUT" && path === "/api/weight"){
     const b = await body(req), lb = Number(b.lb);
@@ -617,7 +633,7 @@ async function route(req, env, path, ctx){
   if (M === "DELETE" && path === "/api/account"){
     const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
     if (link){ try { const tok = await stravaToken(env, link); await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/deauthorize", {method: "POST", headers: {Authorization: "Bearer " + tok}}); } catch(e){} }
-    await env.DB.batch(["sessions", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily", "reports"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
+    await env.DB.batch(["sessions", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily", "reports", "link_keys"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
       .concat([env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id)]));
     return {ok: true};
   }

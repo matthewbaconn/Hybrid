@@ -545,11 +545,11 @@ function loadAccount(j){
   clearObj(checkins); (j.checkins || []).forEach(c => checkins[c.date] = c);
   clearObj(weights); (j.weights || []).forEach(w => weights[w.date] = w.lb);
   acts = j.activities || []; strava = j.strava || strava;
-  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {}; isOwner = !!j.owner; reports = j.reports || [];
+  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; healthLink = j.health_link || {on: false}; garminLink = j.garmin_link || {on: false}; dev = devMap(j.health) || {}; isOwner = !!j.owner; reports = j.reports || [];
   plan = j.profile ? buildPlan(j.profile) : null;
   setup = plan ? null : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
 }
-function signedOut(){ scr = null; isOwner = false; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
+function signedOut(){ scr = null; garminKey = null; garminLink = {on: false}; isOwner = false; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
 const checkins = S.checkins || {};          // date -> {sleep_h, sleep_q, soreness, energy, stress}
 const weights = S.weights || {};            // date -> lb
@@ -891,8 +891,9 @@ function watchCard(days){
   if (!has) return mode === "account" ? '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("watch") + '<span class="lbl">From your watch</span></div><p class="sub">No watch data yet. Add sleep and heart rate from your iPhone and your readiness uses them.</p><button class="btn block" type="button" data-act="menu">Set up in Settings</button></section>' : '';
   const tile = (k, v, sub) => '<div><span>' + k + '</span><b>' + v + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</div>';
   const vs = (v, a, unit, lowGood) => a && v ? (Math.round(v - a) === 0 ? 'normal' : (v > a ? '+' : '−') + Math.abs(Math.round(v - a)) + unit + ' vs normal') : '';
-  let h = '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("watch") + '<span class="lbl">From your watch</span><span class="r">' + (dev[TODAY] ? 'today' : t ? 'yesterday' : '') + '</span></div>';
-  if (t) h += '<div class="wsum wtiles">' + tile("Sleep", t.sleep_h ? hm(t.sleep_h) : '–') + tile("Resting HR", t.rhr ? t.rhr : '–', sig ? vs(t.rhr, sig.rhrA, ' bpm') : '') + tile("HRV", t.hrv ? t.hrv + ' ms' : '–', sig ? vs(t.hrv, sig.hrvA, ' ms') : '') + '</div>' +
+  let h = '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("watch") + '<span class="lbl">From your watch</span><span class="r">' + (t ? (t.source === "garmin" ? 'Garmin' : 'Apple Health') + ' · ' : '') + (dev[TODAY] ? 'today' : t ? 'yesterday' : '') + '</span></div>';
+  if (t) h += '<div class="wsum wtiles">' + tile("Sleep", t.sleep_h ? hm(t.sleep_h) : '–', t.sleep_score != null ? 'score ' + t.sleep_score : '') + tile("Resting HR", t.rhr ? t.rhr : '–', sig ? vs(t.rhr, sig.rhrA, ' bpm') : '') + tile("HRV", t.hrv ? t.hrv + ' ms' : '–', sig ? vs(t.hrv, sig.hrvA, ' ms') : '') + '</div>' +
+    (t.bb != null || t.stress != null ? '<div class="wsum wtiles">' + (t.bb != null ? tile("Body Battery", t.bb, 'at wake') : '') + (t.stress != null ? tile("Stress", t.stress, 'average') : '') + (t.sleep_score != null ? tile("Sleep score", t.sleep_score, t.sleep_score >= 80 ? 'good' : t.sleep_score >= 60 ? 'fair' : 'poor') : '') + '</div>' : '') +
     (t.steps != null || t.active_cal != null ? '<p class="sub">' + [t.steps != null ? comma(t.steps) + ' steps' : '', t.active_cal != null ? comma(t.active_cal) + ' active cal' : ''].filter(Boolean).join(' · ') + '</p>' : '') +
     (sig && sig.notes.length ? '<p class="fbnote">' + ic("gauge") + '<span>' + esc(sig.notes.join(", ").replace(/^./, x => x.toUpperCase())) + '.' + (sig.pen ? ' Readiness is lowered a little to match.' : '') + '</span></p>' : '');
   else h += '<p class="sub">Nothing from your watch today yet.</p>';
@@ -1442,6 +1443,7 @@ function settingsScreen(k){
   if (k === "set-notif") return '<section class="card">' + notifHtml() + '</section>';
   if (k === "set-watch") return '<section class="card">' + healthHtml() + '</section>' +
     (strava.connected ? '<button class="btn block" type="button" data-act="stdisc">Disconnect Strava' + (strava.name ? ' (' + esc(strava.name) + ')' : '') + '</button>' : '');
+  if (k === "set-garmin") return garminScreen();
   if (k === "set-health") return '<section class="card">' + healthSteps() + '</section>';
   if (k === "set-report") return reportForm();
   if (k === "set-reports") return '<section class="card">' + reportsHtml() + '</section>';
@@ -1489,7 +1491,7 @@ function hrRead(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "19";
+const APP_VERSION = "24";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -1507,7 +1509,7 @@ function reportsHtml(){
     return '<div class="rp"><p>' + esc(r.text) + '</p><span>' + esc(r.email || "not signed in") + ' · ' + agoText(r.created) + (i.screen ? ' · ' + esc(i.screen) + ' tab' : '') + ' · ' + dev + (i.installed ? ' app' : '') + '</span><button class="linkbtn" type="button" data-act="rpdone" data-id="' + esc(r.id) + '">Mark done</button></div>'; }).join("") + '</div>';
 }
 /* ---------- watch: Strava for workouts, an iPhone Shortcut for sleep and heart rate ---------- */
-let healthKey = null, healthLink = {on: false}, healthView = false;
+let healthKey = null, healthLink = {on: false}, healthView = false, garminKey = null, garminLink = {on: false};
 /* Shared "Hybrid Health" shortcut (iCloud link). Hybrid hands it the person's key each time it runs it,
    so nobody types or pastes anything. Empty = not published yet: only the app owner sees the manual steps. */
 const SHORTCUT_URL = "https://www.icloud.com/shortcuts/65aecedd559b48b3a6a529011c45c3a4", SHORTCUT_NAME = "Hybrid Health";
@@ -1530,7 +1532,16 @@ function healthHtml(){
       : isOwner ? row("Sleep and heart rate", healthLink.on ? (healthLink.last_used ? "Updated " + agoText(healthLink.last_used) : "Waiting for your first update") : "From Apple Health on your iPhone",
           healthLink.on ? '<button class="btn" type="button" data-act="hlsetup">Steps</button>' : '<button class="btn" type="button" data-act="hlmake">Set up</button>')
       : row("Sleep and heart rate", "Coming soon", '')) +
+    (isOwner ? row("Garmin", garminLink.on ? (garminLink.last_used ? "Updated " + agoText(garminLink.last_used) + " · wins over Apple Health" : "Waiting for garmin-sync") : "Sleep score, Body Battery, HRV from garmin-sync",
+      '<button class="btn" type="button" data-act="go" data-scr="set-garmin">' + (garminLink.on ? 'Manage' : 'Set up') + '</button>') : '') +
     '</div>';
+}
+function garminScreen(){
+  if (garminKey) return '<section class="card"><ol class="steps-plain"><li>Copy your Garmin key.<input id="gk-url" readonly value="' + esc(garminKey) + '" aria-label="Your Garmin key"><button class="btn primary block" type="button" data-act="gkcopy">Copy key</button></li>' +
+    '<li>On GitHub, open <b>garmin-sync</b> → Settings → Secrets and variables → Actions → <b>New repository secret</b>.</li>' +
+    '<li>Name it <b>HYBRID_GARMIN_KEY</b>, paste the key, and save.</li></ol><p class="sub">Your next Garmin pull sends sleep score, sleep, HRV, resting HR, Body Battery, stress and steps here. Garmin numbers replace Apple Health ones for the same day. You only see this key once.</p></section>';
+  return '<section class="card"><p class="sub">' + (garminLink.on ? 'Garmin is connected' + (garminLink.last_used ? ', last update ' + agoText(garminLink.last_used) : ', waiting for the first update') + '. Making a new key stops the old one.' : 'Uses your garmin-sync GitHub repo to send your Garmin numbers here every morning. Garmin wins over Apple Health.') + '</p>' +
+    '<button class="btn primary block" type="button" data-act="gkmake">' + (garminLink.on ? 'Make a new key' : 'Make my Garmin key') + '</button>' + (garminLink.on ? '<button class="btn block" type="button" data-act="gkoff" style="color:var(--crit)">Turn off</button>' : '') + '</section>';
 }
 function healthSteps(){
   if (SHORTCUT_URL) return '<ol class="steps-plain"><li>Add the Hybrid Health shortcut. It\'s one tap.<a class="btn primary block" style="margin-top:10px" href="' + esc(SHORTCUT_URL) + '" target="_blank" rel="noopener">Get the shortcut</a></li>' +
@@ -1575,8 +1586,8 @@ async function pushOn(){
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 const SCR_T = {fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
   settings: "Settings", "set-notif": "Notifications", "set-watch": "Watch", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Account",
-  "set-hr": "Heart rate zones", "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup"};
-const SCR_UP = {"set-hr": "settings", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", "set-report": "settings", "set-reports": "settings", "set-account": "settings"};
+  "set-hr": "Heart rate zones", "set-garmin": "Garmin", "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup"};
+const SCR_UP = {"set-garmin": "set-watch", "set-hr": "settings", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", "set-report": "settings", "set-reports": "settings", "set-account": "settings"};
 function go(s){
   scr = s;
   if (s === "set-notif" && mode === "account" && pushOK() && !pushState.checked) checkPush().then(() => { if (scr === "set-notif") render(); });
@@ -1637,7 +1648,7 @@ document.addEventListener("click", ev => {
   if (act === "actback"){ actSel = null; render(); return; }
   if (act === "afilt"){ actFilter = a.dataset.k; render(); return; }
   if (act === "go"){ if (a.dataset.scr === "set-report" && reportView && reportView.sent) reportView = null; go(a.dataset.scr); return; }
-  if (act === "back"){ if (scr === "set-hr") hrEdit = null; const up = SCR_UP[scr] || null; if (scr === "set-report") reportView = null; go(up); return; }
+  if (act === "back"){ if (scr === "set-hr") hrEdit = null; if (scr === "set-garmin") garminKey = null; const up = SCR_UP[scr] || null; if (scr === "set-report") reportView = null; go(up); return; }
   if (act === "hlmake"){ api("POST", "/api/import-key").then(j => { healthKey = j.key; healthLink = {on: true, last_used: null}; go("set-health"); }).catch(e => toast(e.message)); return; }
   if (act === "rpsend"){
     const v = reportView; v.text = ($("#rp-text") || {}).value || "";
@@ -1661,6 +1672,9 @@ document.addEventListener("click", ev => {
     else { try { localStorage.setItem("hybrid-hr", JSON.stringify({...hrLocal(), ...body})); } catch(x){} done_(); }
     return;
   }
+  if (act === "gkmake"){ api("POST", "/api/garmin-key").then(j => { garminKey = j.key; garminLink = {on: true, last_used: null}; render(); }).catch(e => toast(e.message)); return; }
+  if (act === "gkoff"){ if (!confirm("Stop Garmin updates?")) return; api("DELETE", "/api/garmin-key").then(() => { garminKey = null; garminLink = {on: false}; go("set-watch"); }).catch(e => toast(e.message)); return; }
+  if (act === "gkcopy"){ const v = ($("#gk-url") || {}).value || ""; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast("Key copied."), () => { const el = $("#gk-url"); if (el){ el.focus(); el.select(); } toast("Press and hold to copy."); }); return; }
   if (act === "hsync"){ healthSync().catch(e => toast(e.message)); return; }
   if (act === "hlsetup"){ go("set-health"); return; }
   if (act === "hloff"){ if (!confirm("Turn this off? Your Shortcut will stop sending data.")) return; api("DELETE", "/api/import-key").then(() => { healthKey = null; healthLink = {on: false}; go("set-watch"); }).catch(e => toast(e.message)); return; }

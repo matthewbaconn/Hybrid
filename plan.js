@@ -220,6 +220,7 @@ function devSignals(dev, date){
   const hrvA = avg("hrv"), rhrA = avg("rhr"), notes = []; let pen = 0;
   if (d.hrv && hrvA){ const pc = (d.hrv - hrvA) / hrvA; if (pc <= -.12){ pen += 8; notes.push("HRV " + Math.round(-pc * 100) + "% below your normal"); } else if (pc >= .08) notes.push("HRV above your normal"); }
   if (d.rhr && rhrA){ const df = d.rhr - rhrA; if (df >= 5){ pen += 6; notes.push("resting HR " + Math.round(df) + " bpm above normal"); } else if (df <= -3) notes.push("resting HR below normal"); }
+  if (d.sleep_score != null && d.sleep_score < 60){ pen += 5; notes.push("sleep score " + d.sleep_score); }
   return {sleep_h: d.sleep_h || null, rhr: d.rhr || null, hrv: d.hrv || null, steps: d.steps || null, active_cal: d.active_cal || null, hrvA, rhrA, pen, notes};
 }
 function readiness(c, sig){
