@@ -2309,7 +2309,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "52";
+const APP_VERSION = "53";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2484,7 +2484,7 @@ function renderMore(){
   if (mode === "account" && isOwner) h += card("go", "Members", "Only you see this · who signed up and what they've linked", "user", "members", "hi");
   h += card("go", "FAQ", "How plans, calories, recovery and syncing work", "spark", "faq");
   if (API) h += card("invite", "Invite a friend", "Send them Mileset. It's free to try", "share");
-  h += '<a class="scard" href="https://www.instagram.com/hybrdrunning/" target="_blank" rel="noopener"><i class="mi">' + ic("camera") + '</i><div><b>Follow @HybrdRunning</b><span>Tips, new features and early access news on Instagram</span></div><i>›</i></a>';
+  h += '<a class="scard" href="https://www.instagram.com/milesetapp/" target="_blank" rel="noopener"><i class="mi">' + ic("camera") + '</i><div><b>Follow @milesetapp</b><span>Tips, new features and early access news on Instagram</span></div><i>›</i></a>';
   h += card("go", "Settings", "Account, devices and apps, notifications", "gear", "settings");
   h += card("go", "Help and support", "Report a problem, health and safety, terms and privacy", "heart", "set-help");
   h += mailCard();
