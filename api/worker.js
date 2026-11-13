@@ -770,7 +770,14 @@ async function route(req, env, path, ctx){
       const end = Math.floor(Date.now() / 1000), start = end - 14 * 86400;
       for (const k of ["sleeps", "dailies", "hrv", "activities", "activityDetails"]){
         const br = await fetch((env.GARMIN_API || GARMIN_API) + "/wellness-api/rest/backfill/" + k + "?summaryStartTimeInSeconds=" + start + "&summaryEndTimeInSeconds=" + end, {headers: {Authorization: "Bearer " + j.access_token}}).catch(() => null);
-        await logEvent(env, "garmin_backfill", !!(br && (br.ok || br.status === 409)), k + " " + (br ? br.status : "net"));
+        const good = !!(br && (br.ok || br.status === 409));
+        // on failure keep Garmin's own reason (no personal data) so the cause shows in the event log
+        await logEvent(env, "garmin_backfill", good, k + " " + (br ? br.status : "net") + (br && !good ? " " + (await br.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 140) : ""));
+        if (br && br.status === 412){   // precondition failed applies to the whole account: note what Garmin allows and stop
+          const lk = await env.DB.prepare("SELECT permissions FROM garmin_links WHERE user_id = ?").bind(row.user_id).first();
+          await logEvent(env, "garmin_backfill", false, "stopped after 412; permissions " + String(lk && lk.permissions || "unknown").slice(0, 140));
+          break;
+        }
       }
     })());
     return go("connected");
