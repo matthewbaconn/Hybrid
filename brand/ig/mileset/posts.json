@@ -1,0 +1,38 @@
+[
+ {
+  "id": "sleep",
+  "file": "sleep.jpg",
+  "headline": "Slept bad? Your workout knows.",
+  "line": "Mileset adjusts today's session to your sleep and HRV."
+ },
+ {
+  "id": "hybrid",
+  "file": "hybrid.jpg",
+  "headline": "Lift heavy. Run far. Same plan.",
+  "line": "Strength days built around your mileage, not against it."
+ },
+ {
+  "id": "watch",
+  "file": "watch.jpg",
+  "headline": "Your plan, on your wrist.",
+  "line": "Every run pushed to your Garmin with pace targets and intervals."
+ },
+ {
+  "id": "fuel",
+  "file": "fuel.jpg",
+  "headline": "Eat for the miles you run.",
+  "line": "Daily food targets from your body and your training."
+ },
+ {
+  "id": "founding",
+  "file": "founding.jpg",
+  "headline": "Founding 100. Free for life.",
+  "line": "The first 100 members before Jan 1, 2027 never pay. Link in bio."
+ },
+ {
+  "id": "anygoal",
+  "file": "anygoal.jpg",
+  "headline": "Marathon. HYROX. Triathlon.",
+  "line": "One plan that fits your goal and your week."
+ }
+]
