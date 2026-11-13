@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#800000">
-<title>HYBRD</title>
+<title>Mileset</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HYBRD">
+<meta name="apple-mobile-web-app-title" content="Mileset">
 <meta name="description" content="Run and lift plans built around your goals.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -340,7 +340,7 @@ button{cursor:pointer}
 .fcard{display:flex;gap:14px;align-items:center;padding:16px 18px;border-radius:12px;background:color-mix(in srgb,var(--accent) 24%,var(--surface));border:1px solid color-mix(in srgb,var(--accent-2) 55%,transparent);margin-bottom:14px}.fcard i{width:42px;height:42px;border-radius:10px;background:var(--accent);display:grid;place-items:center;color:#fff;flex:none}.fcard i svg{width:22px;height:22px}.fcard b{display:block;font-weight:700;font-size:16px}.fcard span{font-size:13.5px;color:var(--muted);line-height:1.45}
 #app.swiping{will-change:transform;box-shadow:-18px 0 30px rgba(0,0,0,.45)} #app.swipe-settle{transition:transform .2s cubic-bezier(.2,.8,.2,1),opacity .2s}
 
-/* opening animation: red screen, a lightning bolt strikes, the screen flashes and HYBRD lands (transform/opacity only, so it stays smooth) */
+/* opening animation: red screen, a lightning bolt strikes, the screen flashes and Mileset lands (transform/opacity only, so it stays smooth) */
 #splash{position:fixed;inset:0;z-index:100;background:radial-gradient(120% 80% at 50% 42%,#D2434A 0%,#BE383E 45%,#8F1F25 100%);display:grid;place-content:center;justify-items:center;overflow:hidden;will-change:opacity,transform}
 #splash .sp-bolt{position:absolute;left:50%;top:0;width:90px;height:52vh;transform:translateX(-38%);overflow:visible;filter:drop-shadow(0 0 6px #fff) drop-shadow(0 0 18px rgba(255,255,255,.7))}
 #splash .sp-bolt path{fill:none;stroke:#fff;stroke-width:3.2;stroke-linejoin:miter;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;animation:sp-strike .2s cubic-bezier(.5,0,.9,.5) .15s forwards,sp-gone .35s ease-out .55s forwards}
@@ -706,7 +706,7 @@ a.scard{text-decoration:none;color:var(--ink)}
 </style>
 </head>
 <body>
-<div id="splash" aria-hidden="true"><svg class="sp-bolt" viewBox="0 0 90 300" preserveAspectRatio="none"><path pathLength="1" d="M58 -10 L30 95 L52 102 L18 205 L44 212 L26 300"/><path pathLength="1" d="M30 95 L8 140 M18 205 L4 236"/></svg><div class="sp-flash"></div><b class="sp-word">HYBRD</b><span class="sp-sub">RUNNING</span></div>
+<div id="splash" aria-hidden="true"><svg class="sp-bolt" viewBox="0 0 90 300" preserveAspectRatio="none"><path pathLength="1" d="M58 -10 L30 95 L52 102 L18 205 L44 212 L26 300"/><path pathLength="1" d="M30 95 L8 140 M18 205 L4 236"/></svg><div class="sp-flash"></div><b class="sp-word">MILESET</b><span class="sp-sub"></span></div>
 <script>window.__splashAt = performance.now();</script>
 <div id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></div>
 <div class="wrap" id="app" aria-live="polite"></div>
@@ -1365,7 +1365,7 @@ function watchWorkoutsHtml(){
   return '<section class="card"><div class="card-h" style="--tone:var(--work)">' + ic("watch") + '<span class="lbl">Workouts on your watch</span>' + (ok ? '<span class="r ok">On</span>' : '') + '</div>' +
     (ok ? '<p class="sub">' + (n ? n + ' upcoming workout' + (n === 1 ? ' is' : 's are') + ' on your Garmin calendar' : 'Your next 7 days of workouts go to your Garmin calendar') + ', with warm-up, reps and pace targets. They update when your plan changes. Sync your watch to load them.</p>' +
           '<button class="btn block" type="button" data-act="gwsync"' + (gwBusy ? ' disabled aria-busy="true"' : '') + '>' + (gwBusy ? 'Sending…' : 'Send to my watch now') + '</button>'
-        : '<p class="sub">HYBRD can put each planned run, ride and swim on your Garmin, with pace targets and intervals. Garmin needs your OK first: reconnect Garmin and allow <b>Workout import</b>.</p>' +
+        : '<p class="sub">Mileset can put each planned run, ride and swim on your Garmin, with pace targets and intervals. Garmin needs your OK first: reconnect Garmin and allow <b>Workout import</b>.</p>' +
           '<button class="btn primary block" type="button" data-act="gmconnect">Reconnect Garmin</button><button class="linkbtn" type="button" data-act="gwsync" style="margin-top:8px">I already allowed it, check again</button>') + '</section>';
 }
 function syncLine(){
@@ -1509,7 +1509,7 @@ function liftLogHtml(s, key){
       '<label class="lw"><input inputmode="decimal" id="lw-' + i + '" placeholder="' + (h.next != null ? h.next : '') + '" value="' + (today && today.weight != null ? today.weight : '') + '" aria-label="' + esc(ex) + ' weight in pounds"><small>lb</small></label>' +
       '<label class="lh"><input type="checkbox" id="lh-' + i + '"' + (!today || today.hit ? ' checked' : '') + '><small>All reps</small></label></div>';
   }).join("");
-  return '<div class="liftlog">' + rows + '<div class="fbtns"><button class="btn" type="button" data-act="lclose" data-key="' + key + '">Close</button><button class="btn primary" type="button" data-act="lsave" data-key="' + key + '">Save weights</button></div><p class="fine">Leave weight empty for bodyweight moves. Next time, HYBRD suggests the weight to try.</p></div>';
+  return '<div class="liftlog">' + rows + '<div class="fbtns"><button class="btn" type="button" data-act="lclose" data-key="' + key + '">Close</button><button class="btn primary" type="button" data-act="lsave" data-key="' + key + '">Save weights</button></div><p class="fine">Leave weight empty for bodyweight moves. Next time, Mileset suggests the weight to try.</p></div>';
 }
 
 /* ============ race fueling and hydration ============ */
@@ -1705,7 +1705,7 @@ const inApp = /Instagram|FBAN|FBAV|TikTok|musical_ly|Snapchat|Line\/|GSA\//.test
 const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 let installEvt = null, guideOpen = false;
 addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; render(); });
-addEventListener("appinstalled", () => { installEvt = null; toast("HYBRD is on your home screen."); render(); });
+addEventListener("appinstalled", () => { installEvt = null; toast("Mileset is on your home screen."); render(); });
 const isPhone = isIOS || /Android/.test(ua);
 const showGetApp = () => !standalone() && (!!installEvt || isPhone);
 function openInstall(){
@@ -1714,16 +1714,16 @@ function openInstall(){
     ? '<p class="sub">This page is open inside another app. Tap the <b style="color:var(--ink)">•••</b> or compass button and choose <b style="color:var(--ink)">Open in Safari</b>' + (isIOS ? '' : ' (or Chrome)') + ', then tap <b style="color:var(--ink)">Get app</b> again.</p>'
     : isIOS
     ? '<ol><li><span>Tap the <b>Share</b> button ' + ic("share") + ' in Safari\'s toolbar. On newer iPhones it\'s inside the <b>•••</b> button.</span></li>' +
-      '<li><span>Scroll down and tap <b>Add to Home Screen</b>.</span></li><li><span>Tap <b>Add</b>. Then open HYBRD from your home screen.</span></li></ol>' +
+      '<li><span>Scroll down and tap <b>Add to Home Screen</b>.</span></li><li><span>Tap <b>Add</b>. Then open Mileset from your home screen.</span></li></ol>' +
       '<p class="sub">Apple only lets you add apps from Safari\'s Share menu, so this one takes 3 taps.</p>'
     : '<ol><li><span>Open your browser\'s menu <b>⋮</b>.</span></li><li><span>Tap <b>Install app</b> or <b>Add to Home screen</b>.</span></li></ol>';
-  b.innerHTML = '<div class="sheet inst" role="dialog" aria-modal="true" aria-label="Get the HYBRD app"><div class="inst-h"><span class="logo">' + ic("bolt") + '</span><div><b>Add HYBRD to your home screen</b><span>Opens full screen, like any app.</span></div></div>' + steps +
+  b.innerHTML = '<div class="sheet inst" role="dialog" aria-modal="true" aria-label="Get the Mileset app"><div class="inst-h"><span class="logo">' + ic("bolt") + '</span><div><b>Add Mileset to your home screen</b><span>Opens full screen, like any app.</span></div></div>' + steps +
     '<button class="btn block" type="button" data-act="close">Got it</button></div>';
   document.body.appendChild(b); b.querySelector("button").focus();
   if (isIOS && !inApp){ b.style.paddingBottom = "56px"; const ar = document.createElement("div"); ar.className = "inst-arrow"; ar.setAttribute("aria-hidden", "true"); ar.textContent = "Share is down here ↓"; document.body.appendChild(ar); setTimeout(() => ar.remove(), 9000); }
 }
 function header(){
-  return '<header class="top"><div class="brand"><span class="logo">' + ic("bolt") + '</span><b>HYBRD</b></div>' + (mode === "sample" ? '<span class="pill demo">Sample</span>' : mode === "account" || API ? '' : '<span class="pill demo">Demo</span>') +
+  return '<header class="top"><div class="brand"><span class="logo">' + ic("bolt") + '</span><b>Mileset</b></div>' + (mode === "sample" ? '<span class="pill demo">Sample</span>' : mode === "account" || API ? '' : '<span class="pill demo">Demo</span>') +
     (showGetApp() ? '<button class="getapp" type="button" data-act="getapp">' + ic("download") + '<span>Get app</span></button>' : '') +
     (plan ? '<button class="iconbtn" type="button" data-act="menu" aria-label="Settings">' + ic("gear") + '</button>' : '') + '</header>';
 }
@@ -2153,13 +2153,13 @@ function settingsScreen(k){
   const row = (to, label, sub, icon, act, cls) => '<button class="srow' + (cls ? ' ' + cls : '') + '" type="button" data-act="' + (act || 'go') + '"' + (to ? ' data-scr="' + to + '"' : '') + '>' + ic(icon) + '<div><b>' + label + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</div>' + (to || act === "edit" ? '<i>›</i>' : '') + '</button>';
   const group = (title, rows) => '<section class="sgroup">' + (title ? '<h2>' + title + '</h2>' : '') + '<div class="slist">' + rows + '</div></section>';
   const pr = plan ? plan.profile : {}, nm = (me && me.name) || pr.name || "";
-  const help = group("", (API ? row("set-report", "Report a problem", "Something broken or confusing? Tell us.", "flag") : '') + (mode === "account" && isOwner ? row("set-reports", "Reported problems", reports.length + ' waiting', "bars") : '') + row("set-about", "How HYBRD works", "Your plan, readiness and calories, explained", "spark") +
+  const help = group("", (API ? row("set-report", "Report a problem", "Something broken or confusing? Tell us.", "flag") : '') + (mode === "account" && isOwner ? row("set-reports", "Reported problems", reports.length + ' waiting', "bars") : '') + row("set-about", "How Mileset works", "Your plan, readiness and calories, explained", "spark") +
     row("set-health-info", "Health and safety", "Read before changing how you eat or train", "heart") + row("set-terms", "Terms of use", "", "flag") + '<a class="srow" href="privacy.html" target="_blank" rel="noopener">' + ic("lock") + '<div><b>Privacy policy</b><span>What we collect and how it\'s used</span></div><i>›</i></a>');
   const training = group("Your plan", row("", "Race, training days and lifting", plan ? HP.raceName(pr) + (plan.raceDate ? ' · ' + fmtD(plan.raceDate) : '') + ' · rebuilds your plan' : '', "cal", "edit") +
     row("set-hr", "Heart rate zones", hrSummary(), "heart") + row("set-run", "Running", 'Usual run time ' + hr12(+String(uset.run_time || "07:00").slice(0, 2)) + (wxLoc() ? ' · ' + esc(wxLoc().place || 'weather on') : ''), "sun"));
   const card = (to, title, sub, icon, act) => '<button class="scard" type="button" data-act="' + (act || 'go') + '"' + (to ? ' data-scr="' + to + '"' : '') + '>' + '<div><b>' + title + '</b><span>' + sub + '</span></div><i>' + (icon ? ic(icon) : '›') + '</i></button>';
-  const invite = API ? card("", "Invite a friend", "Send them HYBRD. It's free to try.", "share", "invite").replace('class="scard"', 'class="scard hi"') : '';
-  const helpCard = card("set-help", "Help and support", "Report a problem, how HYBRD works, health and safety, terms and privacy");
+  const invite = API ? card("", "Invite a friend", "Send them Mileset. It's free to try.", "share", "invite").replace('class="scard"', 'class="scard hi"') : '';
+  const helpCard = card("set-help", "Help and support", "Report a problem, how Mileset works, health and safety, terms and privacy");
   const trainCard = card("set-train", "Coaching and training", plan ? esc(HP.raceName(pr)) + (plan.raceDate ? ' · ' + fmtD(plan.raceDate) : '') + ' · heart rate zones · run time' : 'Goal, heart rate zones and run time');
   if (k === "settings"){
     if (mode === "account") return '<button class="me-card" type="button" data-act="go" data-scr="set-acct"><span class="avatar">' + esc((nm || me.email || "?").slice(0, 1).toUpperCase()) + '</span><div><b>' + esc(nm || "Add your name") + '</b><span>' + esc(me.email) + '</span>' + (founding ? '<em class="fbadge">' + ic("bolt") + 'Founding Member #' + founding + '</em>' : '') + '</div><i>›</i></button>' +
@@ -2189,7 +2189,7 @@ function settingsScreen(k){
     '<p><b>Readiness</b> comes from your morning check-in (and your watch, if connected). On low days, today\'s run gets shorter or easier, and hard workouts move later in the week.</p>' +
     '<p><b>Run paces</b> adjust from how your last workouts went, and from the heat when it\'s hot out.</p>' +
     '<p><b>Calories</b> are a base for your body weight, plus what you burn in workouts, minus a small deficit if you\'re working toward a lower weight.</p>' +
-    '<p><b>Your data</b> is saved to your HYBRD account so it\'s on every phone you log in on. Delete your account any time in Settings and it\'s all removed.</p></section><p class="sub" style="text-align:center">HYBRD · version ' + APP_VERSION + '</p>';
+    '<p><b>Your data</b> is saved to your Mileset account so it\'s on every phone you log in on. Delete your account any time in Settings and it\'s all removed.</p></section><p class="sub" style="text-align:center">Mileset · version ' + APP_VERSION + '</p>';
   if (mode !== "account" && k !== "set-report") return '';
   if (k === "set-email") return acctForm("email");
   if (k === "set-password") return acctForm("password");
@@ -2262,27 +2262,27 @@ function hrRead(){
 }
 
 /* ---------- health and safety + terms (privacy policy: privacy.html) ----------
-   HYBRD gives general fitness and nutrition information (Florida's exemption for general wellness advice,
+   Mileset gives general fitness and nutrition information (Florida's exemption for general wellness advice,
    s. 468.505(1)(n)): it never presents itself as a dietitian or nutritionist and isn't for people whose doctor
    is treating a condition with a special diet. */
 const LEGAL_DATE = "November 12, 2026", HELPLINE = "866-662-1235";
 function legalHtml(k){
   const P = t => '<p>' + t + '</p>', L = items => '<ul>' + items.map(x => '<li>' + x + '</li>').join("") + '</ul>', H = t => '<h3>' + t + '</h3>';
   if (k === "health") return H("General information only") +
-    P("HYBRD gives general fitness and nutrition information for healthy adults. It is not medical advice and doesn't replace a doctor, registered dietitian or other health professional. HYBRD is not a dietitian, nutritionist or nutrition counselor.") +
+    P("Mileset gives general fitness and nutrition information for healthy adults. It is not medical advice and doesn't replace a doctor, registered dietitian or other health professional. Mileset is not a dietitian, nutritionist or nutrition counselor.") +
     H("Check with a doctor first if you") + L(["are pregnant or breastfeeding", "have a heart, lung, kidney, liver or blood sugar condition, high blood pressure, or any other medical condition", "take medication that affects heart rate, blood sugar or appetite", "are coming back from an injury, surgery or illness", "haven't exercised in a long time"]) +
-    H("Don't use HYBRD's calorie targets if you") + L(["are under 18", "have, or have had, an eating disorder", "are being treated by a doctor for a condition that needs a special diet (for example diabetes or kidney disease)"]) +
+    H("Don't use Mileset's calorie targets if you") + L(["are under 18", "have, or have had, an eating disorder", "are being treated by a doctor for a condition that needs a special diet (for example diabetes or kidney disease)"]) +
     H("Stop and get help") + P("Stop exercising and get medical help right away if you have chest pain or pressure, fainting, severe dizziness, trouble breathing, an irregular heartbeat, or sharp or unusual pain. In an emergency, call 911.") +
     H("Numbers are estimates") + P("Calorie, macro, pace, heart rate zone, fitness and race time numbers are estimates and can be off. Food read from photos and text, coach notes and workout reviews are written by AI and can be wrong. Check food labels when you can, and listen to your body over the app.") +
     H("Built-in safety limits") + L(["A weight-loss calorie target never goes below 1,500 calories a day (or your maintenance, if that's lower).", "The deficit is capped at 750 calories, and shrinks if you lose more than about 1% of your body weight in a week.", "Every 8th week is a maintenance week, and targets go to maintenance once you reach your goal.", "Goal weights more than 20% below your current weight aren't accepted."]) +
     H("If food or weight feels stressful") + P("Talking to someone helps. The National Alliance for Eating Disorders helpline is free and staffed by licensed therapists: <a href=\"tel:18666621235\">" + HELPLINE + "</a> (Monday to Friday, 9 am to 7 pm ET).") +
     '<p class="sub">Updated ' + LEGAL_DATE + '</p>';
-  if (k === "terms") return P("By creating an account or using HYBRD, you agree to these terms and to the <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">privacy policy</a>.") +
-    H("Who can use HYBRD") + P("You must be 18 or older.") +
-    H("Not medical or dietetic advice") + P("HYBRD provides general information only, as described in the Health and safety notice. Decisions about your training, eating and health are yours. Talk to a qualified professional before making changes, especially if you have a medical condition.") +
-    H("Use at your own risk") + P("Exercise and changes to how you eat carry risk, including injury. HYBRD is provided \"as is\", without warranties of any kind. To the fullest extent the law allows, HYBRD and its creator aren't liable for any injury, illness, loss or damage that comes from using the app or relying on its information.") +
+  if (k === "terms") return P("By creating an account or using Mileset, you agree to these terms and to the <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">privacy policy</a>.") +
+    H("Who can use Mileset") + P("You must be 18 or older.") +
+    H("Not medical or dietetic advice") + P("Mileset provides general information only, as described in the Health and safety notice. Decisions about your training, eating and health are yours. Talk to a qualified professional before making changes, especially if you have a medical condition.") +
+    H("Use at your own risk") + P("Exercise and changes to how you eat carry risk, including injury. Mileset is provided \"as is\", without warranties of any kind. To the fullest extent the law allows, Mileset and its creator aren't liable for any injury, illness, loss or damage that comes from using the app or relying on its information.") +
     H("AI features") + P("Food reading, coach notes and workout reviews are generated by AI. They can be inaccurate and aren't reviewed by a person before you see them.") +
-    H("Your account") + P("Keep your password private. Don't misuse the app, try to break it, or access other people's accounts. HYBRD may change or remove features, and may close accounts that misuse it. You can delete your account at any time in Settings.") +
+    H("Your account") + P("Keep your password private. Don't misuse the app, try to break it, or access other people's accounts. Mileset may change or remove features, and may close accounts that misuse it. You can delete your account at any time in Settings.") +
     H("Changes") + P("These terms may be updated. If something important changes, the app will ask you to agree again.") +
     H("Questions") + P("Use Settings → Report a problem.") + '<p class="sub">Updated ' + LEGAL_DATE + '</p>';
   return '';
@@ -2299,7 +2299,7 @@ const needsConsent = () => mode === "account" && me && !me.terms_at;
 function renderConsent(){
   const c = consentv || (consentv = {});
   return header() + '<section class="setup view legal"><h2 class="sec-t">Before you keep going</h2>' +
-    '<p class="sub">HYBRD gives general fitness and nutrition information for healthy adults. It isn\'t medical advice, and HYBRD isn\'t a dietitian or nutritionist.</p>' +
+    '<p class="sub">Mileset gives general fitness and nutrition information for healthy adults. It isn\'t medical advice, and Mileset isn\'t a dietitian or nutritionist.</p>' +
     '<ul><li>Check with a doctor before starting, especially if you have a medical condition, take medication, or are pregnant.</li><li>Don\'t use the calorie targets if you have or had an eating disorder, or a doctor is treating you with a special diet.</li><li>Calories and AI food reads are estimates and can be wrong.</li></ul>' +
     '<p class="sub"><button class="linkbtn inl" type="button" data-act="doc" data-k="health">Health and safety</button> · <button class="linkbtn inl" type="button" data-act="doc" data-k="terms">Terms</button> · <a class="linkbtn inl" href="privacy.html" target="_blank" rel="noopener">Privacy</a></p>' +
     '<label class="agree"><input type="checkbox" id="c-agree"' + (c.on ? ' checked' : '') + '><span>I\'m 18 or older, and I agree to the Terms and the Health and safety notice.</span></label>' +
@@ -2309,7 +2309,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "51";
+const APP_VERSION = "52";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2396,8 +2396,8 @@ async function checkPush(){ try { const reg = await Promise.race([navigator.serv
 function notifHtml(){
   let h = '<div class="nset"><div class="card-h" style="--tone:var(--accent-2)">' + ic("bell") + '<span class="lbl">Notifications</span></div>';
   if (!pushInfo.key) return h + '<p class="sub">Notifications are being set up.</p></div>';
-  if (!pushOK()) return h + '<p class="sub">' + (isIOS && !standalone() ? 'On iPhone, add HYBRD to your home screen first (tap <b style="color:var(--ink)">Get app</b>), open it from there, then turn notifications on here.' : 'This browser can\'t show notifications.') + '</p></div>';
-  if (Notification.permission === "denied") return h + '<p class="sub">Notifications are blocked for HYBRD. Turn them on in your phone\'s Settings → Notifications, then come back.</p></div>';
+  if (!pushOK()) return h + '<p class="sub">' + (isIOS && !standalone() ? 'On iPhone, add Mileset to your home screen first (tap <b style="color:var(--ink)">Get app</b>), open it from there, then turn notifications on here.' : 'This browser can\'t show notifications.') + '</p></div>';
+  if (Notification.permission === "denied") return h + '<p class="sub">Notifications are blocked for Mileset. Turn them on in your phone\'s Settings → Notifications, then come back.</p></div>';
   if (!pushState.on) return h + '<p class="sub">Morning check-in reminder, a summary after every workout, a Monday recap and a bedtime reminder.</p><button class="btn primary block" type="button" data-act="pushon">Turn on notifications</button></div>';
   const tg = (k, label) => '<label class="tgl"><input type="checkbox" data-set="' + k + '"' + (uset[k] ? ' checked' : '') + '><span>' + label + '</span></label>';
   return h + tg("n_morning", "Morning check-in reminder") + '<label class="tm">at<input type="time" data-set="morning" value="' + esc(uset.morning) + '"></label>' +
@@ -2423,14 +2423,14 @@ function askNotif(){
   try { localStorage.setItem("hy-nask", Date.now()); } catch(e){}
   const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
   b.innerHTML = '<div class="sheet nask" role="dialog" aria-modal="true" aria-labelledby="nask-h"><div class="nask-i">' + ic("bell") + '</div><h2 id="nask-h">' + (denied ? 'Notifications are off' : 'Turn on notifications?') + '</h2>' +
-    '<p>' + (denied ? 'HYBRD can\'t reach you. To get your morning readiness and workout summaries, open your phone\'s Settings → Notifications → HYBRD and allow them.' : 'Get your readiness score when you wake up, a summary after each workout and a short Monday recap. You can change this any time in Settings.') + '</p>' +
+    '<p>' + (denied ? 'Mileset can\'t reach you. To get your morning readiness and workout summaries, open your phone\'s Settings → Notifications → Mileset and allow them.' : 'Get your readiness score when you wake up, a summary after each workout and a short Monday recap. You can change this any time in Settings.') + '</p>' +
     (denied ? '<button class="btn primary block" type="button" data-act="nasknot">OK</button>' : '<button class="btn primary block" type="button" data-act="naskyes">Allow</button><button class="btn block" type="button" data-act="nasknot">Not now</button>') + '</div>';
   document.body.appendChild(b);
 }
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 const SCR_T = {fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
   settings: "Settings", "set-notif": "Notifications", "set-watch": "Devices and apps", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
-  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How HYBRD works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", members: "Members", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew"};
+  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Mileset works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", members: "Members", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew"};
 const SCR_UP = {"set-acct": "settings", "set-train": "settings", "set-help": "settings", "set-health-info": "set-help", "set-terms": "set-help", "set-about": "set-help", "set-report": "set-help", "set-reports": "set-help", "set-profile": "set-acct", "set-email": "set-acct", "set-password": "set-acct", "set-account": "set-acct", "set-hr": "set-train", "set-run": "set-train", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", meals: "fuel", crew: "crews"};
 let navDir = null;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -2475,7 +2475,7 @@ function progSwitch(cur){
 }
 function renderMore(){
   const card = (act, title, sub, icon, scrTo, cls) => '<button class="scard' + (cls ? ' ' + cls : '') + '" type="button" data-act="' + act + '"' + (scrTo ? ' data-scr="' + scrTo + '"' : '') + '><i class="mi">' + ic(icon) + '</i><div><b>' + title + '</b><span>' + sub + '</span></div><i>›</i></button>';
-  let h = '<h2 class="sec-t">More</h2>' + (founding ? '<div class="fcard"><i>' + ic("bolt") + '</i><div><b>Founding Member #' + founding + '</b><span>HYBRD is free for you for life, including anything paid we add later. Thanks for being here early.</span></div></div>' : '') + '<div class="scards">';
+  let h = '<h2 class="sec-t">More</h2>' + (founding ? '<div class="fcard"><i>' + ic("bolt") + '</i><div><b>Founding Member #' + founding + '</b><span>Mileset is free for you for life, including anything paid we add later. Thanks for being here early.</span></div></div>' : '') + '<div class="scards">';
   if (mode === "account") h += card("racefind", "Find a race", "Search races anywhere in the world and build a plan for it", "flag", "", "hi");
   h += card("edit", "Change goal or start a new plan", plan ? "Now: " + esc(HP.raceName(plan.profile)) + (plan.raceDate ? " · " + fmtD(plan.raceDate) : "") : "Pick a goal and your training days", "cal");
   if (plan && plan.raceDate) h += card("go", "Race fueling and hydration", "Carbs, fluid and sodium per hour, and a sweat test", "bolt", "fuelplan");
@@ -2483,7 +2483,7 @@ function renderMore(){
   if (mode === "account") h += card("go", "Crews", "Train with friends. They only see your nickname and weekly total", "user", "crews");
   if (mode === "account" && isOwner) h += card("go", "Members", "Only you see this · who signed up and what they've linked", "user", "members", "hi");
   h += card("go", "FAQ", "How plans, calories, recovery and syncing work", "spark", "faq");
-  if (API) h += card("invite", "Invite a friend", "Send them HYBRD. It's free to try", "share");
+  if (API) h += card("invite", "Invite a friend", "Send them Mileset. It's free to try", "share");
   h += '<a class="scard" href="https://www.instagram.com/hybrdrunning/" target="_blank" rel="noopener"><i class="mi">' + ic("camera") + '</i><div><b>Follow @HybrdRunning</b><span>Tips, new features and early access news on Instagram</span></div><i>›</i></a>';
   h += card("go", "Settings", "Account, devices and apps, notifications", "gear", "settings");
   h += card("go", "Help and support", "Report a problem, health and safety, terms and privacy", "heart", "set-help");
@@ -2491,7 +2491,7 @@ function renderMore(){
   return h + '</div>';
 }
 const CONTACT = "hybridrunning@gmail.com";
-const mailCard = () => '<a class="scard" href="mailto:' + CONTACT + '?subject=' + encodeURIComponent("HYBRD question") + '"><i class="mi">' + ic("mail") + '</i><div><b>Email us</b><span>' + CONTACT + ' · questions, ideas, anything</span></div><i>›</i></a>';
+const mailCard = () => '<a class="scard" href="mailto:' + CONTACT + '?subject=' + encodeURIComponent("Mileset question") + '"><i class="mi">' + ic("mail") + '</i><div><b>Email us</b><span>' + CONTACT + ' · questions, ideas, anything</span></div><i>›</i></a>';
 /* owner only: everyone who signed up */
 let mem = null, mailv = {}, founding = null, fspots = null;
 /* Founding 100 promo: spots left, shown to people who haven't signed up yet */
@@ -2499,7 +2499,7 @@ function foundBanner(){
   if (!API || fspots === 0) return '';
   if (fspots == null){ fspots = -1; api("GET", "/api/founding").then(j => { fspots = j.left; render(); }).catch(() => { fspots = 0; }); return ''; }
   if (fspots < 0) return '';
-  return '<div class="fbanner"><b>Founding 100</b><span>The first 100 members get HYBRD free for life, including anything paid we add later. <strong>' + fspots + ' spot' + (fspots === 1 ? '' : 's') + ' left</strong> · ends Jan 1, 2027</span></div>';
+  return '<div class="fbanner"><b>Founding 100</b><span>The first 100 members get Mileset free for life, including anything paid we add later. <strong>' + fspots + ' spot' + (fspots === 1 ? '' : 's') + ' left</strong> · ends Jan 1, 2027</span></div>';
 }
 function membersHtml(){
   if (!isOwner) return '<section class="card"><p class="sub">Not available.</p></section>';
@@ -2513,7 +2513,7 @@ function membersHtml(){
   const reach = L.filter(m => !m.no_mail).length, mv = mailv;
   h += '<section class="card form"><div class="card-h" style="--tone:var(--accent-2)">' + ic("mail") + '<span class="lbl">Email everyone</span><span class="r">' + reach + ' will get it</span></div>' +
     (mv.done ? '<p class="okmark" role="status">' + esc(mv.done) + '</p>' : '') +
-    '<label>Subject<input id="ml-subj" maxlength="120" value="' + esc(mv.subject || "") + '" placeholder="New in HYBRD: race search"></label>' +
+    '<label>Subject<input id="ml-subj" maxlength="120" value="' + esc(mv.subject || "") + '" placeholder="New in Mileset: race search"></label>' +
     '<label>Message<small>Type {name} and each person sees their own first name. Links work. Every email has an unsubscribe link.</small><textarea id="ml-body" rows="7" maxlength="8000" placeholder="Hey {name},&#10;&#10;…">' + esc(mv.message || "") + '</textarea></label>' +
     (mv.err ? '<p class="err" role="alert">' + esc(mv.err) + '</p>' : '') +
     '<div class="fbtns"><button class="btn" type="button" data-act="mltest"' + (mv.busy ? ' disabled' : '') + '>Send me a test</button><button class="btn primary" type="button" data-act="mlsend"' + (mv.busy ? ' disabled aria-busy="true"' : '') + '>' + (mv.busy ? 'Sending…' : 'Send to ' + reach) + '</button></div></section>';
@@ -2525,13 +2525,13 @@ const FAQ = [
   ["How is my plan built?", "From your goal, your current fitness and the days you can train. It builds up for a few weeks, takes an easier week every fourth week, and eases off before race day. Everyday plans mix strength and cardio and keep building in 12-week blocks."],
   ["Can I change my goal or race?", "Yes. More → Change goal or start a new plan. Your plan rebuilds from this week on, and your logged workouts and food stay."],
   ["How do I find my race?", "More → Find a race. Search by name, city or sport and tap your race to set the date. Always double-check the date on the race's own website."],
-  ["How are my calories worked out?", "Your resting burn (BMR) comes from your height, weight, age and sex. HYBRD adds how active your day is and the workouts you log, then adjusts for your goal: a deficit to lose, a small surplus to gain. It never goes below safe minimums."],
+  ["How are my calories worked out?", "Your resting burn (BMR) comes from your height, weight, age and sex. Mileset adds how active your day is and the workouts you log, then adjusts for your goal: a deficit to lose, a small surplus to gain. It never goes below safe minimums."],
   ["What does readiness mean?", "A score from your morning check-in plus your watch's sleep, resting heart rate and HRV when linked. On low days the workout gets shorter or easier."],
   ["Which watches work?", "Garmin and Strava connect directly. COROS, Polar, Suunto, Wahoo and Zwift come in through Strava. Apple Watch, WHOOP and Oura come in through Apple Health."],
   ["I linked Garmin and Apple Health. Which numbers win?", "Garmin's sleep, sleep score, resting heart rate and HRV replace Apple Health's for the same day. Apple Health fills in anything Garmin didn't send."],
-  ["Why didn't my workout show up?", "Garmin and Strava send workouts after your watch syncs with their app. Open Garmin Connect or Strava on your phone, let it sync, then pull down on HYBRD to refresh."],
-  ["Who can see my data?", "Only you. Crews see just your nickname and one weekly total. HYBRD never sells your data or shows ads."],
-  ["Is this medical or nutrition advice?", "No. HYBRD gives general fitness and food guidance for healthy adults. If you have a health condition, are pregnant, or have a history of disordered eating, check with your doctor first."],
+  ["Why didn't my workout show up?", "Garmin and Strava send workouts after your watch syncs with their app. Open Garmin Connect or Strava on your phone, let it sync, then pull down on Mileset to refresh."],
+  ["Who can see my data?", "Only you. Crews see just your nickname and one weekly total. Mileset never sells your data or shows ads."],
+  ["Is this medical or nutrition advice?", "No. Mileset gives general fitness and food guidance for healthy adults. If you have a health condition, are pregnant, or have a history of disordered eating, check with your doctor first."],
   ["How do I delete my account?", "Settings → Account and profile → Delete account. Everything is removed, and linked apps are disconnected."]
 ];
 function faqHtml(){
@@ -2599,7 +2599,7 @@ document.addEventListener("click", ev => {
   }
   if (act === "gmconnect"){ a.disabled = true; api("POST", "/api/garmin/start").then(j => { location.href = j.url; }).catch(e => { a.disabled = false; toast(e.message); }); return; }
   if (act === "gmdisc"){
-    if (!confirm("Disconnect Garmin? HYBRD stops getting your Garmin data and deletes the Garmin workouts and sleep it saved.")) return;
+    if (!confirm("Disconnect Garmin? Mileset stops getting your Garmin data and deletes the Garmin workouts and sleep it saved.")) return;
     api("POST", "/api/garmin/disconnect").then(() => { garmin.connected = false; acts = acts.filter(x => x.source !== "garmin"); refreshMe(); render(); toast("Garmin disconnected."); }).catch(e => toast(e.message)); return;
   }
   if (act === "feel"){
@@ -2609,8 +2609,8 @@ document.addEventListener("click", ev => {
     return;
   }
   if (act === "invite"){
-    const url = location.origin + location.pathname, msg = "I've been training with HYBRD. It builds a plan for your race, sets your food targets and adjusts when you're tired. Try it free: " + url;
-    if (navigator.share) navigator.share({title: "HYBRD", text: msg}).catch(() => {});
+    const url = location.origin + location.pathname, msg = "I've been training with Mileset. It builds a plan for your race, sets your food targets and adjusts when you're tired. Try it free: " + url;
+    if (navigator.share) navigator.share({title: "Mileset", text: msg}).catch(() => {});
     else if (navigator.clipboard) navigator.clipboard.writeText(msg).then(() => toast("Invite copied. Paste it in a text."), () => toast(url));
     else toast(url);
     return;
@@ -2681,7 +2681,7 @@ document.addEventListener("click", ev => {
   }
   if (act === "crewshare"){
     const c = crews.find(x => x.id === a.dataset.id); if (!c) return;
-    const msg = "Join my crew \"" + c.name + "\" on HYBRD. Open " + location.origin + location.pathname + " and enter code " + c.code + " under Activities, Crews. Crews only see nicknames and weekly totals.";
+    const msg = "Join my crew \"" + c.name + "\" on Mileset. Open " + location.origin + location.pathname + " and enter code " + c.code + " under Activities, Crews. Crews only see nicknames and weekly totals.";
     if (navigator.share) navigator.share({text: msg}).catch(() => {});
     else if (navigator.clipboard) navigator.clipboard.writeText(msg).then(() => toast("Invite copied."), () => toast("Code: " + c.code));
     else toast("Code: " + c.code);
@@ -2929,7 +2929,7 @@ function bodyFields(p, pre){
     (showGoal ? '<div class="q"><label for="' + pre + '-gw">Goal weight (lb)</label><input id="' + pre + '-gw" inputmode="decimal" placeholder="' + (ev && bg === "lose" ? 'Needed' : 'Optional') + '" value="' + (p.goalWeight ?? '') + '"></div>' : '<div></div>') + '</div>' +
     '<div class="q"><span class="ql">Sex</span><p class="hint">Only used in the resting-calorie formula.</p>' + optList(pre + "sex", [["m","Male"],["f","Female"],["x","Prefer not to say"]], p.sex || "") + '</div>' +
     '<div class="q"><span class="ql">Outside of workouts, your day is…</span>' + optList(pre + "daily", [["sit","Mostly sitting"],["some","On my feet some"],["feet","On my feet most of the day"]], p.daily || "some") + '</div>' +
-    '<p class="hint">HYBRD works out your resting burn (BMR) from your height, weight, age and sex, adds your daily activity and workouts, then sets food targets for your goal.</p>';
+    '<p class="hint">Mileset works out your resting burn (BMR) from your height, weight, age and sex, adds your daily activity and workouts, then sets food targets for your goal.</p>';
 }
 function readBody(p, pre, optional){
   const v = id => { const e = document.getElementById(id); return e ? e.value.trim() : ""; }, num = id => { const x = parseFloat(v(id)); return isFinite(x) ? x : null; };
@@ -2939,23 +2939,23 @@ function readBody(p, pre, optional){
   if (optional && ft == null && age == null){   // older profiles: height and age not given, keep the simple calorie estimate
     if (!(w >= 80 && w <= 500)) return "Enter your weight in pounds.";
     if (gw != null && !(gw >= 80 && gw <= 500)) return "Enter a goal weight in pounds, or leave it empty.";
-    if (gw != null && gw < w * .8) return "For a goal more than 20% below your current weight, please work with a doctor or registered dietitian. HYBRD won't set targets for it.";
+    if (gw != null && gw < w * .8) return "For a goal more than 20% below your current weight, please work with a doctor or registered dietitian. Mileset won't set targets for it.";
     p.weight = Math.round(w * 10) / 10; p.goalWeight = gw == null ? null : Math.round(gw * 10) / 10; p.sex = radio(pre + "sex") || p.sex; p.daily = radio(pre + "daily") || p.daily; return "";
   }
   if (!(ft >= 4 && ft <= 7) || inch < 0 || inch >= 12) return "Enter your height in feet and inches.";
   const h = ft * 12 + inch; if (h < 54 || h > 90) return "Enter your height in feet and inches.";
   if (!(w >= 80 && w <= 500)) return "Enter your weight in pounds.";
-  if (!(age >= 18 && age <= 100)) return "HYBRD is for adults 18 and older. Enter your age.";
+  if (!(age >= 18 && age <= 100)) return "Mileset is for adults 18 and older. Enter your age.";
   p.heightIn = h; p.weight = Math.round(w * 10) / 10; p.age = Math.round(age); p.sex = radio(pre + "sex") || p.sex || "x"; p.daily = radio(pre + "daily") || p.daily || "some";
   p.goalWeight = gw;
-  if (ev && bg === "lose" && gw == null) return "Add a goal weight so HYBRD can set your targets.";
+  if (ev && bg === "lose" && gw == null) return "Add a goal weight so Mileset can set your targets.";
   if (ev && bg === "lose" && gw >= w) return "For losing weight, the goal should be below your current weight.";
   if (ev && bg === "gain" && gw != null && gw <= w) return "For gaining, the goal should be above your current weight, or leave it empty.";
   if (ev && bg === "maintain") p.goalWeight = null;
   if (gw != null && !(gw >= 80 && gw <= 500)) return "Enter a goal weight in pounds, or leave it empty.";
   if (gw != null && gw < w * .8) return "For a goal more than 20% below your current weight, please work with a doctor or registered dietitian. Pick a goal closer to your current weight.";
   const minW = Math.ceil(18.5 * h * h / 703);
-  if (gw != null && gw < w && gw < minW) return "That goal is under a healthy weight for your height. HYBRD won't set targets below " + minW + " lb.";
+  if (gw != null && gw < w && gw < minW) return "That goal is under a healthy weight for your height. Mileset won't set targets below " + minW + " lb.";
   return "";
 }
 function readStepSoft(){ const keep = setup.err; readStep(); setup.err = keep && ""; }
@@ -2980,7 +2980,7 @@ function hideSplash(){
   setTimeout(() => { el.classList.add("out"); el.addEventListener("animationend", () => el.remove(), {once: true}); setTimeout(() => el.remove(), 700); }, wait);
 }
 if (splashReady) hideSplash(); else setTimeout(hideSplash, 4000);
-if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); garminReturn(); if (location.hash === "#members"){ try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} if (isOwner) go("members"); } if (movedHere) setTimeout(() => toast("HYBRD has a new address: app.hybrdrunning.com. If you added it to your Home Screen, add this one again."), 600); autoSync(true); if (pushOK()) checkPush().then(() => { safeRender(); setTimeout(askNotif, 1800); }); })
+if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); garminReturn(); if (location.hash === "#members"){ try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} if (isOwner) go("members"); } if (movedHere) setTimeout(() => toast("Mileset has a new address: app.hybrdrunning.com. If you added it to your Home Screen, add this one again."), 600); autoSync(true); if (pushOK()) checkPush().then(() => { safeRender(); setTimeout(askNotif, 1800); }); })
   .catch(e => { loading = false; if (token){ mode = "none"; plan = null; } render(); hideSplash(); toast(e.message); });
 })();
 </script>
