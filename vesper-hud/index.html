@@ -1,0 +1,85 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Vesper</title><meta name="robots" content="noindex">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#07080B;--card:#10121A;--line:#1E2230;--ink:#F2F3F7;--mut:#8A90A2;--red:#BE383E;--maroon:#800000;--green:#3FB37F;--amber:#F2B33D}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:radial-gradient(120% 60% at 50% -10%,#2a0a0d 0%,var(--bg) 55%);color:var(--ink);font:15px/1.4 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;padding:18px 16px 28px;min-height:100vh}
+.top{display:flex;align-items:center;gap:14px}
+.ring{width:64px;height:64px;flex:none}
+.ring circle{fill:none;stroke-width:3}
+.ring .spin{transform-origin:50% 50%;animation:spin 6s linear infinite}
+.ring .pulse{animation:pulse 2.4s ease-in-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{50%{opacity:.35}}
+h1{margin:0;font:800 24px/1.1 -apple-system,system-ui,sans-serif;letter-spacing:.14em}
+.sub{color:var(--mut);font-size:13px;margin-top:3px}
+.status{margin:16px 0 14px;padding:11px 13px;border-radius:12px;border:1px solid var(--line);background:var(--card);display:flex;gap:10px;align-items:center}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--green);box-shadow:0 0 10px var(--green)}
+.status.bad .dot{background:var(--red);box-shadow:0 0 10px var(--red)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.t{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px}
+.t span{display:block;color:var(--mut);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em}
+.t b{display:block;font:800 25px/1.2 -apple-system,system-ui,sans-serif;margin-top:3px}
+.t i{font-style:normal;color:var(--mut);font-size:12px}
+h2{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin:20px 2px 8px}
+.list{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.row{padding:10px 12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}
+.row:first-child{border-top:0}.row small{color:var(--mut);white-space:nowrap}.row.od small{color:var(--red)}
+.empty{padding:11px 12px;color:var(--mut)}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button{font:600 14px -apple-system,system-ui,sans-serif;color:var(--ink);background:#161925;border:1px solid var(--line);border-radius:11px;padding:12px 10px;text-align:left}
+button:active{background:#1f2433}button.hot{background:var(--maroon);border-color:var(--red)}
+.ask{display:flex;gap:8px;margin-top:10px}
+.ask input{flex:1;font:15px -apple-system,system-ui,sans-serif;color:var(--ink);background:#0c0e14;border:1px solid var(--line);border-radius:11px;padding:12px}
+.ask button{flex:none;width:64px;text-align:center;background:var(--red);border-color:var(--red)}
+.foot{color:var(--mut);font-size:11.5px;text-align:center;margin-top:18px}
+</style></head><body>
+<div class="top">
+  <svg class="ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" stroke="#2b1013"/><circle class="spin" cx="32" cy="32" r="29" stroke="var(--red)" stroke-dasharray="40 142" stroke-linecap="round"/><circle class="pulse" cx="32" cy="32" r="18" stroke="var(--red)" stroke-width="2"/><circle cx="32" cy="32" r="7" fill="var(--red)" stroke="none"/></svg>
+  <div><h1>VESPER</h1><div class="sub" id="greet">At your service.</div></div>
+</div>
+<div class="status" id="status"><div class="dot"></div><div id="statusText">Systems check pending.</div></div>
+<div class="grid" id="tiles"></div>
+<h2>Waiting on you</h2><div class="list" id="waiting"></div>
+<h2>The board</h2><div class="list" id="board"></div>
+<h2>Commands</h2>
+<div class="acts">
+  <button class="hot" data-cmd="brief me">◉ Brief me</button>
+  <button data-cmd="tasks">▤ Tasks</button>
+  <button data-cmd="check the inbox and answer anyone who wrote in">✉ Check inbox</button>
+  <button data-cmd="fill the Instagram queue">◫ Fill IG queue</button>
+  <button data-cmd="dashboard">▦ Dashboard</button>
+  <button data-cmd="health report">✚ Health</button>
+  <button data-cmd="team">☰ Team</button>
+  <button data-cmd="how much have I spent?">$ Spend</button>
+</div>
+<div class="ask"><input id="q" placeholder="Ask Vesper anything…" maxlength="400" enterkeyhint="send"><button id="go">Send</button></div>
+<div class="foot" id="foot">Data from Vesper's last refresh. Text "hud" for a fresh one.</div>
+<script>
+const tg = window.Telegram && Telegram.WebApp; if (tg){ tg.ready(); tg.expand(); try{ tg.setHeaderColor("#07080B"); tg.setBackgroundColor("#07080B"); }catch(e){} }
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let d = {};
+try { const raw = (location.hash.match(/d=([^&]+)/) || [])[1]; if (raw) d = JSON.parse(decodeURIComponent(escape(atob(raw.replace(/-/g,"+").replace(/_/g,"/"))))); } catch(e) { d = {}; }
+const h = new Date().getHours();
+document.getElementById("greet").textContent = (h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening") + ", Sir." + (d.t ? " Updated " + d.t + "." : "");
+if (d.s){ document.getElementById("statusText").textContent = d.s; if (!d.ok) document.getElementById("status").classList.add("bad"); }
+const tile = (l, v, sub) => `<div class="t"><span>${esc(l)}</span><b>${esc(v ?? "–")}</b><i>${esc(sub || "")}</i></div>`;
+document.getElementById("tiles").innerHTML = [
+  tile("Members", d.m, d.w != null ? `+${d.w} this week` : ""),
+  tile("Founding left", d.f, "of 100"),
+  tile("Built a plan", d.a != null ? d.a + "%" : null, "activation"),
+  tile("Active this week", d.wa != null ? d.wa + "%" : null, d.dr != null ? d.dr + " drifting" : ""),
+  tile("Open tasks", d.ot, d.od ? d.od + " overdue" : "none overdue"),
+  tile("AI spend today", d.sp ? "$" + d.sp[0] : null, d.sp ? "cap $" + d.sp[1] : ""),
+].join("");
+const list = (el, items, empty, fmt) => document.getElementById(el).innerHTML = items && items.length ? items.map(fmt).join("") : `<div class="empty">${esc(empty)}</div>`;
+list("waiting", d.wo, "Nothing needs you. Enjoy it.", x => `<div class="row"><span>${esc(x)}</span></div>`);
+list("board", d.tk, "The board is clear.", x => `<div class="row${x[3] ? " od" : ""}"><span>#${esc(x[0])} ${esc(x[1])}</span><small>${esc(x[2])}${x[3] ? " · overdue" : ""}</small></div>`);
+function send(text){ text = (text || "").trim(); if (!text) return;
+  if (tg && tg.sendData){ try { tg.HapticFeedback && tg.HapticFeedback.impactOccurred("light"); } catch(e){} tg.sendData(text.slice(0, 400)); }
+  else alert("Open this from the Vesper button in Telegram."); }
+document.querySelectorAll("[data-cmd]").forEach(b => b.onclick = () => send(b.dataset.cmd));
+document.getElementById("go").onclick = () => send(document.getElementById("q").value);
+document.getElementById("q").addEventListener("keydown", e => { if (e.key === "Enter") send(e.target.value); });
+</script></body></html>
