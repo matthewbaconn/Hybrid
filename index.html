@@ -2309,7 +2309,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "53";
+const APP_VERSION = "54";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2484,13 +2484,13 @@ function renderMore(){
   if (mode === "account" && isOwner) h += card("go", "Members", "Only you see this · who signed up and what they've linked", "user", "members", "hi");
   h += card("go", "FAQ", "How plans, calories, recovery and syncing work", "spark", "faq");
   if (API) h += card("invite", "Invite a friend", "Send them Mileset. It's free to try", "share");
-  h += '<a class="scard" href="https://www.instagram.com/milesetapp/" target="_blank" rel="noopener"><i class="mi">' + ic("camera") + '</i><div><b>Follow @milesetapp</b><span>Tips, new features and early access news on Instagram</span></div><i>›</i></a>';
+  h += '<a class="scard" href="https://www.instagram.com/hybrdrunning/" target="_blank" rel="noopener"><i class="mi">' + ic("camera") + '</i><div><b>Follow @hybrdrunning</b><span>Tips, new features and early access news on Instagram</span></div><i>›</i></a>';
   h += card("go", "Settings", "Account, devices and apps, notifications", "gear", "settings");
   h += card("go", "Help and support", "Report a problem, health and safety, terms and privacy", "heart", "set-help");
   h += mailCard();
   return h + '</div>';
 }
-const CONTACT = "hybridrunning@gmail.com";
+const CONTACT = "milesetapp@gmail.com";
 const mailCard = () => '<a class="scard" href="mailto:' + CONTACT + '?subject=' + encodeURIComponent("Mileset question") + '"><i class="mi">' + ic("mail") + '</i><div><b>Email us</b><span>' + CONTACT + ' · questions, ideas, anything</span></div><i>›</i></a>';
 /* owner only: everyone who signed up */
 let mem = null, mailv = {}, founding = null, fspots = null;
