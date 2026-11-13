@@ -1,6 +1,6 @@
 {
-  "name": "HYBRD Running",
-  "short_name": "HYBRD",
+  "name": "Mileset",
+  "short_name": "Mileset",
   "description": "Run and lift plans built around your goals.",
   "start_url": "./#today",
   "scope": "./",

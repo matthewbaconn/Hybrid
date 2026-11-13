@@ -592,21 +592,21 @@ async function cron(env, ctx){
 }
 
 /* ---------- routes ---------- */
-/* ---------- owner: new sign-up notice (push to the owner's phone + an email to the HYBRD inbox) ---------- */
+/* ---------- owner: new sign-up notice (push to the owner's phone + an email to the Mileset inbox) ---------- */
 async function tellOwnerSignup(env, name, email){
   const own = await ownerId(env), total = (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE email NOT LIKE '%@example.com'").first()).n;
   const who = (name ? name + " · " : "") + email;
-  if (own) await pushTo(env, own, {title: "New HYBRD sign-up", body: who + " · " + total + " members now", tag: "signup", url: (env.APP_URL || "") + "#members"}).catch(() => {});
+  if (own) await pushTo(env, own, {title: "New Mileset sign-up", body: who + " · " + total + " members now", tag: "signup", url: (env.APP_URL || "") + "#members"}).catch(() => {});
   if (env.RESEND_API_KEY){
     const esc2 = x => String(x).replace(/[<>&"]/g, "");
     const r = await fetch(env.RESEND_URL || "https://api.resend.com/emails", {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"},
-      body: JSON.stringify({from: env.MAIL_FROM || "HYBRD Running <no-reply@hybrdrunning.com>", to: [env.OWNER_NOTIFY || "hybridrunning@gmail.com"], subject: "New sign-up: " + (name || email),
-        text: who + " just joined HYBRD. You have " + total + " members.\n\nSee everyone in the app: More → Members.",
-        html: '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;color:#111"><p><b>' + esc2(name || "Someone") + '</b> (' + esc2(email) + ') just joined HYBRD.</p><p>You have <b>' + total + '</b> members.</p><p style="color:#666">See everyone in the app: More → Members.</p></div>'})}).catch(() => null);
+      body: JSON.stringify({from: env.MAIL_FROM || "Mileset <no-reply@milesetapp.com>", to: [env.OWNER_NOTIFY || "hybridrunning@gmail.com"], subject: "New sign-up: " + (name || email),
+        text: who + " just joined Mileset. You have " + total + " members.\n\nSee everyone in the app: More → Members.",
+        html: '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;color:#111"><p><b>' + esc2(name || "Someone") + '</b> (' + esc2(email) + ') just joined Mileset.</p><p>You have <b>' + total + '</b> members.</p><p style="color:#666">See everyone in the app: More → Members.</p></div>'})}).catch(() => null);
     await logEvent(env, "signup_notice", !!(r && r.ok), r ? "HTTP " + r.status : "net");
   }
 }
-/* Founding members: the first 100 real accounts made before Jan 1, 2027 get HYBRD free for life when paid features come out */
+/* Founding members: the first 100 real accounts made before Jan 1, 2027 get Mileset free for life when paid features come out */
 const FOUNDING_END = "2027-01-01T05:00:00.000Z", FOUNDING_MAX = 100;   // midnight Jan 1 in Florida
 async function foundingNo(env, userId){
   const u = await env.DB.prepare("SELECT created, email FROM users WHERE id = ?").bind(userId).first();
@@ -619,27 +619,27 @@ async function foundingLeft(env){
   const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE email NOT LIKE '%@example.com' AND created < ?").bind(FOUNDING_END).first()).n;
   return Math.max(0, FOUNDING_MAX - n);
 }
-/* email header: the HYBRD profile picture + name (hosted with the app; alt text shows if images are off) */
-const MAIL_HEAD = '<table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:22px"><tr><td style="padding-right:12px"><img src="https://app.hybrdrunning.com/brand/profile-240.png" width="52" height="52" alt="HYBRD" style="display:block;border-radius:12px;border:0"></td>' +
-  '<td style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-weight:800;font-size:20px;letter-spacing:-.02em;color:#111">HYBRD Running</td></tr></table>';
+/* email header: the Mileset profile picture + name (hosted with the app; alt text shows if images are off) */
+const MAIL_HEAD = '<table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:22px"><tr><td style="padding-right:12px"><img src="https://app.hybrdrunning.com/brand/profile-240.png" width="52" height="52" alt="Mileset" style="display:block;border-radius:12px;border:0"></td>' +
+  '<td style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-weight:800;font-size:20px;letter-spacing:-.02em;color:#111">Mileset</td></tr></table>';
 /* welcome email to each new member, signed by Matthew */
 async function welcomeMail(env, id, name, email){
   if (!env.RESEND_API_KEY) return;
   const first = String(name || "").trim().split(/\s+/)[0] || "there", esc2 = x => String(x).replace(/[<>&"]/g, "");
   const unsub = API_BASE(env) + "/api/unsubscribe?u=" + id + "&s=" + (await mailSig(env, id));
   const fno = await foundingNo(env, id);
-  const paras = ["Hey " + first + ",", "Welcome to HYBRD Running. I'm really glad you're here."].concat(fno ? ["You're Founding Member #" + fno + " of 100. That means HYBRD is free for you for life, including anything paid we add later. Thank you for being here early."] : []).concat(["A few things to get the most out of it:"]);
-  const steps = ["Build your plan: pick a race, or everyday fitness if you just want to get fitter.", "Connect Strava or Garmin in Settings so your workouts come in on their own.", "Do the 20-second morning check-in. Your day adjusts to how you slept and feel.", "On iPhone, add HYBRD to your home screen so it opens like an app."];
-  const end = ["Follow along on Instagram @hybrdrunning for tips and early looks at what's coming.", "If you have a question or an idea, just reply to this email. I read every one."];
+  const paras = ["Hey " + first + ",", "Welcome to Mileset. I'm really glad you're here."].concat(fno ? ["You're Founding Member #" + fno + " of 100. That means Mileset is free for you for life, including anything paid we add later. Thank you for being here early."] : []).concat(["A few things to get the most out of it:"]);
+  const steps = ["Build your plan: pick a race, or everyday fitness if you just want to get fitter.", "Connect Strava or Garmin in Settings so your workouts come in on their own.", "Do the 20-second morning check-in. Your day adjusts to how you slept and feel.", "On iPhone, add Mileset to your home screen so it opens like an app."];
+  const end = ["Follow along on Instagram @milesetapp for tips and early looks at what's coming.", "If you have a question or an idea, just reply to this email. I read every one."];
   const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;font-size:16px;line-height:1.55">' + MAIL_HEAD +
     paras.map(t => '<p style="margin:0 0 14px">' + esc2(t) + '</p>').join("") + '<ul style="margin:0 0 16px;padding-left:20px">' + steps.map(t => '<li style="margin:0 0 6px">' + esc2(t) + '</li>').join("") + '</ul>' +
-    '<p style="margin:0 0 14px">Follow along on Instagram <a href="https://www.instagram.com/hybrdrunning/" style="color:#800000">@hybrdrunning</a> for tips and early looks at what\'s coming.</p><p style="margin:0 0 14px">' + esc2(end[1]) + '</p>' +
-    '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Open HYBRD</a></p>' +
-    '<p style="margin:0">Matthew<br><span style="color:#666">HYBRD Running</span></p>' +
-    '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this because you just made a HYBRD Running account.' + (env.MAIL_ADDRESS ? ' ' + esc2(env.MAIL_ADDRESS) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe from updates</a></p></div>';
-  const text = paras.join("\n\n") + "\n\n" + steps.map(t => "- " + t).join("\n") + "\n\n" + end.join("\n\n") + "\n\nOpen HYBRD: https://app.hybrdrunning.com/\n\nMatthew\nHYBRD Running\n\nUnsubscribe from updates: " + unsub;
+    '<p style="margin:0 0 14px">Follow along on Instagram <a href="https://www.instagram.com/milesetapp/" style="color:#800000">@milesetapp</a> for tips and early looks at what\'s coming.</p><p style="margin:0 0 14px">' + esc2(end[1]) + '</p>' +
+    '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Open Mileset</a></p>' +
+    '<p style="margin:0">Matthew<br><span style="color:#666">Mileset</span></p>' +
+    '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this because you just made a Mileset account.' + (env.MAIL_ADDRESS ? ' ' + esc2(env.MAIL_ADDRESS) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe from updates</a></p></div>';
+  const text = paras.join("\n\n") + "\n\n" + steps.map(t => "- " + t).join("\n") + "\n\n" + end.join("\n\n") + "\n\nOpen Mileset: https://app.hybrdrunning.com/\n\nMatthew\nMileset\n\nUnsubscribe from updates: " + unsub;
   const r = await fetch(env.RESEND_URL || "https://api.resend.com/emails", {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"},
-    body: JSON.stringify({from: env.MAIL_FROM || "HYBRD Running <no-reply@hybrdrunning.com>", to: [email], reply_to: "hybridrunning@gmail.com", subject: "Welcome to HYBRD, " + first, html, text, headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}})}).catch(() => null);
+    body: JSON.stringify({from: env.MAIL_FROM || "Mileset <no-reply@milesetapp.com>", to: [email], reply_to: "hybridrunning@gmail.com", subject: "Welcome to Mileset, " + first, html, text, headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}})}).catch(() => null);
   await logEvent(env, "welcome_mail", !!(r && r.ok), r ? "HTTP " + r.status : "net");
 }
 /* ---------- owner: email updates to every member (Resend batch API), each with its own unsubscribe link ---------- */
@@ -659,10 +659,10 @@ async function sendUpdate(env, owner, subject, message, test){
       const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;font-size:16px;line-height:1.55">' +
         MAIL_HEAD +
         body.split(/\n{2,}/).map(par => '<p style="margin:0 0 14px">' + linkify(esc2(par)).replace(/\n/g, "<br>") + '</p>').join("") +
-        '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Open HYBRD</a></p>' +
-        '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this because you have a HYBRD Running account.' + (addr ? ' ' + esc2(addr) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe</a></p></div>';
-      batch.push({from: env.MAIL_FROM || "HYBRD Running <no-reply@hybrdrunning.com>", to: [u.email], reply_to: "hybridrunning@gmail.com", subject: (test ? "[Test] " : "") + subject,
-        html, text: body + "\n\nOpen HYBRD: https://app.hybrdrunning.com/\n\n" + (addr ? addr + "\n" : "") + "Unsubscribe: " + unsub,
+        '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Open Mileset</a></p>' +
+        '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this because you have a Mileset account.' + (addr ? ' ' + esc2(addr) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe</a></p></div>';
+      batch.push({from: env.MAIL_FROM || "Mileset <no-reply@milesetapp.com>", to: [u.email], reply_to: "hybridrunning@gmail.com", subject: (test ? "[Test] " : "") + subject,
+        html, text: body + "\n\nOpen Mileset: https://app.hybrdrunning.com/\n\n" + (addr ? addr + "\n" : "") + "Unsubscribe: " + unsub,
         headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}});
     }
     const r = await fetch((env.RESEND_URL || "https://api.resend.com/emails").replace(/\/emails$/, "/emails/batch"), {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"}, body: JSON.stringify(batch)}).catch(() => null);
@@ -818,7 +818,7 @@ async function route(req, env, path, ctx){
     await limit(env, "import:" + (req.headers.get("CF-Connecting-IP") || "x"));
     const kh = key.length > 20 ? await sha256(key) : null;
     let row = kh ? await env.DB.prepare("SELECT user_id, 'apple' AS kind FROM import_keys WHERE key_hash = ?").bind(kh).first() : null;
-    if (!row) throw new HttpError(401, "That link isn't valid anymore. Make a new one in HYBRD settings.");
+    if (!row) throw new HttpError(401, "That link isn't valid anymore. Make a new one in Mileset settings.");
     const src = row.kind === "garmin" ? "garmin" : "apple";
     const get = k => { const v = q.get(k) ?? b[k]; return v == null ? "" : String(v).trim(); };
     const nums = raw => raw.split(/[\n;|]+/).map(t => t.replace(/(\d),(\d{3})(?!\d)/g, "$1$2").replace(",", ".")).map(t => { const m = t.match(/-?\d+(\.\d+)?/); return m ? Number(m[0]) : NaN; }).filter(x => !isNaN(x));
@@ -896,8 +896,8 @@ async function route(req, env, path, ctx){
     const ok = /^[a-f0-9]{8,64}$/.test(uid) && env.RESEND_API_KEY && safeEqual(sig, await mailSig(env, uid));
     if (ok) await env.DB.prepare("UPDATE users SET no_mail = 1 WHERE id = ?").bind(uid).run();
     if (M === "POST") return new Response(null, {status: ok ? 200 : 400});   // one-click unsubscribe from the mail app
-    return new Response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>HYBRD</title><body style="font-family:-apple-system,sans-serif;background:#0A0B0F;color:#fff;display:grid;place-items:center;min-height:90vh;margin:0;text-align:center;padding:20px"><div><div style="background:#BE383E;display:inline-block;font-weight:800;font-size:22px;padding:12px 18px;border-radius:6px">HYBRD</div><h1 style="font-size:22px">' +
-      (ok ? "You're unsubscribed" : "That link didn't work") + '</h1><p style="color:#9aa">' + (ok ? "You won't get HYBRD update emails anymore. Password resets still come through." : "Email hybridrunning@gmail.com and we'll take you off the list.") + '</p></div>', {status: ok ? 200 : 400, headers: {"Content-Type": "text/html; charset=utf-8"}});
+    return new Response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mileset</title><body style="font-family:-apple-system,sans-serif;background:#0A0B0F;color:#fff;display:grid;place-items:center;min-height:90vh;margin:0;text-align:center;padding:20px"><div><div style="background:#BE383E;display:inline-block;font-weight:800;font-size:22px;padding:12px 18px;border-radius:6px">Mileset</div><h1 style="font-size:22px">' +
+      (ok ? "You're unsubscribed" : "That link didn't work") + '</h1><p style="color:#9aa">' + (ok ? "You won't get Mileset update emails anymore. Password resets still come through." : "Email hybridrunning@gmail.com and we'll take you off the list.") + '</p></div>', {status: ok ? 200 : 400, headers: {"Content-Type": "text/html; charset=utf-8"}});
   }
   if (M === "POST" && path === "/api/password/forgot"){
     await limit(env, "auth:" + (req.headers.get("CF-Connecting-IP") || "x"));
@@ -917,7 +917,7 @@ async function route(req, env, path, ctx){
           '<p><a href="' + link + '" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:13px 22px;border-radius:6px">Choose a new password</a></p>' +
           '<p style="font-size:13px;color:#666;line-height:1.5;margin-top:24px">If you didn\'t ask for this, ignore this email. Your password stays the same.</p></div>';
         const r = await fetch(env.RESEND_URL || "https://api.resend.com/emails", {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"},
-          body: JSON.stringify({from: env.MAIL_FROM || "HYBRD Running <no-reply@hybrdrunning.com>", to: [email], reply_to: "hybridrunning@gmail.com", subject: "Reset your HYBRD password", html,
+          body: JSON.stringify({from: env.MAIL_FROM || "Mileset <no-reply@milesetapp.com>", to: [email], reply_to: "hybridrunning@gmail.com", subject: "Reset your Mileset password", html,
             text: hi + "\n\nOpen this link to pick a new password (works once, expires in 1 hour):\n" + link + "\n\nIf you didn't ask for this, ignore this email."})}).catch(() => null);
         await logEvent(env, "pw_reset_mail", !!(r && r.ok), r ? (r.ok ? "sent" : "HTTP " + r.status + " " + (await r.text()).slice(0, 120)) : "net");
       }
@@ -953,7 +953,7 @@ async function route(req, env, path, ctx){
     await env.DB.prepare("INSERT INTO reports (id, user_id, email, text, info, created) VALUES (?, ?, ?, ?, ?, ?)").bind(rand(10), who ? who.id : null, who ? who.email : null, text, JSON.stringify(info), now()).run();
     await logEvent(env, "report", true, who ? "signed in" : "not signed in");
     const own = await ownerId(env);
-    if (own && ctx && !text.startsWith("Nightly test report.")) ctx.waitUntil(pushTo(env, own, {title: "HYBRD: problem reported", body: clip(text, 120), tag: "report"}).catch(() => {}));
+    if (own && ctx && !text.startsWith("Nightly test report.")) ctx.waitUntil(pushTo(env, own, {title: "Mileset: problem reported", body: clip(text, 120), tag: "report"}).catch(() => {}));
     return {ok: true};
   }
   const user = await auth(req, env);
@@ -1333,7 +1333,7 @@ export default {
   async fetch(req, env, ctx){
     const host = new URL(req.url).hostname;
     if (SITE_HOSTS.has(host)){
-      try { return await site(req, host); } catch(e){ return new Response("HYBRD is having a moment. Try again in a minute.", {status: 502}); }
+      try { return await site(req, host); } catch(e){ return new Response("Mileset is having a moment. Try again in a minute.", {status: 502}); }
     }
     const h = corsFor(req), path = new URL(req.url).pathname.replace(/\/+$/, "");
     if (path.startsWith("/mcp/food/")){ try { return await foodMcp(req, env, path.slice(10)); } catch(e){ return new Response(JSON.stringify({jsonrpc: "2.0", id: null, error: {code: -32603, message: "Server error"}}), {status: 500, headers: {"Content-Type": "application/json"}}); } }
