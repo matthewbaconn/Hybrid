@@ -100,13 +100,14 @@ button{font:600 14px -apple-system,system-ui,sans-serif;color:var(--ink);backgro
 <div class="b-today"><h2>Today</h2><div class="list" id="ticker"></div>
 </div>
 </div>
-<div class="foot" id="foot">Lights, badges and the lists are live from each employee's run log.<br>Walking around between runs is office ambience.</div>
+<div class="foot" id="foot">Everything here is live from each employee's run log. A lit desk with a bubble is a real run happening now; dimmed people are between runs. Someone walking to Vesper just finished a run and is handing in the result.</div>
 </div>
 <div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
 <script>
 "use strict";
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const DEMO = /demo/.test(location.search + location.hash);
+let DEMO_HOLD = true;   // the first load sets everyone's state; only later changes are real events
 const FEED_API = "https://api.github.com/repos/matthewbaconn/Hybrid/contents/hq.json?ref=vesper/hq-data";
 const FEED_RAW = "https://raw.githubusercontent.com/matthewbaconn/Hybrid/vesper/hq-data/hq.json";
 const W = 360, H = 540;
@@ -175,11 +176,20 @@ function goSpot(a){
   a.path = route(a.room, s.room, s.x, s.y); a.room = s.room;
 }
 function busy(a){ return a.code === "w" || a.code === "f" || a.code === "x"; }
+// Matthew, Nov 14: "the agents ACTUALLY working, not just an animation". Nobody wanders for show anymore:
+// people sit at their desk; a lit desk + typing = a real run in progress (from the run log); when a run finishes,
+// that person walks over and hands the result to Vesper, then goes back. Every movement is a real event.
+const VERB = {"ceo-shift": "Running the business", "product-lead": "Building a feature", "worker": "Testing and shipping", "dev-lead": "Improving Vesper",
+  "growth-sprint": "Promoting Mileset", "instagram": "Queueing posts", "graphics": "Designing images", "monday-email": "Writing to members",
+  "audit": "Checking everything", "scorecard": "Crunching numbers", "friday-review": "Reviewing the week"};
+function nowText(a){ const d = PRIV && (PRIV.d || []).find(x => x.id === a.id), j = d && d.jobs && d.jobs[0];
+  const t = j ? j[1] : VERB[a.id] || "Working"; return t.length > 34 ? t.slice(0, 32) + "…" : t; }
+function handIn(a){ const v = byId.vesper; if (!v || a.id === "vesper") return;
+  a.path = route(a.room, "exec", v.x + 16, v.y + 4); a.room = "exec"; a.atDesk = false; a.handing = clockT; a.until = clockT + 1e9; }
 function decide(a){
-  if (busy(a)){ if (!a.atDesk) goDesk(a); a.until = clockT + 3; return; }
-  if (a.atDesk && Math.random() < (a.t.bot ? .7 : .55)){ goSpot(a); a.until = 0; return; }
-  if (!a.atDesk){ goDesk(a); return; }
-  a.until = clockT + rnd(6, 16);
+  if (a.handing){ a.handing = 0; goDesk(a); a.until = clockT + 1e9; return; }   // result handed in: back to the desk
+  if (!a.atDesk){ goDesk(a); }
+  a.until = clockT + 1e9;   // stays put until the run log says something happened
 }
 function step(dt){
   clockT += dt;
@@ -188,7 +198,7 @@ function step(dt){
     if (a.path.length){
       const [tx, ty] = a.path[0], dx = tx - a.x, dy = ty - a.y, d = Math.hypot(dx, dy), sp = (a.t.bot ? 36 : 27) * dt;
       a.moving = true; if (Math.abs(dx) > .5) a.face = dx > 0 ? 1 : -1;
-      if (d <= sp){ a.x = tx; a.y = ty; a.path.shift(); if (!a.path.length){ a.moving = false; a.until = clockT + (a.atDesk ? rnd(10, 26) : rnd(7, 15)); } }
+      if (d <= sp){ a.x = tx; a.y = ty; a.path.shift(); if (!a.path.length){ a.moving = false; a.until = a.handing ? clockT + 4 : clockT + 1e9; } }
       else { a.x += dx / d * sp; a.y += dy / d * sp; }
     } else { a.moving = false; if (clockT > a.until) decide(a); }
   }
@@ -219,7 +229,19 @@ function deskAt(a){
   fillR(dx + 12, dy - 2, 4, 5, 1, "#e9e3d6");                                                      // mug
   fillR(dx - 6, dy + 13, 12, 9, 3, "#232838");                                                     // chair
 }
+function bubble(x, y, text, col){
+  ctx.font = "600 6.5px -apple-system,system-ui,sans-serif"; const w = Math.min(120, ctx.measureText(text).width + 10), bx = Math.max(2, Math.min(W - w - 2, x - w / 2));
+  fillR(bx, y - 11, w, 11, 4, "rgba(10,11,15,.88)"); ctx.strokeStyle = col; ctx.lineWidth = .8; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, y - 11, w, 11, 4) : ctx.rect(bx, y - 11, w, 11); ctx.stroke();
+  ctx.fillStyle = "#f2f3f7"; ctx.textAlign = "left"; ctx.fillText(text, bx + 5, y - 3.4);
+}
 function person(a){
+  const idle = !a.t.bot && !busy(a) && !a.handing && !a.path.length;
+  ctx.save(); if (idle) ctx.globalAlpha = .55; personDraw(a); ctx.restore();
+  const by = a.y - (a.t.bot ? 22 : 20);
+  if (a.code === "w" && !a.path.length) bubble(a.x, by - 6, nowText(a), "#F2B33D");
+  else if (a.handing && !a.path.length) bubble(a.x, by - 6, "Handed in ✓", "#3FB37F");
+}
+function personDraw(a){
   const t = a.t, x = a.x, sit = a.atDesk && !a.path.length, bob = a.moving ? Math.abs(Math.sin(a.ph)) * 1.6 : 0, y = a.y - bob;
   ctx.fillStyle = "rgba(0,0,0,.4)"; ctx.beginPath(); ctx.ellipse(x, a.y + 7, 6, 2.2, 0, 0, 7); ctx.fill();
   if (selected === a.id){ ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, a.y + 7, 10, 4, 0, 0, 7); ctx.stroke(); }
@@ -313,7 +335,7 @@ async function load(){
     const j = await r.json(); if (!j || !Array.isArray(j.r)) throw new Error("shape");
     feed = j; feedErr = false;
   } catch(e){ feedErr = true; }
-  apply();
+  apply(); DEMO_HOLD = false;
 }
 const fmtT = iso => { if (!iso) return ""; const d = new Date(iso); if (isNaN(d)) return ""; const now = new Date(), same = d.toDateString() === now.toDateString();
   const t = d.toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}).toLowerCase().replace(" ", "");
@@ -326,7 +348,8 @@ function apply(){
   f.r.forEach(r => rows[r[0]] = r);
   for (const a of agents){
     const code = a.id === "vesper" ? (f.ok === false ? "vb" : "v") : (rows[a.id] ? rows[a.id][1] : "n");
-    if (code !== a.code){ a.code = code; a.until = 0; }
+    if (code !== a.code){ const was = a.code; a.code = code; a.until = 0;
+      if (was === "w" && (code === "i" || code === "s") && feed && !DEMO_HOLD) handIn(a); }
   }
   const stale = feed && feed.t ? (Date.now() - new Date(feed.t)) / 60000 : null;
   const banner = document.getElementById("banner"), live = document.getElementById("live");
@@ -353,7 +376,7 @@ function apply(){
 }
 const sheet = document.getElementById("sheet"), panel = document.getElementById("panel");
 function openSheet(id){ const a = byId[id]; if (!a) return; selected = id; const s = STATE[a.code], r = rows[id];
-  const where = a.path.length ? "Walking" : a.atDesk ? "At the desk" : ({coffee:"Getting coffee", table:"In the break room", couch:"On the couch", meet:"In the meeting room", cooler:"At the water cooler", board:"At the whiteboard", wall:"Checking the dashboards", chat:"Talking with the team"})[a.spot && a.spot.k] || "Around the office";
+  const where = a.handing ? "Handing a finished run to Vesper" : a.code === "w" ? "At the desk, working: " + nowText(a) : a.id === "vesper" ? "Always on" : "At the desk, between runs";
   panel.innerHTML = `<h3>${esc(a.t.n)}</h3><div class="rl">${esc(a.t.t)}</div><div class="kv">
     <span>Status</span><b style="color:${s[1]}">${esc(s[0])}</b>
     ${id === "vesper" ? "" : `<span>${a.code === "w" || a.code === "x" ? "Started" : "Last run"}</span><div>${r && r[2] ? esc(fmtT(r[2])) + " (" + esc(ago(r[2])) + ")" : "–"}</div>
