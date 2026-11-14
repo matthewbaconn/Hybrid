@@ -46,6 +46,17 @@ h2{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut
 .tabp{display:none}.tabp.on{display:block}
 .more{display:block;width:100%;margin:0;border-radius:0;padding:9px;border:0;border-top:1px solid var(--line);background:none;color:var(--mut);font:600 12.5px -apple-system,system-ui,sans-serif;cursor:pointer}
 .item .why{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.item.open .why{-webkit-line-clamp:unset}
+.grid{display:block}
+@media (min-width:1000px){
+  .wrap{max-width:1180px}
+  .grid{display:grid;grid-template-columns:minmax(380px,520px) 1fr;column-gap:22px;align-items:start;
+    grid-template-areas:"floor office" "team office" "today office"}
+  .b-floor{grid-area:floor}.b-team{grid-area:team}.b-today{grid-area:today}
+  .b-office{grid-area:office;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding-right:4px}
+  .b-office h2:first-child,.b-office .lock{margin-top:0}
+  .roster{grid-template-columns:1fr 1fr 1fr}
+  .tabp.on{max-height:none}
+}
 .priv{display:none}.priv.on{display:block}
 .lock{margin:14px 0 0;padding:10px 12px;border-radius:12px;border:1px dashed var(--line);color:var(--mut);font-size:12.5px;text-align:center}
 .exec{background:linear-gradient(160deg,#2a0f13 0%,var(--card) 70%);border:1px solid #3a1a20;border-radius:14px;padding:12px}
@@ -72,18 +83,23 @@ button{font:600 14px -apple-system,system-ui,sans-serif;color:var(--ink);backgro
 <div class="banner" id="banner"></div>
 <div class="top"><h1>MILESET HQ</h1><div class="clock"><span class="live" id="live"></span><span id="clock"></span></div></div>
 <div class="answer" id="answer"><div class="dot"></div><div id="answerText">Opening the office…</div></div>
-<div class="stage"><canvas id="cv" aria-label="Office floor with one character per employee"></canvas></div>
+<div class="grid">
+<div class="b-floor"><div class="stage"><canvas id="cv" aria-label="Office floor with one character per employee"></canvas></div>
 <div class="streak"><span id="streakText"></span><div class="pips" id="pips"></div></div>
 <div class="install" id="install">Put HQ on your home screen: tap <b>Share</b>, then <b>Add to Home Screen</b>.</div>
-<div class="lock" id="lock">🔒 Assignments, history, approvals and decisions are private. Open the link Vesper sent you once on this phone to unlock them.</div>
+</div>
+<div class="b-office"><div class="lock" id="lock">🔒 Assignments, history, approvals and decisions are private. Open the link Vesper sent you once on this phone to unlock them.</div>
 <div class="priv" id="priv">
 <h2>Vesper · CEO office</h2><div class="exec" id="exec"></div>
 <div class="tabs" id="tabs"><button data-t="appr" class="on">Approvals</button><button data-t="jobs">Assignments</button><button data-t="cfeed">Activity</button><button data-t="dec">Decisions</button></div>
 <div class="list tabp on" id="appr"></div><div class="list tabp" id="jobs"></div><div class="list tabp" id="cfeed"></div><div class="list tabp" id="dec"></div>
 </div>
-<h2>The team</h2><div class="roster" id="roster"></div>
-<h2>Today</h2><div class="list" id="ticker"></div>
-
+</div>
+<div class="b-team"><h2>The team</h2><div class="roster" id="roster"></div>
+</div>
+<div class="b-today"><h2>Today</h2><div class="list" id="ticker"></div>
+</div>
+</div>
 <div class="foot" id="foot">Lights, badges and the lists are live from each employee's run log.<br>Walking around between runs is office ambience.</div>
 </div>
 <div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
@@ -316,7 +332,7 @@ function apply(){
   const banner = document.getElementById("banner"), live = document.getElementById("live");
   let b = DEMO ? "DEMO DATA (not the real office)" : !feed ? "Can't reach the live feed. The office keeps moving, but the lights aren't live." : stale > 40 ? `Live feed last updated ${ago(feed.t)}. Vesper may be offline.` : "";
   banner.textContent = b; banner.style.display = b ? "block" : "none"; live.classList.toggle("off", !!b && !DEMO);
-  const nm = id => TEAM[id] ? TEAM[id].n : id;
+  const nm = id => TEAM[id] ? TEAM[id].n : id === "drill" ? "Recovery drill (test)" : id;
   const bad = agents.filter(a => ["f","x","vb"].includes(a.code)), work = agents.filter(a => a.code === "w");
   const ans = document.getElementById("answer"); ans.className = "answer";
   let txt;
@@ -398,7 +414,7 @@ function renderPriv(){
   const box = document.getElementById("priv"), lock = document.getElementById("lock");
   if (!PRIV){ box.classList.remove("on"); lock.style.display = "block"; if (privErr) lock.textContent = "🔒 " + privErr; return; }
   box.classList.add("on"); lock.style.display = "none";
-  const o = PRIV.o || {}, nm = id => TEAM[id] ? TEAM[id].n : id, k = o.kpis || null;
+  const o = PRIV.o || {}, nm = id => TEAM[id] ? TEAM[id].n : id === "drill" ? "Recovery drill (test)" : id, k = o.kpis || null;
   const kp = k && typeof k === "object" ? Object.entries(k.latest || k).filter(([a, v]) => typeof v === "number").slice(0, 3) : [];
   document.getElementById("exec").innerHTML = `<h3>Vesper</h3><div class="rl">Chief of staff · runs the company day to day · updated ${esc(ago(PRIV.t))}</div>
     <div class="kpis"><div class="kpi"><b>${o.streak ? o.streak[0] + "/" + o.streak[1] : "–"}</b><span>days, no silent failures</span></div>
