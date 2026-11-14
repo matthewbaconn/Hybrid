@@ -740,6 +740,7 @@ a.scard{text-decoration:none;color:var(--ink)}
 .pl-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}.pl-btns button,.pl-opts button{min-height:56px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:700 16px/1 inherit}
 .pl-btns .pl-end{background:var(--pt);border-color:var(--pt);color:#fff}.pl-opts{display:flex;gap:10px;justify-content:center;margin-top:10px}.pl-opts button{min-height:40px;padding:0 16px;font-size:13px;color:var(--muted)}
 .talk{display:block;font-style:normal;font-size:12px;color:var(--muted);margin-top:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px}.chips button{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 13px/1 inherit}.chips button[aria-pressed="true"]{background:var(--race);border-color:var(--race);color:#fff}
 .venue{margin:10px 0}.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.seg button{padding:8px 14px;background:transparent;border:0;color:var(--muted);font:600 14px/1 inherit}.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
 .rpe{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:6px}
 .rpe button{min-height:38px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 14px/1 inherit;font-variant-numeric:tabular-nums}
@@ -1924,7 +1925,7 @@ function renderToday(){
   const quickW = !wt && wskip !== TODAY && wAsk() ? '<section class="card qw" style="--tone:var(--lift)"><div class="card-h">' + ic("scale") + '<span class="lbl">Morning weigh-in</span><button class="linkbtn r" type="button" data-act="wskip">Not today</button></div>' +
     '<div class="wform"><input id="w-lb" inputmode="decimal" placeholder="' + (aw7 ? aw7.toFixed(1) : "Weight") + '" aria-label="Weight in pounds"><span>lb</span><button class="btn primary" type="button" data-act="wsave">Save</button></div>' + (wf && wf.err ? '<p class="err" role="alert">' + esc(wf.err) + '</p>' : '') + '</section>' : '';
   const mvT = day.sessions.length && canMove(TODAY) && moveTargets(TODAY).length && !day.sessions.some((s, i) => sessDone(TODAY, i, dayMatches(TODAY)));
-  h += checkinCard() + fuelTile + heroSummary(day) + (mvT ? '<button class="linkbtn hmove" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t do it today? Move it</button>' : '') + missedCard() + quickW;
+  h += checkinCard() + cycleCard(day) + fuelTile + heroSummary(day) + (mvT ? '<button class="linkbtn hmove" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t do it today? Move it</button>' : '') + missedCard() + quickW;
   if (L && wxState === "idle") setTimeout(() => loadWeather(), 0);
   const nowKey = TODAY + "T" + String(new Date().getHours()).padStart(2, "0") + ":00", bw = wx && wxState === "ok" ? HP.bestWindow(wx.hours, nowKey, addDays(TODAY, 1)) : null;
   let wmi = 0, wdone = 0;
@@ -2479,6 +2480,45 @@ function plDraw(light){
     (nx ? '<p class="pl-next">Next: ' + esc(nx.label) + (nx.sec ? ' · ' + plFmt(nx.sec) : '') + '</p>' : '<p class="pl-next">Last step</p>') +
     '<div class="pl-btns"><button type="button" data-pl="pause">' + (PL.paused ? 'Resume' : 'Pause') + '</button><button type="button" data-pl="next">Next</button><button type="button" data-pl="end" class="pl-end">Finish</button></div>' +
     '<div class="pl-opts"><button type="button" data-pl="voice" aria-pressed="' + PL.voice + '">Voice ' + (PL.voice ? 'on' : 'off') + '</button>' + (PL.s.venue === "treadmill" ? '' : '<button type="button" data-pl="gps" aria-pressed="' + (PL.gps != null) + '">GPS ' + (PL.gps != null ? 'on' : 'off') + '</button>') + '</div>';
+}
+/* ============ cycle-aware training: opt-in, stored only on this phone ============ */
+let cyc = (() => { try { return JSON.parse(localStorage.getItem("hy-cycle") || "null") || {}; } catch(e){ return {}; } })(), cycOpen = false;
+function cycSave(){ try { localStorage.setItem("hy-cycle", JSON.stringify(cyc)); } catch(e){} }
+function cycleCard(day){
+  if (!plan || mode === "sample") return '';
+  if (!cyc.on){
+    if (plan.profile.sex !== "f" || cyc.dismissed) return '';
+    if (!cycOpen) return '<section class="card cyc" style="--tone:var(--race)"><div class="card-h">' + ic("spark") + '<span class="lbl">Train with your cycle</span><button class="linkbtn r" type="button" data-act="cycno">Not for me</button></div><p class="sub">Mileset can adjust hard days to your cycle and how you feel. Private: it stays on this phone, never on our servers.</p><button class="btn block" type="button" data-act="cycset">Set it up</button></section>';
+  }
+  if (cycOpen || !cyc.on) return '<section class="card cyc" style="--tone:var(--race)"><div class="card-h">' + ic("spark") + '<span class="lbl">Cycle-aware training</span></div>' +
+    '<div class="two"><label>First day of your last period<input id="cy-last" type="date" max="' + TODAY + '" value="' + esc(cyc.last || '') + '"></label><label>Cycle length (days)<input id="cy-len" inputmode="numeric" value="' + (cyc.len || 28) + '"></label></div>' +
+    '<div class="two"><label>Period length (days)<input id="cy-plen" inputmode="numeric" value="' + (cyc.plen || 5) + '"></label><label>Hormonal birth control<select id="cy-hc"><option value="">No</option><option value="1"' + (cyc.hormonal ? ' selected' : '') + '>Yes</option></select></label></div>' +
+    '<p class="fine">Stored only on this phone. Not sent to Mileset, not shared, not used for ads. Turn it off anytime and it\'s erased.</p>' +
+    '<div class="fbtns">' + (cyc.on ? '<button class="btn" type="button" data-act="cycoff" style="color:var(--crit)">Turn off and erase</button>' : '<button class="btn" type="button" data-act="cycset">Cancel</button>') + '<button class="btn primary" type="button" data-act="cycsave">Save</button></div></section>';
+  const sym = (cyc.log && cyc.log[TODAY]) || [], adv = HP.cycleAdvice(cyc, TODAY, day ? day.sessions : [], sym);
+  if (!adv) return '';
+  const pat = HP.cyclePattern(cyc, checkins);
+  return '<section class="card cyc" style="--tone:var(--race)"><div class="card-h">' + ic("spark") + '<span class="lbl">Cycle · day ' + adv.day + ' · ' + esc(adv.name) + '</span><button class="linkbtn r" type="button" data-act="cycset">Edit</button></div>' +
+    (adv.today ? '<p><b>' + esc(adv.today) + '</b></p>' : '') + '<p class="sub">' + esc(adv.tip) + '</p>' +
+    '<p class="feelq">How are you today?</p><div class="chips">' + HP.CYCLE_SYM.map(([k, l]) => '<button type="button" data-act="cycsym" data-k="' + k + '" aria-pressed="' + sym.includes(k) + '">' + l + '</button>').join("") + '</div>' +
+    (adv.key !== "period" ? '<button class="linkbtn" type="button" data-act="cycstart">Period started today</button>' : '') +
+    (adv.late ? '<p class="fine">Your period looks later than usual. Tap "Period started today" when it comes so the phases stay right.</p>' : '') +
+    (pat ? '<p class="fine">Your pattern so far: readiness is highest in your ' + HP.CYCLE[pat[0][0]].name.toLowerCase() + ' phase (' + pat[0][1] + ') and lowest in your ' + HP.CYCLE[pat[pat.length - 1][0]].name.toLowerCase() + ' phase (' + pat[pat.length - 1][1] + ').</p>' : '') + '</section>';
+}
+function cycAct(act, a){
+  if (act === "cycno"){ cyc.dismissed = 1; cycSave(); render(); return true; }
+  if (act === "cycset"){ cycOpen = !cycOpen; render(); return true; }
+  if (act === "cycoff"){ cyc = {dismissed: 1}; cycOpen = false; cycSave(); render(); toast("Cycle tracking off. Your cycle data was erased from this phone."); return true; }
+  if (act === "cycsave"){
+    const v = id => ((document.getElementById(id) || {}).value || "").trim(), last = v("cy-last"), len = +v("cy-len") || 28, plen = +v("cy-plen") || 5;
+    if (!/^\d{4}-\d\d-\d\d$/.test(last) || last > TODAY) return toast("Pick the first day of your last period."), true;
+    if (len < 20 || len > 45) return toast("Cycle length is usually 21 to 40 days."), true;
+    const starts = (cyc.starts || []).concat(cyc.last && cyc.last !== last ? [cyc.last] : []).filter(x => x < last).slice(-12);
+    cyc = {...cyc, on: true, last, len, plen: Math.min(10, Math.max(2, plen)), hormonal: v("cy-hc") === "1", starts}; cycOpen = false; cycSave(); render(); toast("Cycle-aware training is on."); return true;
+  }
+  if (act === "cycstart"){ const starts = (cyc.starts || []).concat(cyc.last ? [cyc.last] : []).slice(-12); if (cyc.last && daysBetween(cyc.last, TODAY) >= 18) cyc.len = Math.round(((cyc.len || 28) * 2 + daysBetween(cyc.last, TODAY)) / 3); cyc = {...cyc, starts, last: TODAY}; cycSave(); render(); toast("Logged. Day 1."); return true; }
+  if (act === "cycsym"){ const k = a.dataset.k; cyc.log = cyc.log || {}; const t = new Set(cyc.log[TODAY] || []); t.has(k) ? t.delete(k) : t.add(k); cyc.log[TODAY] = [...t]; Object.keys(cyc.log).forEach(d => { if (d < addDays(TODAY, -120)) delete cyc.log[d]; }); cycSave(); render(); return true; }
+  return false;
 }
 function toast(msg){
   let t = $(".toast"); if (!t){ t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
@@ -3186,6 +3226,7 @@ document.addEventListener("click", ev => {
     saveRemote("PUT", "/api/weight", {date, lb}).then(() => { weights[date] = Math.round(lb * 10) / 10; wf = null; save(); render(); if (date !== TODAY) toast("Saved for " + fmtD(date) + "."); }).catch(e => { wf = {err: e.message}; render(); });
     return;
   }
+  if (/^cyc/.test(act) && cycAct(act, a)) return;
   if (act === "play"){ const [d, i] = [a.dataset.key.slice(0, 10), +a.dataset.key.slice(11)], day = dayOf(d), sx = day && day.sessions[i]; if (sx) playerOpen(sx, a.dataset.key); return; }
   if (act === "venue"){
     const k = a.dataset.key, v = a.dataset.v, prof = {...plan.profile}, vs = {...(prof.venues || {})};
@@ -3357,7 +3398,7 @@ function bodyFields(p, pre){
     '<div class="q"><label for="' + pre + '-age">Age</label><input id="' + pre + '-age" inputmode="numeric" placeholder="30" value="' + (p.age ?? '') + '"></div></div>' +
     '<div class="two"><div class="q"><label for="' + pre + '-w">Weight (lb)</label><input id="' + pre + '-w" inputmode="decimal" placeholder="180" value="' + (p.weight ?? '') + '"></div>' +
     (showGoal ? '<div class="q"><label for="' + pre + '-gw">Goal weight (lb)</label><input id="' + pre + '-gw" inputmode="decimal" placeholder="' + (ev && bg === "lose" ? 'Needed' : 'Optional') + '" value="' + (p.goalWeight ?? '') + '"></div>' : '<div></div>') + '</div>' +
-    '<div class="q"><span class="ql">Sex</span><p class="hint">Only used in the resting-calorie formula.</p>' + optList(pre + "sex", [["m","Male"],["f","Female"],["x","Prefer not to say"]], p.sex || "") + '</div>' +
+    '<div class="q"><span class="ql">Sex</span><p class="hint">Used in the resting-calorie formula. Female athletes can also turn on cycle-aware training (it stays on your phone).</p>' + optList(pre + "sex", [["m","Male"],["f","Female"],["x","Prefer not to say"]], p.sex || "") + '</div>' +
     '<div class="q"><span class="ql">Outside of workouts, your day is…</span>' + optList(pre + "daily", [["sit","Mostly sitting"],["some","On my feet some"],["feet","On my feet most of the day"]], p.daily || "some") + '</div>' +
     '<p class="hint">Mileset works out your resting burn (BMR) from your height, weight, age and sex, adds your daily activity and workouts, then sets food targets for your goal.</p>';
 }

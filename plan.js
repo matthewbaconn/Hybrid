@@ -729,6 +729,47 @@ function raceSplits(plan){
    Turns one planned session into a Garmin workout: warm-up/cool-down, rep blocks with recoveries,
    and pace targets (as speed in m/s). Runs, rides, swims and cardio; lifts stay in the app. */
 const MI_M = 1609.34;
+/* ---------- cycle-aware training (opt-in; the data stays on the athlete's phone) ----------
+   Research (McNulty 2020 meta-analysis; Elliott-Sale 2021) finds small, very individual effects of the cycle on
+   performance, so this follows how SHE feels first and the textbook second: phase for context, symptoms decide. */
+function cyclePhase(cfg, date){
+  if (!cfg || !cfg.on) return null;
+  const starts = (cfg.starts || []).concat(cfg.last ? [cfg.last] : []).filter(x => x <= date).sort();
+  if (!starts.length) return null; cfg = {...cfg, last: starts[starts.length - 1]};
+  const len = Math.min(45, Math.max(20, +cfg.len || 28)), plen = Math.min(10, Math.max(2, +cfg.plen || 5));
+  const day = daysBetween(cfg.last, date) % len + 1, ov = len - 14, late = daysBetween(cfg.last, date) >= len + 7;
+  const key = day <= plen ? "period" : day < ov - 1 ? "follicular" : day <= ov + 1 ? "ovulation" : day > len - 5 ? "premenstrual" : "luteal";
+  return {day, len, key, next: addDays(cfg.last, Math.ceil((daysBetween(cfg.last, date) + 1) / len) * len), late, hormonal: !!cfg.hormonal};
+}
+const CYCLE = {
+  period: {name: "Period", tip: "Train as planned if you feel fine: research shows little effect for most athletes. If cramps or fatigue hit, swap hard work for easy miles. Eat iron-rich food (red meat, lentils, spinach with vitamin C).",
+    hard: "If you have cramps or feel flat, run this as an easy run today and move the workout. If you feel good, go for it."},
+  follicular: {name: "Follicular", tip: "Many athletes feel their best here. A good window for your hardest sessions, heavy lifts and time trials.",
+    hard: "Good timing for a hard session. Go for the top of the target range if you feel it."},
+  ovulation: {name: "Around ovulation", tip: "Energy is often high. Ligaments may be a little looser around now, so warm up properly before fast running, jumps or heavy lifts.",
+    hard: "Do the full warm-up and strides before the fast work."},
+  luteal: {name: "Luteal", tip: "Body temperature and heart rate run a little higher, so effort can feel harder and heat hits more. Pace hot runs by effort, drink more, add salt, and eat about 100 to 200 more calories.",
+    hard: "Heart rate may read a few beats higher for the same pace. Hit the paces, ignore a slightly higher HR."},
+  premenstrual: {name: "Premenstrual", tip: "Sleep and mood can dip. Protect sleep, keep carbs up, and let check-ins steer the hard days.",
+    hard: "If your check-in is low, cut a rep or two. Consistency beats one big session."}
+};
+const CYCLE_SYM = [["cramps", "Cramps"], ["fatigue", "Low energy"], ["bloat", "Bloating"], ["head", "Headache"], ["sleep", "Poor sleep"], ["strong", "Feeling strong"]];
+function cycleAdvice(cfg, date, sessions, symptoms){
+  const ph = cyclePhase(cfg, date); if (!ph) return null;
+  const C = CYCLE[ph.key], sym = symptoms || [], hard = (sessions || []).find(x => x.type === "workout" || x.type === "long" || x.type === "hyrox");
+  const rough = sym.some(x => x !== "strong") && sym.length >= 2 || sym.includes("cramps");
+  let today = hard ? C.hard : "";
+  if (hard && rough) today = "With " + sym.filter(x => x !== "strong").map(x => (CYCLE_SYM.find(y => y[0] === x) || [x, x])[1].toLowerCase()).join(" and ") + ", make today easy: same time, easy effort. Move " + hard.title.toLowerCase() + " to a better day.";
+  else if (hard && sym.includes("strong")) today = "Feeling strong: this is a good day to push " + hard.title.toLowerCase() + ".";
+  return {...ph, name: C.name, tip: ph.hormonal ? "On hormonal birth control the phases are flattened, so Mileset goes by your symptoms and check-ins." : C.tip, today, rough};
+}
+// her own pattern: average check-in readiness per phase once there's enough data
+function cyclePattern(cfg, checkins){
+  if (!cfg || !cfg.on) return null;
+  const by = {}; Object.values(checkins || {}).forEach(c => { if (!c.date) return; const ph = cyclePhase(cfg, c.date); const r = readiness(c); if (!ph || !r || !r.score) return; (by[ph.key] = by[ph.key] || []).push(r.score); });
+  const rows = Object.entries(by).filter(([, v]) => v.length >= 3).map(([k, v]) => [k, Math.round(v.reduce((a, b) => a + b, 0) / v.length), v.length]);
+  return rows.length >= 2 ? rows.sort((a, b) => b[1] - a[1]) : null;
+}
 /* treadmill or outside: one choice per run (profile.venues["YYYY-MM-DD-i"]), or a default (profile.venue).
    Only one workout ever goes to the watch: the choice changes its name and notes, never adds a second one. */
 const RUN_TYPES = new Set(["easy", "long", "workout"]);
@@ -975,5 +1016,5 @@ function swapCheck(plan, a, b, dropA){        // dropA: a is a missed day, so wh
   return scan().filter(m => !before.includes(m));   // only what this move adds, not what the week already had
 }
 
-root.HP = {applyVenues, mph, sportOf, effortOf, loadOf, actSummary, SPORTS, PLAN_RPE, cleanSession, alternatives, library, exAlts, exAll, exGroup, applySwaps, swapCheck, isHard, garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
+root.HP = {cyclePhase, cycleAdvice, cyclePattern, CYCLE, CYCLE_SYM, applyVenues, mph, sportOf, effortOf, loadOf, actSummary, SPORTS, PLAN_RPE, cleanSession, alternatives, library, exAlts, exAll, exGroup, applySwaps, swapCheck, isHard, garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
 })(typeof globalThis !== "undefined" ? globalThis : self);
