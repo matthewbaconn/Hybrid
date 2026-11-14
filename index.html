@@ -2556,7 +2556,7 @@ function settingsScreen(k){
   const help = group("", (API ? row("set-report", "Report a problem", "Something broken or confusing? Tell us.", "flag") : '') + (mode === "account" && isOwner ? row("set-reports", "Reported problems", reports.length + ' waiting', "bars") : '') + row("set-about", "How Mileset works", "Your plan, readiness and calories, explained", "spark") +
     row("set-health-info", "Health and safety", "Read before changing how you eat or train", "heart") + row("set-terms", "Terms of use", "", "flag") + '<a class="srow" href="privacy.html" target="_blank" rel="noopener">' + ic("lock") + '<div><b>Privacy policy</b><span>What we collect and how it\'s used</span></div><i>›</i></a>');
   const training = group("Your plan", row("", "Race, training days and lifting", plan ? HP.raceName(pr) + (plan.raceDate ? ' · ' + fmtD(plan.raceDate) : '') + ' · rebuilds your plan' : '', "cal", "edit") +
-    row("set-hr", "Heart rate zones", hrSummary(), "heart") + row("set-run", "Running", 'Usual run time ' + hr12(+String(uset.run_time || "07:00").slice(0, 2)) + (wxLoc() ? ' · ' + esc(wxLoc().place || 'weather on') : ''), "sun"));
+    row("set-hr", "Heart rate zones", hrSummary(), "heart") + row("set-run", "Running", (plan && plan.profile.venue === "treadmill" ? 'Treadmill · ' : '') + 'Usual run time ' + hr12(+String(uset.run_time || "07:00").slice(0, 2)) + (wxLoc() ? ' · ' + esc(wxLoc().place || 'weather on') : ''), "sun"));
   const card = (to, title, sub, icon, act) => '<button class="scard" type="button" data-act="' + (act || 'go') + '"' + (to ? ' data-scr="' + to + '"' : '') + '>' + '<div><b>' + title + '</b><span>' + sub + '</span></div><i>' + (icon ? ic(icon) : '›') + '</i></button>';
   const invite = API ? card("", "Invite a friend", "Send them Mileset. It's free to try.", "share", "invite").replace('class="scard"', 'class="scard hi"') : '';
   const helpCard = card("set-help", "Help and support", "Report a problem, how Mileset works, health and safety, terms and privacy");
@@ -2583,7 +2583,7 @@ function settingsScreen(k){
   if (k === "set-health-info") return '<section class="card legal">' + legalHtml("health") + '</section>';
   if (k === "set-terms") return '<section class="card legal">' + legalHtml("terms") + '</section>';
   if (k === "set-profile") return profileForm();
-  if (k === "set-run") return '<section class="card form"><label>Usual run time<small>Used for the heat adjustment and the best time to run.</small><input type="time" data-set="run_time" value="' + esc(uset.run_time || "07:00") + '"></label></section>' +
+  if (k === "set-run") return (plan ? '<section class="card"><div class="card-h"><span class="lbl">Where you usually run</span></div><div class="seg" role="group" aria-label="Where you usually run">' + [["outside", "Outside"], ["treadmill", "Treadmill"]].map(([v, l]) => '<button type="button" data-act="venuedef" data-v="' + v + '" aria-pressed="' + ((plan.profile.venue || "outside") === v) + '">' + l + '</button>').join("") + '</div><p class="sub">Every run uses this unless you change that one run. Treadmill runs show speeds in mph, skip the heat adjustment' + (garmin.connected ? ', and go to your watch labeled Treadmill (still one workout per run)' : '') + '.</p></section>' : '') + '<section class="card form"><label>Usual run time<small>Used for the heat adjustment and the best time to run.</small><input type="time" data-set="run_time" value="' + esc(uset.run_time || "07:00") + '"></label></section>' +
     '<section class="card"><div class="card-h"><span class="lbl">Weather location</span><span class="r">' + esc(wxLoc() ? wxLoc().place || 'Set' : 'Not set') + '</span></div><button class="btn block" type="button" data-act="wxset">Change location</button></section>';
   if (k === "set-about") return '<section class="card about"><p><b>Your plan</b> is built from your goal race, your recent race time and how much you run now. It builds up for a few weeks, then eases off before race day.</p>' +
     '<p><b>Readiness</b> comes from your morning check-in (and your watch, if connected). On low days, today\'s run gets shorter or easier, and hard workouts move later in the week.</p>' +
@@ -2709,7 +2709,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "65";
+const APP_VERSION = "66";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -3252,6 +3252,15 @@ document.addEventListener("click", ev => {
   }
   if (/^cyc/.test(act) && cycAct(act, a)) return;
   if (act === "play"){ const [d, i] = [a.dataset.key.slice(0, 10), +a.dataset.key.slice(11)], day = dayOf(d), sx = day && day.sessions[i]; if (sx) playerOpen(sx, a.dataset.key); return; }
+  if (act === "venuedef"){
+    const v = a.dataset.v, prof = {...plan.profile};
+    if (v === "treadmill") prof.venue = "treadmill"; else delete prof.venue;
+    if (prof.venues){ const vs = {}; Object.entries(prof.venues).forEach(([k, x]) => { if (x !== (prof.venue || "outside")) vs[k] = x; }); if (Object.keys(vs).length) prof.venues = vs; else delete prof.venues; }
+    const prev = plan; plan = buildPlan(prof); fbCache = null; save(); render();
+    toast(v === "treadmill" ? "Runs default to the treadmill." + (garmin.connected ? " Your watch updates too." : "") : "Runs default to outside.");
+    if (mode === "account") api("PUT", "/api/profile", {profile: prof}).catch(e => { plan = prev; fbCache = null; render(); toast(e.message); });
+    return;
+  }
   if (act === "venue"){
     const k = a.dataset.key, v = a.dataset.v, prof = {...plan.profile}, vs = {...(prof.venues || {})};
     if (v === (prof.venue || "outside")) delete vs[k]; else vs[k] = v;

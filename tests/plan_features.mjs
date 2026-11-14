@@ -26,6 +26,10 @@ const tm = HP.buildPlan({...pl.profile, venues: {[wk.date + "-" + wi]: "treadmil
 t(s2.venue === "treadmill", "treadmill choice sticks to its session");
 const gw = HP.garminWorkout(tm, s2, {}, false, wk.date);
 t(!gw || /^Treadmill · /.test(gw.workoutName), "watch gets one workout labeled Treadmill");
+const td = HP.buildPlan({...pl.profile, venue: "treadmill", venues: {[wk.date + "-" + wi]: "outside"}}, today);
+t(td.weeks[1].days.flatMap(d => d.sessions).filter(x => ["easy", "long", "workout"].includes(x.type)).every(x => x.venue === "treadmill")
+  && td.weeks[2].days.find(x => x.date === wk.date).sessions[wi].venue === "outside", "treadmill default covers every run; one run can still go outside");
+t(td.weeks[1].days.flatMap(d => d.sessions).filter(x => x.type === "lift").every(x => !x.venue), "lifts never get a venue");
 const fb = HP.feedback(pl, [{id: "e", date: ez.date, type: "run", minutes: 40, mi: 0, rpe: 8}], HP.addDays(ez.date, 1));
 t(Object.values(fb.assess).some(a => a.byFeel && a.verdict === "hard"), "no-watch run rated 8/10 counts as too hard");
 const cy = {on: true, last: "2026-11-01", len: 28, plen: 5};
