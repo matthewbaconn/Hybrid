@@ -7,7 +7,7 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:radial-gradient(120% 60% at 50% -10%,#2a0a0d 0%,var(--bg) 55%);color:var(--ink);font:15px/1.4 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;padding:18px 16px 28px;min-height:100vh}
 .top{display:flex;align-items:center;gap:14px}
-.ring{width:64px;height:64px;flex:none}
+.ring{width:64px;height:64px;flex:none;cursor:pointer}.ring.talk .pulse{animation-duration:.6s}
 .ring circle{fill:none;stroke-width:3}
 .ring .spin{transform-origin:50% 50%;animation:spin 6s linear infinite}
 .ring .pulse{animation:pulse 2.4s ease-in-out infinite}
@@ -36,8 +36,8 @@ button:active{background:#1f2433}button.hot{background:var(--maroon);border-colo
 .foot{color:var(--mut);font-size:11.5px;text-align:center;margin-top:18px}
 </style></head><body>
 <div class="top">
-  <svg class="ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" stroke="#2b1013"/><circle class="spin" cx="32" cy="32" r="29" stroke="var(--red)" stroke-dasharray="40 142" stroke-linecap="round"/><circle class="pulse" cx="32" cy="32" r="18" stroke="var(--red)" stroke-width="2"/><circle cx="32" cy="32" r="7" fill="var(--red)" stroke="none"/></svg>
-  <div><h1>VESPER</h1><div class="sub" id="greet">At your service.</div></div>
+  <svg class="ring" id="ring" viewBox="0 0 64 64" role="button" aria-label="Hear the briefing"><circle cx="32" cy="32" r="29" stroke="#2b1013"/><circle class="spin" cx="32" cy="32" r="29" stroke="var(--red)" stroke-dasharray="40 142" stroke-linecap="round"/><circle class="pulse" cx="32" cy="32" r="18" stroke="var(--red)" stroke-width="2"/><circle cx="32" cy="32" r="7" fill="var(--red)" stroke="none"/></svg>
+  <div><h1>VESPER</h1><div class="sub" id="greet">At your service.</div><div class="sub" id="hint">Tap the ring to hear the briefing.</div></div>
 </div>
 <div class="status" id="status"><div class="dot"></div><div id="statusText">Systems check pending.</div></div>
 <div class="grid" id="tiles"></div>
@@ -82,4 +82,43 @@ function send(text){ text = (text || "").trim(); if (!text) return;
 document.querySelectorAll("[data-cmd]").forEach(b => b.onclick = () => send(b.dataset.cmd));
 document.getElementById("go").onclick = () => send(document.getElementById("q").value);
 document.getElementById("q").addEventListener("keydown", e => { if (e.key === "Enter") send(e.target.value); });
+
+// ---- Voice: Vesper speaks the briefing (British voice when the phone has one) ----
+function briefingText(){
+  const g = document.getElementById("greet").textContent.split(" Updated")[0];
+  const parts = [g];
+  parts.push(d.ok === false ? (d.s || "Something needs attention.") : "All systems are running smoothly.");
+  if (d.m != null) parts.push(`We have ${d.m} members` + (d.w ? `, ${d.w} new this week` : "") + ".");
+  if (d.f != null) parts.push(`${d.f} founding spots left.`);
+  if (d.a != null) parts.push(`${d.a} percent have built a plan, and ${d.wa} percent trained this week.`);
+  if (d.od) parts.push(`${d.od} task${d.od === 1 ? " is" : "s are"} overdue.`);
+  if (d.wo && d.wo.length) parts.push(`${d.wo.length === 1 ? "One thing needs" : d.wo.length + " things need"} you: ` + d.wo.map(x => x.replace(/^#\d+\s*/, "")).join(", and ") + ".");
+  else parts.push("Nothing needs you right now.");
+  parts.push("What would you like me to do?");
+  return parts.join(" ");
+}
+function pickVoice(){
+  const vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+  return vs.find(v => /Daniel|Arthur|Oliver|Ryan|George/i.test(v.name) && /en-GB/i.test(v.lang))
+      || vs.find(v => /en-GB/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
+}
+function speak(){
+  if (!("speechSynthesis" in window)) { document.getElementById("hint").textContent = "This phone can't speak here; text \"talk to me\" for voice notes."; return; }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(briefingText());
+  const v = pickVoice(); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "en-GB";
+  u.rate = 1.0; u.pitch = 0.9;
+  const ring = document.getElementById("ring");
+  u.onstart = () => { window.__spoke = true; ring.classList.add("talk"); }; u.onend = u.onerror = () => ring.classList.remove("talk");
+  speechSynthesis.speak(u);
+}
+document.getElementById("ring").addEventListener("click", speak);
+// Try to greet on open (some phones only allow sound after a tap; then the ring does it).
+if ("speechSynthesis" in window) {
+  let tried = false;
+  const go = () => { if (tried) return; tried = true; try { speak(); } catch (e) {} };
+  if (speechSynthesis.getVoices().length) setTimeout(go, 350); else speechSynthesis.onvoiceschanged = () => setTimeout(go, 200);
+  setTimeout(go, 1200);
+  document.addEventListener("touchend", function once(){ document.removeEventListener("touchend", once); if (!window.__spoke && !speechSynthesis.speaking) speak(); }, {once: true});
+}
 </script></body></html>
