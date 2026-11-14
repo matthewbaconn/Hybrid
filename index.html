@@ -553,7 +553,7 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 .gels{font-style:normal;flex:none;background:var(--work);color:#0A0B0F;border-radius:6px;padding:4px 10px;font:700 12px/1.2 var(--f-body)}
 .racecard{display:grid;gap:8px;background:color-mix(in srgb,var(--race) 10%,var(--sunk));border-radius:6px;padding:12px 14px}
 .splits{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums} .splits th{text-align:left;font-size:12px;color:var(--muted);font-weight:500;padding:4px 0}
-.splits td{padding:5px 0;border-top:1px solid var(--line)} .splits td:last-child,.splits th:last-child{text-align:right;font-weight:600}
+.splits td{padding:5px 0;border-top:1px solid var(--line)} .splits td:first-child,.splits th:first-child{padding-right:18px;white-space:nowrap} .splits td:last-child,.splits th:last-child{text-align:right;font-weight:600}
 /* get app button */
 .getapp{margin-left:auto;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 14px;border-radius:6px;border:0;background:linear-gradient(135deg,var(--accent-2),var(--accent));color:#fff;font-weight:600;font-size:14px;box-shadow:0 6px 16px rgba(190,50,55,.35);flex:none}
 .getapp + .iconbtn{margin-left:0}
@@ -2310,7 +2310,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "55";
+const APP_VERSION = "56";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
