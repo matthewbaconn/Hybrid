@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Long Run Fueling Calculator: Carbs Per Hour, Gels and Fluids · Mileset</title>
+<meta name="description" content="Free long run and race fueling calculator. How many grams of carbs per hour, how many gels and when to take them, based on current sports-nutrition research.">
+<meta property="og:title" content="Long run fueling calculator · Mileset">
+<meta property="og:description" content="Carbs per hour, how many gels and when, from the research. Free.">
+<meta property="og:image" content="https://hybrdrunning.com/fuel.jpg">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://hybrdrunning.com/fueling-calculator">
+<link rel="icon" href="icon.png">
+<style>
+:root{--bg:#0A0B0F;--surface:#14161C;--sunk:#1E212B;--ink:#F5F6FA;--muted:#9CA3B4;--line:#262A35;--accent:#800000;--accent-2:#E0464C;
+  --easy:#22D3EE;--long:#34D399;--work:#FACC15;--lift:#FF6FB5;--swim:#60A5FA;--bike:#A3E635;
+  --f-display:"SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;--f-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{width:min(760px,100% - 40px);margin:0 auto}
+.nav{border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font:800 20px/1 var(--f-display);text-decoration:none}
+.brand img{width:30px;height:30px;border-radius:7px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 22px;border-radius:8px;border:0;font:700 15.5px/1 var(--f-body);text-decoration:none;cursor:pointer;background:var(--accent);color:#fff}
+.btn.sm{min-height:40px;padding:0 16px;font-size:14.5px}
+.tag{display:inline-block;padding:7px 12px;border-radius:999px;background:rgba(224,70,76,.12);color:#ff8a8f;font:700 12.5px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;margin-top:36px}
+h1{font:800 clamp(34px,5.4vw,54px)/1.05 var(--f-display);letter-spacing:-.03em;margin:16px 0 12px}
+h1 em{font-style:normal;color:var(--accent-2)}
+.lead{color:var(--muted);margin:0 0 26px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;margin:0 0 18px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:560px){.row{grid-template-columns:1fr}}
+label{display:block;font-weight:600;font-size:14.5px;margin-bottom:6px}
+label small{display:block;color:var(--muted);font-weight:400}
+input,select{width:100%;min-height:46px;border-radius:8px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font:500 16px var(--f-body);padding:0 12px}
+.dur{display:flex;gap:8px}.dur input{text-align:center}
+.out{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:6px 0 14px}
+@media(max-width:560px){.out{grid-template-columns:1fr 1fr}}
+.stat{background:var(--sunk);border-radius:10px;padding:14px}
+.stat span{display:block;color:var(--muted);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.stat b{display:block;font:800 30px/1.1 var(--f-display);margin-top:6px}
+.stat b small{font-size:15px;color:var(--muted);font-weight:600}
+.plan{margin:0;padding-left:20px;color:var(--ink)}.plan li{margin:4px 0}
+.note{color:var(--muted);font-size:15px}
+h2{font:800 24px/1.2 var(--f-display);margin:30px 0 10px}
+.cta{background:linear-gradient(135deg,#800000,#BE383E);border:0}
+.cta p{margin:6px 0 16px;color:#ffe3e4}
+.cta .btn{background:#fff;color:#800000}
+.src{font-size:14px;color:var(--muted)}.src li{margin:6px 0}
+footer{color:var(--muted);font-size:13.5px;padding:30px 0 50px}
+</style>
+</head>
+<body>
+<header class="nav"><div class="wrap"><a class="brand" href="/"><img src="icon.png" alt="">Mileset</a><a class="btn sm" href="https://app.hybrdrunning.com/">Open the app</a></div></header>
+<main class="wrap">
+<span class="tag">Free tool</span>
+<h1>How much should you <em>eat</em> on a long run?</h1>
+<p class="lead">Carbs per hour, how many gels and when to take them, for your run or race. Based on current sports-nutrition research.</p>
+
+<section class="card">
+  <div class="row">
+    <div><label>How long will you be out?<small>Hours and minutes</small></label>
+      <div class="dur"><input id="h" type="number" inputmode="numeric" min="0" max="24" value="2" aria-label="Hours"><input id="m" type="number" inputmode="numeric" min="0" max="59" value="0" aria-label="Minutes"></div></div>
+    <div><label for="e">Effort<small>Long runs are usually easy</small></label>
+      <select id="e"><option value="easy">Easy long run</option><option value="race">Race or hard effort</option></select></div>
+    <div><label for="g">Carbs per gel<small>Check the label (most are 20–30 g)</small></label><input id="g" type="number" inputmode="numeric" min="5" max="60" value="25"></div>
+    <div><label for="gut">Gut training<small>Have you practiced fueling at 60 g/h or more?</small></label>
+      <select id="gut"><option value="no">Not yet</option><option value="yes">Yes, it sits well</option></select></div>
+  </div>
+</section>
+
+<section class="card" aria-live="polite">
+  <div class="out">
+    <div class="stat"><span>Carbs per hour</span><b id="rate">–</b></div>
+    <div class="stat"><span>Total carbs</span><b id="total">–</b></div>
+    <div class="stat"><span>Gels</span><b id="gels">–</b></div>
+  </div>
+  <ol class="plan" id="plan"></ol>
+  <p class="note" id="why"></p>
+  <p class="note">Fluids: drink to thirst. For most runners that lands around 400–800 ml an hour, more in heat. Add sodium on long, hot or sweaty days.</p>
+</section>
+
+<section class="card cta">
+  <h2 style="margin:0">Get your fuel set for every run, automatically</h2>
+  <p>Mileset builds your race plan, sets daily food targets from your training and adjusts workouts to your sleep. The first 100 members before Jan 1, 2027 get it free for life.</p>
+  <a class="btn" href="https://app.hybrdrunning.com/">Start free</a>
+</section>
+
+<h2>How the numbers work</h2>
+<p class="note">Under about 45 minutes you don't need carbs. For harder efforts of 45–75 minutes, small amounts (even a sports-drink mouth rinse) can help. From roughly 1 to 2.5 hours, 30–60 g an hour is the usual target. Past 2.5 hours, up to 90 g an hour can help, but only with glucose-fructose blends (most gels that list both), because a single sugar is absorbed at about 60 g an hour at most. Easy, low-intensity runs burn less carbohydrate, so this tool aims lower for them. Build up to higher amounts over a few weeks of long runs: guts adapt.</p>
+
+<h2>Sources</h2>
+<ul class="src">
+  <li>Jeukendrup AE. A step towards personalized sports nutrition: carbohydrate intake during exercise. <i>Sports Med</i> 2014;44(Suppl 1):25–33.</li>
+  <li>Thomas DT, Erdman KA, Burke LM. Nutrition and athletic performance (ACSM, Academy of Nutrition and Dietetics, Dietitians of Canada joint position). <i>Med Sci Sports Exerc</i> 2016;48(3):543–568.</li>
+  <li>Jentjens RLPG, Achten J, Jeukendrup AE. High oxidation rates from combined carbohydrates ingested during exercise. <i>Med Sci Sports Exerc</i> 2004;36(9):1551–1558.</li>
+  <li>Gatorade Sports Science Institute. <a href="https://www.gssiweb.org/en/sports-science-exchange/article/dietary-carbohydrate-and-the-endurance-athlete-contemporary-perspectives">Dietary carbohydrate and the endurance athlete</a>.</li>
+</ul>
+<p class="note">General information for healthy adults, not medical advice. If you have diabetes or another condition, or a history of stomach trouble when you fuel, talk to your doctor or a sports dietitian first.</p>
+</main>
+<footer class="wrap">© Mileset · <a href="/">Home</a> · <a href="https://app.hybrdrunning.com/privacy.html">Privacy</a></footer>
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  function calc(){
+    const mins = Math.max(0, (+$("h").value || 0) * 60 + (+$("m").value || 0)), hard = $("e").value === "race",
+      gel = Math.max(5, +$("g").value || 25), trained = $("gut").value === "yes";
+    let rate = 0, why = "";
+    if (mins < 45){ why = "Under 45 minutes your stored glycogen covers it. Water if you're thirsty."; }
+    else if (mins <= 75){ rate = hard ? 30 : 0; why = hard ? "A hard 45–75 minutes benefits from a little carbohydrate, or even a sports-drink mouth rinse." : "An easy run this length doesn't need fuel. A gel is optional."; }
+    else if (mins <= 150){ rate = hard ? 60 : 30; why = hard ? "1–2.5 hours at race effort: about 60 g an hour." : "1–2.5 hours easy: 30 g an hour keeps you steady without upsetting your stomach."; }
+    else { rate = hard ? (trained ? 90 : 60) : (trained ? 60 : 45); why = hard ? (trained ? "Past 2.5 hours at race effort: up to 90 g an hour, using glucose-fructose gels or drinks." : "Past 2.5 hours: start at 60 g an hour and build toward 90 over a few weeks of long runs, with glucose-fructose products.") : "Past 2.5 hours easy: 45–60 g an hour. Practice it now so race day feels normal."; }
+    const fuelMins = Math.max(0, mins - 30), total = Math.round(rate * mins / 60), gels = rate ? Math.max(1, Math.round(total / gel)) : 0;
+    $("rate").innerHTML = rate ? rate + " <small>g</small>" : "0";
+    $("total").innerHTML = total ? total + " <small>g</small>" : "0";
+    $("gels").textContent = gels;
+    const plan = $("plan"); plan.innerHTML = "";
+    if (gels){
+      const every = Math.max(15, Math.floor(fuelMins / gels));
+      const items = ["Eat a normal carb-rich meal 2–4 hours before, or a small snack if it's early."];
+      for (let i = 0; i < Math.min(gels, 12); i++){ const t = 30 + i * every; if (t >= mins) break; items.push(Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0") + " · gel " + (i + 1) + " (" + gel + " g) with a few sips of water"); }
+      if (gels > 12) items.push("…keep the same rhythm: one every " + every + " minutes.");
+      items.forEach(t => { const li = document.createElement("li"); li.textContent = t; plan.appendChild(li); });
+    }
+    $("why").textContent = why;
+  }
+  ["h","m","e","g","gut"].forEach(id => $(id).addEventListener("input", calc));
+  calc();
+})();
+</script>
+</body>
+</html>
