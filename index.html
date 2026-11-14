@@ -1820,6 +1820,7 @@ function renderToday(){
     tile("weight", "lift", "Weight", wt ? wt + ' <small>lb</small>' : aw7 ? aw7.toFixed(1) + ' <small>lb avg</small>' : '–', wt ? 'Weighed in today' : 'Tap to weigh in') +
     tile("weather", "work", "Weather", wx && wxState === "ok" ? wx.now.temp_f + '°' : '–', !L ? 'Set your city' : bw ? 'Best ' + (bw.day === TODAY ? 'today ' : 'tomorrow ') + hr12(bw.h0) : wxState === "error" ? 'Couldn\'t load' : 'Loading…') +
     (w ? tile("t-miles", "long", "This week", plan.multi ? Math.round(wdone * 10) / 10 + ' <small>of ' + w.hours + ' h</small>' : half(wdone) + ' <small>of ' + w.miles + ' mi</small>', 'Week ' + w.n + ' · ' + esc(w.phase)) : '') + '</div>';
+  h += inviteCard();
   const tm = dayOf(addDays(TODAY, 1));
   if (tm){ const tt = dayType(tm); h += '<section class="card"><div class="card-h" style="--tone:var(--muted)">' + ic("cal") + '<span class="lbl">Tomorrow</span></div><div class="mini t-' + tt + '"><div><b>' + esc(tm.sessions.length ? tm.sessions.map(s => s.title).join(" + ") : "Rest day") + '</b><span>' + DAYF[dow(addDays(TODAY, 1))] + '</span></div></div></section>'; }
   return h;
@@ -2310,7 +2311,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "56";
+const APP_VERSION = "57";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2502,6 +2503,17 @@ function foundBanner(){
   if (fspots < 0) return '';
   return '<div class="fbanner"><b>Founding 100</b><span>The first 100 members get Mileset free for life, including anything paid we add later. <strong>' + fspots + ' spot' + (fspots === 1 ? '' : 's') + ' left</strong> · ends Jan 1, 2027</span></div>';
 }
+/* Members: invite a training partner while Founding 100 spots are open (hidden for 7 days after "Not now") */
+function inviteCard(){
+  if (!API || mode !== "account" || TODAY >= "2027-01-01") return '';
+  let skip = null; try { skip = localStorage.getItem("hy-invskip"); } catch(e){}
+  if (skip && daysBetween(skip, TODAY) < 7) return '';
+  if (fspots == null){ fspots = -1; api("GET", "/api/founding").then(j => { fspots = j.left; render(); }).catch(() => { fspots = 0; }); return ''; }
+  if (fspots <= 0) return '';
+  return '<section class="card invc" style="--tone:var(--accent-2)"><div class="card-h">' + ic("share") + '<span class="lbl">Bring a training partner</span><button class="linkbtn r" type="button" data-act="invskip">Not now</button></div>' +
+    '<p class="sub">' + fspots + ' Founding 100 spot' + (fspots === 1 ? '' : 's') + ' left. Anyone who joins before Jan 1 gets Mileset free for life, like you.</p>' +
+    '<button class="btn primary block" type="button" data-act="invite">' + ic("share") + 'Send an invite</button></section>';
+}
 function membersHtml(){
   if (!isOwner) return '<section class="card"><p class="sub">Not available.</p></section>';
   if (!mem || mem.stale){ if (!mem || !mem.busy){ mem = {busy: true, list: mem && mem.list}; api("GET", "/api/admin/members").then(j => { mem = {list: j.members}; if (scr === "members") render(); }).catch(e => { mem = {err: e.message}; if (scr === "members") render(); }); } }
@@ -2609,6 +2621,7 @@ document.addEventListener("click", ev => {
       .catch(e => { feelBusy = null; render(); toast(e.message); });
     return;
   }
+  if (act === "invskip"){ try { localStorage.setItem("hy-invskip", TODAY); } catch(e){} render(); return; }
   if (act === "invite"){
     const url = location.origin + location.pathname + (me && me.id ? "?ref=" + me.id.slice(0, 8) : ""), msg = "I've been training with Mileset. It builds a plan for your race, sets your food targets and adjusts when you're tired. Try it free: " + url;
     if (navigator.share) navigator.share({title: "Mileset", text: msg}).catch(() => {});
