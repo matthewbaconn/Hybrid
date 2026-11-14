@@ -770,6 +770,28 @@ function cyclePattern(cfg, checkins){
   const rows = Object.entries(by).filter(([, v]) => v.length >= 3).map(([k, v]) => [k, Math.round(v.reduce((a, b) => a + b, 0) / v.length), v.length]);
   return rows.length >= 2 ? rows.sort((a, b) => b[1] - a[1]) : null;
 }
+/* ---------- run by pace, heart rate or feel (profile.target) ----------
+   Zones: % of max HR (default 60/70/80/90) or of lactate-threshold HR (85/90/95/100), from Settings > Heart rate
+   zones; with nothing set, max HR is estimated from age (Tanaka 2001). Each pace maps to the zone it trains. */
+const HR_PCT = {max: [60, 70, 80, 90], lthr: [85, 90, 95, 100]};
+function zonesFrom(u, age){
+  u = u || {}; const m = u.hr_method === "lthr" && u.hr_lthr ? "lthr" : "max";
+  const base = m === "lthr" ? u.hr_lthr : (u.hr_max || (age > 0 ? Math.round(208 - .7 * age) : 0)); if (!base) return null;
+  const pct = Array.isArray(u["hr_pct_" + m]) && u["hr_pct_" + m].length === 4 ? u["hr_pct_" + m] : HR_PCT[m], b = pct.map(x => Math.round(base * x / 100));
+  return {estimated: m === "max" && !u.hr_max, method: m, base,
+    z: [[m === "max" ? Math.round(base * .5) : Math.round(base * .7), b[0] - 1], [b[0], b[1] - 1], [b[1], b[2] - 1], [b[2], b[3] - 1], [b[3], m === "max" ? base : Math.round(base * 1.06)]]};
+}
+const KEY_ZONE = {E: 1, L: 1, M: 2, H: 2.5, T: 3, I: 4, G: null, R: null};
+function hrFor(k, zones, goal){
+  if (!zones || !k) return null;
+  let zi = KEY_ZONE[k];
+  if (k === "G") zi = ({"5k": 4, "10k": 3.5, half: 2.5, marathon: 2, "50k": 1.5})[goal] ?? 3;
+  if (zi == null) return null;
+  const Z = zones.z, f = Math.floor(zi);
+  if (zi === f) return {zone: f + 1, lo: Z[f][0], hi: Z[f][1]};
+  return {zone: f + 1 + "–" + (f + 2), lo: Math.round((Z[f][0] + Z[f][1]) / 2), hi: Math.round((Z[f + 1][0] + Z[f + 1][1]) / 2)};   // spans two zones
+}
+const targetOf = p => p && (p.target === "hr" || p.target === "feel") ? p.target : "pace";
 /* treadmill or outside: one choice per run (profile.venues["YYYY-MM-DD-i"]), or a default (profile.venue).
    Only one workout ever goes to the watch: the choice changes its name and notes, never adds a second one. */
 const RUN_TYPES = new Set(["easy", "long", "workout"]);
@@ -788,7 +810,10 @@ function garminWorkout(plan, s, offs, extra, date){
   const steps0 = extra ? withExtraRep(s.steps || []) : (s.steps || []);
   let order = 0;
   const speed = sec => Math.round(MI_M / sec * 1000) / 1000;
+  const mode = targetOf(plan.profile), hz = mode === "hr" ? plan.hrZones || zonesFrom(null, plan.profile && plan.profile.age) : null;
   const paceTarget = (k, plus) => {
+    if (mode === "feel") return {targetType: "OPEN"};
+    if (mode === "hr"){ const r = hrFor(k, hz, plan.profile.goal); return r ? {targetType: "HEART_RATE", targetValueLow: r.lo, targetValueHigh: r.hi} : {targetType: "OPEN"}; }
     if (!k || P[k] == null) return {targetType: "OPEN"};
     if (Array.isArray(P[k])) return {targetType: "PACE", targetValueLow: speed(Math.max(P[k][0], P[k][1]) + 15), targetValueHigh: speed(Math.min(P[k][0], P[k][1]))};
     const c = P[k] + (off[k] || 0) + (plus || 0);
@@ -1016,5 +1041,5 @@ function swapCheck(plan, a, b, dropA){        // dropA: a is a missed day, so wh
   return scan().filter(m => !before.includes(m));   // only what this move adds, not what the week already had
 }
 
-root.HP = {cyclePhase, cycleAdvice, cyclePattern, CYCLE, CYCLE_SYM, applyVenues, mph, sportOf, effortOf, loadOf, actSummary, SPORTS, PLAN_RPE, cleanSession, alternatives, library, exAlts, exAll, exGroup, applySwaps, swapCheck, isHard, garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
+root.HP = {zonesFrom, hrFor, targetOf, HR_PCT, cyclePhase, cycleAdvice, cyclePattern, CYCLE, CYCLE_SYM, applyVenues, mph, sportOf, effortOf, loadOf, actSummary, SPORTS, PLAN_RPE, cleanSession, alternatives, library, exAlts, exAll, exGroup, applySwaps, swapCheck, isHard, garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
 })(typeof globalThis !== "undefined" ? globalThis : self);

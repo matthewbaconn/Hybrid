@@ -746,6 +746,8 @@ a.scard{text-decoration:none;color:var(--ink)}
 .pl-btns .pl-end{background:var(--pt);border-color:var(--pt);color:#fff}.pl-opts{display:flex;gap:10px;justify-content:center;margin-top:10px}.pl-opts button{min-height:40px;padding:0 16px;font-size:13px;color:var(--muted)}
 .talk{display:block;font-style:normal;font-size:12px;color:var(--muted);margin-top:2px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px}.chips button{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 13px/1 inherit}.chips button[aria-pressed="true"]{background:var(--race);border-color:var(--race);color:#fff}
+.fbar{display:grid;grid-template-columns:1fr 90px 44px;gap:10px;align-items:center;margin:8px 0;font-size:13.5px}.fbar span{color:var(--muted)}.fbar div{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden}.fbar i{display:block;height:100%;border-radius:4px}.fbar b{text-align:right;font-variant-numeric:tabular-nums}
+.pc[role="button"]{cursor:pointer}.pc .ph i{margin-left:auto;font-style:normal;color:var(--muted)}
 .venue{margin:10px 0}.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.seg button{padding:8px 14px;background:transparent;border:0;color:var(--muted);font:600 14px/1 inherit}.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
 .rpe{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:6px}
 .rpe button{min-height:38px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 14px/1 inherit;font-variant-numeric:tabular-nums}
@@ -1832,7 +1834,11 @@ function dayOf(date){ const wi = weekOf(date); return wi < 0 ? null : plan.weeks
 const TALK = {E: "talk in full sentences · 3/10", L: "talk in full sentences · 3–4/10", M: "a few sentences at a time · 5/10", H: "short phrases · 6/10", T: "a few words at a time · 7/10", I: "one or two words · 8/10", R: "fast but relaxed, no talking · 9/10", G: "race effort"};
 function stepHtml(st, offs){
   const [text, , k, plus] = st, off = (offs && offs[k]) || 0;
-  return '<li><span>' + esc(text) + (k ? ' <b class="pc">' + (k === "E" || k === "L" ? pace(plan.P, k) : fmtPace(plan.P[k] + off + (plus || 0))) + '/mi</b>' + (TALK[k] ? '<i class="talk">' + TALK[k] + '</i>' : '') : '') + '</span></li>';
+  const pc = k ? (k === "E" || k === "L" ? pace(plan.P, k) : fmtPace(plan.P[k] + off + (plus || 0))) + '/mi' : '', tg = HP.targetOf(plan.profile), hr = tg === "hr" && k ? HP.hrFor(k, zonesNow(), plan.profile.goal) : null;
+  const main = !k ? '' : tg === "feel" && TALK[k] ? '<b class="pc">' + TALK[k].split(" · ").reverse().join(" · ") + '</b><i class="talk">about ' + pc + '</i>'
+    : hr ? '<b class="pc">Z' + hr.zone + ' · ' + hr.lo + '–' + hr.hi + ' bpm</b><i class="talk">about ' + pc + (TALK[k] ? ' · ' + TALK[k].split(" · ")[0] : '') + '</i>'
+    : '<b class="pc">' + pc + '</b>' + (TALK[k] ? '<i class="talk">' + TALK[k] + '</i>' : '');
+  return '<li><span>' + esc(text) + (main ? ' ' + main : '') + '</span></li>';
 }
 const minOnly = s => s.type === "race" ? !!s.multi : !s.mi;
 function estTime(s){
@@ -1861,7 +1867,8 @@ function sessHtml(s, key, big){
   const stats = s.type === "lift" ? '<div><b>' + s.steps.length + '</b><span>Exercises</span></div><div><b>' + (s.min ? s.min + ' min' : '~50 min') + '</b><span>Time</span></div>'
     : minOnly(s) ? (s.yd ? '<div><b>' + comma(s.yd) + ' yd</b><span>Distance</span></div>' : s.bmi ? '<div><b>~' + s.bmi + ' mi</b><span>At an easy pace</span></div>' : s.type === "race" ? '<div><b>' + esc(HP.raceName(plan.profile)) + '</b><span>Event</span></div>' : '') + tstat + '<div><b>' + (s.type === "race" ? 'Steady' : s.type === "hyrox" ? 'Hard' : /hard|threshold|interval|race effort|7–8/i.test(s.steps.map(x => x[0]).join(" ")) ? 'Mixed' : 'Easy') + '</b><span>Effort</span></div>'
     : '<div><b>' + s.mi + ' mi</b><span>Distance</span></div>' + (t ? '<div><b>' + fmtTime(t).replace(/:\d\d$/, "") + (t >= 3600 ? '' : ' min') + '</b><span>About</span></div>' : '') +
-      '<div><b>' + (s.type === "race" ? fmtPace(plan.P.G) : s.k === "E" || s.k === "L" ? fmtPace(plan.P[s.k][0]) + '+' : fmtPace((plan.P[s.k] || plan.P.T) + ((offs && offs[s.k]) || 0))) + '</b><span>' + (s.type === "race" ? "Goal pace" : "Key pace") + '</span></div>';
+      (HP.targetOf(plan.profile) === "hr" && HP.hrFor(s.type === "race" ? "G" : s.k, zonesNow(), plan.profile.goal) ? (r0 => '<div><b>Z' + r0.zone + '</b><span>' + r0.lo + '–' + r0.hi + ' bpm</span></div>')(HP.hrFor(s.type === "race" ? "G" : s.k, zonesNow(), plan.profile.goal)) :
+      '<div><b>' + (s.type === "race" ? fmtPace(plan.P.G) : s.k === "E" || s.k === "L" ? fmtPace(plan.P[s.k][0]) + '+' : fmtPace((plan.P[s.k] || plan.P.T) + ((offs && offs[s.k]) || 0))) + '</b><span>' + (s.type === "race" ? "Goal pace" : "Key pace") + '</span></div>');
   return '<div class="sess t-' + s.type + '">' + (big ? '<span class="chip">' + TYPE[s.type] + '</span>' : '') +
     '<h3 class="sess-t">' + esc(s.title) + '</h3><div class="stats">' + stats + '</div><ul class="steps">' + s.steps.map(st => stepHtml(st, offs)).join("") + '</ul>' +
     (future && s.k && F.offs[s.k] ? '<p class="fbnote">' + ic("gauge") + '<span>Reps ' + Math.abs(F.offs[s.k]) + ' s/mi ' + (F.offs[s.k] < 0 ? 'faster' : 'slower') + ' than the original plan, from how your last workouts went.</span></p>' : '') +
@@ -2159,6 +2166,8 @@ function runClass(a){
 }
 function loadOf(a){
   const z = zoneOf(a.avg_hr), m = a.minutes || 0;
+  if (a.rpe > 0) return m * .6 * [0, .8, 1, 1.3, 1.6, 2, 2.4, 2.8, 3.2, 3.6, 4][Math.min(10, Math.round(a.rpe))];   // how it felt, 1-10
+  if (!z && a.type === "other") return m * .6 * Math.max(.8, HP.sportOf(a).rpe * .4);
   if (z) return m * .6 * [1, 1.5, 2.2, 3, 4][z - 1];
   if (a.type === "run") return m * .6 * [1.5, 2.6, 3.6][runClass(a)];
   return m * .6 * ({lift: 1.3, bike: 1.2, swim: 1.4}[a.type] || 1);
@@ -2170,6 +2179,71 @@ function fitnessSeries(days, list){
   return out;
 }
 const hmin = m => { m = Math.round(m); return m >= 60 ? Math.floor(m / 60) + 'h ' + (m % 60) + 'm' : m + 'm'; };
+/* ---------- Progress, opened up: every card on the Progress tab taps into one of these ---------- */
+const TYPE_C = {run: "var(--easy)", lift: "var(--lift)", bike: "var(--work)", swim: "var(--accent-2)", other: "var(--long)"};
+function barsSvg(vals, labels, colorOf, W, H, ref, title){
+  const mx = Math.max(1, ref || 0, ...vals.map(v => Array.isArray(v) ? v.reduce((a, b) => a + b[0], 0) : v)), bw = (W - 8) / vals.length;
+  let o = '<svg class="pchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(title) + '">';
+  if (ref) o += '<line x1="0" x2="' + W + '" y1="' + (H - 18 - ref / mx * (H - 30)).toFixed(1) + '" y2="' + (H - 18 - ref / mx * (H - 30)).toFixed(1) + '" stroke="var(--muted)" stroke-dasharray="4 4" stroke-opacity=".6"/>';
+  vals.forEach((v, i) => { let y = H - 18; (Array.isArray(v) ? v : [[v, colorOf(i)]]).forEach(([x, c]) => { const hh = x / mx * (H - 30); y -= hh; o += '<rect x="' + (4 + i * bw + 1).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + Math.max(2, bw - 3).toFixed(1) + '" height="' + Math.max(0, hh).toFixed(1) + '" rx="2" fill="' + c + '"/>'; }); });
+  labels.forEach((l, i) => { if (l) o += '<text x="' + (i === labels.length - 1 ? W - 2 : 4 + i * bw + bw / 2).toFixed(1) + '" y="' + (H - 4) + '" text-anchor="' + (i === labels.length - 1 ? 'end' : 'middle') + '">' + l + '</text>'; });
+  return o + '</svg>';
+}
+function loadDetail(){
+  const all = feedActs(), byDay = {}; all.forEach(a => (byDay[a.date] = byDay[a.date] || []).push(a));
+  const fs_ = fitnessSeries(90, all), cur = fs_[fs_.length - 1], opt = Math.max(1, cur.ctl * 7);
+  const days = Array.from({length: 28}, (_, i) => addDays(TODAY, -27 + i));
+  const dv = days.map(d => (byDay[d] || []).map(a => [loadOf(a), TYPE_C[a.type] || "var(--long)"]));
+  const load7 = Math.round(days.slice(-7).reduce((t, d) => t + (byDay[d] || []).reduce((u, a) => u + loadOf(a), 0), 0));
+  const load28 = days.reduce((t, d) => t + (byDay[d] || []).reduce((u, a) => u + loadOf(a), 0), 0), ratio = load28 ? load7 / (load28 / 4) : 0;
+  const first = all.reduce((m, a) => !m || a.date < m ? a.date : m, null), young = !first || first > addDays(TODAY, -21);
+  const verdict = !load7 ? ["Nothing logged this week", "Log or sync a workout and your load shows up here."]
+    : young ? ["Building your baseline", "Mileset needs about 3 weeks of workouts to know what's normal for you. Until then, add no more than about 10% a week."]
+    : ratio > 1.5 ? ["Big jump", "This week is over 1.5× your 4-week average. That's when injuries creep in. Keep the next two days easy."]
+    : ratio > 1.3 ? ["Building fast", "A bit above your usual. Fine for a week, then hold steady."]
+    : ratio >= .8 ? ["In the sweet spot", "Right in line with what your body is used to (0.8 to 1.3× your 4-week average)."]
+    : ["Lighter week", "Below your usual. Good for recovery or a taper; otherwise there's room to do more."];
+  const wks = Array.from({length: 12}, (_, i) => { const ws = addDays(mondayOf(TODAY), -7 * (11 - i)); return Array.from({length: 7}, (_, j) => (byDay[addDays(ws, j)] || []).reduce((t, a) => t + loadOf(a), 0)).reduce((a, b) => a + b, 0); });
+  let h = '<section class="card" style="--tone:var(--lift)"><div class="card-h"><span class="lbl">Last 7 days</span><span class="r">' + load7 + ' load</span></div>' +
+    '<p><b>' + verdict[0] + '.</b> ' + verdict[1] + '</p>' + (young ? '' : '<div class="gauge"><i style="left:' + Math.max(2, Math.min(97, ratio / 2 * 100)).toFixed(1) + '%"></i></div>') + '' +
+    '<div class="pf" style="display:flex;justify-content:space-between;gap:12px"><span>Ratio to your 4-week average</span><b>' + (ratio && !young ? ratio.toFixed(2) + '×' : '–') + '</b></div></section>';
+  h += '<section class="card"><div class="card-h"><span class="lbl">Daily load · 4 weeks</span></div>' + barsSvg(dv, days.map((d, i) => i % 7 === 6 ? shortD(d) : ''), () => "var(--long)", 340, 150, opt / 7, "Training load each day for 4 weeks") +
+    '<div class="legend">' + Object.entries({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Other sports"}).map(([k, l]) => '<span><i style="--c:' + TYPE_C[k] + '"></i>' + l + '</span>').join("") + '</div><p class="fine">Dashed line: a typical day for your current fitness.</p></section>';
+  h += '<section class="card"><div class="card-h"><span class="lbl">Weekly load · 12 weeks</span></div>' + barsSvg(wks, wks.map((_, i) => i % 3 === 2 ? shortD(addDays(mondayOf(TODAY), -7 * (11 - i))) : ''), i => i === 11 ? "var(--accent-2)" : "var(--lift)", 340, 140, 0, "Training load per week, 12 weeks") + '</section>';
+  const recent = all.filter(a => a.date >= addDays(TODAY, -6)).slice(0, 12);
+  h += '<section class="card"><div class="card-h"><span class="lbl">What made up this week</span></div>' + (recent.length ? '<ul class="fl">' + recent.map(a => '<li class="act" data-act="actgo" data-id="' + esc(a.id) + '" role="button" tabindex="0"><div class="fi"><b>' + esc(a.name) + '</b><span>' + whenTxt(a) + ' · ' + durTxt(a.minutes) + (a.rpe ? ' · felt ' + a.rpe + '/10' : '') + '</span></div><span class="fc">' + Math.round(loadOf(a)) + '</span></li>').join("") + '</ul>' : '<p class="sub">No workouts in the last 7 days.</p>') +
+    '<p class="fine">Load = time × how hard it was (heart rate zone, or the 1 to 10 you tap, or what the sport usually is). Every sport counts.</p></section>';
+  return h;
+}
+function fitDetail(){
+  const all = feedActs(), fs_ = fitnessSeries(90, all), cur = fs_[fs_.length - 1], form = cur.ctl - cur.atl, W = 340, H = 170;
+  const mx = Math.max(1, ...fs_.map(x => Math.max(x.ctl, x.atl))), X = i => 6 + i * (W - 12) / (fs_.length - 1), Y = v => 10 + (1 - v / mx) * (H - 34);
+  const path = k => fs_.map((x, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(x[k]).toFixed(1)).join('');
+  let svg = '<svg class="pchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Fitness and fatigue, 90 days"><path d="' + path("atl") + '" fill="none" stroke="var(--race)" stroke-width="2" stroke-opacity=".8"/><path d="' + path("ctl") + '" fill="none" stroke="var(--long)" stroke-width="3"/>';
+  [0, 30, 60, 89].forEach(i => svg += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 4) + '" text-anchor="' + (i === 89 ? 'end' : i ? 'middle' : 'start') + '">' + shortD(fs_[i].d) + '</text>');
+  svg += '</svg>';
+  const fw = form >= 5 ? ["Fresh", "You're rested. A good time for a hard session or a race."] : form <= -20 ? ["Very tired", "Fatigue is well above fitness. Back off for a few days."] : form <= -10 ? ["Tired", "Normal in a big training block. Protect sleep and easy days."] : ["Steady", "Training and recovery are in balance."];
+  const wkAgo = fs_[fs_.length - 29] || fs_[0], trend = cur.ctl - wkAgo.ctl;
+  return '<section class="card" style="--tone:var(--long)"><div class="wsum"><div><span>Fitness</span><b>' + Math.round(cur.ctl) + '</b></div><div><span>Fatigue</span><b>' + Math.round(cur.atl) + '</b></div><div><span>Form</span><b>' + (form >= 0 ? '+' : '−') + Math.abs(Math.round(form)) + '</b></div></div>' +
+    '<p><b>' + fw[0] + '.</b> ' + fw[1] + '</p><p class="sub">Fitness ' + (trend >= 0 ? 'up ' : 'down ') + Math.abs(Math.round(trend)) + ' in the last 4 weeks.</p></section>' +
+    '<section class="card"><div class="card-h"><span class="lbl">90 days</span></div>' + svg + '<div class="legend"><span><i style="--c:var(--long)"></i>Fitness (6-week load)</span><span><i style="--c:var(--race)"></i>Fatigue (1-week load)</span></div>' +
+    '<p class="fine">Form = fitness minus fatigue. It dips in hard weeks and rises when you rest. Before a race you want it positive.</p></section>';
+}
+function focusDetail(){
+  const all = feedActs(), r30 = all.filter(a => a.date > addDays(TODAY, -30) && a.type === "run"), fm = [0, 0, 0]; r30.forEach(a => fm[runClass(a)] += a.minutes || 0);
+  const ft = fm[0] + fm[1] + fm[2], FN = ["Aerobic (easy)", "Threshold (comfortably hard)", "Speed (hard)"], FC = ["var(--long)", "var(--easy)", "var(--work)"];
+  const easyPct = ft ? Math.round(fm[0] / ft * 100) : 0;
+  let h = '<section class="card"><div class="card-h"><span class="lbl">Running · last 30 days</span><span class="r">' + hmin(ft) + '</span></div>' +
+    FN.map((n, i) => '<div class="fbar"><span>' + n + '</span><div><i style="width:' + (ft ? fm[i] / ft * 100 : 0) + '%;background:' + FC[i] + '"></i></div><b>' + (ft ? Math.round(fm[i] / ft * 100) : 0) + '%</b></div>').join("") +
+    '<p class="sub">' + (!ft ? 'No runs in the last 30 days.' : easyPct >= 75 ? 'About ' + easyPct + '% easy: right where most coaches want it (around 80%).' : 'Only ' + easyPct + '% easy. Most runners improve faster with around 80% easy and the rest hard. Slow the easy days down.') + '</p></section>';
+  const z = hrZones(), zt = [0, 0, 0, 0, 0]; all.filter(a => a.date > addDays(TODAY, -30)).forEach(a => { const q = zoneOf(a.avg_hr); if (q) zt[q - 1] += a.minutes || 0; });
+  const zs = zt.reduce((a, b) => a + b, 0), ZC = ["#9CA3B4", "var(--easy)", "var(--long)", "var(--work)", "var(--race)"];
+  h += '<section class="card"><div class="card-h"><span class="lbl">Heart rate zones · 30 days</span><button class="linkbtn r" type="button" data-act="go" data-scr="set-hr">' + (z ? 'Edit' : 'Set up') + '</button></div>' +
+    (!z ? '<p class="sub">Set your max or threshold heart rate and your time in each zone shows up here.</p>' :
+      HR_NAMES.map((n, i) => '<div class="fbar"><span>Z' + (i + 1) + ' ' + n + (z[i] ? ' · ' + (z[i][0] || '<' + (z[i][1] + 1)) + (z[i][1] ? '–' + z[i][1] : '+') : '') + '</span><div><i style="width:' + (zs ? zt[i] / zs * 100 : 0) + '%;background:' + ZC[i] + '"></i></div><b>' + hmin(zt[i]) + '</b></div>').join("") +
+      (zs ? '' : '<p class="sub">No heart rate in your workouts from the last 30 days.</p>')) + '</section>';
+  return h;
+}
 function progressHtml(){
   const acts = feedActs(), wk0 = mondayOf(TODAY), N = 12;
   const weeks = Array.from({length: N}, (_, i) => { const ws = addDays(wk0, -7 * (N - 1 - i)), we = addDays(ws, 6), xs = acts.filter(a => a.date >= ws && a.date <= we);
@@ -2198,9 +2272,9 @@ function progressHtml(){
   const c1 = cum(0), c0 = cum(30), cmax = Math.max(1, c1[29], c0[29]), spark = (arr, mx, col, fill) => { const pts = arr.map((v, i) => (i * 150 / 29).toFixed(1) + ',' + (56 - v / mx * 50).toFixed(1)); return (fill ? '<polygon points="0,56 ' + pts.join(' ') + ' 150,56" fill="' + col + '" opacity=".25"/>' : '') + '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2.4" stroke-linejoin="round"/>'; };
   const fs_ = fitnessSeries(90, acts), cur = fs_[fs_.length - 1], form = cur.ctl - cur.atl, fmx = Math.max(1, ...fs_.map(x => Math.max(x.ctl, x.atl)));
   h += '<div class="pgrid">' +
-    '<div class="pc"><div class="ph">' + ic("bars") + '<span>Last 30 days</span></div><div class="pv">' + hmin(m30) + '</div><svg viewBox="0 0 150 58" aria-hidden="true">' + spark(c0, cmax, "var(--muted)") + spark(c1, cmax, "var(--accent-2)", true) + '</svg>' +
+    '<div class="pc" data-act="go" data-scr="p-load" role="button" tabindex="0"><div class="ph">' + ic("bars") + '<span>Last 30 days</span><i>›</i></div><div class="pv">' + hmin(m30) + '</div><svg viewBox="0 0 150 58" aria-hidden="true">' + spark(c0, cmax, "var(--muted)") + spark(c1, cmax, "var(--accent-2)", true) + '</svg>' +
       '<div class="pf"><span>vs prior 30</span><b class="' + (diff >= 0 ? 'up' : 'down') + '">' + (diff >= 0 ? '+' : '−') + hmin(Math.abs(diff)) + '</b></div></div>' +
-    '<div class="pc"><div class="ph">' + ic("heart") + '<span>Your fitness</span></div><div class="pv">' + Math.round(cur.ctl) + '</div><svg viewBox="0 0 150 58" aria-hidden="true">' + spark(fs_.slice(-60).map(x => x.atl), fmx, "var(--muted)") + spark(fs_.slice(-60).map(x => x.ctl), fmx, "var(--long)", true) + '</svg>' +
+    '<div class="pc" data-act="go" data-scr="p-fit" role="button" tabindex="0"><div class="ph">' + ic("heart") + '<span>Your fitness</span><i>›</i></div><div class="pv">' + Math.round(cur.ctl) + '</div><svg viewBox="0 0 150 58" aria-hidden="true">' + spark(fs_.slice(-60).map(x => x.atl), fmx, "var(--muted)") + spark(fs_.slice(-60).map(x => x.ctl), fmx, "var(--long)", true) + '</svg>' +
       '<div class="pf"><span>Form · ' + (form >= 5 ? 'fresh' : form <= -10 ? 'tired' : 'steady') + '</span><b class="' + (form >= 0 ? 'up' : 'down') + '">' + (form >= 0 ? '+' : '−') + Math.abs(Math.round(form)) + '</b></div></div></div>';
   // race prediction
   const p = plan.profile, runG = ["5k","10k","half","marathon"].includes(p.goal), gk = runG ? p.goal : "half", pred = plan.pred[gk];
@@ -2213,9 +2287,9 @@ function progressHtml(){
   const r30 = acts.filter(a => a.date > addDays(TODAY, -30) && a.type === "run"), fm = [0, 0, 0]; r30.forEach(a => fm[runClass(a)] += a.minutes || 0);
   const ft = fm[0] + fm[1] + fm[2], fi = ft ? fm.indexOf(Math.max(...fm)) : 0, FN = ["Aerobic", "Threshold", "Speed"], FC = ["var(--long)", "var(--easy)", "var(--work)"];
   h += '<div class="pgrid">' +
-    '<div class="pc"><div class="ph">' + ic("dumbbell") + '<span>Training load</span></div><div class="pv">' + load7 + '<small>load</small></div><div class="gauge"><i style="left:' + pos.toFixed(1) + '%"></i></div>' +
+    '<div class="pc" data-act="go" data-scr="p-load" role="button" tabindex="0"><div class="ph">' + ic("dumbbell") + '<span>Training load</span><i>›</i></div><div class="pv">' + load7 + '<small>load</small></div><div class="gauge"><i style="left:' + pos.toFixed(1) + '%"></i></div>' +
       '<div class="pf"><span>' + wkActs.length + ' in 7 days</span><b>' + (load7 < opt * .64 ? 'Low' : load7 <= opt * 1.15 ? 'Good' : load7 <= opt * 1.35 ? 'High' : 'Very high') + '</b></div></div>' +
-    '<div class="pc"><div class="ph">' + ic("gauge") + '<span>Training focus</span></div><div class="pv" style="font-size:26px">' + (ft ? FN[fi] : '–') + '</div><div class="fbars">' +
+    '<div class="pc" data-act="go" data-scr="p-focus" role="button" tabindex="0"><div class="ph">' + ic("gauge") + '<span>Training focus</span><i>›</i></div><div class="pv" style="font-size:26px">' + (ft ? FN[fi] : '–') + '</div><div class="fbars">' +
       fm.map((v, i) => '<div><i style="width:' + (ft ? v / ft * 100 : 0) + '%;background:' + FC[i] + '"></i></div>').join("") + '</div>' +
       '<div class="pf"><span>' + (ft ? Math.round(fm[fi] / ft * 100) + '% · last 30 days' : 'No runs in 30 days') + '</span></div></div></div>';
   // heart rate zones
@@ -2452,7 +2526,7 @@ function playerOpen(s, key){
   PL.tick = setInterval(plTick, 250);
   plSay("Starting " + s.title + ". " + plCue(steps[0])); plDraw();
 }
-function plCue(st){ return st.label.replace(/·/g, ",") + (st.sec ? ". " + (st.sec >= 90 ? Math.round(st.sec / 60) + " minutes" : st.sec + " seconds") : ". Tap next when you're done") + (st.k && TALK[st.k] ? ". Effort: " + TALK[st.k].split(" · ")[0] : "") + "."; }
+function plCue(st){ const hz = HP.targetOf(plan.profile) === "hr" ? HP.hrFor(st.k, zonesNow(), plan.profile.goal) : null; return st.label.replace(/·/g, ",") + (hz ? ". Zone " + String(hz.zone).replace("–", " to ") + ", " + hz.lo + " to " + hz.hi + " beats" : "") + (st.sec ? ". " + (st.sec >= 90 ? Math.round(st.sec / 60) + " minutes" : st.sec + " seconds") : ". Tap next when you're done") + (st.k && TALK[st.k] ? ". Effort: " + TALK[st.k].split(" · ")[0] : "") + "."; }
 function plTick(){
   if (!PL || PL.paused) { if (PL) PL.last = Date.now(); return; }
   const now = Date.now(), dt = (now - PL.last) / 1000; PL.last = now;
@@ -2498,7 +2572,7 @@ function plDraw(light){
   el.style.setProperty("--pt", tone);
   el.innerHTML = '<div class="pl-top"><span>' + esc(PL.s.title) + '</span><span>' + (PL.i + 1) + ' / ' + PL.steps.length + '</span></div>' +
     '<div class="pl-now"><small>' + (st.kind === "rest" ? "Recover" : st.kind === "warm" ? "Warm up" : st.kind === "cool" ? "Cool down" : "Now") + '</small><h2>' + esc(st.label) + '</h2>' +
-    (st.k ? '<p class="pl-pace">' + (st.k === "E" || st.k === "L" ? pace(plan.P, st.k) : fmtPace(plan.P[st.k])) + '/mi' + (TALK[st.k] ? ' · ' + TALK[st.k] : '') + '</p>' : '') +
+    (st.k ? '<p class="pl-pace">' + ((h0 => h0 ? 'Zone ' + h0.zone + ' · ' + h0.lo + '–' + h0.hi + ' bpm · ' : '')(HP.targetOf(plan.profile) === "hr" ? HP.hrFor(st.k, zonesNow(), plan.profile.goal) : null)) + (st.k === "E" || st.k === "L" ? pace(plan.P, st.k) : fmtPace(plan.P[st.k])) + '/mi' + (TALK[st.k] ? ' · ' + TALK[st.k] : '') + '</p>' : '') +
     '<div class="pl-big" aria-live="off">' + big + '</div><div class="pl-mi">' + (PL.gps != null ? (Math.round(PL.mi * 100) / 100) + ' mi' : '') + '</div>' +
     (st.sec ? '' : '<p class="pl-pace">Open step: tap Next when you finish it.</p>') + '</div>' +
     (nx ? '<p class="pl-next">Next: ' + esc(nx.label) + (nx.sec ? ' · ' + plFmt(nx.sec) : '') + '</p>' : '<p class="pl-next">Last step</p>') +
@@ -2556,7 +2630,7 @@ function settingsScreen(k){
   const help = group("", (API ? row("set-report", "Report a problem", "Something broken or confusing? Tell us.", "flag") : '') + (mode === "account" && isOwner ? row("set-reports", "Reported problems", reports.length + ' waiting', "bars") : '') + row("set-about", "How Mileset works", "Your plan, readiness and calories, explained", "spark") +
     row("set-health-info", "Health and safety", "Read before changing how you eat or train", "heart") + row("set-terms", "Terms of use", "", "flag") + '<a class="srow" href="privacy.html" target="_blank" rel="noopener">' + ic("lock") + '<div><b>Privacy policy</b><span>What we collect and how it\'s used</span></div><i>›</i></a>');
   const training = group("Your plan", row("", "Race, training days and lifting", plan ? HP.raceName(pr) + (plan.raceDate ? ' · ' + fmtD(plan.raceDate) : '') + ' · rebuilds your plan' : '', "cal", "edit") +
-    row("set-hr", "Heart rate zones", hrSummary(), "heart") + row("set-run", "Running", (plan && plan.profile.venue === "treadmill" ? 'Treadmill · ' : '') + 'Usual run time ' + hr12(+String(uset.run_time || "07:00").slice(0, 2)) + (wxLoc() ? ' · ' + esc(wxLoc().place || 'weather on') : ''), "sun"));
+    row("set-hr", "Heart rate zones", hrSummary(), "heart") + row("set-run", "Running", (plan ? ({pace: "By pace", hr: "By heart rate", feel: "By feel"})[HP.targetOf(plan.profile)] + ' · ' : '') + (plan && plan.profile.venue === "treadmill" ? 'Treadmill · ' : '') + 'Usual run time ' + hr12(+String(uset.run_time || "07:00").slice(0, 2)) + (wxLoc() ? ' · ' + esc(wxLoc().place || 'weather on') : ''), "sun"));
   const card = (to, title, sub, icon, act) => '<button class="scard" type="button" data-act="' + (act || 'go') + '"' + (to ? ' data-scr="' + to + '"' : '') + '>' + '<div><b>' + title + '</b><span>' + sub + '</span></div><i>' + (icon ? ic(icon) : '›') + '</i></button>';
   const invite = API ? card("", "Invite a friend", "Send them Mileset. It's free to try.", "share", "invite").replace('class="scard"', 'class="scard hi"') : '';
   const helpCard = card("set-help", "Help and support", "Report a problem, how Mileset works, health and safety, terms and privacy");
@@ -2583,7 +2657,7 @@ function settingsScreen(k){
   if (k === "set-health-info") return '<section class="card legal">' + legalHtml("health") + '</section>';
   if (k === "set-terms") return '<section class="card legal">' + legalHtml("terms") + '</section>';
   if (k === "set-profile") return profileForm();
-  if (k === "set-run") return (plan ? '<section class="card"><div class="card-h"><span class="lbl">Where you usually run</span></div><div class="seg" role="group" aria-label="Where you usually run">' + [["outside", "Outside"], ["treadmill", "Treadmill"]].map(([v, l]) => '<button type="button" data-act="venuedef" data-v="' + v + '" aria-pressed="' + ((plan.profile.venue || "outside") === v) + '">' + l + '</button>').join("") + '</div><p class="sub">Every run uses this unless you change that one run. Treadmill runs show speeds in mph, skip the heat adjustment' + (garmin.connected ? ', and go to your watch labeled Treadmill (still one workout per run)' : '') + '.</p></section>' : '') + '<section class="card form"><label>Usual run time<small>Used for the heat adjustment and the best time to run.</small><input type="time" data-set="run_time" value="' + esc(uset.run_time || "07:00") + '"></label></section>' +
+  if (k === "set-run") return (plan ? runByHtml() : '') + (plan ? '<section class="card"><div class="card-h"><span class="lbl">Where you usually run</span></div><div class="seg" role="group" aria-label="Where you usually run">' + [["outside", "Outside"], ["treadmill", "Treadmill"]].map(([v, l]) => '<button type="button" data-act="venuedef" data-v="' + v + '" aria-pressed="' + ((plan.profile.venue || "outside") === v) + '">' + l + '</button>').join("") + '</div><p class="sub">Every run uses this unless you change that one run. Treadmill runs show speeds in mph, skip the heat adjustment' + (garmin.connected ? ', and go to your watch labeled Treadmill (still one workout per run)' : '') + '.</p></section>' : '') + '<section class="card form"><label>Usual run time<small>Used for the heat adjustment and the best time to run.</small><input type="time" data-set="run_time" value="' + esc(uset.run_time || "07:00") + '"></label></section>' +
     '<section class="card"><div class="card-h"><span class="lbl">Weather location</span><span class="r">' + esc(wxLoc() ? wxLoc().place || 'Set' : 'Not set') + '</span></div><button class="btn block" type="button" data-act="wxset">Change location</button></section>';
   if (k === "set-about") return '<section class="card about"><p><b>Your plan</b> is built from your goal race, your recent race time and how much you run now. It builds up for a few weeks, then eases off before race day.</p>' +
     '<p><b>Readiness</b> comes from your morning check-in (and your watch, if connected). On low days, today\'s run gets shorter or easier, and hard workouts move later in the week.</p>' +
@@ -2634,6 +2708,15 @@ function hrZones(c){
   return [[lo, b[0] - 1], [b[0], b[1] - 1], [b[1], b[2] - 1], [b[2], b[3] - 1], [b[3], c.method === "max" ? c.base : null]];
 }
 function zoneOf(hr){ const z = hrZones(); if (!z || !hr) return 0; for (let i = 4; i >= 0; i--) if (hr >= (z[i][0] || 0)) return i + 1; return 1; }
+function runByHtml(){
+  const t = HP.targetOf(plan.profile), z = zonesNow();
+  return '<section class="card"><div class="card-h"><span class="lbl">Run by</span></div><div class="seg" role="group" aria-label="Run by">' +
+    [["pace", "Pace"], ["hr", "Heart rate"], ["feel", "Feel"]].map(([v, l]) => '<button type="button" data-act="runby" data-v="' + v + '" aria-pressed="' + (t === v) + '">' + l + '</button>').join("") + '</div>' +
+    '<p class="sub">' + (t === "hr" ? 'Every run shows a heart-rate zone first' + (garmin.connected ? ', and your watch beeps when you leave it' : '') + '. Paces stay as a guide.' : t === "feel" ? 'Every run shows how it should feel (the talk test, 1 to 10). Great without a watch.' : 'Every run shows a target pace. Heart rate and feel are shown as a guide.') + '</p>' +
+    (t === "hr" ? (z ? '<p class="sub">' + (z.estimated ? 'Zones are estimated from your age (max ' + z.base + ' bpm). Set your own for better targets.' : 'Zones from your ' + (z.method === "lthr" ? 'threshold ' : 'max ') + z.base + ' bpm.') + '</p>' : '<p class="sub">Add your age or max heart rate to get zones.</p>') +
+      '<button class="btn block" type="button" data-act="go" data-scr="set-hr">' + ic("heart") + (z && !z.estimated ? ' Edit heart rate zones' : ' Set up heart rate zones') + '</button>' : '') + '</section>';
+}
+function zonesNow(){ const u = mode === "account" ? uset : {...uset, ...hrLocal()}; return HP.zonesFrom(u, plan && plan.profile.age); }
 function hrSummary(){ const c = hrCfg(); return c.base ? (c.method === "lthr" ? 'Threshold ' + c.base + ' bpm' : 'Max ' + c.base + ' bpm') : 'Set by max HR or lactate threshold'; }
 let hrEdit = null;
 function hrScreen(){
@@ -2709,7 +2792,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "66";
+const APP_VERSION = "67";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2830,7 +2913,7 @@ function askNotif(){
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 const SCR_T = {fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
   settings: "Settings", "set-notif": "Notifications", "set-watch": "Devices and apps", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
-  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Mileset works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", members: "Members", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew"};
+  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Mileset works", "set-email": "Email", "set-password": "Password",  "p-load": "Training load", "p-fit": "Fitness and form", "p-focus": "Training focus and zones", "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", members: "Members", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew"};
 const SCR_UP = {"set-acct": "settings", "set-train": "settings", "set-help": "settings", "set-health-info": "set-help", "set-terms": "set-help", "set-about": "set-help", "set-report": "set-help", "set-reports": "set-help", "set-profile": "set-acct", "set-email": "set-acct", "set-password": "set-acct", "set-account": "set-acct", "set-hr": "set-train", "set-run": "set-train", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", meals: "fuel", crew: "crews"};
 let navDir = null;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -2866,6 +2949,9 @@ function renderScreen(){
   else if (s === "weather") h = weatherCard();
   else if (s === "weight") h = weighCard() + (p ? bodyCards() : '') + '<section class="card"><label class="tgl"><input type="checkbox" id="w-ask"' + (wAsk() ? ' checked' : '') + '><span>Ask me on Today each morning</span></label><p class="sub">Shows a quick weigh-in on Today until you\'ve weighed in. Totally optional.</p></section>';
   else if (s === "session") h = day ? sessionCard(day) + (day.sessions.length && canMove(TODAY) && moveTargets(TODAY).length ? '<button class="btn block mvtoday" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t train today? Move it</button>' : '') : '<p class="sub">Nothing planned today.</p>';
+  else if (s === "p-load") h = plan ? loadDetail() : '';
+  else if (s === "p-fit") h = plan ? fitDetail() : '';
+  else if (s === "p-focus") h = plan ? focusDetail() : '';
   else if (s.startsWith("t-")) h = renderTraining(s.slice(2));
   else h = settingsScreen(s);
   return back + h;
@@ -3009,6 +3095,7 @@ document.addEventListener("click", ev => {
     if (mode === "account") api("PUT", "/api/done", {key: k, done: on}).catch(e => { if (on) delete done[k]; else done[k] = 1; render(); toast(e.message); });
     return;
   }
+  if (act === "actgo"){ const id = a.dataset.id; nav("fwd", () => { scr = null; tab = "activities"; actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actopen"){ const id = a.dataset.id; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actback"){ nav("back", () => { actSel = null; render(); }); return; }
   if (act === "afilt"){ actFilter = a.dataset.k; render(); return; }
@@ -3252,6 +3339,14 @@ document.addEventListener("click", ev => {
   }
   if (/^cyc/.test(act) && cycAct(act, a)) return;
   if (act === "play"){ const [d, i] = [a.dataset.key.slice(0, 10), +a.dataset.key.slice(11)], day = dayOf(d), sx = day && day.sessions[i]; if (sx) playerOpen(sx, a.dataset.key); return; }
+  if (act === "runby"){
+    const v = a.dataset.v, prof = {...plan.profile};
+    if (v === "pace") delete prof.target; else prof.target = v;
+    const prev = plan; plan = buildPlan(prof); fbCache = null; save(); render();
+    toast(v === "hr" ? "Runs now go by heart rate." : v === "feel" ? "Runs now go by feel." : "Runs now go by pace.");
+    if (mode === "account") api("PUT", "/api/profile", {profile: prof}).catch(e => { plan = prev; fbCache = null; render(); toast(e.message); });
+    return;
+  }
   if (act === "venuedef"){
     const v = a.dataset.v, prof = {...plan.profile};
     if (v === "treadmill") prof.venue = "treadmill"; else delete prof.venue;

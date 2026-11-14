@@ -333,6 +333,7 @@ async function garminWorkouts(env, userId, opts){
   if (!link) return {ok: false, why: "not_connected"};
   const st = await settingsOf(env, userId), L = localNow(st.tz), today = L.date;
   const U = await loadUser(env, userId, today); if (!U || !U.plan) return {ok: false, why: "no_plan"};
+  U.plan.hrZones = HP.zonesFrom(st, U.plan.profile && U.plan.profile.age);   // runs by heart rate get bpm targets on the watch
   const tok = await garminToken(env, link);
   let perms = null; try { perms = JSON.parse(link.permissions || "null"); } catch(e){}
   if (!Array.isArray(perms) || (opts && opts.recheck)) perms = await garminPerms(env, link, tok) || perms;

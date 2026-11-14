@@ -30,6 +30,14 @@ const td = HP.buildPlan({...pl.profile, venue: "treadmill", venues: {[wk.date + 
 t(td.weeks[1].days.flatMap(d => d.sessions).filter(x => ["easy", "long", "workout"].includes(x.type)).every(x => x.venue === "treadmill")
   && td.weeks[2].days.find(x => x.date === wk.date).sessions[wi].venue === "outside", "treadmill default covers every run; one run can still go outside");
 t(td.weeks[1].days.flatMap(d => d.sessions).filter(x => x.type === "lift").every(x => !x.venue), "lifts never get a venue");
+const zz = HP.zonesFrom({}, 30);
+t(zz && zz.estimated && zz.base === 187 && HP.hrFor("E", zz).zone === 2 && HP.hrFor("T", zz).zone === 4, "zones from age; easy = Z2, threshold = Z4");
+t(HP.zonesFrom({hr_method: "lthr", hr_lthr: 170}).method === "lthr", "threshold-based zones");
+const hp = HP.buildPlan({...pl.profile, target: "hr"}, today), hw = hp.weeks[3].days.flatMap(d => d.sessions).find(x => x.type === "workout");
+const hg = HP.garminWorkout({...hp, hrZones: zz}, hw, {}, false, "2026-12-01");
+t(hg && JSON.stringify(hg).includes('"HEART_RATE"') && !JSON.stringify(hg).includes('"PACE"'), "run by heart rate: watch gets bpm targets, not pace");
+const fg = HP.garminWorkout(HP.buildPlan({...pl.profile, target: "feel"}, today), hw, {}, false, "2026-12-01");
+t(fg && !JSON.stringify(fg).includes('"PACE"'), "run by feel: no pace alarms on the watch");
 const fb = HP.feedback(pl, [{id: "e", date: ez.date, type: "run", minutes: 40, mi: 0, rpe: 8}], HP.addDays(ez.date, 1));
 t(Object.values(fb.assess).some(a => a.byFeel && a.verdict === "hard"), "no-watch run rated 8/10 counts as too hard");
 const cy = {on: true, last: "2026-11-01", len: 28, plen: 5};
