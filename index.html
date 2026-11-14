@@ -731,6 +731,13 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .scard{background:var(--surface)} .scard.hi{background:color-mix(in srgb,var(--accent) 14%,var(--surface))} .icard{background:var(--surface)}
 .rg-w circle{filter:none!important}
 a.scard{text-decoration:none;color:var(--ink)}
+.rpe{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:6px}
+.rpe button{min-height:38px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 14px/1 inherit;font-variant-numeric:tabular-nums}
+.rpe button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.rpe-w{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+.asum{margin-top:12px;padding:12px 14px;border-left:3px solid var(--tc,var(--accent));background:color-mix(in srgb,var(--accent) 6%,transparent);border-radius:0 8px 8px 0}
+.asum b{display:block;margin-bottom:4px}.asum p{margin:4px 0;font-size:14px;color:var(--ink-2,var(--muted))}
+.asub{display:block;font-size:13px;color:var(--muted);margin:-2px 0 6px}
 </style>
 </head>
 <body>
@@ -899,12 +906,24 @@ function actLine(a){
   return [a.mi ? r2(a.mi) + ' mi' : '', a.minutes ? a.minutes + ' min' : '', pace, a.avg_hr ? a.avg_hr + ' bpm' : '', a.cal ? comma(a.cal) + ' cal' : ''].filter(Boolean).join(' · ');
 }
 const r2 = x => Math.round(x * 100) / 100;
+/* every activity counts: effort 1-10 (no watch needed) and a plain-words summary after each one */
+const RPE_W = ["", "Very easy", "Easy", "Easy", "Steady", "Moderate", "Moderate", "Hard", "Hard", "Very hard", "Max"];
+function effortPicker(id, val){
+  return '<div class="rpe" role="group" aria-label="Effort from 1 to 10" data-for="' + id + '">' + [1,2,3,4,5,6,7,8,9,10].map(n => '<button type="button" data-act="rpe" data-for="' + id + '" data-v="' + n + '" aria-pressed="' + (val === n) + '" aria-label="' + n + ' ' + RPE_W[n] + '">' + n + '</button>').join("") + '</div><span class="rpe-w" id="' + id + '-w">' + (val ? RPE_W[val] : '1 = could do it all day · 10 = all-out') + '</span>';
+}
+function maxHrNow(){ try { const c = hrCfg(); if (c.base) return c.method === "lthr" ? Math.round(c.base / .9) : c.base; } catch(e){} const p = plan && plan.profile; return p && p.age ? Math.round(208 - .7 * p.age) : 0; }
+function summaryHtml(a){
+  if (!plan || !a) return '';
+  const sm = HP.actSummary(plan, feedActs(), a, TODAY, maxHrNow());
+  return '<div class="asum"><b>' + esc(sm.headline) + '</b>' + sm.lines.map(l => '<p>' + esc(l) + '</p>').join("") +
+    (mode !== "sample" && !(a.rpe > 0) ? '<p class="feelq">How hard did it feel? It makes the numbers yours.</p>' + effortPicker("ar-" + a.id, 0) : '') + '</div>';
+}
 function workoutCard(){
   const list = actsOn(TODAY);
   let h = '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("watch") + '<span class="lbl">Today\'s workouts</span>' +
     (strava.connected ? '<span class="r">Strava · ' + agoText(strava.last_sync) + '</span>' : '') + '</div>';
   const matchedIds = new Set(Object.values(dayMatches(TODAY)).map(a => a.id));
-  const extraReviews = list.filter(a => reviewFor(a)).map(a => reviewHtml(reviewFor(a), a)).join("");
+  const extraReviews = list.map(a => reviewFor(a) ? reviewHtml(reviewFor(a), a) + (a.type !== "run" ? summaryHtml(a) : '') : summaryHtml(a)).join("");
   h += list.length ? '<ul class="fl">' + list.map(a => '<li class="act t-' + (a.type === "run" ? "easy" : a.type === "lift" ? "lift" : "long") + '"><div class="fi"><b>' + esc(a.name) + '</b><span>' + actLine(a) + '</span></div>' +
       '<span class="src src-' + a.source + '">' + (a.source === "strava" ? 'Strava' : a.source === "garmin" ? '<img class="gsrc" src="brand/garmin-white.png" alt="Garmin" width="463" height="72">' : 'Logged') + '</span>' +
       (a.source === "manual" ? '<button class="x" type="button" data-act="adel" data-id="' + esc(a.id) + '" aria-label="Remove ' + esc(a.name) + '">✕</button>' : '') + '</li>').join("") + '</ul>' + extraReviews
@@ -912,6 +931,9 @@ function workoutCard(){
   if (aw.open){
     h += '<div class="aform"><div class="two"><label>Type<select id="a-type">' + [["run","Run"],["lift","Strength"],["bike","Bike"],["swim","Swim"],["other","Other"]].map(([v, l]) => '<option value="' + v + '">' + l + '</option>').join("") + '</select></label>' +
       '<label>Name<input id="a-name" placeholder="Optional"></label></div>' +
+      '<div class="two"><label>Sport<input id="a-sport" list="a-sports" placeholder="Pickleball, yoga, soccer…" maxlength="30"></label><label>Where<select id="a-venue"><option value="">—</option><option value="outside">Outside</option><option value="treadmill">Treadmill / indoors</option></select></label></div>' +
+      '<datalist id="a-sports">' + ["Pickleball","Tennis","Padel","Soccer","Basketball","Volleyball","Yoga","Pilates","Hike","Walk","Rowing","Elliptical","Stair climber","Climbing","Boxing","Dance","Golf","HIIT","Spin class","Surfing"].map(x => '<option value="' + x + '">').join("") + '</datalist>' +
+      '<div class="q"><span class="ql">How hard was it?</span>' + effortPicker("a-rpe", 0) + '</div>' +
       '<div class="three"><label>Miles<input id="a-mi" inputmode="decimal" placeholder="0"></label><label>Minutes<input id="a-min" inputmode="numeric" placeholder="0"></label><label>Calories<input id="a-cal" inputmode="numeric" placeholder="watch"></label></div>' +
       '<div class="two"><label>Rep pace (/mi)<input id="a-wp" inputmode="numeric" placeholder="workouts"></label><label>Avg heart rate<input id="a-hr" inputmode="numeric" placeholder="optional"></label></div><div class="two"><label>Date<input id="a-date" type="date" max="' + TODAY + '" value="' + TODAY + '"></label><span></span></div>' +
       '<p class="err" role="alert">' + esc(aw.err) + '</p><div class="fbtns"><button class="btn" type="button" data-act="atoggle">Cancel</button><button class="btn primary" type="button" data-act="asave"' + (aw.busy ? ' disabled' : '') + '>Save workout</button></div></div>';
@@ -968,7 +990,7 @@ function actCard(a){
   const pts = ptsOf(a), tone = ACT_TONE[a.type] || "long", src = a.source === "strava" ? "Strava" : a.source === "garmin" ? "Garmin" : a.source === "sample" ? "Sample" : "Logged";
   return '<article class="card actc" style="--tc:var(--' + tone + ')" data-act="actopen" data-id="' + esc(a.id) + '" tabindex="0" role="button" aria-label="Open ' + esc(a.name) + '">' +
     '<div class="ah"><span class="aic">' + ic(ACT_IC[a.type] || "watch") + '</span><div><b>' + esc((me && me.name) || (plan && plan.profile.name) || "You") + '</b><span>' + whenTxt(a) + ' · ' + src + '</span></div></div>' +
-    '<h3>' + esc(a.name) + '</h3><div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
+    '<h3>' + esc(a.name) + '</h3>' + (plan && a.type !== "run" && a.type !== "lift" ? '<span class="asub">' + esc(HP.actSummary(plan, feedActs(), a, TODAY, maxHrNow()).headline) + '</span>' : '') + '<div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
     (pts && pts.length > 1 ? '<div class="amap" data-map="' + esc(a.id) + '">' + routeSvg(pts) + '</div>' : '') + '</article>';
 }
 function feedActs(){
@@ -1000,7 +1022,7 @@ function actDetail(a){
   const pts = ptsOf(a), tone = ACT_TONE[a.type] || "long", rv = reviewFor(a);
   let h = '<div class="adet-h"><button class="arrow" type="button" data-act="actback" aria-label="Back to activities">‹</button><div><h1>' + esc(a.name) + '</h1><span class="sub">' + whenTxt(a) + ' · ' + (a.source === "strava" ? 'Strava' : a.source === "sample" ? 'Sample' : 'Logged by hand') + '</span></div></div>';
   if (pts && pts.length > 1) h += '<div class="amap big" data-map="' + esc(a.id) + '" data-big="1">' + routeSvg(pts) + '</div>';
-  h += '<section class="card" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv, a) : '') + '</section>';
+  h += '<section class="card" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv, a) : '') + summaryHtml(a) + '</section>';
   let laps = null; try { laps = a.laps ? (typeof a.laps === "string" ? JSON.parse(a.laps) : a.laps) : null; } catch(e){}
   laps = (laps || []).filter(l => l[0] > 50 && l[1] > 0);
   if (a.type === "run" && laps.length > 1){
@@ -3053,14 +3075,26 @@ document.addEventListener("click", ev => {
     saveRemote("PUT", "/api/weight", {date, lb}).then(() => { weights[date] = Math.round(lb * 10) / 10; wf = null; save(); render(); if (date !== TODAY) toast("Saved for " + fmtD(date) + "."); }).catch(e => { wf = {err: e.message}; render(); });
     return;
   }
+  if (act === "rpe"){
+    const n = +a.dataset.v, f = a.dataset.for, g = a.parentElement;
+    g.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === a)));
+    const w = document.getElementById(f + "-w"); if (w) w.textContent = RPE_W[n];
+    if (f === "a-rpe"){ aw.rpe = n; return; }
+    const act0 = acts.find(x => "ar-" + x.id === f); if (!act0) return;
+    act0.rpe = n; save();
+    (mode === "account" ? api("PUT", "/api/activity/" + act0.id + "/effort", {rpe: n}) : Promise.resolve()).then(() => { render(); toast("Got it. Effort " + n + "/10."); }).catch(e => toast(e.message));
+    return;
+  }
   if (act === "atoggle"){ aw = {open: !aw.open, err: "", busy: false}; render(); return; }
   if (act === "asave"){
-    const v = id => ((document.getElementById(id) || {}).value || "").trim(), x = {work_pace: parseTime(v("a-wp")) || 0, type: v("a-type") || "run", name: v("a-name"), mi: parseFloat(v("a-mi")) || 0, minutes: n0(v("a-min")), cal: n0(v("a-cal")), avg_hr: n0(v("a-hr")), date: v("a-date") || TODAY};
+    const v = id => ((document.getElementById(id) || {}).value || "").trim(), x = {work_pace: parseTime(v("a-wp")) || 0, type: v("a-type") || "run", name: v("a-name"), mi: parseFloat(v("a-mi")) || 0, minutes: n0(v("a-min")), cal: n0(v("a-cal")), avg_hr: n0(v("a-hr")), date: v("a-date") || TODAY,
+      sport: v("a-sport"), venue: v("a-venue"), rpe: aw.rpe || 0};
+    if (x.sport && x.type === "run" && !/run|jog|treadmill/i.test(x.sport)) x.type = "other";   // typed a sport but left Run selected
     if (!x.mi && !x.minutes){ aw.err = "Add a distance or a time."; render(); return; }
     if (x.date > TODAY){ aw.err = "Pick today or an earlier day."; render(); return; }
     aw.busy = true; render();
     (mode === "account" ? api("POST", "/api/activity", x).then(j => j.activity) : Promise.resolve({...x, id: Date.now().toString(36), source: "manual", name: x.name || ({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Workout"})[x.type]}))
-      .then(saved => { acts.push(saved); aw = {open: false, err: "", busy: false}; save(); render(); toast("Workout saved."); if (mode === "account" && coachOn) waitForReview(saved.id); })
+      .then(saved => { acts.push(saved); aw = {open: false, err: "", busy: false}; save(); render(); toast(HP.actSummary(plan, acts, saved, TODAY, maxHrNow()).headline + ". Saved."); if (mode === "account" && coachOn) waitForReview(saved.id); })
       .catch(e => { aw.busy = false; aw.err = e.message; render(); });
     return;
   }
