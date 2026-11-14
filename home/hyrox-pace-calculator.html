@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HYROX Pace Calculator: Run Pace, Station Splits and Finish Time · Mileset</title>
+<meta name="description" content="Free HYROX pace calculator. Enter your station times and run pace to project your finish, or enter a goal time to get the 1 km run pace you need. Includes a race-day checkpoint card.">
+<meta property="og:title" content="HYROX pace calculator · Mileset">
+<meta property="og:description" content="Station times + run pace → finish time, or goal time → the run pace you need. Free.">
+<meta property="og:image" content="https://hybrdrunning.com/plan.jpg">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://hybrdrunning.com/hyrox-pace-calculator">
+<link rel="icon" href="icon.png">
+<style>
+:root{--bg:#0A0B0F;--surface:#14161C;--sunk:#1E212B;--ink:#F5F6FA;--muted:#9CA3B4;--line:#262A35;--accent:#800000;--accent-2:#E0464C;
+  --easy:#22D3EE;--long:#34D399;--work:#FACC15;--lift:#FF6FB5;--swim:#60A5FA;--bike:#A3E635;
+  --f-display:"SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;--f-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{width:min(760px,100% - 40px);margin:0 auto}
+.nav{border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font:800 20px/1 var(--f-display);text-decoration:none}
+.brand img{width:30px;height:30px;border-radius:7px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 22px;border-radius:8px;border:0;font:700 15.5px/1 var(--f-body);text-decoration:none;cursor:pointer;background:var(--accent);color:#fff}
+.btn.sm{min-height:40px;padding:0 16px;font-size:14.5px}
+.tag{display:inline-block;padding:7px 12px;border-radius:999px;background:rgba(224,70,76,.12);color:#ff8a8f;font:700 12.5px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;margin-top:36px}
+h1{font:800 clamp(34px,5.4vw,54px)/1.05 var(--f-display);letter-spacing:-.03em;margin:16px 0 12px}
+h1 em{font-style:normal;color:var(--accent-2)}
+.lead{color:var(--muted);margin:0 0 26px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;margin:0 0 18px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:560px){.row{grid-template-columns:1fr}}
+label{display:block;font-weight:600;font-size:14.5px;margin-bottom:6px}
+label small{display:block;color:var(--muted);font-weight:400}
+input,select{width:100%;min-height:46px;border-radius:8px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font:500 16px var(--f-body);padding:0 12px}
+.dur{display:flex;gap:8px}.dur input{text-align:center}
+.out{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:6px 0 14px}
+@media(max-width:560px){.out{grid-template-columns:1fr 1fr}}
+.stat{background:var(--sunk);border-radius:10px;padding:14px}
+.stat span{display:block;color:var(--muted);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.stat b{display:block;font:800 30px/1.1 var(--f-display);margin-top:6px}
+.stat b small{font-size:15px;color:var(--muted);font-weight:600}
+.plan{margin:0;padding-left:20px;color:var(--ink)}.plan li{margin:4px 0}
+.note{color:var(--muted);font-size:15px}
+h2{font:800 24px/1.2 var(--f-display);margin:30px 0 10px}
+.cta{background:linear-gradient(135deg,#800000,#BE383E);border:0}
+.cta p{margin:6px 0 16px;color:#ffe3e4}
+.cta .btn{background:#fff;color:#800000}
+.src{font-size:14px;color:var(--muted)}.src li{margin:6px 0}
+footer{color:var(--muted);font-size:13.5px;padding:30px 0 50px}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px}
+.seg button{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font:600 14.5px var(--f-body);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent)}
+.hms{display:flex;gap:8px}.hms input{text-align:center}
+table{width:100%;border-collapse:collapse;font-size:15px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.05em}
+.splits{max-height:360px;overflow:auto}
+.hide{display:none}
+.st{display:grid;grid-template-columns:1fr 120px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}.st:last-child{border-bottom:0}
+.st span{font-weight:600;font-size:15px}.st span small{display:block;color:var(--muted);font-weight:400;font-size:13px}
+.ms{display:flex;gap:6px}.ms input{text-align:center;min-height:42px;padding:0 6px}
+.good{color:#34D399}.bad{color:#ff8a8f}
+@media print{.nav,.cta,footer,.seg,.noprint{display:none}body{background:#fff;color:#000}.card{border-color:#ccc;background:#fff}}
+</style>
+</head>
+<body>
+<header class="nav"><div class="wrap"><a class="brand" href="/"><img src="icon.png" alt="">Mileset</a><a class="btn sm" href="https://app.hybrdrunning.com/?src=calc">Open the app</a></div></header>
+<main class="wrap">
+<span class="tag">Free tool</span>
+<h1>Plan your <em>HYROX</em> race, split by split.</h1>
+<p class="lead">Put in your 1 km run pace and your station times from training. Get your projected finish and a checkpoint card for race day. Add a goal time and it tells you the run pace you need.</p>
+
+<section class="card">
+  <div class="row">
+    <div><label>Goal finish time<small>Optional. Hours, minutes, seconds</small></label>
+      <div class="hms"><input id="gh" type="number" inputmode="numeric" min="0" max="9" value="1" aria-label="Goal hours"><input id="gm" type="number" inputmode="numeric" min="0" max="59" value="30" aria-label="Goal minutes"><input id="gs" type="number" inputmode="numeric" min="0" max="59" value="0" aria-label="Goal seconds"></div></div>
+    <div><label>Average 1 km run<small>Minutes and seconds per km, at race effort</small></label>
+      <div class="hms"><input id="rm" type="number" inputmode="numeric" min="2" max="20" value="5" aria-label="Run minutes"><input id="rs" type="number" inputmode="numeric" min="0" max="59" value="30" aria-label="Run seconds"></div></div>
+  </div>
+  <p class="note" style="margin:14px 0 4px">Your station times (minutes : seconds). <b>The starting numbers are only an example, not averages.</b> Replace them with your own from training or a past race.</p>
+  <div id="stations"></div>
+  <div class="st"><span>Roxzone total<small>All transitions: walking in and out of stations, chalk, water</small></span><div class="ms"><input id="zm" type="number" inputmode="numeric" min="0" max="59" value="5" aria-label="Roxzone minutes"><input id="zs" type="number" inputmode="numeric" min="0" max="59" value="0" aria-label="Roxzone seconds"></div></div>
+</section>
+
+<section class="card" aria-live="polite">
+  <div class="out">
+    <div class="stat"><span>Projected finish</span><b id="ofin">–</b></div>
+    <div class="stat"><span>Vs goal</span><b id="ogap">–</b></div>
+    <div class="stat"><span>Run pace needed</span><b id="oneed">–</b></div>
+  </div>
+  <p class="note" id="mix"></p>
+  <p class="note" id="need"></p>
+</section>
+
+<section class="card">
+  <h2 style="margin:0 0 6px">Race-day checkpoint card</h2>
+  <p class="note" style="margin-top:0">Clock time you should see leaving each segment if you hit the plan. Roxzone time is spread evenly over the transitions. <a href="#" id="print" class="noprint">Print it</a></p>
+  <table><thead><tr><th>#</th><th>Segment</th><th>Target</th><th>Clock</th></tr></thead><tbody id="card"></tbody></table>
+</section>
+
+<section class="card cta">
+  <h2 style="margin:0">Train both halves of the race.</h2>
+  <p>Mileset builds a hybrid plan that fits running and strength into the same week and adjusts it to your sleep and recovery. The first 100 members before Jan 1, 2027 get it free for life.</p>
+  <a class="btn" href="https://app.hybrdrunning.com/?src=calc">Start free</a>
+</section>
+
+<h2>The race format</h2>
+<p class="note">A HYROX race is eight 1 km runs, each followed by a station: SkiErg 1,000 m, Sled Push 50 m, Sled Pull 50 m, Burpee Broad Jumps 80 m, Rowing 1,000 m, Farmers Carry 200 m, Sandbag Lunges 100 m, then Wall Balls. Weights and wall ball reps depend on your division, so check your division's official rules before you set station targets.</p>
+<h2>Where the time goes</h2>
+<p class="note">Running is about half the race, so your run pace moves your finish the most. An analysis of over 460,000 individual results found that in the Open divisions, running made up about 47% of the time gap between the top 15% and the middle of the field, and the eight stations about 42%. The stations with the biggest proportional gaps were Burpee Broad Jumps, Wall Balls, Sled Pull and Sandbag Lunges.</p>
+<p class="note">Consistency matters too. In a small look at London 2022 Pro results, podium athletes had a median gap of 17 seconds between their fastest and slowest of runs 2 to 7; the comparison group's gap was about twice that, and they spent more time in the Roxzone. The lesson: pick a run pace you can hold after the sleds, and walk into stations with a plan instead of standing around.</p>
+<h2>How to use the card</h2>
+<p class="note">Run 1 always feels easy. Hold your planned pace there, because going out fast costs you on the sleds and lunges. If you're behind the clock after the sled pull, don't chase it on run 4; most of the race is still ahead.</p>
+
+<h2>Sources</h2>
+<ul class="src">
+  <li>HYRanking. How a HYROX race works: the full race format explained step by step. hyranking.com</li>
+  <li>HYRanking. Which HYROX stations create the biggest time gaps (Open and Pro individual results, seasons 18/19 to 25/26). hyranking.com</li>
+  <li>RoxLyfe. 5 interesting data results to improve your HYROX performance (London 2022 Pro results). roxlyfe.com</li>
+</ul>
+<p class="note">Running a road race too? Try the <a href="/race-pace-calculator">race pace calculator</a> or the <a href="/fueling-calculator">fueling calculator</a>.</p>
+<p class="note" style="font-size:13px">HYROX is a trademark of its owner. Mileset is an independent training app and is not affiliated with or endorsed by HYROX.</p>
+</main>
+<footer class="wrap">© Mileset · <a href="/">Home</a> · <a href="/race-pace-calculator">Race pace calculator</a> · <a href="/fueling-calculator">Fueling calculator</a> · <a href="https://app.hybrdrunning.com/privacy.html">Privacy</a></footer>
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const ST = [["SkiErg","1,000 m",4,45],["Sled Push","50 m",3,30],["Sled Pull","50 m",5,0],["Burpee Broad Jumps","80 m",5,0],["Rowing","1,000 m",4,50],["Farmers Carry","200 m",2,0],["Sandbag Lunges","100 m",5,0],["Wall Balls","Reps by division",6,30]];
+  const fmt = s => { const neg = s < 0; s = Math.round(Math.abs(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+    return (neg ? "-" : "") + (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
+  const wrap = $("stations");
+  ST.forEach((s, i) => { const d = document.createElement("div"); d.className = "st";
+    d.innerHTML = '<span>' + (i + 1) + '. ' + s[0] + '<small>' + s[1] + '</small></span><div class="ms"><input id="sm' + i + '" type="number" inputmode="numeric" min="0" max="59" value="' + s[2] + '" aria-label="' + s[0] + ' minutes"><input id="ss' + i + '" type="number" inputmode="numeric" min="0" max="59" value="' + s[3] + '" aria-label="' + s[0] + ' seconds"></div>';
+    wrap.appendChild(d); });
+  const v = id => Math.max(0, +$(id).value || 0);
+  function calc(){
+    const run = v("rm") * 60 + v("rs"), st = ST.map((_, i) => v("sm" + i) * 60 + v("ss" + i)), zone = v("zm") * 60 + v("zs");
+    const stT = st.reduce((a, b) => a + b, 0), runT = run * 8, total = runT + stT + zone, goal = v("gh") * 3600 + v("gm") * 60 + v("gs");
+    $("ofin").textContent = total > 0 ? fmt(total) : "–";
+    $("mix").textContent = total > 0 ? "Running " + fmt(runT) + " (" + Math.round(runT / total * 100) + "%) · stations " + fmt(stT) + " (" + Math.round(stT / total * 100) + "%) · Roxzone " + fmt(zone) + " (" + Math.round(zone / total * 100) + "%)." : "";
+    const g = $("ogap"), n = $("oneed");
+    if (goal > 0 && total > 0){
+      const gap = total - goal; g.textContent = (gap > 0 ? "+" : "") + fmt(gap); g.className = gap > 0 ? "bad" : "good";
+      const need = (goal - stT - zone) / 8;
+      if (need > 120){ n.textContent = fmt(need); n.innerHTML += "<small> /km</small>";
+        $("need").textContent = gap > 0 ? "To hit your goal with these station times, every 1 km run needs to average " + fmt(need) + " per km, " + fmt(run - need) + " faster than now. Or take " + fmt(gap) + " out of the stations and Roxzone." : "You're on track: you could average " + fmt(need) + " per km on the runs and still make your goal.";
+      } else { n.textContent = "–"; $("need").textContent = "Your station and Roxzone times already use up almost all of the goal time. Cut station time or set a slower goal."; }
+    } else { g.textContent = "–"; g.className = ""; n.textContent = "–"; $("need").textContent = ""; }
+    const tb = $("card"); tb.innerHTML = ""; let clock = 0; const zEach = zone / 16; let k = 0;
+    for (let i = 0; i < 8; i++){
+      [["Run " + (i + 1), "1 km", run], [ST[i][0], ST[i][1], st[i]]].forEach(r => { clock += r[2] + zEach; k++;
+        const tr = document.createElement("tr"); [String(k), r[0], fmt(r[2]), fmt(clock)].forEach(c => { const td = document.createElement("td"); td.textContent = c; tr.appendChild(td); });
+        if (r[0] === ST[i][0]) tr.style.color = "var(--muted)"; tb.appendChild(tr); });
+    }
+  }
+  document.querySelector("main").addEventListener("input", calc);
+  $("print").addEventListener("click", e => { e.preventDefault(); window.print(); });
+  calc();
+})();
+</script>
+</body>
+</html>
