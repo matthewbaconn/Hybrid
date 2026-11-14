@@ -579,6 +579,12 @@ function feedback(plan, acts, today){
     const a = matchOf(x.date)[x.i]; if (!a) continue;
     if (x.s.own || a.sub) continue;                       // a workout the athlete wrote has no plan paces to grade against
     const as = assess(plan, x.s, a, offs), key = x.date + "-" + x.i; as.offsBefore = {...offs}; out.assess[key] = as;
+    // no watch, no pace data: how hard it felt (1-10) adapts the plan instead
+    if (as.verdict === "unknown" && a.rpe > 0){
+      const r = a.rpe, t = x.s.type;
+      as.verdict = t === "workout" ? (r <= 5 ? "easy" : r >= 9 ? "hard" : "ok") : t === "easy" || t === "long" ? (r >= 6 ? "hard" : "ok") : "unknown";
+      as.byFeel = true; as.why = "Felt " + r + "/10. With no pace data, how it felt steers the next sessions.";
+    }
     if (x.s.type === "workout" && !x.s.base && PACE_KEYS.includes(x.s.k) && x.s.k !== "G"){
       if (as.verdict === "easy"){ offs[x.s.k] = Math.max(-15, (offs[x.s.k] || 0) - 5); pendingExtra = true; }
       else if (as.verdict === "hard"){ offs[x.s.k] = Math.min(15, (offs[x.s.k] || 0) + 5); pendingExtra = false; }

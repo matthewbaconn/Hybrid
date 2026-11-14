@@ -731,6 +731,15 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .scard{background:var(--surface)} .scard.hi{background:color-mix(in srgb,var(--accent) 14%,var(--surface))} .icard{background:var(--surface)}
 .rg-w circle{filter:none!important}
 a.scard{text-decoration:none;color:var(--ink)}
+#player{position:fixed;inset:0;z-index:200;background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--pt) 28%,var(--bg)) 0%,var(--bg) 70%);color:var(--ink);display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 20px)}
+.pl-top{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.pl-now{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center}
+.pl-now small{color:var(--pt);font-weight:700;letter-spacing:.12em;text-transform:uppercase}.pl-now h2{font-size:26px;margin:8px 0 4px;line-height:1.2}
+.pl-pace{color:var(--muted);margin:2px 0}.pl-big{font:800 min(28vw,140px)/1 inherit;font-variant-numeric:tabular-nums;margin:18px 0 4px;letter-spacing:-.03em}
+.pl-mi{min-height:22px;color:var(--muted);font-variant-numeric:tabular-nums}.pl-next{text-align:center;color:var(--muted);margin:0 0 14px}
+.pl-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}.pl-btns button,.pl-opts button{min-height:56px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:700 16px/1 inherit}
+.pl-btns .pl-end{background:var(--pt);border-color:var(--pt);color:#fff}.pl-opts{display:flex;gap:10px;justify-content:center;margin-top:10px}.pl-opts button{min-height:40px;padding:0 16px;font-size:13px;color:var(--muted)}
+.talk{display:block;font-style:normal;font-size:12px;color:var(--muted);margin-top:2px}
 .venue{margin:10px 0}.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.seg button{padding:8px 14px;background:transparent;border:0;color:var(--muted);font:600 14px/1 inherit}.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
 .rpe{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:6px}
 .rpe button{min-height:38px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 14px/1 inherit;font-variant-numeric:tabular-nums}
@@ -931,11 +940,11 @@ function workoutCard(){
     : '<p class="sub">Nothing logged yet today. Finished workouts add calories to today\'s target and check off your plan.</p>';
   if (aw.open){
     h += '<div class="aform"><div class="two"><label>Type<select id="a-type">' + [["run","Run"],["lift","Strength"],["bike","Bike"],["swim","Swim"],["other","Other"]].map(([v, l]) => '<option value="' + v + '">' + l + '</option>').join("") + '</select></label>' +
-      '<label>Name<input id="a-name" placeholder="Optional"></label></div>' +
-      '<div class="two"><label>Sport<input id="a-sport" list="a-sports" placeholder="Pickleball, yoga, soccer…" maxlength="30"></label><label>Where<select id="a-venue"><option value="">—</option><option value="outside">Outside</option><option value="treadmill">Treadmill / indoors</option></select></label></div>' +
+      '<label>Name<input id="a-name" placeholder="Optional" value="' + esc((aw.pre || {}).name || '') + '"></label></div>' +
+      '<div class="two"><label>Sport<input id="a-sport" list="a-sports" placeholder="Pickleball, yoga, soccer…" maxlength="30"></label><label>Where<select id="a-venue"><option value="">—</option><option value="outside"' + ((aw.pre || {}).venue === "outside" ? ' selected' : '') + '>Outside</option><option value="treadmill"' + ((aw.pre || {}).venue === "treadmill" ? ' selected' : '') + '>Treadmill / indoors</option></select></label></div>' +
       '<datalist id="a-sports">' + ["Pickleball","Tennis","Padel","Soccer","Basketball","Volleyball","Yoga","Pilates","Hike","Walk","Rowing","Elliptical","Stair climber","Climbing","Boxing","Dance","Golf","HIIT","Spin class","Surfing"].map(x => '<option value="' + x + '">').join("") + '</datalist>' +
       '<div class="q"><span class="ql">How hard was it?</span>' + effortPicker("a-rpe", 0) + '</div>' +
-      '<div class="three"><label>Miles<input id="a-mi" inputmode="decimal" placeholder="0"></label><label>Minutes<input id="a-min" inputmode="numeric" placeholder="0"></label><label>Calories<input id="a-cal" inputmode="numeric" placeholder="watch"></label></div>' +
+      '<div class="three"><label>Miles<input id="a-mi" inputmode="decimal" placeholder="0" value="' + ((aw.pre || {}).mi || '') + '"></label><label>Minutes<input id="a-min" inputmode="numeric" placeholder="0" value="' + ((aw.pre || {}).minutes || '') + '"></label><label>Calories<input id="a-cal" inputmode="numeric" placeholder="watch"></label></div>' +
       '<div class="two"><label>Rep pace (/mi)<input id="a-wp" inputmode="numeric" placeholder="workouts"></label><label>Avg heart rate<input id="a-hr" inputmode="numeric" placeholder="optional"></label></div><div class="two"><label>Date<input id="a-date" type="date" max="' + TODAY + '" value="' + TODAY + '"></label><span></span></div>' +
       '<p class="err" role="alert">' + esc(aw.err) + '</p><div class="fbtns"><button class="btn" type="button" data-act="atoggle">Cancel</button><button class="btn primary" type="button" data-act="asave"' + (aw.busy ? ' disabled' : '') + '>Save workout</button></div></div>';
   } else h += '<button class="btn block" type="button" data-act="atoggle">' + ic("plus") + 'Log a workout</button>';
@@ -1813,9 +1822,11 @@ function header(){
 }
 function weekOf(date){ return plan.weeks.findIndex(w => date >= w.start && date <= addDays(w.start, 6)); }
 function dayOf(date){ const wi = weekOf(date); return wi < 0 ? null : plan.weeks[wi].days[dow(date)]; }
+// no watch? pace by feel: the talk test (Foster 1999 / Reed 2014: tracks ventilatory thresholds well)
+const TALK = {E: "talk in full sentences · 3/10", L: "talk in full sentences · 3–4/10", M: "a few sentences at a time · 5/10", H: "short phrases · 6/10", T: "a few words at a time · 7/10", I: "one or two words · 8/10", R: "fast but relaxed, no talking · 9/10", G: "race effort"};
 function stepHtml(st, offs){
   const [text, , k, plus] = st, off = (offs && offs[k]) || 0;
-  return '<li><span>' + esc(text) + (k ? ' <b class="pc">' + (k === "E" || k === "L" ? pace(plan.P, k) : fmtPace(plan.P[k] + off + (plus || 0))) + '/mi</b>' : '') + '</span></li>';
+  return '<li><span>' + esc(text) + (k ? ' <b class="pc">' + (k === "E" || k === "L" ? pace(plan.P, k) : fmtPace(plan.P[k] + off + (plus || 0))) + '/mi</b>' + (TALK[k] ? '<i class="talk">' + TALK[k] + '</i>' : '') : '') + '</span></li>';
 }
 const minOnly = s => s.type === "race" ? !!s.multi : !s.mi;
 function estTime(s){
@@ -1849,6 +1860,7 @@ function sessHtml(s, key, big){
     '<h3 class="sess-t">' + esc(s.title) + '</h3><div class="stats">' + stats + '</div><ul class="steps">' + s.steps.map(st => stepHtml(st, offs)).join("") + '</ul>' +
     (future && s.k && F.offs[s.k] ? '<p class="fbnote">' + ic("gauge") + '<span>Reps ' + Math.abs(F.offs[s.k]) + ' s/mi ' + (F.offs[s.k] < 0 ? 'faster' : 'slower') + ' than the original plan, from how your last workouts went.</span></p>' : '') +
     (big && ["easy", "long", "workout"].includes(s.type) && !isDone ? venueHtml(s, key) : '') +
+    (big && !isDone && date === TODAY && s.steps && s.steps.length && s.type !== "lift" && s.type !== "race" ? '<button class="btn primary block" type="button" data-act="play" data-key="' + key + '">' + ic("run") + ' Start with my phone</button><p class="fine">No watch needed: a voice coach calls every step, the phone keeps time' + (s.venue === "treadmill" ? '' : ' and can track distance by GPS') + ', then it logs itself.</p>' : '') +
     (hp ? '<p class="fbnote">' + ic("sun") + '<span>Outdoors today: paces include ' + Math.round(hp * 1000) / 10 + '% for heat (' + heat.temp + '°F, dew ' + heat.dew + '° around ' + hr12(heat.hour) + '). Treadmill: subtract that back.</span></p>' : '') +
     (s.type === "race" ? raceCard() + (plan.raceDate ? '<button class="linkbtn" type="button" data-act="go" data-scr="fuelplan">' + ic("bolt") + ' Race fueling and hydration plan</button>' : '') : '') +
     (s.custom ? '<p class="fbnote">' + ic("spark") + '<span>' + (s.own ? 'Your own workout.' : 'Your pick.') + (s.was ? ' Planned: ' + esc(s.was) + '.' : '') + '</span></p>' : '') +
@@ -2376,6 +2388,97 @@ function render(){
   app.innerHTML = (scr ? '' : header()) + '<div class="view' + (navDir ? ' nav-' + navDir : '') + '" style="display:grid;gap:22px">' + (scr ? renderScreen() : tab === "plan" ? renderPlan() : tab === "recovery" ? progSwitch("recovery") + renderRecovery() : tab === "training" ? progSwitch("training") + renderTraining() : tab === "more" ? renderMore() : tab === "activities" ? renderActivities() : renderToday()) + '</div>';
   app.querySelectorAll(".amap[data-map]").forEach(n => { const o = keepMaps[n.dataset.map + "|" + (n.dataset.big || "")]; if (o && o !== n){ n.replaceWith(o); try { o._map.invalidateSize(false); } catch(e){} } });
   if ((tab === "activities" || scr) && app.querySelector(".amap[data-map]")) mountMaps();
+}
+/* ============ phone coach: run a session with no watch ============
+   Steps expand into timed blocks (distances use your target pace), a voice calls each one, the screen
+   stays on, GPS counts distance outside if you allow it. At the end the log form opens prefilled. */
+let PL = null;
+function plPace(k){ const P = plan.P, v = P[k || "E"] != null ? P[k || "E"] : P.E; return Array.isArray(v) ? (v[0] + v[1]) / 2 : v; }
+function playerSteps(s){
+  const out = [], push = (label, sec, k, kind) => out.push({label, sec: sec ? Math.max(5, Math.round(sec)) : null, k, kind: kind || "work"});
+  (s.steps || []).forEach(st => {
+    const [L, mi, k] = st, rm = /^(?:finish with )?(\d+) × (\d+(?:\.\d+)?)\s*(m|mi|min|s)\b/i.exec(String(L));
+    if (rm){
+      const n = Math.min(30, +rm[1]), v = +rm[2], u = rm[3].toLowerCase();
+      const work = u === "min" ? v * 60 : u === "s" ? v : u === "m" ? v / 1609.34 * plPace(k) : v * plPace(k);
+      const restTxt = (/,\s*(.+?) between/.exec(L) || /\/\s*(.+)$/.exec(L) || [])[1] || "";
+      const rM = /(\d+)\s*m\b/.exec(restTxt), rT = /(\d+(?:\.\d+)?)\s*(min|s)\b/.exec(restTxt);
+      const rest = rM ? +rM[1] / 1609.34 * plPace("E") * 1.15 : rT ? +rT[1] * (rT[2] === "min" ? 60 : 1) : 90;
+      for (let r = 1; r <= n; r++){ push("Rep " + r + " of " + n + (k ? " · " + (HP.PNAME[k] || "") : ""), work, k); if (r < n) push("Recover" + (restTxt ? ": " + restTxt : ""), rest, "E", "rest"); }
+      return;
+    }
+    const m = /(\d+)\s*(?:–\d+\s*)?min\b/.exec(L);
+    if (mi > 0) push(L, mi * plPace(k), k, /^warm/i.test(L) ? "warm" : /^cool/i.test(L) ? "cool" : "work");
+    else if (m) push(L, +m[1] * 60, k, /^warm/i.test(L) ? "warm" : "work");
+    else push(L, null, k, "open");
+  });
+  if (!out.length && s.min) push(s.title, s.min * 60, "E");
+  return out;
+}
+function plSay(t){ try { if (!PL || !PL.voice || !window.speechSynthesis) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.rate = 1.02; speechSynthesis.speak(u); } catch(e){} }
+function plFmt(sec){ sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ":" + pad(sec % 60); }
+function plDist(a, b){ const R = 3958.8, r = x => x * Math.PI / 180, dLa = r(b.latitude - a.latitude), dLo = r(b.longitude - a.longitude); const h = Math.sin(dLa / 2) ** 2 + Math.cos(r(a.latitude)) * Math.cos(r(b.latitude)) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); }
+function playerOpen(s, key){
+  const steps = playerSteps(s); if (!steps.length) return toast("This session has no steps to play.");
+  PL = {s, key, steps, i: 0, left: steps[0].sec, start: Date.now(), last: Date.now(), paused: false, voice: true, gps: null, mi: 0, wake: null};
+  const el = document.createElement("div"); el.id = "player"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Phone coach"); document.body.appendChild(el);
+  el.addEventListener("click", e => { const b = e.target.closest("[data-pl]"); if (b) plAct(b.dataset.pl); });
+  try { navigator.wakeLock && navigator.wakeLock.request("screen").then(w => PL && (PL.wake = w)).catch(() => {}); } catch(e){}
+  PL.tick = setInterval(plTick, 250);
+  plSay("Starting " + s.title + ". " + plCue(steps[0])); plDraw();
+}
+function plCue(st){ return st.label.replace(/·/g, ",") + (st.sec ? ". " + (st.sec >= 90 ? Math.round(st.sec / 60) + " minutes" : st.sec + " seconds") : ". Tap next when you're done") + (st.k && TALK[st.k] ? ". Effort: " + TALK[st.k].split(" · ")[0] : "") + "."; }
+function plTick(){
+  if (!PL || PL.paused) { if (PL) PL.last = Date.now(); return; }
+  const now = Date.now(), dt = (now - PL.last) / 1000; PL.last = now;
+  const st = PL.steps[PL.i];
+  if (st.sec){ const before = PL.left; PL.left -= dt; if (before > 10 && PL.left <= 10 && st.sec > 30) plSay("10 seconds"); if (PL.left <= 0) return plNext(); }
+  plDraw(true);
+}
+function plNext(){
+  if (!PL) return;
+  if (PL.i >= PL.steps.length - 1) return plEnd();
+  PL.i++; PL.left = PL.steps[PL.i].sec; try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch(e){}
+  plSay(plCue(PL.steps[PL.i])); plDraw();
+}
+function plEnd(){
+  if (!PL) return;
+  const min = Math.max(1, Math.round((Date.now() - PL.start) / 60000)), s = PL.s, mi = PL.mi > .05 ? Math.round(PL.mi * 100) / 100 : (s.mi && PL.i >= PL.steps.length - 1 ? s.mi : 0);
+  clearInterval(PL.tick); if (PL.gps != null) navigator.geolocation.clearWatch(PL.gps); try { PL.wake && PL.wake.release(); } catch(e){}
+  plSay("Done. Nice work. Tell me how hard it felt.");
+  const el = document.getElementById("player"); if (el) el.remove();
+  aw = {open: true, err: "", busy: false, pre: {name: s.title, minutes: min, mi: mi || "", venue: s.venue || (PL.mi > .05 ? "outside" : "")}};
+  PL = null; tab = "today"; scr = null; render();
+  setTimeout(() => { const f = document.querySelector(".aform"); if (f) f.scrollIntoView({behavior: "smooth", block: "center"}); }, 60);
+}
+function plAct(k){
+  if (!PL) return;
+  if (k === "pause"){ PL.paused = !PL.paused; plSay(PL.paused ? "Paused" : "Go"); plDraw(); }
+  else if (k === "next") plNext();
+  else if (k === "end") plEnd();
+  else if (k === "voice"){ PL.voice = !PL.voice; if (!PL.voice && window.speechSynthesis) speechSynthesis.cancel(); plDraw(); }
+  else if (k === "gps"){
+    if (PL.gps != null){ navigator.geolocation.clearWatch(PL.gps); PL.gps = null; plDraw(); return; }
+    if (!navigator.geolocation) return toast("This phone can't share location here.");
+    let prev = null;
+    PL.gps = navigator.geolocation.watchPosition(p => { if (!PL || PL.paused || p.coords.accuracy > 35) return; if (prev){ const d = plDist(prev, p.coords); if (d < .2) PL.mi += d; } prev = p.coords; }, () => { toast("Location wasn't shared. Time still counts."); if (PL){ PL.gps = null; plDraw(); } }, {enableHighAccuracy: true, maximumAge: 2000});
+    plDraw();
+  }
+}
+function plDraw(light){
+  const el = document.getElementById("player"); if (!el || !PL) return;
+  const st = PL.steps[PL.i], nx = PL.steps[PL.i + 1], tone = st.kind === "rest" ? "var(--easy)" : st.k && !["E", "L"].includes(st.k) ? "var(--race)" : "var(--accent)";
+  const big = st.sec ? plFmt(PL.left) : plFmt((Date.now() - PL.start) / 1000);
+  if (light){ const b = el.querySelector(".pl-big"); if (b) b.textContent = big; const g = el.querySelector(".pl-mi"); if (g) g.textContent = PL.gps != null ? (Math.round(PL.mi * 100) / 100) + " mi" : ""; return; }
+  el.style.setProperty("--pt", tone);
+  el.innerHTML = '<div class="pl-top"><span>' + esc(PL.s.title) + '</span><span>' + (PL.i + 1) + ' / ' + PL.steps.length + '</span></div>' +
+    '<div class="pl-now"><small>' + (st.kind === "rest" ? "Recover" : st.kind === "warm" ? "Warm up" : st.kind === "cool" ? "Cool down" : "Now") + '</small><h2>' + esc(st.label) + '</h2>' +
+    (st.k ? '<p class="pl-pace">' + (st.k === "E" || st.k === "L" ? pace(plan.P, st.k) : fmtPace(plan.P[st.k])) + '/mi' + (TALK[st.k] ? ' · ' + TALK[st.k] : '') + '</p>' : '') +
+    '<div class="pl-big" aria-live="off">' + big + '</div><div class="pl-mi">' + (PL.gps != null ? (Math.round(PL.mi * 100) / 100) + ' mi' : '') + '</div>' +
+    (st.sec ? '' : '<p class="pl-pace">Open step: tap Next when you finish it.</p>') + '</div>' +
+    (nx ? '<p class="pl-next">Next: ' + esc(nx.label) + (nx.sec ? ' · ' + plFmt(nx.sec) : '') + '</p>' : '<p class="pl-next">Last step</p>') +
+    '<div class="pl-btns"><button type="button" data-pl="pause">' + (PL.paused ? 'Resume' : 'Pause') + '</button><button type="button" data-pl="next">Next</button><button type="button" data-pl="end" class="pl-end">Finish</button></div>' +
+    '<div class="pl-opts"><button type="button" data-pl="voice" aria-pressed="' + PL.voice + '">Voice ' + (PL.voice ? 'on' : 'off') + '</button>' + (PL.s.venue === "treadmill" ? '' : '<button type="button" data-pl="gps" aria-pressed="' + (PL.gps != null) + '">GPS ' + (PL.gps != null ? 'on' : 'off') + '</button>') + '</div>';
 }
 function toast(msg){
   let t = $(".toast"); if (!t){ t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
@@ -3083,6 +3186,7 @@ document.addEventListener("click", ev => {
     saveRemote("PUT", "/api/weight", {date, lb}).then(() => { weights[date] = Math.round(lb * 10) / 10; wf = null; save(); render(); if (date !== TODAY) toast("Saved for " + fmtD(date) + "."); }).catch(e => { wf = {err: e.message}; render(); });
     return;
   }
+  if (act === "play"){ const [d, i] = [a.dataset.key.slice(0, 10), +a.dataset.key.slice(11)], day = dayOf(d), sx = day && day.sessions[i]; if (sx) playerOpen(sx, a.dataset.key); return; }
   if (act === "venue"){
     const k = a.dataset.key, v = a.dataset.v, prof = {...plan.profile}, vs = {...(prof.venues || {})};
     if (v === (prof.venue || "outside")) delete vs[k]; else vs[k] = v;
