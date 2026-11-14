@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Race Pace Calculator: Pace, Splits and Finish Time for 5K to Marathon · Mileset</title>
+<meta name="description" content="Free race pace calculator for 5K, 10K, half marathon and marathon. Turn a goal time into pace per mile and km, mile-by-mile splits, and equivalent times at other distances.">
+<meta property="og:title" content="Race pace calculator · Mileset">
+<meta property="og:description" content="Goal time to pace, splits and equivalent race times. Free.">
+<meta property="og:image" content="https://hybrdrunning.com/plan.jpg">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://hybrdrunning.com/race-pace-calculator">
+<link rel="icon" href="icon.png">
+<style>
+:root{--bg:#0A0B0F;--surface:#14161C;--sunk:#1E212B;--ink:#F5F6FA;--muted:#9CA3B4;--line:#262A35;--accent:#800000;--accent-2:#E0464C;
+  --easy:#22D3EE;--long:#34D399;--work:#FACC15;--lift:#FF6FB5;--swim:#60A5FA;--bike:#A3E635;
+  --f-display:"SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;--f-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{width:min(760px,100% - 40px);margin:0 auto}
+.nav{border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font:800 20px/1 var(--f-display);text-decoration:none}
+.brand img{width:30px;height:30px;border-radius:7px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 22px;border-radius:8px;border:0;font:700 15.5px/1 var(--f-body);text-decoration:none;cursor:pointer;background:var(--accent);color:#fff}
+.btn.sm{min-height:40px;padding:0 16px;font-size:14.5px}
+.tag{display:inline-block;padding:7px 12px;border-radius:999px;background:rgba(224,70,76,.12);color:#ff8a8f;font:700 12.5px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;margin-top:36px}
+h1{font:800 clamp(34px,5.4vw,54px)/1.05 var(--f-display);letter-spacing:-.03em;margin:16px 0 12px}
+h1 em{font-style:normal;color:var(--accent-2)}
+.lead{color:var(--muted);margin:0 0 26px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;margin:0 0 18px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:560px){.row{grid-template-columns:1fr}}
+label{display:block;font-weight:600;font-size:14.5px;margin-bottom:6px}
+label small{display:block;color:var(--muted);font-weight:400}
+input,select{width:100%;min-height:46px;border-radius:8px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font:500 16px var(--f-body);padding:0 12px}
+.dur{display:flex;gap:8px}.dur input{text-align:center}
+.out{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:6px 0 14px}
+@media(max-width:560px){.out{grid-template-columns:1fr 1fr}}
+.stat{background:var(--sunk);border-radius:10px;padding:14px}
+.stat span{display:block;color:var(--muted);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.stat b{display:block;font:800 30px/1.1 var(--f-display);margin-top:6px}
+.stat b small{font-size:15px;color:var(--muted);font-weight:600}
+.plan{margin:0;padding-left:20px;color:var(--ink)}.plan li{margin:4px 0}
+.note{color:var(--muted);font-size:15px}
+h2{font:800 24px/1.2 var(--f-display);margin:30px 0 10px}
+.cta{background:linear-gradient(135deg,#800000,#BE383E);border:0}
+.cta p{margin:6px 0 16px;color:#ffe3e4}
+.cta .btn{background:#fff;color:#800000}
+.src{font-size:14px;color:var(--muted)}.src li{margin:6px 0}
+footer{color:var(--muted);font-size:13.5px;padding:30px 0 50px}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px}
+.seg button{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font:600 14.5px var(--f-body);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent)}
+.hms{display:flex;gap:8px}.hms input{text-align:center}
+table{width:100%;border-collapse:collapse;font-size:15px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.05em}
+.splits{max-height:360px;overflow:auto}
+.hide{display:none}
+</style>
+</head>
+<body>
+<header class="nav"><div class="wrap"><a class="brand" href="/"><img src="icon.png" alt="">Mileset</a><a class="btn sm" href="https://app.hybrdrunning.com/?src=calc">Open the app</a></div></header>
+<main class="wrap">
+<span class="tag">Free tool</span>
+<h1>What <em>pace</em> do you need for your goal?</h1>
+<p class="lead">Enter a goal time and get your pace per mile and km, even splits, and what that time is worth at other distances. Or enter a pace and get your finish time.</p>
+
+<section class="card">
+  <div class="seg" id="mode" role="group" aria-label="Calculate from">
+    <button type="button" data-m="time" aria-pressed="true">I have a goal time</button>
+    <button type="button" data-m="pace" aria-pressed="false">I have a pace</button>
+  </div>
+  <div class="row">
+    <div><label for="d">Race distance</label>
+      <select id="d"><option value="5">5K</option><option value="10">10K</option><option value="21.0975" selected>Half marathon</option><option value="42.195">Marathon</option><option value="custom">Other distance</option></select></div>
+    <div id="cwrap" class="hide"><label for="cd">Distance<small>In the unit you pick below</small></label><input id="cd" type="number" inputmode="decimal" min="0.1" max="400" step="0.1" value="15"></div>
+    <div><label for="u">Splits and pace in</label><select id="u"><option value="mi">Miles</option><option value="km">Kilometers</option></select></div>
+    <div id="twrap"><label>Goal time<small>Hours, minutes, seconds</small></label>
+      <div class="hms"><input id="th" type="number" inputmode="numeric" min="0" max="99" value="1" aria-label="Hours"><input id="tm" type="number" inputmode="numeric" min="0" max="59" value="55" aria-label="Minutes"><input id="ts" type="number" inputmode="numeric" min="0" max="59" value="0" aria-label="Seconds"></div></div>
+    <div id="pwrap" class="hide"><label>Pace<small>Minutes and seconds per <span id="pu">mile</span></small></label>
+      <div class="hms"><input id="pm" type="number" inputmode="numeric" min="0" max="59" value="9" aria-label="Pace minutes"><input id="ps" type="number" inputmode="numeric" min="0" max="59" value="0" aria-label="Pace seconds"></div></div>
+  </div>
+</section>
+
+<section class="card" aria-live="polite">
+  <div class="out">
+    <div class="stat"><span>Per mile</span><b id="omi">–</b></div>
+    <div class="stat"><span>Per km</span><b id="okm">–</b></div>
+    <div class="stat"><span>Finish</span><b id="ofin">–</b></div>
+  </div>
+  <p class="note" id="half"></p>
+  <div class="splits"><table><thead><tr><th id="sh">Mile</th><th>Split</th><th>Elapsed</th></tr></thead><tbody id="sp"></tbody></table></div>
+</section>
+
+<section class="card">
+  <h2 style="margin:0 0 6px">What this time is worth at other distances</h2>
+  <p class="note" style="margin-top:0">Riegel's formula, the standard race-time predictor. Reliable up to the half marathon; for the marathon, see the note below.</p>
+  <table><thead><tr><th>Race</th><th>Equivalent time</th><th>Pace</th></tr></thead><tbody id="eq"></tbody></table>
+</section>
+
+<section class="card cta">
+  <h2 style="margin:0">Know the pace. Now build the fitness for it.</h2>
+  <p>Mileset builds your race plan around your life, adds strength days and adjusts workouts to your sleep. The first 100 members before Jan 1, 2027 get it free for life.</p>
+  <a class="btn" href="https://app.hybrdrunning.com/?src=calc">Start free</a>
+</section>
+
+<h2>How to use your race pace</h2>
+<p class="note">Even pacing, or running the second half slightly faster, is how most distance records and good races are run. Going out fast costs more than it saves, because the early surge burns through carbohydrate you need later. Practice goal pace in training: a few miles of it inside a long run tells you far more than any calculator.</p>
+<h2>Why the marathon prediction can be too fast</h2>
+<p class="note">Riegel's formula assumes you're as trained for the long race as the short one. A study of recreational runners found it is accurate up to the half marathon, but its marathon predictions were at least 10 minutes too fast for half of the runners. Adding weekly mileage made the predictions better, because the marathon rewards volume. If you lift a lot and run less, or the marathon is your first, add a cushion to the predicted time and let your long runs decide.</p>
+
+<h2>Sources</h2>
+<ul class="src">
+  <li>Riegel PS. Athletic records and human endurance. <i>American Scientist</i> 1981;69(3):285–290.</li>
+  <li>Vickers AJ, Vertosick EA. An empirical study of race times in recreational endurance runners. <i>BMC Sports Sci Med Rehabil</i> 2016;8:26.</li>
+  <li>Abbiss CR, Laursen PB. Describing and understanding pacing strategies during athletic competition. <i>Sports Med</i> 2008;38(3):239–252.</li>
+</ul>
+<p class="note">Want to know what to eat during the race? Try the <a href="/fueling-calculator">long run fueling calculator</a>.</p>
+</main>
+<footer class="wrap">© Mileset · <a href="/">Home</a> · <a href="/fueling-calculator">Fueling calculator</a> · <a href="https://app.hybrdrunning.com/privacy.html">Privacy</a></footer>
+<script>
+(function(){
+  const $ = id => document.getElementById(id), MI = 1.609344;
+  let mode = "time";
+  const fmt = s => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+    return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
+  const RACES = [["5K", 5], ["10K", 10], ["Half marathon", 21.0975], ["Marathon", 42.195]];
+  function km(){ const v = $("d").value; if (v !== "custom") return +v; const c = Math.max(0.1, +$("cd").value || 0); return $("u").value === "mi" ? c * MI : c; }
+  function calc(){
+    const unit = $("u").value, perU = unit === "mi" ? MI : 1, dist = km();
+    $("cwrap").classList.toggle("hide", $("d").value !== "custom");
+    $("twrap").classList.toggle("hide", mode !== "time"); $("pwrap").classList.toggle("hide", mode !== "pace");
+    $("pu").textContent = unit === "mi" ? "mile" : "km"; $("sh").textContent = unit === "mi" ? "Mile" : "Km";
+    let total;
+    if (mode === "time") total = (+$("th").value || 0) * 3600 + (+$("tm").value || 0) * 60 + (+$("ts").value || 0);
+    else total = ((+$("pm").value || 0) * 60 + (+$("ps").value || 0)) / perU * dist;
+    const sp = $("sp"), eq = $("eq"); sp.innerHTML = ""; eq.innerHTML = "";
+    if (!(total > 0) || !(dist > 0)){ ["omi","okm","ofin"].forEach(i => $(i).textContent = "–"); $("half").textContent = ""; return; }
+    const pk = total / dist;
+    $("omi").textContent = fmt(pk * MI); $("okm").textContent = fmt(pk); $("ofin").textContent = fmt(total);
+    $("half").textContent = "Halfway at " + fmt(total / 2) + ". For a small negative split, aim to be about " + fmt(total / 2 * 1.01) + " there and run the second half a touch quicker.";
+    const n = dist / perU, rows = [];
+    for (let i = 1; i <= Math.min(Math.floor(n + 1e-9), 200); i++) rows.push([String(i), pk * perU, pk * perU * i]);
+    if (n - Math.floor(n + 1e-9) > 0.005) rows.push([n.toFixed(2), pk * perU * (n - Math.floor(n)), total]);
+    rows.forEach(r => { const tr = document.createElement("tr"); [r[0], fmt(r[1]), fmt(r[2])].forEach(c => { const td = document.createElement("td"); td.textContent = c; tr.appendChild(td); }); sp.appendChild(tr); });
+    RACES.forEach(([name, d]) => { const t = total * Math.pow(d / dist, 1.06), tr = document.createElement("tr");
+      [name, fmt(t), fmt(t / d * perU) + (unit === "mi" ? " /mi" : " /km")].forEach(c => { const td = document.createElement("td"); td.textContent = c; tr.appendChild(td); });
+      if (Math.abs(d - dist) < 0.01) tr.style.color = "var(--accent-2)"; eq.appendChild(tr); });
+  }
+  $("mode").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; mode = b.dataset.m;
+    document.querySelectorAll("#mode button").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false")); calc(); });
+  ["d","cd","u","th","tm","ts","pm","ps"].forEach(id => $(id).addEventListener("input", calc));
+  calc();
+})();
+</script>
+</body>
+</html>
