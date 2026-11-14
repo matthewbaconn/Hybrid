@@ -748,6 +748,8 @@ a.scard{text-decoration:none;color:var(--ink)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px}.chips button{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 13px/1 inherit}.chips button[aria-pressed="true"]{background:var(--race);border-color:var(--race);color:#fff}
 .fbar{display:grid;grid-template-columns:1fr 90px 44px;gap:10px;align-items:center;margin:8px 0;font-size:13.5px}.fbar span{color:var(--muted)}.fbar div{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden}.fbar i{display:block;height:100%;border-radius:4px}.fbar b{text-align:right;font-variant-numeric:tabular-nums}
 .pc[role="button"]{cursor:pointer}.pc .ph i{margin-left:auto;font-style:normal;color:var(--muted)}
+.wnew .kick{margin:0;font:700 12px/1 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2)}.wnew h2{margin:-4px 0 4px}
+.wn{display:grid;grid-template-columns:22px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line)}.wn svg{width:20px;height:20px;color:var(--accent-2);margin-top:2px}.wn b{display:block}.wn p{margin:3px 0 0;font-size:14px;color:var(--muted);line-height:1.45}.wn .linkbtn{padding:6px 0 0;font-size:14px}
 .venue{margin:10px 0}.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.seg button{padding:8px 14px;background:transparent;border:0;color:var(--muted);font:600 14px/1 inherit}.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
 .rpe{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:6px}
 .rpe button{min-height:38px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 14px/1 inherit;font-variant-numeric:tabular-nums}
@@ -2792,7 +2794,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "67";
+const APP_VERSION = "68";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2899,6 +2901,29 @@ async function pushOn(){
   pushState.on = true; pushInfo.devices = (pushInfo.devices || 0) + 1;
 }
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
+/* ---------- What's new: once per release, for anyone with a plan ---------- */
+const NEW_ID = "2026-11-14";
+const NEWS = [
+  ["run", "No watch? Run with your phone", "Open today's run and tap Start with my phone. A voice calls every step, keeps time and can track distance by GPS. Then rate how hard it felt.", null],
+  ["heart", "Run by pace, heart rate or feel", "Pick how your runs are set. Heart rate shows your zone and bpm on every step, and your Garmin gets heart rate targets.", "set-run"],
+  ["swap", "Treadmill or outside", "Switch any run on its workout screen, or make treadmill your default. You get mph speeds, and your watch still gets one workout.", "set-run"],
+  ["watch", "Every sport counts", "Pickleball, soccer, yoga, a hike: tap Log a workout, type the sport and rate it 1 to 10. If it replaces an easy run, that run gets checked off.", "workouts"],
+  ["bars", "Progress you can open", "Tap Training load, Your fitness or Training focus on the Progress tab for the full picture.", "progress"],
+  ["flag", "Race coming up soon? Still yes", "Pick any race date from tomorrow on. You get a short taper from where you are now.", null],
+  ["heart", "Optional: cycle-aware training", "Adjusts hard days to your cycle and how you feel. Stays on your phone. Look for the invite on Today.", null, "f"]
+];
+function whatsNew(){
+  if (!plan || mode === "sample" || setup || $(".back")) return;
+  let seen = "", off = ""; try { seen = localStorage.getItem("hy-new") || ""; off = localStorage.getItem("hy-nonew") || ""; } catch(e){}
+  if (seen === NEW_ID || off) return;   // hy-nonew: automated tests
+  const list = NEWS.filter(x => !x[4] || plan.profile.sex === x[4]);
+  const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
+  b.innerHTML = '<div class="sheet wnew" role="dialog" aria-modal="true" aria-labelledby="wn-h"><p class="kick">New in Mileset</p><h2 id="wn-h">Here\'s what changed</h2>' +
+    list.map(x => '<div class="wn">' + ic(x[0]) + '<div><b>' + x[1] + '</b><p>' + x[2] + '</p>' + (x[3] ? '<button class="linkbtn" type="button" data-act="wngo" data-to="' + x[3] + '">Show me</button>' : '') + '</div></div>').join("") +
+    '<button class="btn primary block" type="button" data-act="wndone">Got it</button></div>';
+  document.body.appendChild(b);
+}
+function wnSeen(){ try { localStorage.setItem("hy-new", NEW_ID); } catch(e){} closeMenu(); }
 function askNotif(){
   if (mode !== "account" || !plan || setup || authv || !pushInfo.key || !pushOK() || pushState.on || $(".back")) return;
   const denied = Notification.permission === "denied"; let last = 0; try { last = +localStorage.getItem("hy-nask") || 0; } catch(e){}
@@ -3402,6 +3427,8 @@ document.addEventListener("click", ev => {
   }
   if (act === "fday"){ captureFood(); fdate = addDays(fdate, +a.dataset.dir); if (fdate > TODAY) fdate = TODAY; fs.err = ""; fs.note = ""; render(); return; }
   if (act === "nasknot"){ closeMenu(); return; }
+  if (act === "wndone"){ wnSeen(); return; }
+  if (act === "wngo"){ const to = a.dataset.to; wnSeen(); if (to === "progress"){ scr = null; tab = "training"; render(); window.scrollTo(0, 0); } else go(to); return; }
   if (act === "naskyes"){ a.disabled = true; a.textContent = "One moment…"; pushOn().then(() => { closeMenu(); render(); toast("Notifications are on."); }).catch(e => { closeMenu(); toast(e.message || "Couldn't turn on notifications."); }); return; }
   if (act === "pushon"){ a.disabled = true; a.textContent = "One moment…"; pushOn().then(() => { render(); toast("Notifications are on."); }).catch(e => { a.disabled = false; a.textContent = "Turn on notifications"; toast(e.message || "Couldn't turn on notifications."); }); return; }
   if (act === "pushtest"){ api("POST", "/api/push/test").then(j => toast(j.sent ? "Test sent. It should arrive in a few seconds." : "Couldn't reach this phone. Turn notifications off and on again.")).catch(e => toast(e.message)); return; }
@@ -3579,7 +3606,8 @@ function hideSplash(){
   setTimeout(() => { el.classList.add("out"); el.addEventListener("animationend", () => el.remove(), {once: true}); setTimeout(() => el.remove(), 700); }, wait);
 }
 if (splashReady) hideSplash(); else setTimeout(hideSplash, 4000);
-if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); garminReturn(); if (location.hash === "#members"){ try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} if (isOwner) go("members"); } if (movedHere) setTimeout(() => toast("Mileset has a new address: app.hybrdrunning.com. If you added it to your Home Screen, add this one again."), 600); autoSync(true); if (pushOK()) checkPush().then(() => { safeRender(); setTimeout(askNotif, 1800); }); })
+if (!token && mode === "local") setTimeout(whatsNew, 1600);
+if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); garminReturn(); if (location.hash === "#members"){ try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} if (isOwner) go("members"); } if (movedHere) setTimeout(() => toast("Mileset has a new address: app.hybrdrunning.com. If you added it to your Home Screen, add this one again."), 600); autoSync(true); setTimeout(whatsNew, 900); if (pushOK()) checkPush().then(() => { safeRender(); setTimeout(askNotif, 1800); }); })
   .catch(e => { loading = false; if (token){ mode = "none"; plan = null; } render(); hideSplash(); toast(e.message); });
 })();
 </script>
