@@ -3279,7 +3279,7 @@ document.addEventListener("click", ev => {
     if (!x.mi && !x.minutes){ aw.err = "Add a distance or a time."; render(); return; }
     if (x.date > TODAY){ aw.err = "Pick today or an earlier day."; render(); return; }
     aw.busy = true; render();
-    (mode === "account" ? api("POST", "/api/activity", x).then(j => j.activity) : Promise.resolve({...x, id: Date.now().toString(36), source: "manual", name: x.name || ({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Workout"})[x.type]}))
+    (mode === "account" ? api("POST", "/api/activity", x).then(j => j.activity) : Promise.resolve({...x, id: Date.now().toString(36), source: "manual", name: x.name || x.sport || ({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Workout"})[x.type]}))
       .then(saved => { acts.push(saved); aw = {open: false, err: "", busy: false}; save(); render(); toast(HP.actSummary(plan, acts, saved, TODAY, maxHrNow()).headline + ". Saved."); if (mode === "account" && coachOn) waitForReview(saved.id); })
       .catch(e => { aw.busy = false; aw.err = e.message; render(); });
     return;

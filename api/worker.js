@@ -1146,7 +1146,7 @@ async function route(req, env, path, ctx){
     const b = await body(req), type = ["run", "lift", "bike", "swim", "other"].includes(b.type) ? b.type : "other";
     const mi = Math.max(0, Math.min(200, Number(b.mi) || 0)), minutes = n0(b.minutes);
     if (!isDate(b.date) || (!mi && !minutes)) throw new HttpError(400, "Add a distance or a time.");
-    const x = {id: rand(10), source: "manual", date: b.date, type, name: String(b.name || "").trim().slice(0, 80) || ({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Workout"})[type],
+    const x = {id: rand(10), source: "manual", date: b.date, type, name: String(b.name || "").trim().slice(0, 80) || String(b.sport || "").replace(/[^\w .&'-]/g, "").trim().slice(0, 30) || ({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Workout"})[type],
       mi: Math.round(mi * 100) / 100, minutes, cal: n0(b.cal), avg_hr: n0(b.avg_hr), work_pace: n0(b.work_pace) > 150 && n0(b.work_pace) < 1200 ? n0(b.work_pace) : 0,
       sport: String(b.sport || "").replace(/[^\w .&'-]/g, "").trim().slice(0, 30) || null, rpe: n0(b.rpe) >= 1 && n0(b.rpe) <= 10 ? n0(b.rpe) : null, venue: ["treadmill", "outside"].includes(b.venue) ? b.venue : null};
     await env.DB.prepare("INSERT INTO activities (id, user_id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, work_pace, sport, rpe, venue, created) VALUES (?, ?, 'manual', NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
