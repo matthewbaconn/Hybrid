@@ -2313,7 +2313,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "59";
+const APP_VERSION = "60";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2516,9 +2516,19 @@ function inviteCard(){
     '<p class="sub">' + fspots + ' Founding 100 spot' + (fspots === 1 ? '' : 's') + ' left. Anyone who joins before Jan 1 gets Mileset free for life, like you.</p>' +
     '<button class="btn primary block" type="button" data-act="invite">' + ic("share") + 'Send an invite</button></section>';
 }
+/* Activation funnel (owner only): sign-up → plan → first workout → still active after day 7; flags the biggest drop */
+function funnelHtml(f){
+  if (!f || !f.signed_up) return "";
+  const pct = (a, b) => b ? Math.round(a / b * 100) + "%" : "–";
+  const steps = [["Signed up", f.signed_up, f.signed_up], ["Built a plan", f.plan, f.signed_up], ["Logged a workout", f.workout, f.plan], ["Active after day 7", f.active_d7, f.d7_eligible]];
+  let worst = null; steps.slice(1).forEach(s => { if (s[2] && (!worst || s[1] / s[2] < worst[1] / worst[2])) worst = s; });
+  return '<section class="card"><div class="card-h" style="--tone:var(--accent-2)">' + ic("bars") + '<span class="lbl">Activation</span><span class="r">real members</span></div><ul class="fl">' +
+    steps.map(s => '<li><div class="fi"><b>' + s[0] + '</b><span>' + s[1] + (s[0] === "Signed up" ? '' : ' of ' + s[2] + ' · ' + pct(s[1], s[2])) + (s[0] === "Active after day 7" ? ' (members who joined 7+ days ago)' : '') + '</span></div></li>').join("") + '</ul>' +
+    (worst && worst[1] < worst[2] ? '<p class="sub">Biggest drop: <b>' + worst[0].toLowerCase() + '</b>. Fix this step first.</p>' : '') + '</section>';
+}
 function membersHtml(){
   if (!isOwner) return '<section class="card"><p class="sub">Not available.</p></section>';
-  if (!mem || mem.stale){ if (!mem || !mem.busy){ mem = {busy: true, list: mem && mem.list}; api("GET", "/api/admin/members").then(j => { mem = {list: j.members}; if (scr === "members") render(); }).catch(e => { mem = {err: e.message}; if (scr === "members") render(); }); } }
+  if (!mem || mem.stale){ if (!mem || !mem.busy){ mem = {busy: true, list: mem && mem.list}; Promise.all([api("GET", "/api/admin/members"), api("GET", "/api/admin/funnel").catch(() => null)]).then(([j, fj]) => { mem = {list: j.members, funnel: fj && fj.funnel}; if (scr === "members") render(); }).catch(e => { mem = {err: e.message}; if (scr === "members") render(); }); } }
   if (mem.err) return '<section class="card"><p class="err">' + esc(mem.err) + '</p></section>';
   if (!mem.list) return '<section class="card"><p class="sub">Loading…</p></section>';
   const L = mem.list, wk = addDays(TODAY, -7), n = k => L.filter(k).length;
@@ -2527,6 +2537,7 @@ function membersHtml(){
     '<div class="wkstats"><div><span>Strava</span><b>' + n(m => m.strava) + '</b></div><div><span>Garmin</span><b>' + n(m => m.garmin) + '</b></div><div><span>With a plan</span><b>' + n(m => m.goal) + '</b></div></div><div class="wkstats"><div><span>Founding spots taken</span><b>' + Math.min(100, n(m => m.founding)) + ' / 100</b></div><div><span>Joined from invites</span><b>' + n(m => m.ref_name) + '</b></div></div>' +
     (() => { const c = {}; L.forEach(m => { const k = m.src || "unknown"; c[k] = (c[k] || 0) + 1; }); return '<p class="sub"><b>Sign-ups by source:</b> ' + Object.keys(c).sort((a, b) => c[b] - c[a]).map(k => esc(k) + ' ' + c[k]).join(' · ') + '</p>'; })() +
     '<p class="sub">Only you can see this screen.</p></section>';
+  h += funnelHtml(mem.funnel);
   const reach = L.filter(m => !m.no_mail).length, mv = mailv;
   h += '<section class="card form"><div class="card-h" style="--tone:var(--accent-2)">' + ic("mail") + '<span class="lbl">Email everyone</span><span class="r">' + reach + ' will get it</span></div>' +
     (mv.done ? '<p class="okmark" role="status">' + esc(mv.done) + '</p>' : '') +
