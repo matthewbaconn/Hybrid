@@ -2206,7 +2206,7 @@ function renderSetup(){
       (p.goal === "bike" ? '<div class="q"><span class="ql">Ride distance</span>' + optList("bikeEvent", Object.entries(HP.BIKE_EVENTS).map(([k, v]) => [k, v[0]]), p.bikeEvent || "62") + '</div>' : '') +
       (!noRace ? (p.raceName ? '<div class="picked"><div><b>' + esc(p.raceName) + '</b><span>' + (p.raceCity ? esc(p.raceCity) + ' · ' : '') + DAYF[dow(p.raceDate)] + ', ' + fmtD(p.raceDate) + ' ' + String(p.raceDate).slice(0, 4) + '</span></div><button class="linkbtn" type="button" data-act="raceclear">Change</button></div>' : '') +
         (mode === "account" ? '<button class="btn block" type="button" data-act="racefind">' + ic("flag") + 'Find my race</button>' : '') +
-        '<div class="two"><div class="q"><label for="s-date">Race date</label><input id="s-date" type="date" min="' + addDays(TODAY, 14) + '" value="' + esc(p.raceDate) + '"></div>' +
+        '<div class="two"><div class="q"><label for="s-date">Race date</label><input id="s-date" type="date" min="' + addDays(TODAY, 1) + '" value="' + esc(p.raceDate) + '"></div>' +
         (["5k","10k","half","marathon","50k"].includes(p.goal) ? '<div class="q"><label for="s-goal">Goal time</label><input id="s-goal" inputmode="numeric" placeholder="' + ({"5k":"22:00","10k":"48:00","half":"1:45:00","marathon":"3:45:00","50k":"5:30:00"}[p.goal]) + '" value="' + (p.goalSec ? fmtTime(p.goalSec) : '') + '"></div>' : '<div></div>') + '</div><p class="hint">' + (["5k","10k","half","marathon","50k"].includes(p.goal) ? 'Goal time is optional. Just type the numbers; the colons fill in. Leave it blank to use your current fitness.' : 'Not sure of the exact date? Pick your best guess. You can change it later.') + '</p>' : p.goal === "everyday" ? '' : '<p class="sub">You\'ll get a 12-week plan that ends with a 5K time trial to see your progress.</p>');
   } else if (st.step === 1){
     const k = (RACES[p.goal] || {}).kind, noRun = k === "swim" || k === "bike";
@@ -2250,7 +2250,7 @@ function readStep(){
     if (p.goal === "everyday"){ p.raceDate = null; p.goalSec = null; p.raceName = null; }
     if (p.goal !== "fitness" && p.goal !== "everyday" && document.getElementById("s-date")){ p.raceDate = v("s-date") || p.raceDate; const g = document.getElementById("s-goal") ? v("s-goal") : ""; p.goalSec = g ? parseTime(g) : null;
       if (g && !p.goalSec) return "Type the goal time as numbers, like 14500 for 1:45:00.";
-      if (!p.raceDate || p.raceDate < addDays(TODAY, 14)) return "Pick a race date at least 2 weeks away."; }
+      if (!p.raceDate || p.raceDate <= TODAY) return "Pick a race date from tomorrow on."; }
   } else if (st.step === 1){
     const k = (RACES[p.goal] || {}).kind;
     if (k === "fit"){ p.fitLevel = radio("fitLevel") || p.fitLevel || "some"; p.cardio = radio("cardio") || p.cardio || "walk"; p.hours = null;
@@ -2846,7 +2846,7 @@ document.addEventListener("click", ev => {
   if (act === "racefind"){ if (setup) readStepSoft(); openRaceSearch(); return; }
   if (act === "rspick"){
     const r = rsv && rsv.res && rsv.res[+a.dataset.i]; if (!r) return;
-    if (r.date < addDays(TODAY, 14)){ rsv.err = "That race is less than 2 weeks away, too soon to build a plan for. Pick a later race."; rsRender(); return; }
+    if (r.date <= TODAY){ rsv.err = "That race has already started. Pick a later one."; rsRender(); return; }
     if (!setup){ const p0 = plan ? {...plan.profile} : blankProfile(); delete p0.sample; delete p0.start; if (p0.goal === "everyday" || p0.goal === "fitness") p0.goal = "half"; setup = {step: 0, p: p0}; scr = null; }
     if (r.sport && r.sport !== "other" && RACES[r.sport]) setup.p.goal = r.sport;
     Object.assign(setup.p, {raceDate: r.date, raceName: r.name, raceCity: r.city || null, raceUrl: r.url || null}); setup.err = "";

@@ -116,10 +116,13 @@ function buildPlan(p, today){
     N = Math.floor(daysBetween(start, raceDate) / 7) + 1;
     if (N > 24){ start = addDays(mondayOf(raceDate), -23 * 7); N = 24; }
   } else N = 12;
-  const tw = TAPER[goal].length, B = Math.max(1, N - tw);
+  // race under ~2-3 weeks away: no time to build, so every week is taper from current fitness
+  const tw = TAPER[goal].length, short = !!raceDate && N <= tw, B = short ? 0 : Math.max(1, N - tw);
+  const tIdx = i => short ? tw - N + i : i - B;
   const m0 = Math.max(8, p.weekly || 0), [mul, floorM, cap] = PEAK[goal];
   let peak = Math.min(cap, Math.max(m0 * mul, Math.min(floorM, m0 * 1.6)));
   peak = Math.min(peak, m0 * Math.pow(1.1, Math.max(1, B - 1)));
+  if (short) peak = m0;
   const runDays = p.days.slice().sort((a, b) => a - b), longDay = p.longDay;
   // quality days: furthest from the long run, 2+ days away
   const gap = (a, b) => Math.min(Math.abs(a - b), 7 - Math.abs(a - b));
@@ -135,7 +138,7 @@ function buildPlan(p, today){
       phase = i < B * .4 ? "Base" : i < B * .85 ? "Build" : "Peak";
       miles = m0 + (peak - m0) * (B === 1 ? 1 : i / (B - 1));
       if (i % 4 === 3 && i < B - 1) { miles *= .8; phase = phase + " · lighter"; }
-    } else { phase = i === N - 1 && goal !== "fitness" ? "Race week" : "Taper"; miles = peak * TAPER[goal][i - B]; }
+    } else { phase = i === N - 1 && goal !== "fitness" ? "Race week" : "Taper"; miles = peak * TAPER[goal][tIdx(i)]; }
     miles = half(miles);
     const isLight = /lighter/.test(phase), ph = phase.split(" ·")[0];
     const days = Array.from({length: 7}, (_, d) => ({date: addDays(ws, d), sessions: []}));
@@ -157,7 +160,7 @@ function buildPlan(p, today){
       const l0 = Math.max(3, p.longest || 3), lg = Math.max(l0, LONG_GOAL[goal]);
       const ramp = l0 + (lg - l0) * Math.min(1, B === 1 ? 1 : i / Math.max(1, B - 1 - (goal === "marathon" ? 1 : 0)));
       let L = Math.min(capL, Math.max(Math.round(miles * .28), Math.round(ramp)), prevLong + 2, Math.max(4, Math.round(miles * (goal === "marathon" ? .5 : .45))));
-      if (ph === "Taper") L = Math.max(3, Math.round(prevLong * [.65, .45, .35][Math.min(2, i - B)]));
+      if (ph === "Taper") L = Math.max(3, Math.round(prevLong * [.65, .45, .35][Math.min(2, tIdx(i))]));
       if (isLight) L = Math.max(3, Math.round(L * .8));
       L = half(L); if (!isLight && ph !== "Taper") prevLong = Math.max(prevLong, L);
       const mpFinish = goal === "marathon" && (ph === "Build" || ph === "Peak") && i % 2 === 1;
@@ -251,11 +254,11 @@ function buildMulti(p, today){
   let start = p.start || mondayOf(today), N, raceDate = null;
   if (p.raceDate && kind !== "fit"){ raceDate = p.raceDate; N = Math.floor(daysBetween(start, raceDate) / 7) + 1; if (N > 24){ start = addDays(mondayOf(raceDate), -23 * 7); N = 24; } }
   else N = kind === "fit" ? 52 : 12;   // everyday plans run a year in 12-week blocks
-  const TW = TAPER_W[goal] || [.65], tw = Math.min(TW.length, Math.max(0, N - 2)), B = Math.max(1, N - tw);
+  const TW = TAPER_W[goal] || [.65], short = !!raceDate && N <= Math.max(2, TW.length), tw = short ? N : Math.min(TW.length, Math.max(0, N - 2)), B = short ? 0 : Math.max(1, N - tw);
   const swimEv = goal === "swim" ? (p.swimEvent || "1500") : null;
   const fitH = kind === "fit" ? ({new: 1.5, some: 2.5, regular: 4})[p.fitLevel] || 2.5 : null;
   const [hLo, hHi] = swimEv ? ({"1500": [2, 4], "5000": [3, 6], "10000": [4, 8]}[swimEv] || R.hours) : R.hours, h0 = Math.max(hLo * .7, Math.min(hHi, fitH || p.hours || (p.weekly ? p.weekly * easyPace / 3600 + 1 : hLo)));
-  let hPeak = Math.min(hHi, Math.max(hLo, h0 * 1.5)); hPeak = Math.max(h0, Math.min(hPeak, h0 * Math.pow(1.1, Math.max(1, B - 1))));
+  let hPeak = Math.min(hHi, Math.max(hLo, h0 * 1.5)); hPeak = Math.max(h0, Math.min(hPeak, h0 * Math.pow(1.1, Math.max(1, B - 1)))); if (short) hPeak = h0;
   const days = p.days.slice().sort((a, b) => a - b), longDay = p.longDay;
   const gap = (a, b) => Math.min(Math.abs(a - b), 7 - Math.abs(a - b));
   const swimPace = SWIM_PACE[p.swimLevel || "ok"], yd = min => Math.max(400, Math.round(min * 60 / swimPace * 100 / 50) * 50);
@@ -275,7 +278,7 @@ function buildMulti(p, today){
       phase = i < B * .4 ? "Base" : i < B * .85 ? "Build" : "Peak";
       H = h0 + (hPeak - h0) * (B === 1 ? 1 : i / (B - 1));
       if (i % 4 === 3 && i < B - 1){ H *= .8; phase += " · lighter"; }
-    } else { phase = i === N - 1 && raceDate ? "Race week" : "Taper"; H = hPeak * TW[Math.min(TW.length - 1, i - B)]; }
+    } else { phase = i === N - 1 && raceDate ? "Race week" : "Taper"; H = hPeak * TW[Math.max(0, Math.min(TW.length - 1, short ? TW.length - N + i : i - B))]; }
     const ph = phase.split(" ·")[0], light = /lighter/.test(phase) || ph === "Taper" || ph === "Race week", frac = B === 1 ? 1 : Math.min(1, i / Math.max(1, B - 1));
     const wk = Array.from({length: 7}, (_, d) => ({date: addDays(ws, d), sessions: []}));
     const raceIdx = raceDate && raceDate >= ws && raceDate <= addDays(ws, 6) ? dow(raceDate) : null;
