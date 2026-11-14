@@ -424,7 +424,8 @@ function renderPriv(){
       <div class="kpi"><b>${(o.working || []).length}</b><span>working now</span></div>
       <div class="kpi"><b style="color:${o.failed_today ? "var(--red)" : "inherit"}">${o.failed_today ?? 0}</b><span>failed runs today</span></div></div>
     <div class="rl" style="margin-top:8px">${(o.attention || []).length ? "Needs a look: " + esc(o.attention.map(nm).join(", ")) + ". " : ""}${(o.working || []).length ? "Working: " + esc(o.working.map(nm).join(", ")) + "." : "Nobody is mid-run."}
-    ${kp.length ? "<br>Mileset: " + kp.map(([a, v]) => esc(a.replace(/_/g, " ")) + " " + esc(v)).join(" · ") : "<br>Mileset numbers: not tracked yet (first nightly KPI snapshot pending)."}</div>`;
+    ${kp.length ? "<br>Mileset: " + kp.map(([a, v]) => esc(a.replace(/_/g, " ")) + " " + esc(v)).join(" · ") : "<br>Mileset numbers: not tracked yet (first nightly KPI snapshot pending)."}</div>
+    ${spendLine(o)}`;
   const ap = PRIV.a || [];
   document.getElementById("appr").innerHTML = capped("appr", ap.map(a => `<div class="item"><div class="h"><span>${a.k === "pr" ? `<span class="tag ${a.why === "SHIP IT" ? "ship" : "you"}">${esc(a.why === "SHIP IT" ? "SHIP IT " + a.n : a.repo + " #" + a.n)}</span>` + linkify(a.title, a.url) : `<span class="tag you">backlog ${esc(a.n)}</span>` + esc(a.title)}</span></div>
     ${a.k === "backlog" && a.why ? `<div class="why">${esc(a.why)}</div>` : a.k === "pr" && a.why !== "SHIP IT" ? `<div class="why">${esc(a.why)}</div>` : ""}</div>`), "Nothing waiting on you.");
@@ -436,8 +437,22 @@ function renderPriv(){
   const dc = PRIV.dec || [];
   document.getElementById("dec").innerHTML = capped("dec", dc.map(r => `<div class="item"><div class="h"><span>${esc(r[1])}</span><small>${esc(r[0])}</small></div><div class="why"><span class="tag ${/verified/i.test(r[2]) && !/not fully/i.test(r[2]) ? "" : "you"}">${esc(r[2])}</span>${esc(r[3])}</div></div>`), "No decisions recorded yet.");
 }
+function spendLine(o){
+  const sp = o.spend, m = o.plan_min_today;
+  const usd = v => "$" + Number(v || 0).toFixed(2);
+  let h = "";
+  if (sp && typeof sp === "object"){
+    const bm = Object.entries(sp.by_model || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => esc(k) + " " + usd(v)).join(" · ");
+    const bj = Object.entries(sp.by_job || {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => esc(k) + " " + usd(v)).join(" · ");
+    h += `<b style="color:var(--ink)">Vesper API spend today:</b> ${usd(sp.spent)} of ${usd(sp.cap)}${sp.mail_left != null ? " · email allowance " + usd(sp.mail_left) + " left" : ""}`
+      + (bm ? `<br>By model: ${bm}` : "") + (bj ? `<br>By job: ${bj}` : "")
+      + (sp.cached_share != null ? `<br>Input served from cache: ${Math.round(sp.cached_share * 100)}%` : "");
+  } else h += "Vesper API spend: not reported yet (arrives with the next server update).";
+  if (typeof m === "number") h += `<br><b style="color:var(--ink)">Employees worked</b> ${m} min today (on your Claude plan, no API cost).`;
+  return `<div class="rl" style="margin-top:8px">${h}</div>`;
+}
 function privDesk(id){ if (!PRIV) return ""; const d = (PRIV.d || []).find(x => x.id === id); if (!d) return "";
-  return `${d.sum ? `<div class="rl" style="margin:0 0 6px"><b style="color:var(--ink)">Latest:</b> ${linkify(d.sum, d.art)}</div>` : ""}
+  return `${typeof d.min === "number" || d.runs ? `<div class="rl" style="margin:0 0 6px"><b style="color:var(--ink)">Today:</b> ${d.runs || 0} run${d.runs === 1 ? "" : "s"} · ${d.min || 0} min of work</div>` : ""}${d.sum ? `<div class="rl" style="margin:0 0 6px"><b style="color:var(--ink)">Latest:</b> ${linkify(d.sum, d.art)}</div>` : ""}
     ${d.jobs && d.jobs.length ? `<div class="rl" style="margin:0 0 6px"><b style="color:var(--ink)">Assigned:</b> ${d.jobs.map(j => "#" + esc(j[0]) + " " + esc(j[1].length > 110 ? j[1].slice(0, 107) + "…" : j[1])).join("<br>")}</div>` : ""}
     ${d.hist && d.hist.length ? `<div class="hist">${d.hist.map(h => `<div class="item"><div class="h"><span class="${rtone[h[1]] || "sk"}">${esc(rword[h[1]] || h[1])}</span><small>${esc(fmtT(h[0]))}</small></div>${h[2] ? `<div class="why">${linkify(h[2], h[3])}</div>` : ""}</div>`).join("")}</div>` : `<div class="rl">No runs in the last 3 days.</div>`}`; }
 loadPriv(); setInterval(loadPriv, 120000);
