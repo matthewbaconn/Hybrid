@@ -33,6 +33,8 @@ button:active{background:#1f2433}button.hot{background:var(--maroon);border-colo
 .ask{display:flex;gap:8px;margin-top:10px}
 .ask input{flex:1;font:15px -apple-system,system-ui,sans-serif;color:var(--ink);background:#0c0e14;border:1px solid var(--line);border-radius:11px;padding:12px}
 .ask button{flex:none;width:64px;text-align:center;background:var(--red);border-color:var(--red)}
+.hq{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 12px;padding:12px 13px;border-radius:12px;background:var(--maroon);border:1px solid var(--red);color:var(--ink);text-decoration:none;font-weight:700}
+.hq span{font-weight:400;font-size:12.5px;opacity:.85}
 .foot{color:var(--mut);font-size:11.5px;text-align:center;margin-top:18px}
 </style></head><body>
 <div class="top">
@@ -40,6 +42,7 @@ button:active{background:#1f2433}button.hot{background:var(--maroon);border-colo
   <div><h1>VESPER</h1><div class="sub" id="greet">At your service.</div><div class="sub" id="hint">Tap the ring to hear the briefing.</div><button id="vn" style="display:none;margin-top:8px;padding:8px 12px">▶ Send it as a voice note instead</button></div>
 </div>
 <div class="status" id="status"><div class="dot"></div><div id="statusText">Systems check pending.</div></div>
+<a class="hq" id="hqlink" href="hq.html">▦ Open HQ <span>who's working · what's stuck ›</span></a>
 <div class="grid" id="tiles"></div>
 <h2>Waiting on you</h2><div class="list" id="waiting"></div>
 <h2>The board</h2><div class="list" id="board"></div>
@@ -61,6 +64,7 @@ const tg = window.Telegram && Telegram.WebApp; if (tg){ tg.ready(); tg.expand();
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let d = {};
 try { const raw = (location.hash.match(/d=([^&]+)/) || [])[1]; if (raw) d = JSON.parse(decodeURIComponent(escape(atob(raw.replace(/-/g,"+").replace(/_/g,"/"))))); } catch(e) { d = {}; }
+document.getElementById("hqlink").href = "hq.html" + location.hash;
 const h = new Date().getHours();
 document.getElementById("greet").textContent = (h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening") + ", Sir." + (d.t ? " Updated " + d.t + "." : "");
 if (d.s){ document.getElementById("statusText").textContent = d.s; if (!d.ok) document.getElementById("status").classList.add("bad"); }

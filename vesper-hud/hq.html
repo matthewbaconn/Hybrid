@@ -1,0 +1,168 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mileset HQ</title><meta name="robots" content="noindex">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#07080B;--card:#10121A;--card2:#141724;--line:#1E2230;--ink:#F2F3F7;--mut:#8A90A2;--red:#BE383E;--maroon:#800000;--green:#3FB37F;--amber:#F2B33D;--blue:#5B8DEF;--grey:#4A5064}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:radial-gradient(120% 50% at 50% -10%,#2a0a0d 0%,var(--bg) 55%);color:var(--ink);font:15px/1.4 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;padding:16px 16px 32px;min-height:100vh}
+a{color:inherit}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.back{color:var(--mut);text-decoration:none;font-size:14px;padding:6px 0}
+h1{margin:6px 0 0;font:800 23px/1.1 -apple-system,system-ui,sans-serif;letter-spacing:.14em}
+.sub{color:var(--mut);font-size:13px;margin-top:3px}
+.answer{margin:14px 0 10px;padding:12px 13px;border-radius:12px;border:1px solid var(--line);background:var(--card);display:flex;gap:10px;align-items:flex-start}
+.answer .dot{width:10px;height:10px;border-radius:50%;flex:none;margin-top:5px;background:var(--green);box-shadow:0 0 10px var(--green)}
+.answer.warn .dot{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.answer.bad .dot{background:var(--red);box-shadow:0 0 10px var(--red)}
+.streak{display:flex;align-items:center;gap:10px;margin:0 0 6px;font-size:12.5px;color:var(--mut)}
+.pips{display:flex;gap:4px}.pip{width:18px;height:6px;border-radius:3px;background:var(--line)}.pip.on{background:var(--red);box-shadow:0 0 6px var(--red)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 2px}
+.chip{font-size:12px;padding:4px 9px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--mut)}
+.chip b{color:var(--ink)}
+h2{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin:20px 2px 8px}
+.zone{margin-bottom:6px}
+.zone .zl{font-size:11px;color:var(--mut);letter-spacing:.08em;text-transform:uppercase;margin:12px 2px 6px;display:flex;align-items:center;gap:8px}
+.zone .zl:after{content:"";flex:1;height:1px;background:var(--line)}
+.floor{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+@media(min-width:620px){.floor{grid-template-columns:repeat(3,1fr)}}
+.desk{position:relative;background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:14px;padding:11px 11px 10px;cursor:pointer;min-height:132px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.desk:active{transform:scale(.98)}
+.mon{height:30px;border-radius:7px;background:#0b0d13;border:1px solid var(--line);position:relative;overflow:hidden;display:flex;align-items:center;padding:0 8px;gap:6px;font-size:11px;color:var(--mut)}
+.mon:before{content:"";position:absolute;inset:0;opacity:.18;background:var(--c,var(--grey))}
+.mon .led{width:7px;height:7px;border-radius:50%;background:var(--c,var(--grey));box-shadow:0 0 8px var(--c,transparent);flex:none;position:relative}
+.mon span{position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.desk.w .mon .led,.desk.x .mon .led,.desk.f .mon .led{animation:blink 1.4s ease-in-out infinite}
+.desk.w .typing{display:inline-flex}
+.typing{display:none;gap:2px;position:relative}.typing i{width:4px;height:4px;border-radius:50%;background:var(--amber);animation:type 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes blink{50%{opacity:.3}}@keyframes type{50%{transform:translateY(-3px);opacity:.4}}
+.who{display:flex;align-items:center;gap:8px}
+.av{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:700 11px -apple-system,system-ui,sans-serif;background:#1d2030;border:1px solid var(--line);flex:none}
+.nm{font-weight:700;font-size:13.5px;line-height:1.15}.rl{color:var(--mut);font-size:11px}
+.out{color:#c9ccd6;font-size:12px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:31px}
+.meta{display:flex;justify-content:space-between;color:var(--mut);font-size:11px;margin-top:auto}
+.list{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.row{padding:10px 12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;font-size:14px}
+.row:first-child{border-top:0}.row small{color:var(--mut);white-space:nowrap}
+.row.tap{cursor:pointer}.row.tap:after{content:"›";color:var(--mut)}
+.empty{padding:11px 12px;color:var(--mut);font-size:14px}
+.tick b{font-weight:600}.tick .ok{color:var(--green)}.tick .bad{color:var(--red)}.tick .sk{color:var(--mut)}
+.foot{color:var(--mut);font-size:11.5px;text-align:center;margin-top:18px}
+.demo{background:var(--amber);color:#111;font-weight:700;font-size:12px;text-align:center;border-radius:8px;padding:5px;margin-bottom:10px;display:none}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;z-index:9}
+.sheet.on{display:flex}
+.panel{width:100%;max-height:85vh;overflow:auto;background:#0d0f16;border-top:1px solid var(--line);border-radius:18px 18px 0 0;padding:16px 16px 26px}
+.panel h3{margin:0 0 2px;font-size:18px}.panel .rl{font-size:12.5px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:14px 0;font-size:14px}.kv span{color:var(--mut)}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+button{font:600 14px -apple-system,system-ui,sans-serif;color:var(--ink);background:#161925;border:1px solid var(--line);border-radius:11px;padding:12px 10px}
+button.hot{background:var(--maroon);border-color:var(--red)}
+</style></head><body>
+<div class="demo" id="demo">DEMO DATA: open HQ from ◉ Vesper in Telegram for the real floor</div>
+<div class="bar"><a class="back" id="back" href="./">‹ HUD</a><span class="sub" id="upd"></span></div>
+<h1>MILESET HQ</h1>
+<div class="sub">Who's working, what they shipped, what's stuck.</div>
+<div class="answer" id="answer"><div class="dot"></div><div id="answerText">Waiting for data.</div></div>
+<div class="streak"><span id="streakText">No silent failures</span><div class="pips" id="pips"></div></div>
+<div class="chips" id="chips"></div>
+<div id="floor"></div>
+<h2>Decisions waiting on you</h2><div class="list" id="decisions"></div>
+<h2>Today</h2><div class="list" id="ticker"></div>
+<div class="foot">Live state comes from each employee's run log (status/*.json). Text "hud" to Vesper for a fresh snapshot.</div>
+<div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
+<script>
+const tg = window.Telegram && Telegram.WebApp; if (tg){ tg.ready(); tg.expand(); try{ tg.setHeaderColor("#07080B"); tg.setBackgroundColor("#07080B"); }catch(e){} }
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let d = {};
+try { const raw = (location.hash.match(/d=([^&]+)/) || [])[1]; if (raw) d = JSON.parse(decodeURIComponent(escape(atob(raw.replace(/-/g,"+").replace(/_/g,"/"))))); } catch(e) { d = {}; }
+if (/demo/.test(location.hash) && !d.hq) {           // clearly labelled sample, for previews only
+  document.getElementById("demo").style.display = "block";
+  d = {t:"7:02 AM", ok:true, s:"All systems healthy", wo:["#12 Approve the race-pace page"], hq:{sk:[1,7],
+    r:[["ceo-shift","w","7:22am","","8:22am",6,""],["worker","i","7:17am","No jobs","8:17am",7,""],["audit","i","5:40am","All clear, 0 silent failures","tmrw 5:13am",1,""],
+       ["product-lead","n","","","11:43am",0,""],["growth-sprint","n","","","2:37pm",0,""],["instagram","n","","","Mon 12:47pm",0,""],
+       ["graphics","n","","","5:41pm",0,""],["monday-email","n","","","Mon 11:12am",0,""],["scorecard","n","","","Mon 1:13pm",0,""],["friday-review","n","","","Fri 4:12pm",0,""]],
+    tl:[["5:40am","audit","ok","All clear, 0 silent failures"],["5:22am","ceo-shift","ok","Ranked backlog"]]}};
+}
+const hq = d.hq || {};
+const STATE = {w:["Working","var(--amber)"], i:["Done · idle","var(--green)"], s:["Skipped","var(--blue)"], f:["Failed","var(--red)"], x:["Stuck","var(--red)"], n:["No runs logged yet","var(--grey)"], v:["On duty 24/7","var(--green)"], vb:["Needs attention","var(--red)"]};
+const PEOPLE = {
+  "vesper":       ["Vesper","Chief of staff","V","Leadership"],
+  "ceo-shift":    ["CEO","Executive · hourly","CEO","Leadership"],
+  "product-lead": ["Product","Head of product · daily","PR","Build"],
+  "worker":       ["Engineer","On call · hourly","EN","Build"],
+  "growth-sprint":["Growth","Growth lead · daily","GR","Growth"],
+  "instagram":    ["Social","Instagram · M/W/F","IG","Growth"],
+  "graphics":     ["Design","Graphics · Sundays","DS","Growth"],
+  "monday-email": ["Comms","Member email · Mondays","CM","Growth"],
+  "audit":        ["Ops","Audit + auto-fix · 5:13am","OP","Ops & numbers"],
+  "scorecard":    ["Analyst","Scorecard · Mon/Thu","AN","Ops & numbers"],
+  "friday-review":["Reviewer","CEO review · Fridays","RV","Ops & numbers"],
+};
+const desks = [["vesper", d.ok === false ? "vb" : "v", d.t ? d.t.toLowerCase().replace(" ","") : "", d.s || "", "always", null, ""]].concat(hq.r || []);
+document.getElementById("upd").textContent = d.t ? "Updated " + d.t : "";
+document.getElementById("back").href = "./" + location.hash.replace(/&?demo/, "");
+
+// 10-second answer
+const bad = desks.filter(x => x[1] === "f" || x[1] === "x" || x[1] === "vb"), busy = desks.filter(x => x[1] === "w");
+const name = r => (PEOPLE[r] || [r])[0];
+let ans, cls = "";
+if (!hq.r) { ans = d.t ? "Vesper is on duty. The employees' run log isn't in this snapshot yet; text \"hud\" for a fresh one." : "No data. Open HQ from the ◉ Vesper button in Telegram."; cls = "warn"; }
+else if (bad.length) { ans = `${bad.length} need${bad.length === 1 ? "s" : ""} a look: ` + bad.map(x => `${name(x[0])} (${STATE[x[1]][0].toLowerCase()})`).join(", ") + "."; cls = "bad"; }
+else { ans = "Nothing stuck. " + (busy.length ? busy.map(x => name(x[0])).join(", ") + (busy.length === 1 ? " is" : " are") + " working right now." : "Everyone's between runs."); }
+document.getElementById("answerText").textContent = ans;
+if (cls) document.getElementById("answer").classList.add(cls);
+
+// streak
+const sk = hq.sk || [0, 7];
+document.getElementById("streakText").textContent = `No silent failures: ${sk[0]} of ${sk[1]} days`;
+document.getElementById("pips").innerHTML = Array.from({length: sk[1]}, (_, i) => `<div class="pip${i < sk[0] ? " on" : ""}"></div>`).join("");
+const count = s => desks.filter(x => s.includes(x[1])).length;
+const runs = (hq.r || []).reduce((a, x) => a + (x[5] || 0), 0);
+document.getElementById("chips").innerHTML = [["Working", count(["w"])], ["Idle", count(["i","s","v"])], ["Failed/stuck", count(["f","x","vb"])], ["Runs today", runs]]
+  .map(([l, n]) => `<span class="chip">${l} <b>${n}</b></span>`).join("");
+
+// floor
+const zones = {};
+desks.forEach((x, i) => { const z = (PEOPLE[x[0]] || [,,,"Other"])[3]; (zones[z] = zones[z] || []).push(i); });
+document.getElementById("floor").innerHTML = ["Leadership","Build","Growth","Ops & numbers","Other"].filter(z => zones[z]).map(z =>
+  `<div class="zone"><div class="zl">${z}</div><div class="floor">` + zones[z].map(i => {
+    const [role, st, last, sum, next, n] = desks[i], p = PEOPLE[role] || [role, "", role.slice(0,2).toUpperCase()], s = STATE[st] || STATE.n;
+    const line = sum || (st === "n" ? "Hasn't logged a run yet." : st === "w" ? "On it…" : "");
+    return `<div class="desk ${st}" data-i="${i}" style="--c:${s[1]}">
+      <div class="mon"><div class="led"></div><span>${esc(s[0])}${last ? " · " + esc(last) : ""}</span><span class="typing"><i></i><i></i><i></i></span></div>
+      <div class="who"><div class="av">${esc(p[2])}</div><div><div class="nm">${esc(p[0])}</div><div class="rl">${esc(p[1])}</div></div></div>
+      <div class="out">${esc(line)}</div>
+      <div class="meta"><span>${next ? "Next " + esc(next) : ""}</span><span>${n != null ? esc(n) + " today" : ""}</span></div></div>`;
+  }).join("") + `</div></div>`).join("");
+
+function send(text){ text = (text || "").trim(); if (!text) return;
+  if (tg && tg.sendData){ try { tg.HapticFeedback && tg.HapticFeedback.impactOccurred("light"); } catch(e){} tg.sendData(text.slice(0, 400)); }
+  else alert("Open this from the Vesper button in Telegram."); }
+function openLink(u){ if (!/^https:\/\//.test(u)) return; if (tg && tg.openLink) tg.openLink(u); else window.open(u, "_blank", "noopener"); }
+const sheet = document.getElementById("sheet"), panel = document.getElementById("panel");
+sheet.onclick = e => { if (e.target === sheet) sheet.classList.remove("on"); };
+document.querySelectorAll(".desk").forEach(el => el.onclick = () => {
+  const [role, st, last, sum, next, n, art] = desks[+el.dataset.i], p = PEOPLE[role] || [role, ""], s = STATE[st] || STATE.n;
+  const link = art && /^https:\/\//.test(art) ? art : art ? "https://github.com/matthewbaconn/vesper-relay/blob/main/" + art : "";
+  panel.innerHTML = `<h3>${esc(p[0])}</h3><div class="rl">${esc(p[1])}${role !== "vesper" ? " · " + esc(role) : ""}</div>
+    <div class="kv"><span>State</span><b style="color:${s[1]}">${esc(s[0])}</b>
+    <span>Last</span><div>${esc(last || "–")}</div><span>Output</span><div>${esc(sum || "–")}</div>
+    <span>Next run</span><div>${esc(next || "–")}</div>${n != null ? `<span>Runs today</span><div>${esc(n)}</div>` : ""}</div>
+    <div class="btns">${link ? `<button id="art">Open last output</button>` : ""}
+      <button class="hot" id="ask">Ask Vesper about it</button>
+      ${st === "f" || st === "x" ? `<button id="fix">Have Claude look into it</button>` : ""}<button id="close">Close</button></div>`;
+  sheet.classList.add("on");
+  const q = id => document.getElementById(id);
+  if (q("art")) q("art").onclick = () => openLink(link);
+  q("ask").onclick = () => send(role === "vesper" ? "health report" : `What did the ${role} role do on its last run, and is anything wrong with it? Check status/${role}.json and the run log.`);
+  if (q("fix")) q("fix").onclick = () => send(`have claude find out why the ${role} role ${st === "x" ? "never finished its last run" : "failed its last run"} (status/${role}.json, the run log and the scheduled task's run status) and fix it`);
+  q("close").onclick = () => sheet.classList.remove("on");
+});
+
+// decisions wall + ticker
+const list = (el, items, empty, fmt) => document.getElementById(el).innerHTML = items && items.length ? items.map(fmt).join("") : `<div class="empty">${esc(empty)}</div>`;
+list("decisions", d.wo, d.t ? "Nothing waits on you. Enjoy it." : "–", (x, i) => `<div class="row tap" data-dec="${i}"><span>${esc(x)}</span></div>`);
+document.querySelectorAll("[data-dec]").forEach(el => el.onclick = () => send("tell me about " + (d.wo[+el.dataset.dec].match(/^#\d+/) || ["this"])[0] + " and what you need from me"));
+const tone = r => r === "ok" ? "ok" : r === "skipped" ? "sk" : "bad";
+list("ticker", hq.tl, hq.r ? "Quiet so far today." : "–", x => `<div class="row tick"><span><b>${esc(name(x[1]))}</b> <span class="${tone(x[2])}">${esc(x[2])}</span> ${esc(x[3])}</span><small>${esc(x[0])}</small></div>`);
+</script></body></html>
