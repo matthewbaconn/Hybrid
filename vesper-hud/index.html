@@ -9,7 +9,7 @@ body{margin:0;background:radial-gradient(120% 60% at 50% -10%,#2a0a0d 0%,var(--b
 .top{display:flex;align-items:center;gap:14px}
 .ring{width:64px;height:64px;flex:none;cursor:pointer}.ring.talk .pulse{animation-duration:.6s}
 .ring circle{fill:none;stroke-width:3}
-.ring .spin{transform-origin:50% 50%;animation:spin 6s linear infinite}
+.ring .spin{transform-origin:50% 50%}.ring.talk .spin{animation:spin 1.2s linear infinite}
 .ring .pulse{animation:pulse 2.4s ease-in-out infinite}
 @keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{50%{opacity:.35}}
 h1{margin:0;font:800 24px/1.1 -apple-system,system-ui,sans-serif;letter-spacing:.14em}
@@ -37,7 +37,7 @@ button:active{background:#1f2433}button.hot{background:var(--maroon);border-colo
 </style></head><body>
 <div class="top">
   <svg class="ring" id="ring" viewBox="0 0 64 64" role="button" aria-label="Hear the briefing"><circle cx="32" cy="32" r="29" stroke="#2b1013"/><circle class="spin" cx="32" cy="32" r="29" stroke="var(--red)" stroke-dasharray="40 142" stroke-linecap="round"/><circle class="pulse" cx="32" cy="32" r="18" stroke="var(--red)" stroke-width="2"/><circle cx="32" cy="32" r="7" fill="var(--red)" stroke="none"/></svg>
-  <div><h1>VESPER</h1><div class="sub" id="greet">At your service.</div><div class="sub" id="hint">Tap the ring to hear the briefing.</div></div>
+  <div><h1>VESPER</h1><div class="sub" id="greet">At your service.</div><div class="sub" id="hint">Tap the ring to hear the briefing.</div><button id="vn" style="display:none;margin-top:8px;padding:8px 12px">▶ Send it as a voice note instead</button></div>
 </div>
 <div class="status" id="status"><div class="dot"></div><div id="statusText">Systems check pending.</div></div>
 <div class="grid" id="tiles"></div>
@@ -111,7 +111,11 @@ function speak(){
   const ring = document.getElementById("ring");
   u.onstart = () => { window.__spoke = true; ring.classList.add("talk"); }; u.onend = u.onerror = () => ring.classList.remove("talk");
   speechSynthesis.speak(u);
+  setTimeout(() => { if (!window.__spoke) {
+    document.getElementById("hint").textContent = "No sound? Flip the silent switch on the side of your iPhone, or:";
+    document.getElementById("vn").style.display = "block"; } }, 1800);
 }
+document.getElementById("vn").onclick = () => send("brief me out loud");
 document.getElementById("ring").addEventListener("click", speak);
 // Try to greet on open (some phones only allow sound after a tap; then the ring does it).
 if ("speechSynthesis" in window) {
