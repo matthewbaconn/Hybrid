@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HYROX Training Plan: How to Mix Running, Stations and Strength · Mileset</title>
+<meta name="description" content="Free HYROX week builder. Pick your training days and phase and see a real HYROX training week: compromised running, 1 km repeats, a long run, strength and station work, placed so hard days don't stack.">
+<meta property="og:title" content="HYROX training plan week builder · Mileset">
+<meta property="og:description" content="Running is most of a HYROX race. Build a week that trains it, without skipping the sleds.">
+<meta property="og:image" content="https://hybrdrunning.com/plan.jpg">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://hybrdrunning.com/hyrox-training-plan">
+<link rel="icon" href="icon.png">
+<style>
+:root{--bg:#0A0B0F;--surface:#14161C;--sunk:#1E212B;--ink:#F5F6FA;--muted:#9CA3B4;--line:#262A35;--accent:#800000;--accent-2:#E0464C;
+  --easy:#22D3EE;--long:#34D399;--work:#FACC15;--lift:#FF6FB5;--swim:#60A5FA;--bike:#A3E635;--hyrox:#FB7185;--race:#FF4D5E;
+  --f-display:"SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;--f-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{width:min(760px,100% - 40px);margin:0 auto}
+.nav{border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font:800 20px/1 var(--f-display);text-decoration:none}
+.brand img{width:30px;height:30px;border-radius:7px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 22px;border-radius:8px;border:0;font:700 15.5px/1 var(--f-body);text-decoration:none;cursor:pointer;background:var(--accent);color:#fff}
+.btn.sm{min-height:40px;padding:0 16px;font-size:14.5px}
+.tag{display:inline-block;padding:7px 12px;border-radius:999px;background:rgba(224,70,76,.12);color:#ff8a8f;font:700 12.5px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;margin-top:36px}
+h1{font:800 clamp(34px,5.4vw,54px)/1.05 var(--f-display);letter-spacing:-.03em;margin:16px 0 12px}
+h1 em{font-style:normal;color:var(--accent-2)}
+.lead{color:var(--muted);margin:0 0 26px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;margin:0 0 18px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:560px){.row{grid-template-columns:1fr}}
+label{display:block;font-weight:600;font-size:14.5px;margin-bottom:6px}
+label small{display:block;color:var(--muted);font-weight:400}
+input,select{width:100%;min-height:46px;border-radius:8px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font:500 16px var(--f-body);padding:0 12px}
+.dur{display:flex;gap:8px}.dur input{text-align:center}
+.out{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:6px 0 14px}
+@media(max-width:560px){.out{grid-template-columns:1fr 1fr}}
+.stat{background:var(--sunk);border-radius:10px;padding:14px}
+.stat span{display:block;color:var(--muted);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.stat b{display:block;font:800 30px/1.1 var(--f-display);margin-top:6px}
+.stat b small{font-size:15px;color:var(--muted);font-weight:600}
+.plan{margin:0;padding-left:20px;color:var(--ink)}.plan li{margin:4px 0}
+.note{color:var(--muted);font-size:15px}
+h2{font:800 24px/1.2 var(--f-display);margin:30px 0 10px}
+.cta{background:linear-gradient(135deg,#800000,#BE383E);border:0}
+.cta p{margin:6px 0 16px;color:#ffe3e4}
+.cta .btn{background:#fff;color:#800000}
+.src{font-size:14px;color:var(--muted)}.src li{margin:6px 0}
+footer{color:var(--muted);font-size:13.5px;padding:30px 0 50px}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px}
+.seg button{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font:600 14.5px var(--f-body);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent)}
+.hms{display:flex;gap:8px}.hms input{text-align:center}
+table{width:100%;border-collapse:collapse;font-size:15px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.05em}
+.splits{max-height:360px;overflow:auto}
+.hide{display:none}
+
+.week{display:grid;gap:8px}
+.day{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:start;background:var(--sunk);border-radius:10px;padding:12px}
+.day>b{font:800 15px/1.6 var(--f-display);color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-block;padding:5px 10px;border-radius:999px;font:700 13.5px/1.3 var(--f-body);color:#0A0B0F}
+.chip.easy{background:var(--easy)}.chip.long{background:var(--long)}.chip.q{background:var(--work)}.chip.lift{background:var(--lift)}.chip.hyrox{background:var(--hyrox)}.chip.race{background:var(--race)}.chip.rest{background:var(--line);color:var(--muted)}
+.why{display:block;width:100%;color:var(--muted);font-size:13.5px;margin-top:4px}
+details.s{width:100%}details.s summary{list-style:none;cursor:pointer;display:inline-block}details.s summary::-webkit-details-marker{display:none}
+details.s ul{margin:6px 0 2px;padding-left:18px;color:var(--muted);font-size:14px}details.s ul li{margin:2px 0}
+.chip i{font-style:normal;font-weight:600;opacity:.75}
+</style>
+</head>
+<body>
+<header class="nav"><div class="wrap"><a class="brand" href="/"><img src="icon.png" alt="">Mileset</a><a class="btn sm" href="https://app.hybrdrunning.com/?src=site">Open the app</a></div></header>
+<main class="wrap">
+<span class="tag">HYROX · running + stations</span>
+<h1>A <em>HYROX</em> week that trains the running, too.</h1>
+<p class="lead">Most HYROX athletes train the stations and hope the 8 km takes care of itself. It doesn't. Pick your days below and see the exact week the Mileset HYROX plan builds: what goes where, how long it takes, and why.</p>
+
+<section class="card">
+  <div class="row">
+    <div><label for="nd">Training days per week</label><select id="nd"><option value="4">4 days</option><option value="5" selected>5 days</option><option value="6">6 days</option></select></div>
+    <div><label for="xl">Extra strength sessions<small>on top of the HYROX strength day</small></label><select id="xl"><option value="0">None</option><option value="2" selected>+1 lift</option><option value="3">+2 lifts</option></select></div>
+    <div><label for="lr">Long run day</label><select id="lr"><option value="5">Saturday</option><option value="6" selected>Sunday</option></select></div>
+    <div><label for="ph">Training phase</label><select id="ph"><option value="base">Base (early weeks)</option><option value="build" selected>Build</option><option value="peak">Peak</option><option value="race">Race week</option></select></div>
+  </div>
+</section>
+
+<section class="card" aria-live="polite">
+  <h2 style="margin:0 0 12px">Your week</h2>
+  <div class="week" id="week"></div>
+  <p class="note" id="sum" style="margin:14px 0 0"></p>
+  <p class="note" style="font-size:13.5px;margin:8px 0 0">Tap a session to see the workout. Example athlete: about 15 miles a week now, easy pace around 10:00/mi, race 12 weeks out. Your own plan sets distances and paces from your running and your race date.</p>
+</section>
+
+<section class="card cta">
+  <h2 style="margin:0">Get the whole plan, week by week</h2>
+  <p>Mileset builds your HYROX plan around your race date and the days you can train, and eases a session off when your sleep and recovery say you're run down. It syncs with Garmin, Strava and Apple Health. The first 100 members before Jan 1, 2027 get it free for life.</p>
+  <a class="btn" href="https://app.hybrdrunning.com/?src=site">Start free</a>
+</section>
+
+<h2>Why the running matters this much</h2>
+<p class="note">A HYROX race is 8 × 1 km runs, each followed by a station. In a 2025 study of 11 recreational athletes doing a full simulated race, about 59% of the finish time was spent running (51 of 87 minutes on average). Faster finishers had a higher VO<sub>2</sub>max and did more endurance training. Grip strength, muscle mass and resistance training volume did not line up with finish time. It's one small study, but the message is clear: your engine decides a lot of your result.</p>
+<p class="note">That doesn't mean skip the strength. A 2025 review of HYROX demands calls the aerobic system the foundation that lets you recover between stations, with strength, muscular endurance and power carrying the sleds, lunges and wall balls. You need both, placed so they don't wreck each other.</p>
+
+<h2>What each session does</h2>
+<ul class="note">
+  <li><b>HYROX intervals.</b> 1 km at race effort, straight into a station, repeated. Running on tired legs is the skill HYROX tests, so this is the most race-specific session. It grows from 4 rounds in base to 8 at peak.</li>
+  <li><b>1 km repeats at threshold.</b> Eight 1 km runs make up half the race. This rehearses the rhythm on fresh legs.</li>
+  <li><b>Long run, easy.</b> Builds the aerobic base that helps you recover between stations. It caps at 9 miles: HYROX doesn't need marathon long runs.</li>
+  <li><b>HYROX strength.</b> Front squats, deadlifts, sandbag lunges, push press and wall balls. Strong legs and grip make the sleds feel smaller.</li>
+  <li><b>Station skills</b> (6 days a week). Moderate rounds focused on smooth technique, so each station costs less on race day.</li>
+</ul>
+
+<h2>How the week is put together</h2>
+<ul class="note">
+  <li><b>The long run gets its own day.</b> No lifting on it.</li>
+  <li><b>Hard days are spread out.</b> The HYROX intervals and the 1 km repeats go as far from each other and from the long run as your days allow.</li>
+  <li><b>Every 4th week is lighter</b>, then the last week tapers to about 60% so you arrive fresh.</li>
+  <li><b>No sled?</b> Push a weighted prowler, or swap in 20 hard kettlebell swings.</li>
+</ul>
+
+<h2>Sources</h2>
+<ul class="src">
+  <li>Brandt T, Ebel C, Lebahn C, Schmidt A. Acute physiological responses and performance determinants in Hyrox©: a new running-focused high intensity functional fitness trend. <i>Front Physiol</i> 2025;16:1519240.</li>
+  <li>A performance analysis of HYROX: a review of the physiologic, mechanical, and technical demands. <i>Strength Cond J</i> 2025. doi:10.1519/SSC.0000000000000913</li>
+  <li>Schumann M, et al. Compatibility of concurrent aerobic and strength training for skeletal muscle size and function: an updated systematic review and meta-analysis. <i>Sports Med</i> 2022;52(3):601–612.</li>
+</ul>
+<p class="note">Know your station times? Project your finish with the <a href="/hyrox-pace-calculator">HYROX pace calculator</a>. This page is general training information, not medical advice.</p>
+<p class="note" style="font-size:13px">HYROX is a trademark of its owner. Mileset is an independent training app and is not affiliated with or endorsed by HYROX.</p>
+</main>
+<footer class="wrap">© Mileset · <a href="/">Home</a> · <a href="/hyrox-pace-calculator">HYROX pace calculator</a> · <a href="/race-pace-calculator">Race pace calculator</a> · <a href="/fueling-calculator">Fueling calculator</a> · <a href="/half-marathon-plan-for-lifters">Half marathon plan for lifters</a> · <a href="/marathon-plan-that-adapts-to-sleep">Bad sleep? Should you run today</a> · <a href="https://app.hybrdrunning.com/privacy.html">Privacy</a></footer>
+<script>
+// Weeks generated by the Mileset plan builder (plan.js buildPlan, goal "hyrox"): [hours, phase, days[[type, titleIdx, min, [stepIdx]]]]
+var T=["HYROX intervals · 4 rounds","4 rounds: 1 km run at race effort, then one station","Rotate stations: SkiErg 500 m · sled push 2 × 25 m · sled pull 2 × 25 m · 15 burpee broad jumps · row 500 m · farmers carry 100 m · sandbag lunges 50 m · 30 wall balls","No sled? Push a weighted prowler, or do 20 hard kettlebell swings instead","6 × 800 m at race effort","Warm up 1.5 mi easy","6 × 800 m at threshold, 90 s rest","Cool down 1 mi easy","Long run · 7 mi","Easy, conversational the whole way","HYROX strength","Front squat 4 × 6","Deadlift 4 × 5","Walking lunges with a sandbag 3 × 20 m","Push press 3 × 8","Wall balls 3 × 20","HYROX intervals · 6 rounds","6 rounds: 1 km run at race effort, then one station","8 × 1 km at race effort","8 × 1 km at threshold, 60 s rest","Long run · 9 mi","HYROX intervals · 8 rounds","8 rounds: 1 km run at race effort, then one station","Light station practice · 30 min","2 rounds: 500 m run + 10 wall balls + 20 m sandbag lunges, all easy","Shakeout · 3 mi","Easy, you should be able to talk","Race day · HYROX","8 × 1 km runs, each followed by a station: SkiErg, sled push, sled pull, burpee broad jumps, row, farmers carry, sandbag lunges, wall balls","Run the first 1 km slower than you want to. Steady beats fast-then-fading.","Strength · upper body","Bench press 4 × 6","Pull-ups 4 × max (leave 1–2 in the tank)","Overhead press 3 × 8","Dumbbell row 3 × 10","Curls + triceps 3 × 12","Strength · lower body","Back squat 4 × 5","Romanian deadlift 3 × 8","Walking lunge 3 × 10 / leg","Calf raise 3 × 15","Plank 3 × 45 s","Easy run · 3 mi","Easy run · 4.5 mi","Station skills · 40 min","3 rounds, moderate: SkiErg 250 m · 10 burpee broad jumps · row 250 m · 20 wall balls · farmers carry 50 m","Focus on smooth technique, not speed"];
+var W={"4-5-0-base":[3.6,"Base",[[],[["hyrox",0,45,[1,2,3]]],[],[["workout",4,45,[5,6,7]]],[],[["long",8,71,[9]]],[["lift",10,55,[11,12,13,14,15]]]]],"4-5-0-build":[4.4,"Build",[[],[["hyrox",16,60,[17,2,3]]],[],[["workout",18,60,[5,19,7]]],[],[["long",20,91,[9]]],[["lift",10,55,[11,12,13,14,15]]]]],"4-5-0-peak":[4.7,"Peak",[[],[["hyrox",21,75,[22,2,3]]],[],[["workout",18,60,[5,19,7]]],[],[["long",20,91,[9]]],[["lift",10,55,[11,12,13,14,15]]]]],"4-5-0-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"4-5-2-base":[4.4,"Base",[[],[["hyrox",0,45,[1,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["workout",4,45,[5,6,7]]],[],[["long",8,71,[9]]],[["lift",10,55,[11,12,13,14,15]]]]],"4-5-2-build":[5.2,"Build",[[],[["hyrox",16,60,[17,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["workout",18,60,[5,19,7]]],[],[["long",20,91,[9]]],[["lift",10,55,[11,12,13,14,15]]]]],"4-5-2-peak":[5.4,"Peak",[[],[["hyrox",21,75,[22,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["workout",18,60,[5,19,7]]],[],[["long",20,91,[9]]],[["lift",10,55,[11,12,13,14,15]]]]],"4-5-2-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"4-5-3-base":[5.1,"Base",[[],[["hyrox",0,45,[1,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["workout",4,45,[5,6,7]],["lift",36,45,[37,38,39,40,41]]],[],[["long",8,71,[9]]],[["lift",10,55,[11,12,13,14,15]]]]],"4-5-3-build":[5.9,"Build",[[],[["hyrox",16,60,[17,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["workout",18,60,[5,19,7]],["lift",36,45,[37,38,39,40,41]]],[],[["long",20,91,[9]]],[["lift",10,55,[11,12,13,14,15]]]]],"4-5-3-peak":[6.2,"Peak",[[],[["hyrox",21,75,[22,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["workout",18,60,[5,19,7]],["lift",36,45,[37,38,39,40,41]]],[],[["long",20,91,[9]]],[["lift",10,55,[11,12,13,14,15]]]]],"4-5-3-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"4-6-0-base":[3.6,"Base",[[],[["workout",4,45,[5,6,7]]],[],[["hyrox",0,45,[1,2,3]]],[],[["lift",10,55,[11,12,13,14,15]]],[["long",8,71,[9]]]]],"4-6-0-build":[4.4,"Build",[[],[["workout",18,60,[5,19,7]]],[],[["hyrox",16,60,[17,2,3]]],[],[["lift",10,55,[11,12,13,14,15]]],[["long",20,91,[9]]]]],"4-6-0-peak":[4.7,"Peak",[[],[["workout",18,60,[5,19,7]]],[],[["hyrox",21,75,[22,2,3]]],[],[["lift",10,55,[11,12,13,14,15]]],[["long",20,91,[9]]]]],"4-6-0-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"4-6-2-base":[4.4,"Base",[[],[["workout",4,45,[5,6,7]]],[],[["hyrox",0,45,[1,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["lift",10,55,[11,12,13,14,15]]],[["long",8,71,[9]]]]],"4-6-2-build":[5.2,"Build",[[],[["workout",18,60,[5,19,7]]],[],[["hyrox",16,60,[17,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["lift",10,55,[11,12,13,14,15]]],[["long",20,91,[9]]]]],"4-6-2-peak":[5.4,"Peak",[[],[["workout",18,60,[5,19,7]]],[],[["hyrox",21,75,[22,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["lift",10,55,[11,12,13,14,15]]],[["long",20,91,[9]]]]],"4-6-2-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"4-6-3-base":[5.1,"Base",[[],[["workout",4,45,[5,6,7]],["lift",36,45,[37,38,39,40,41]]],[],[["hyrox",0,45,[1,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["lift",10,55,[11,12,13,14,15]]],[["long",8,71,[9]]]]],"4-6-3-build":[5.9,"Build",[[],[["workout",18,60,[5,19,7]],["lift",36,45,[37,38,39,40,41]]],[],[["hyrox",16,60,[17,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["lift",10,55,[11,12,13,14,15]]],[["long",20,91,[9]]]]],"4-6-3-peak":[6.2,"Peak",[[],[["workout",18,60,[5,19,7]],["lift",36,45,[37,38,39,40,41]]],[],[["hyrox",21,75,[22,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["lift",10,55,[11,12,13,14,15]]],[["long",20,91,[9]]]]],"4-6-3-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"5-5-0-base":[4.1,"Base",[[["lift",10,55,[11,12,13,14,15]]],[["hyrox",0,45,[1,2,3]]],[],[["workout",4,45,[5,6,7]]],[],[["long",8,71,[9]]],[["easy",42,30,[26]]]]],"5-5-0-build":[5.2,"Build",[[["lift",10,55,[11,12,13,14,15]]],[["hyrox",16,60,[17,2,3]]],[],[["workout",18,60,[5,19,7]]],[],[["long",20,91,[9]]],[["easy",43,45,[26]]]]],"5-5-0-peak":[5.4,"Peak",[[["lift",10,55,[11,12,13,14,15]]],[["hyrox",21,75,[22,2,3]]],[],[["workout",18,60,[5,19,7]]],[],[["long",20,91,[9]]],[["easy",43,45,[26]]]]],"5-5-0-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"5-5-2-base":[4.9,"Base",[[["lift",10,55,[11,12,13,14,15]]],[["hyrox",0,45,[1,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["workout",4,45,[5,6,7]]],[],[["long",8,71,[9]]],[["easy",42,30,[26]]]]],"5-5-2-build":[5.9,"Build",[[["lift",10,55,[11,12,13,14,15]]],[["hyrox",16,60,[17,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["workout",18,60,[5,19,7]]],[],[["long",20,91,[9]]],[["easy",43,45,[26]]]]],"5-5-2-peak":[6.2,"Peak",[[["lift",10,55,[11,12,13,14,15]]],[["hyrox",21,75,[22,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["workout",18,60,[5,19,7]]],[],[["long",20,91,[9]]],[["easy",43,45,[26]]]]],"5-5-2-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"5-5-3-base":[5.6,"Base",[[["lift",10,55,[11,12,13,14,15]]],[["hyrox",0,45,[1,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["workout",4,45,[5,6,7]],["lift",36,45,[37,38,39,40,41]]],[],[["long",8,71,[9]]],[["easy",42,30,[26]]]]],"5-5-3-build":[6.7,"Build",[[["lift",10,55,[11,12,13,14,15]]],[["hyrox",16,60,[17,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["workout",18,60,[5,19,7]],["lift",36,45,[37,38,39,40,41]]],[],[["long",20,91,[9]]],[["easy",43,45,[26]]]]],"5-5-3-peak":[6.9,"Peak",[[["lift",10,55,[11,12,13,14,15]]],[["hyrox",21,75,[22,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["workout",18,60,[5,19,7]],["lift",36,45,[37,38,39,40,41]]],[],[["long",20,91,[9]]],[["easy",43,45,[26]]]]],"5-5-3-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"5-6-0-base":[4.1,"Base",[[["lift",10,55,[11,12,13,14,15]]],[["workout",4,45,[5,6,7]]],[],[["hyrox",0,45,[1,2,3]]],[],[["easy",42,30,[26]]],[["long",8,71,[9]]]]],"5-6-0-build":[5.2,"Build",[[["lift",10,55,[11,12,13,14,15]]],[["workout",18,60,[5,19,7]]],[],[["hyrox",16,60,[17,2,3]]],[],[["easy",43,45,[26]]],[["long",20,91,[9]]]]],"5-6-0-peak":[5.4,"Peak",[[["lift",10,55,[11,12,13,14,15]]],[["workout",18,60,[5,19,7]]],[],[["hyrox",21,75,[22,2,3]]],[],[["easy",43,45,[26]]],[["long",20,91,[9]]]]],"5-6-0-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"5-6-2-base":[4.9,"Base",[[["lift",10,55,[11,12,13,14,15]]],[["workout",4,45,[5,6,7]]],[],[["hyrox",0,45,[1,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["easy",42,30,[26]]],[["long",8,71,[9]]]]],"5-6-2-build":[5.9,"Build",[[["lift",10,55,[11,12,13,14,15]]],[["workout",18,60,[5,19,7]]],[],[["hyrox",16,60,[17,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["easy",43,45,[26]]],[["long",20,91,[9]]]]],"5-6-2-peak":[6.2,"Peak",[[["lift",10,55,[11,12,13,14,15]]],[["workout",18,60,[5,19,7]]],[],[["hyrox",21,75,[22,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["easy",43,45,[26]]],[["long",20,91,[9]]]]],"5-6-2-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"5-6-3-base":[5.6,"Base",[[["lift",10,55,[11,12,13,14,15]]],[["workout",4,45,[5,6,7]],["lift",36,45,[37,38,39,40,41]]],[],[["hyrox",0,45,[1,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["easy",42,30,[26]]],[["long",8,71,[9]]]]],"5-6-3-build":[6.7,"Build",[[["lift",10,55,[11,12,13,14,15]]],[["workout",18,60,[5,19,7]],["lift",36,45,[37,38,39,40,41]]],[],[["hyrox",16,60,[17,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["easy",43,45,[26]]],[["long",20,91,[9]]]]],"5-6-3-peak":[6.9,"Peak",[[["lift",10,55,[11,12,13,14,15]]],[["workout",18,60,[5,19,7]],["lift",36,45,[37,38,39,40,41]]],[],[["hyrox",21,75,[22,2,3]],["lift",30,45,[31,32,33,34,35]]],[],[["easy",43,45,[26]]],[["long",20,91,[9]]]]],"5-6-3-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"6-5-0-base":[4.8,"Base",[[["easy",42,30,[26]]],[["hyrox",0,45,[1,2,3]]],[["lift",10,55,[11,12,13,14,15]]],[["workout",4,45,[5,6,7]]],[],[["long",8,71,[9]]],[["hyrox",44,40,[45,46]]]]],"6-5-0-build":[5.9,"Build",[[["easy",43,45,[26]]],[["hyrox",16,60,[17,2,3]]],[["lift",10,55,[11,12,13,14,15]]],[["workout",18,60,[5,19,7]]],[],[["long",20,91,[9]]],[["hyrox",44,40,[45,46]]]]],"6-5-0-peak":[6.1,"Peak",[[["easy",43,45,[26]]],[["hyrox",21,75,[22,2,3]]],[["lift",10,55,[11,12,13,14,15]]],[["workout",18,60,[5,19,7]]],[],[["long",20,91,[9]]],[["hyrox",44,40,[45,46]]]]],"6-5-0-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"6-5-2-base":[5.5,"Base",[[["easy",42,30,[26]]],[["hyrox",0,45,[1,2,3]],["lift",30,45,[31,32,33,34,35]]],[["lift",10,55,[11,12,13,14,15]]],[["workout",4,45,[5,6,7]]],[],[["long",8,71,[9]]],[["hyrox",44,40,[45,46]]]]],"6-5-2-build":[6.6,"Build",[[["easy",43,45,[26]]],[["hyrox",16,60,[17,2,3]],["lift",30,45,[31,32,33,34,35]]],[["lift",10,55,[11,12,13,14,15]]],[["workout",18,60,[5,19,7]]],[],[["long",20,91,[9]]],[["hyrox",44,40,[45,46]]]]],"6-5-2-peak":[6.9,"Peak",[[["easy",43,45,[26]]],[["hyrox",21,75,[22,2,3]],["lift",30,45,[31,32,33,34,35]]],[["lift",10,55,[11,12,13,14,15]]],[["workout",18,60,[5,19,7]]],[],[["long",20,91,[9]]],[["hyrox",44,40,[45,46]]]]],"6-5-2-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"6-5-3-base":[6.3,"Base",[[["easy",42,30,[26]],["lift",36,45,[37,38,39,40,41]]],[["hyrox",0,45,[1,2,3]],["lift",30,45,[31,32,33,34,35]]],[["lift",10,55,[11,12,13,14,15]]],[["workout",4,45,[5,6,7]]],[],[["long",8,71,[9]]],[["hyrox",44,40,[45,46]]]]],"6-5-3-build":[7.4,"Build",[[["easy",43,45,[26]],["lift",36,45,[37,38,39,40,41]]],[["hyrox",16,60,[17,2,3]],["lift",30,45,[31,32,33,34,35]]],[["lift",10,55,[11,12,13,14,15]]],[["workout",18,60,[5,19,7]]],[],[["long",20,91,[9]]],[["hyrox",44,40,[45,46]]]]],"6-5-3-peak":[7.6,"Peak",[[["easy",43,45,[26]],["lift",36,45,[37,38,39,40,41]]],[["hyrox",21,75,[22,2,3]],["lift",30,45,[31,32,33,34,35]]],[["lift",10,55,[11,12,13,14,15]]],[["workout",18,60,[5,19,7]]],[],[["long",20,91,[9]]],[["hyrox",44,40,[45,46]]]]],"6-5-3-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"6-6-0-base":[4.8,"Base",[[["workout",4,45,[5,6,7]]],[["easy",42,30,[26]]],[["hyrox",0,45,[1,2,3]]],[["lift",10,55,[11,12,13,14,15]]],[],[["hyrox",44,40,[45,46]]],[["long",8,71,[9]]]]],"6-6-0-build":[5.9,"Build",[[["workout",18,60,[5,19,7]]],[["easy",43,45,[26]]],[["hyrox",16,60,[17,2,3]]],[["lift",10,55,[11,12,13,14,15]]],[],[["hyrox",44,40,[45,46]]],[["long",20,91,[9]]]]],"6-6-0-peak":[6.1,"Peak",[[["workout",18,60,[5,19,7]]],[["easy",43,45,[26]]],[["hyrox",21,75,[22,2,3]]],[["lift",10,55,[11,12,13,14,15]]],[],[["hyrox",44,40,[45,46]]],[["long",20,91,[9]]]]],"6-6-0-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"6-6-2-base":[5.5,"Base",[[["workout",4,45,[5,6,7]]],[["easy",42,30,[26]]],[["hyrox",0,45,[1,2,3]],["lift",30,45,[31,32,33,34,35]]],[["lift",10,55,[11,12,13,14,15]]],[],[["hyrox",44,40,[45,46]]],[["long",8,71,[9]]]]],"6-6-2-build":[6.6,"Build",[[["workout",18,60,[5,19,7]]],[["easy",43,45,[26]]],[["hyrox",16,60,[17,2,3]],["lift",30,45,[31,32,33,34,35]]],[["lift",10,55,[11,12,13,14,15]]],[],[["hyrox",44,40,[45,46]]],[["long",20,91,[9]]]]],"6-6-2-peak":[6.9,"Peak",[[["workout",18,60,[5,19,7]]],[["easy",43,45,[26]]],[["hyrox",21,75,[22,2,3]],["lift",30,45,[31,32,33,34,35]]],[["lift",10,55,[11,12,13,14,15]]],[],[["hyrox",44,40,[45,46]]],[["long",20,91,[9]]]]],"6-6-2-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]],"6-6-3-base":[6.3,"Base",[[["workout",4,45,[5,6,7]]],[["easy",42,30,[26]],["lift",36,45,[37,38,39,40,41]]],[["hyrox",0,45,[1,2,3]],["lift",30,45,[31,32,33,34,35]]],[["lift",10,55,[11,12,13,14,15]]],[],[["hyrox",44,40,[45,46]]],[["long",8,71,[9]]]]],"6-6-3-build":[7.4,"Build",[[["workout",18,60,[5,19,7]]],[["easy",43,45,[26]],["lift",36,45,[37,38,39,40,41]]],[["hyrox",16,60,[17,2,3]],["lift",30,45,[31,32,33,34,35]]],[["lift",10,55,[11,12,13,14,15]]],[],[["hyrox",44,40,[45,46]]],[["long",20,91,[9]]]]],"6-6-3-peak":[7.6,"Peak",[[["workout",18,60,[5,19,7]]],[["easy",43,45,[26]],["lift",36,45,[37,38,39,40,41]]],[["hyrox",21,75,[22,2,3]],["lift",30,45,[31,32,33,34,35]]],[["lift",10,55,[11,12,13,14,15]]],[],[["hyrox",44,40,[45,46]]],[["long",20,91,[9]]]]],"6-6-3-race":[2.5,"Race week",[[],[],[["hyrox",23,30,[24]]],[],[["easy",25,30,[26]]],[],[["race",27,90,[28,29]]]]]};
+(function(){
+  var D=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],$=function(id){return document.getElementById(id)};
+  var CL={easy:"easy",long:"long",workout:"q",lift:"lift",hyrox:"hyrox",race:"race"};
+  var esc=function(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;")};
+  function build(){
+    var w=W[[$("nd").value,$("lr").value,$("xl").value,$("ph").value].join("-")];if(!w)return;
+    var html="",n=0;
+    w[2].forEach(function(day,i){
+      var c=day.map(function(s){n++;
+        return '<details class="s"><summary><span class="chip '+(CL[s[0]]||"easy")+'">'+esc(T[s[1]])+(s[2]?' <i>'+s[2]+' min</i>':'')+'</span></summary><ul>'+s[3].map(function(x){return "<li>"+esc(T[x])+"</li>"}).join("")+'</ul></details>';});
+      if(!c.length)c.push('<span class="chip rest">Rest or walk</span>');
+      html+='<div class="day"><b>'+D[i]+'</b><div class="chips">'+c.join("")+'</div></div>';
+    });
+    $("week").innerHTML=html;
+    var off=w[2].filter(function(d){return !d.length}).length;
+    $("sum").textContent=w[1]+" week: "+n+" sessions, about "+w[0]+" hours"+(off?", "+off+" rest day"+(off>1?"s":""):"")+"."+($("ph").value==="race"?" Race week: keep it short and easy, and trust the work.":" Keep the long run and easy runs conversational.");
+  }
+  ["nd","xl","lr","ph"].forEach(function(id){$(id).addEventListener("change",build)});
+  build();
+})();
+</script>
+</body>
+</html>
