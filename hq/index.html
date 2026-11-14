@@ -39,6 +39,27 @@ h2{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut
 .ok{color:var(--green)}.bad{color:var(--red)}.sk{color:var(--mut)}
 .empty{padding:10px 12px;color:var(--mut);font-size:14px}
 .foot{color:var(--mut);font-size:11.5px;text-align:center;margin-top:16px;line-height:1.5}
+.tabs{display:flex;gap:6px;margin:14px 0 8px;overflow-x:auto;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;width:auto;margin:0;font:600 12.5px -apple-system,system-ui,sans-serif;color:var(--mut);background:var(--card);border:1px solid var(--line);border-radius:20px;padding:7px 12px;cursor:pointer}
+.tabs button.on{color:var(--ink);background:#3a1a20;border-color:#5a2a30}
+.tabs button .n{display:inline-block;min-width:16px;margin-left:5px;padding:0 5px;border-radius:8px;background:var(--red);color:#fff;font-size:10.5px}
+.tabp{display:none}.tabp.on{display:block}
+.more{display:block;width:100%;margin:0;border-radius:0;padding:9px;border:0;border-top:1px solid var(--line);background:none;color:var(--mut);font:600 12.5px -apple-system,system-ui,sans-serif;cursor:pointer}
+.item .why{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.item.open .why{-webkit-line-clamp:unset}
+.priv{display:none}.priv.on{display:block}
+.lock{margin:14px 0 0;padding:10px 12px;border-radius:12px;border:1px dashed var(--line);color:var(--mut);font-size:12.5px;text-align:center}
+.exec{background:linear-gradient(160deg,#2a0f13 0%,var(--card) 70%);border:1px solid #3a1a20;border-radius:14px;padding:12px}
+.exec h3{margin:0 0 2px;font-size:15px;letter-spacing:.04em}.exec .rl{color:var(--mut);font-size:12px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
+.kpi{background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:10px;padding:8px}
+.kpi b{display:block;font-size:19px;font-variant-numeric:tabular-nums}.kpi span{color:var(--mut);font-size:11px}
+.item{padding:9px 12px;border-top:1px solid var(--line);font-size:13.5px}.item:first-child{border-top:0}
+.item .h{display:flex;justify-content:space-between;gap:8px}.item small{color:var(--mut);font-size:11.5px}
+.item .why{color:var(--mut);font-size:12px;margin-top:2px}
+.tag{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:9px;background:var(--line);color:var(--ink);margin-right:6px;white-space:nowrap}
+.tag.ship{background:#3a1a20;color:#ff9aa0}.tag.you{background:#2a2412;color:var(--amber)}
+a.lnk{color:#ff9aa0;text-decoration:none}
+.hist{margin-top:8px;border-top:1px solid var(--line)}.hist .item{padding:7px 0}
 .banner{display:none;background:var(--amber);color:#111;font-weight:700;font-size:12px;text-align:center;border-radius:8px;padding:5px;margin-bottom:8px}
 .install{display:none;margin-top:10px;padding:10px 12px;border-radius:12px;border:1px dashed var(--line);color:var(--mut);font-size:13px}
 .install b{color:var(--ink)}
@@ -54,8 +75,15 @@ button{font:600 14px -apple-system,system-ui,sans-serif;color:var(--ink);backgro
 <div class="stage"><canvas id="cv" aria-label="Office floor with one character per employee"></canvas></div>
 <div class="streak"><span id="streakText"></span><div class="pips" id="pips"></div></div>
 <div class="install" id="install">Put HQ on your home screen: tap <b>Share</b>, then <b>Add to Home Screen</b>.</div>
+<div class="lock" id="lock">🔒 Assignments, history, approvals and decisions are private. Open the link Vesper sent you once on this phone to unlock them.</div>
+<div class="priv" id="priv">
+<h2>Vesper · CEO office</h2><div class="exec" id="exec"></div>
+<div class="tabs" id="tabs"><button data-t="appr" class="on">Approvals</button><button data-t="jobs">Assignments</button><button data-t="cfeed">Activity</button><button data-t="dec">Decisions</button></div>
+<div class="list tabp on" id="appr"></div><div class="list tabp" id="jobs"></div><div class="list tabp" id="cfeed"></div><div class="list tabp" id="dec"></div>
+</div>
 <h2>The team</h2><div class="roster" id="roster"></div>
 <h2>Today</h2><div class="list" id="ticker"></div>
+
 <div class="foot" id="foot">Lights, badges and the lists are live from each employee's run log.<br>Walking around between runs is office ambience.</div>
 </div>
 <div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
@@ -315,7 +343,8 @@ function openSheet(id){ const a = byId[id]; if (!a) return; selected = id; const
     ${id === "vesper" ? "" : `<span>${a.code === "w" || a.code === "x" ? "Started" : "Last run"}</span><div>${r && r[2] ? esc(fmtT(r[2])) + " (" + esc(ago(r[2])) + ")" : "–"}</div>
     <span>Next run</span><div>${r && r[3] ? esc(fmtT(r[3])) : "on its schedule"}</div><span>Runs today</span><div>${r ? esc(r[4]) : 0}</div>`}
     <span>In the office</span><div>${esc(where)}</div></div>
-    <div class="rl" style="margin-bottom:12px">${a.code === "f" || a.code === "x" ? "Vesper's 5am audit retries a failed or stuck role once. For details, ask Vesper in Telegram." : "For what it actually produced, ask Vesper in Telegram or open the HUD."}</div>
+    ${privDesk(id)}
+    <div class="rl" style="margin:12px 0">${PRIV ? "" : a.code === "f" || a.code === "x" ? "Vesper's 5am audit retries a failed or stuck role once. For details, ask Vesper in Telegram." : "For what it actually produced, unlock the private office (Vesper's link) or ask Vesper in Telegram."}</div>
     <button id="close">Close</button>`;
   sheet.classList.add("on"); document.getElementById("close").onclick = closeSheet; }
 function closeSheet(){ sheet.classList.remove("on"); selected = null; }
@@ -326,6 +355,76 @@ cv.addEventListener("click", e => { const b = cv.getBoundingClientRect(), x = (e
 function tick(){ document.getElementById("clock").textContent = new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}) + (feed && feed.t && !DEMO ? " · updated " + ago(feed.t) : ""); }
 const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
 if (!standalone && /iphone|ipad|ipod/i.test(navigator.userAgent)) document.getElementById("install").style.display = "block";
+
+// ---------- private office (owner only) ----------
+// The words (assignments, summaries, history, approvals, decisions) arrive encrypted (AES-256-GCM) in hq-full.json.
+// The key comes once in Vesper's private Telegram link (#k=...): it never reaches any server and is kept only on this device.
+const PRIV_API = "https://api.github.com/repos/matthewbaconn/Hybrid/contents/hq-full.json?ref=vesper/hq-data";
+const PRIV_RAW = "https://raw.githubusercontent.com/matthewbaconn/Hybrid/vesper/hq-data/hq-full.json";
+let PRIV = null, privErr = "";
+function takeKey(){ const m = location.hash.match(/k=([A-Za-z0-9_-]{40,})/); if (!m) return false;
+  try { localStorage.setItem("hq-k", m[1]); } catch(e){}
+  try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} return true; }
+takeKey();
+addEventListener("hashchange", () => { if (takeKey()) loadPriv(); });
+const b64 = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+async function loadPriv(){
+  let k = null; try { k = localStorage.getItem("hq-k"); } catch(e){}
+  if (!k || !crypto.subtle){ renderPriv(); return; }
+  try {
+    let r = await fetch(PRIV_API, {headers:{Accept:"application/vnd.github.raw+json"}, cache:"no-store"});
+    if (!r.ok) r = await fetch(PRIV_RAW + "?t=" + Math.floor(Date.now() / 60000), {cache:"no-store"});
+    if (!r.ok) throw new Error("feed " + r.status);
+    const blob = await r.json();
+    const key = await crypto.subtle.importKey("raw", b64(k), "AES-GCM", false, ["decrypt"]);
+    const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv:b64(blob.iv), additionalData:new TextEncoder().encode("mileset-hq-v1")}, key, b64(blob.ct));
+    PRIV = JSON.parse(new TextDecoder().decode(pt)); privErr = "";
+  } catch(e){ privErr = /feed 404/.test(String(e)) ? "Vesper hasn't published the private office yet." : "Couldn't unlock the private office on this device (old key?). Ask Vesper for a new HQ link."; }
+  renderPriv();
+}
+const linkify = (t, url) => url && /^https:\/\//.test(url) ? `<a class="lnk" href="${esc(url)}" target="_blank" rel="noopener">${esc(t)}</a>` : esc(t);
+const rword = {ok:"done", failed:"failed", skipped:"no work", retry:"retry queued", push_blocked:"push blocked", push_failed:"push failed", lock_broken:"lock freed"};
+const rtone = {ok:"ok", failed:"bad", push_blocked:"bad", push_failed:"bad"};
+const SHOW = {appr:6, jobs:6, cfeed:8, dec:6}, opened = {};
+function capped(id, items, empty){ if (!items.length) return `<div class="empty">${empty}</div>`;
+  const n = opened[id] ? items.length : Math.min(items.length, SHOW[id]);
+  return items.slice(0, n).join("") + (items.length > n ? `<button class="more" data-more="${id}">Show all ${items.length}</button>` : ""); }
+document.getElementById("tabs").addEventListener("click", e => { const t = e.target.closest("button"); if (!t) return;
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b === t));
+  document.querySelectorAll(".tabp").forEach(p => p.classList.toggle("on", p.id === t.dataset.t)); });
+document.getElementById("priv").addEventListener("click", e => { const m = e.target.closest("[data-more]"); if (m){ opened[m.dataset.more] = true; renderPriv(); return; }
+  const it = e.target.closest(".item"); if (it && !e.target.closest("a")) it.classList.toggle("open"); });
+function renderPriv(){
+  const box = document.getElementById("priv"), lock = document.getElementById("lock");
+  if (!PRIV){ box.classList.remove("on"); lock.style.display = "block"; if (privErr) lock.textContent = "🔒 " + privErr; return; }
+  box.classList.add("on"); lock.style.display = "none";
+  const o = PRIV.o || {}, nm = id => TEAM[id] ? TEAM[id].n : id, k = o.kpis || null;
+  const kp = k && typeof k === "object" ? Object.entries(k.latest || k).filter(([a, v]) => typeof v === "number").slice(0, 3) : [];
+  document.getElementById("exec").innerHTML = `<h3>Vesper</h3><div class="rl">Chief of staff · runs the company day to day · updated ${esc(ago(PRIV.t))}</div>
+    <div class="kpis"><div class="kpi"><b>${o.streak ? o.streak[0] + "/" + o.streak[1] : "–"}</b><span>days, no silent failures</span></div>
+      <div class="kpi"><b>${o.ok_today ?? 0}<small style="font-size:12px;color:var(--mut)"> / ${o.runs_today ?? 0}</small></b><span>runs with output / runs today</span></div>
+      <div class="kpi"><b style="color:${(o.attention || []).length ? "var(--red)" : "var(--green)"}">${(o.attention || []).length}</b><span>employees need a look</span></div>
+      <div class="kpi"><b>${o.approvals ?? 0}</b><span>waiting for you</span></div>
+      <div class="kpi"><b>${(o.working || []).length}</b><span>working now</span></div>
+      <div class="kpi"><b style="color:${o.failed_today ? "var(--red)" : "inherit"}">${o.failed_today ?? 0}</b><span>failed runs today</span></div></div>
+    <div class="rl" style="margin-top:8px">${(o.attention || []).length ? "Needs a look: " + esc(o.attention.map(nm).join(", ")) + ". " : ""}${(o.working || []).length ? "Working: " + esc(o.working.map(nm).join(", ")) + "." : "Nobody is mid-run."}
+    ${kp.length ? "<br>Mileset: " + kp.map(([a, v]) => esc(a.replace(/_/g, " ")) + " " + esc(v)).join(" · ") : "<br>Mileset numbers: not tracked yet (first nightly KPI snapshot pending)."}</div>`;
+  const ap = PRIV.a || [];
+  document.getElementById("appr").innerHTML = capped("appr", ap.map(a => `<div class="item"><div class="h"><span>${a.k === "pr" ? `<span class="tag ${a.why === "SHIP IT" ? "ship" : "you"}">${esc(a.why === "SHIP IT" ? "SHIP IT " + a.n : a.repo + " #" + a.n)}</span>` + linkify(a.title, a.url) : `<span class="tag you">backlog ${esc(a.n)}</span>` + esc(a.title)}</span></div>
+    ${a.k === "backlog" && a.why ? `<div class="why">${esc(a.why)}</div>` : a.k === "pr" && a.why !== "SHIP IT" ? `<div class="why">${esc(a.why)}</div>` : ""}</div>`), "Nothing waiting on you.");
+  const tb = document.querySelector('#tabs [data-t="appr"]'); tb.innerHTML = "Approvals" + (ap.length ? `<span class="n">${ap.length}</span>` : "");
+  const jobs = PRIV.jobs || [];
+  document.getElementById("jobs").innerHTML = capped("jobs", jobs.map(j => `<div class="item"><div class="h"><span><span class="tag">${esc(j[0])}</span>${esc(j[1])}</span></div><div class="why">${esc(j[2] ? j[2] + " · " : "")}${esc(j[3])}</div></div>`), "The backlog is empty.");
+  const fd = PRIV.f || [];
+  document.getElementById("cfeed").innerHTML = capped("cfeed", fd.map(x => `<div class="item"><div class="h"><span><b>${esc(nm(x[1]))}</b> <span class="${rtone[x[2]] || "sk"}">${esc(rword[x[2]] || x[2])}</span></span><small>${esc(fmtT(x[0]))}</small></div>${x[3] ? `<div class="why">${esc(x[3])}</div>` : ""}</div>`), "No activity logged in the last 3 days.");
+  const dc = PRIV.dec || [];
+  document.getElementById("dec").innerHTML = capped("dec", dc.map(r => `<div class="item"><div class="h"><span>${esc(r[1])}</span><small>${esc(r[0])}</small></div><div class="why"><span class="tag ${/verified/i.test(r[2]) && !/not fully/i.test(r[2]) ? "" : "you"}">${esc(r[2])}</span>${esc(r[3])}</div></div>`), "No decisions recorded yet.");
+}
+function privDesk(id){ if (!PRIV) return ""; const d = (PRIV.d || []).find(x => x.id === id); if (!d) return "";
+  return `${d.sum ? `<div class="rl" style="margin:0 0 6px"><b style="color:var(--ink)">Latest:</b> ${linkify(d.sum, d.art)}</div>` : ""}
+    ${d.jobs && d.jobs.length ? `<div class="rl" style="margin:0 0 6px"><b style="color:var(--ink)">Assigned:</b> ${d.jobs.map(j => "#" + esc(j[0]) + " " + esc(j[1].length > 110 ? j[1].slice(0, 107) + "…" : j[1])).join("<br>")}</div>` : ""}
+    ${d.hist && d.hist.length ? `<div class="hist">${d.hist.map(h => `<div class="item"><div class="h"><span class="${rtone[h[1]] || "sk"}">${esc(rword[h[1]] || h[1])}</span><small>${esc(fmtT(h[0]))}</small></div>${h[2] ? `<div class="why">${linkify(h[2], h[3])}</div>` : ""}</div>`).join("")}</div>` : `<div class="rl">No runs in the last 3 days.</div>`}`; }
+loadPriv(); setInterval(loadPriv, 120000);
 resize(); requestAnimationFrame(frame); load(); tick();
 setInterval(load, 120000); setInterval(tick, 20000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden){ last = performance.now(); load(); tick(); } });
