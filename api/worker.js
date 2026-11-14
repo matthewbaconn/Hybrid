@@ -1313,6 +1313,21 @@ async function route(req, env, path, ctx){
     const me2 = await env.DB.prepare("SELECT id, email, name FROM users WHERE id = ?").bind(user.id).first();
     return await sendUpdate(env, me2, subject, message, !!b.test);
   }
+  if (M === "GET" && path === "/api/admin/funnel"){   // activation funnel, real members only, read-only counts
+    if (user.id !== (await ownerId(env))) throw new HttpError(403, "Not allowed.");
+    const d7 = "date(u.created, '+7 days')", cut = new Date(Date.now() - 7 * 864e5).toISOString();
+    const f = await env.DB.prepare(
+      "SELECT COUNT(*) AS signed_up, SUM(EXISTS(SELECT 1 FROM profiles p WHERE p.user_id = u.id)) AS plan, " +
+      "SUM(EXISTS(SELECT 1 FROM profiles p WHERE p.user_id = u.id) AND (EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id) OR EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id))) AS workout, " +
+      "SUM(u.created <= ?1) AS d7_eligible, SUM(u.created <= ?1 AND (" +
+      "EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id AND substr(d.key, 1, 10) >= " + d7 + ") OR " +
+      "EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.source = 'manual' AND a.date >= " + d7 + ") OR " +
+      "EXISTS(SELECT 1 FROM food x WHERE x.user_id = u.id AND x.date >= " + d7 + ") OR " +
+      "EXISTS(SELECT 1 FROM checkins c WHERE c.user_id = u.id AND c.date >= " + d7 + ") OR " +
+      "EXISTS(SELECT 1 FROM sessions s WHERE s.user_id = u.id AND substr(s.created, 1, 10) >= " + d7 + "))) AS active_d7 " +
+      "FROM users u WHERE u.email NOT LIKE '%@example.com'").bind(cut).first();
+    return {funnel: {signed_up: f.signed_up || 0, plan: f.plan || 0, workout: f.workout || 0, d7_eligible: f.d7_eligible || 0, active_d7: f.active_d7 || 0}};
+  }
   if (M === "GET" && path === "/api/admin/members"){
     if (user.id !== (await ownerId(env))) throw new HttpError(403, "Not allowed.");
     const rows = (await env.DB.prepare(
