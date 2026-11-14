@@ -106,7 +106,7 @@ function workoutFor(goal, phase, i, P){
 
 function buildPlan(p, today){
   today = today || isoLocal(new Date());
-  if (isMulti(p.goal)) return buildMulti(p, today);
+  if (isMulti(p.goal)) return applySwaps(buildMulti(p, today));
   const goal = p.goal, fit = fitnessFrom(p), P = {...fit.pace};
   const goalSec = p.goal !== "fitness" && p.goalSec ? p.goalSec : null;
   P.G = goalSec ? goalSec / RACES[goal].mi : (goal !== "fitness" ? fit.pred[goal] / RACES[goal].mi : P.T);
@@ -231,7 +231,7 @@ function buildPlan(p, today){
     }
     weeks.push({n: i + 1, start: ws, phase, miles: half(days.reduce((a, d) => a + d.sessions.reduce((b, s) => b + (s.mi || 0), 0), 0)), days});
   }
-  return {profile: p, P, pred: fit.pred, weeks, start, raceDate, created: today};
+  return applySwaps({profile: p, P, pred: fit.pred, weeks, start, raceDate, created: today});
 }
 
 
@@ -696,5 +696,45 @@ function garminWorkout(plan, s, offs, extra, date){
     isSessionTransitionEnabled: false, poolLength: null, poolLengthUnit: null, segments: [{segmentOrder: 1, sport, poolLength: null, poolLengthUnit: null, steps: [main]}]};
 }
 
-root.HP = {garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
+/* ============ moving a day (life happens) ============
+   profile.swaps = [[dateA, dateB], ...]: the two days trade their sessions, in order. Only days in the
+   same plan week, so weekly miles/hours and the phase stay exactly as built. Applied inside buildPlan,
+   so the app, the server's reminders and the Garmin calendar all see the same week. */
+function applySwaps(plan){
+  const sw = Array.isArray(plan.profile.swaps) ? plan.profile.swaps : [];
+  sw.forEach(x => {
+    if (!Array.isArray(x) || x.length !== 2) return;
+    const [a, b] = x; if (typeof a !== "string" || typeof b !== "string" || a === b) return;
+    const wa = weekIdx(plan, a), wb = weekIdx(plan, b), w = plan.weeks[wa];
+    if (wa !== wb || !w) return;
+    const da = w.days[dow(a)], db = w.days[dow(b)];
+    if (!da || !db || da.date !== a || db.date !== b) return;
+    const t = da.sessions; da.sessions = db.sessions; db.sessions = t;
+  });
+  return plan;
+}
+const stepText = s => (s.steps || []).map(x => Array.isArray(x) ? x[0] : x).join(" ");
+const isHard = s => s.type === "long" || (!!s.long && s.type !== "lift") || s.type === "race" || s.type === "hyrox" || (s.type === "workout" && !s.base) ||
+  ((s.type === "bike" || s.type === "swim" || s.type === "cardio") && /long|hard|threshold|interval|race effort|tempo|7–8/i.test(s.title + " " + stepText(s)));
+const isLong = s => s.type === "long" || (s.type !== "lift" && (!!s.long || /^long/i.test(s.title || "")));
+const isLegs = s => s.type === "lift" && /lower|legs|full body/i.test(s.title || "") && !/light/.test(s.title || "");
+/* what would go wrong if days a and b traded places: plain-words warnings, [] when the week still flows */
+function swapCheck(plan, a, b){
+  const wi = weekIdx(plan, a), w = plan.weeks[wi];
+  if (!w || weekIdx(plan, b) !== wi) return ["Pick a day in the same week."];
+  const S = {}; for (let k = -1; k <= 7; k++){ const d = addDays(w.start, k), day = dayOf(plan, d); S[d] = day ? day.sessions : []; }
+  const scan = () => {
+  const out = [], nm = d => DAYF[dow(d)].slice(0, 3) + " " + fmtD(d), hard = d => (S[d] || []).some(isHard), long = d => (S[d] || []).some(isLong), legs = d => (S[d] || []).some(isLegs);
+  for (const d of [a, b]){
+    const prev = addDays(d, -1), next = addDays(d, 1);
+    if (hard(d) && (hard(prev) || hard(next))){ const o = hard(prev) ? prev : next; const m = "Two hard days in a row (" + nm(d < o ? d : o) + " and " + nm(d < o ? o : d) + "). Keep the second one easy, or pick another day."; if (!out.includes(m)) out.push(m); }
+    if (long(d) && legs(prev)){ const m = "Leg day the day before your long run (" + nm(prev) + "). Tired legs make the long run harder: swap the lift to after it if you can."; if (!out.includes(m)) out.push(m); }
+    if (legs(d) && long(next)){ const m = "Leg day the day before your long run (" + nm(d) + "). Tired legs make the long run harder: swap the lift to after it if you can."; if (!out.includes(m)) out.push(m); }
+  }
+  return out; };
+  const before = scan(), t = S[a]; S[a] = S[b]; S[b] = t;
+  return scan().filter(m => !before.includes(m));   // only what this move adds, not what the week already had
+}
+
+root.HP = {applySwaps, swapCheck, isHard, garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
 })(typeof globalThis !== "undefined" ? globalThis : self);

@@ -55,6 +55,31 @@ await check("Build a plan (4 steps)", async () => {
   if (await page.locator('.hub-hero[data-scr="session"]').count()){ await open("session"); await page.waitForSelector(".hero .sess-t"); await noOverflow(); await shot("02b-session"); await back(); }
   return t;
 });
+await check("Move a day (swap within the week, saved, put back)", async () => {
+  await tab("plan"); await page.waitForSelector(".day-h");
+  const btn = page.locator(".day-h .mvb").first(); if (!(await btn.count())) throw new Error("no Move button on the plan");
+  const from = await btn.getAttribute("data-date"), label = async d => (await page.locator("#d-" + d + " .day-b").innerText()).split("\n")[0];
+  const before = await label(from);
+  await btn.click(); await page.waitForSelector(".sheet.mvs .mvo"); await noOverflow(); await shot("02c-move-sheet");
+  const opt = page.locator(".sheet.mvs .mvo").first(), to = await opt.getAttribute("data-b"), toBefore = await label(to);
+  const warnOrOk = await opt.locator("em, .okm").first().innerText();
+  await opt.click(); await page.waitForTimeout(600);
+  if (await label(from) !== toBefore || await label(to) !== before) throw new Error("days didn't trade places: " + from + "/" + to);
+  if (!/Moved from/.test(await page.innerText("#d-" + to + " .day-h"))) throw new Error("no 'Moved from' note");
+  await page.waitForTimeout(800); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar:not([hidden])", {timeout: 15000}); await page.waitForTimeout(300); await tab("plan");
+  if (await label(to) !== before) throw new Error("move wasn't saved to the account");
+  await shot("02d-moved");
+  await page.click('#d-' + to + ' .mvb'); await page.waitForSelector(".sheet.mvs"); await page.click('.sheet.mvs [data-act="mvpick"].btn'); await page.waitForTimeout(800);
+  if (await label(from) !== before || await label(to) !== toBefore) throw new Error("put back didn't restore");
+  await tab("today"); return from + " ⇄ " + to + " · " + warnOrOk;
+});
+await check("Move check flags hard back-to-back days (plan logic)", async () => {
+  const r = await page.evaluate(() => { const p = {goal: "half", raceDate: "2027-02-07", goalSec: 6300, weekly: 22, longest: 8, days: [0, 1, 3, 4, 5], longDay: 5, lifts: 3, start: "2026-11-09", prDist: "10k", prSec: 2910, age: 30, weight: 182};
+    const pl = HP.buildPlan(p, "2026-11-14"), w = pl.weeks[1].days, wk = pl.weeks[1].miles, sw = HP.buildPlan({...p, swaps: [[w[1].date, w[2].date]]}, "2026-11-14");
+    return {legs: HP.swapCheck(pl, w[2].date, w[4].date), same: sw.weeks[1].miles === wk, moved: sw.weeks[1].days[2].sessions.some(s => s.type === "workout"), bad: HP.buildPlan({...p, swaps: [[w[1].date, pl.weeks[2].days[1].date]]}, "2026-11-14").weeks[1].days[1].sessions.some(s => s.type === "workout")}; });
+  if (!r.same || !r.moved || !r.bad || !r.legs.some(x => /Leg day the day before your long run/.test(x))) throw new Error(JSON.stringify(r));
+  return "week miles unchanged · cross-week swaps ignored · leg-day warning";
+});
 await check("Morning check-in + AI coach note", async () => {
   if (!(await page.locator('[data-act="cisave"]').count())){ await tab("recovery"); await page.click('[data-act="gotoday"]'); await page.waitForSelector('[data-act="cisave"]', {timeout: 5000}); }   // after noon the check-in is hidden unless opened
   for (const [k, v] of [["sleep_h", "6"], ["sleep_q", "3"], ["soreness", "3"], ["energy", "3"], ["stress", "3"]]) await page.click('[data-act="ciset"][data-k="' + k + '"][data-v="' + v + '"]');
