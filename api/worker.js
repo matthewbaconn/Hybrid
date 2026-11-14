@@ -1037,7 +1037,7 @@ async function route(req, env, path, ctx){
       env.DB.prepare("SELECT COUNT(*) AS n FROM push_subs WHERE user_id = ?").bind(user.id),
       env.DB.prepare("SELECT last_used FROM import_keys WHERE user_id = ?").bind(user.id),
       env.DB.prepare("SELECT date, sleep_h, rhr, hrv, steps, active_cal, sleep_score, bb, stress, source FROM health_daily WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since),
-      env.DB.prepare("SELECT date, ex, weight, hit FROM lift_logs WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since120),
+      env.DB.prepare("SELECT date, ex, weight, hit, reps, sets FROM lift_logs WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since120),
       env.DB.prepare("SELECT data FROM meal_plans WHERE user_id = ?").bind(user.id),
       env.DB.prepare("SELECT connected, last_push, permissions, (SELECT COUNT(*) FROM garmin_workouts w WHERE w.user_id = garmin_links.user_id AND w.date >= date('now', '-1 day') AND w.schedule_id IS NOT NULL) AS wk FROM garmin_links WHERE user_id = ?").bind(user.id)
     ]);
@@ -1088,7 +1088,7 @@ async function route(req, env, path, ctx){
   }
   if (M === "PUT" && path === "/api/profile"){
     const b = await body(req), s = JSON.stringify(b.profile || null);
-    if (!b.profile || typeof b.profile !== "object" || s.length > 20000) throw new HttpError(400, "Bad plan settings.");
+    if (!b.profile || typeof b.profile !== "object" || s.length > 60000) throw new HttpError(400, "Bad plan settings.");   // room for changed workouts
     await env.DB.batch([
       env.DB.prepare("INSERT INTO profiles (user_id, data, updated) VALUES (?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET data = excluded.data, updated = excluded.updated").bind(user.id, s, now()),
       ...(isDate(b.resetFrom) ? [env.DB.prepare("DELETE FROM done WHERE user_id = ? AND key >= ?").bind(user.id, b.resetFrom)] : [])
@@ -1263,8 +1263,11 @@ async function route(req, env, path, ctx){
     const ops = b.sets.filter(x => x && String(x.ex || "").trim()).map(x => {
       const w = x.weight === null || x.weight === "" ? null : Number(x.weight);
       if (w != null && !(w >= 0 && w <= 2000)) throw new HttpError(400, "Weights should be in pounds.");
-      return env.DB.prepare("INSERT INTO lift_logs (user_id, date, ex, weight, hit, updated) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, date, ex) DO UPDATE SET weight = excluded.weight, hit = excluded.hit, updated = excluded.updated")
-        .bind(user.id, b.date, String(x.ex).trim().slice(0, 60), w, x.hit === false ? 0 : 1, now());
+      const r = x.reps == null || x.reps === "" ? null : Math.round(Number(x.reps)), n = x.sets == null || x.sets === "" ? null : Math.round(Number(x.sets));
+      if (r != null && !(r >= 0 && r <= 1000)) throw new HttpError(400, "Reps should be a number.");
+      if (n != null && !(n >= 1 && n <= 20)) throw new HttpError(400, "Sets should be 1 to 20.");
+      return env.DB.prepare("INSERT INTO lift_logs (user_id, date, ex, weight, hit, reps, sets, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, date, ex) DO UPDATE SET weight = excluded.weight, hit = excluded.hit, reps = excluded.reps, sets = excluded.sets, updated = excluded.updated")
+        .bind(user.id, b.date, String(x.ex).trim().slice(0, 60), w, x.hit === false ? 0 : 1, r, n, now());
     });
     if (ops.length) await env.DB.batch(ops);
     return {ok: true};

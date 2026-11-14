@@ -73,12 +73,56 @@ await check("Move a day (swap within the week, saved, put back)", async () => {
   if (await label(from) !== before || await label(to) !== toBefore) throw new Error("put back didn't restore");
   await tab("today"); return from + " ⇄ " + to + " · " + warnOrOk;
 });
+await check("Change a workout (similar option, saved, back to planned)", async () => {
+  await tab("plan"); await page.waitForSelector(".day-h");
+  const btn = page.locator('[data-act="chgopen"]').first(); if (!(await btn.count())) throw new Error("no Change workout button");
+  const key = await btn.getAttribute("data-key"), d = key.slice(0, 10), title = async () => (await page.locator("#d-" + d + " .sess-t").nth(+key.slice(11)).innerText()).trim();
+  const before = await title();
+  await btn.click(); await page.waitForSelector(".sheet.chg"); await noOverflow(); await shot("02e-change-sheet");
+  const opt = page.locator('.sheet.chg [data-act="chgpick"]').first(); if (!(await opt.count())) throw new Error("no similar options for " + before);
+  const pick = (await opt.locator("b").innerText()).trim(); await opt.click(); await page.waitForTimeout(800);
+  if (await title() !== pick) throw new Error("title is " + await title() + ", expected " + pick);
+  await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar:not([hidden])", {timeout: 15000}); await page.waitForTimeout(300); await tab("plan");
+  if (await title() !== pick) throw new Error("change wasn't saved to the account");
+  if (!/Planned:/.test(await page.innerText("#d-" + d))) throw new Error("no 'Planned:' note");
+  await page.click('[data-act="chgopen"][data-key="' + key + '"]'); await page.waitForSelector(".sheet.chg");
+  await page.click('.sheet.chg [data-act="chgtab"][data-k="search"]'); await page.fill("#chg-q", "bike"); await page.waitForTimeout(200);
+  const hits = await page.locator('#chg-res [data-act="chgpick"]').count(); if (!hits) throw new Error("search 'bike' found nothing");
+  await page.click('.sheet.chg [data-act="chgtab"][data-k="own"]'); await page.fill("#co-title", "Club track night"); await page.fill("#co-mi", "5"); await page.fill("#co-steps", "Warm up 2 mi\n6 × 400 m hard, 200 m jog\nCool down 1 mi");
+  await page.click('[data-act="chgown"]'); await page.waitForTimeout(800); if (await title() !== "Club track night") throw new Error("own workout not set: " + await title());
+  await page.click('[data-act="chgopen"][data-key="' + key + '"]'); await page.waitForSelector(".sheet.chg"); await page.click('[data-act="chgreset"]'); await page.waitForTimeout(800);
+  if (await title() !== before) throw new Error("reset didn't restore: " + await title());
+  await tab("today"); return before + " → " + pick + " → own → back · search 'bike': " + hits;
+});
+await check("Missed workout moves forward, custom workouts follow their day (plan logic)", async () => {
+  const r = await page.evaluate(() => { const p = {goal: "half", raceDate: "2027-02-07", goalSec: 6300, weekly: 22, longest: 8, days: [0, 2, 4, 6], longDay: 6, lifts: 2, start: "2026-11-09", prDist: "10k", prSec: 2910};
+    const pl = HP.buildPlan(p, "2026-11-14"), sun = pl.weeks[0].days[6], mon = pl.weeks[1].days[0], wed = pl.weeks[0].days[2];
+    const x = HP.buildPlan({...p, swaps: [[sun.date, mon.date]]}, "2026-11-14"), alt = HP.alternatives(pl, wed.sessions[0])[0];
+    const y = HP.buildPlan({...p, custom: {[wed.sessions[0].o]: alt}, swaps: [[wed.date, pl.weeks[0].days[4].date]]}, "2026-11-14");
+    const bad = HP.buildPlan({...p, custom: {[wed.sessions[0].o]: {type: "easy", title: "", steps: []}}}, "2026-11-14");
+    return {cross: x.weeks[1].days[0].sessions[0].title === sun.sessions[0].title && x.weeks[0].miles + x.weeks[1].miles === pl.weeks[0].miles + pl.weeks[1].miles,
+      follows: y.weeks[0].days[4].sessions[0].title === alt.title, ignored: bad.weeks[0].days[2].sessions[0].title === wed.sessions[0].title,
+      ex: HP.exAlts("Back squat").list.includes("Goblet squat"), lib: HP.library(pl).length > 30}; });
+  if (Object.values(r).some(v => !v)) throw new Error(JSON.stringify(r)); return JSON.stringify(r);
+});
+await check("Log weights and reps, see strength progress", async () => {
+  await tab("plan"); await page.waitForSelector(".day-h");
+  const lo = page.locator('[data-act="lopen"]').first(); if (!(await lo.count())) return "no strength session on or before today this week (skipped)";
+  await lo.click(); await page.waitForSelector(".liftlog #lr-0"); await noOverflow(); await shot("02f-liftlog");
+  const ex = (await page.locator(".liftlog .lrow b").first().innerText()).trim();
+  await page.fill("#lw-0", "100"); await page.fill("#lr-0", "8"); await page.click('[data-act="lsave"]'); await page.waitForTimeout(800);
+  await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar:not([hidden])", {timeout: 15000}); await page.waitForTimeout(300);
+  await tab("training"); await page.waitForSelector("text=Strength progress", {timeout: 5000});
+  const t = await page.locator(".pc:has-text('Strength progress')").innerText(); await shot("02g-strength");
+  if (!t.includes(ex) || !/100 lb × 8/.test(t)) throw new Error("progress card: " + t.replace(/\n/g, " ").slice(0, 160));
+  await tab("today"); return ex + " 100 lb × 8 saved and shown";
+});
 await check("Move check flags hard back-to-back days (plan logic)", async () => {
   const r = await page.evaluate(() => { const p = {goal: "half", raceDate: "2027-02-07", goalSec: 6300, weekly: 22, longest: 8, days: [0, 1, 3, 4, 5], longDay: 5, lifts: 3, start: "2026-11-09", prDist: "10k", prSec: 2910, age: 30, weight: 182};
     const pl = HP.buildPlan(p, "2026-11-14"), w = pl.weeks[1].days, wk = pl.weeks[1].miles, sw = HP.buildPlan({...p, swaps: [[w[1].date, w[2].date]]}, "2026-11-14");
-    return {legs: HP.swapCheck(pl, w[2].date, w[4].date), same: sw.weeks[1].miles === wk, moved: sw.weeks[1].days[2].sessions.some(s => s.type === "workout"), bad: HP.buildPlan({...p, swaps: [[w[1].date, pl.weeks[2].days[1].date]]}, "2026-11-14").weeks[1].days[1].sessions.some(s => s.type === "workout")}; });
+    return {legs: HP.swapCheck(pl, w[2].date, w[4].date), same: sw.weeks[1].miles === wk, moved: sw.weeks[1].days[2].sessions.some(s => s.type === "workout"), bad: HP.buildPlan({...p, swaps: [[w[1].date, pl.weeks[3].days[1].date]]}, "2026-11-14").weeks[1].days[1].sessions.some(s => s.type === "workout")}; });
   if (!r.same || !r.moved || !r.bad || !r.legs.some(x => /Leg day the day before your long run/.test(x))) throw new Error(JSON.stringify(r));
-  return "week miles unchanged · cross-week swaps ignored · leg-day warning";
+  return "week miles unchanged · swaps over a week apart ignored · leg-day warning";
 });
 await check("Morning check-in + AI coach note", async () => {
   if (!(await page.locator('[data-act="cisave"]').count())){ await tab("recovery"); await page.click('[data-act="gotoday"]'); await page.waitForSelector('[data-act="cisave"]', {timeout: 5000}); }   // after noon the check-in is hidden unless opened

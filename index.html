@@ -625,7 +625,12 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .rs-item:active{transform:scale(.985);background:var(--surface)}
 .rs-item div{flex:1;min-width:0}.rs-item b{display:block;font-size:15px}.rs-item span{display:block;font-size:13px;color:var(--muted);margin-top:3px}.rs-item em{font-style:normal;flex:none}
 .liftlog{display:grid;gap:12px;margin-top:12px;padding-top:14px;border-top:1px solid var(--line)}
-.lrow{display:grid;grid-template-columns:1fr 92px 64px;gap:10px;align-items:center}
+.lrow{display:grid;grid-template-columns:1fr 84px 74px;gap:8px;align-items:center}
+.prs .pr .spk{width:60px;height:20px;flex:none} .prs .pr em.up{color:var(--good,#4CAF7A);font-size:15px} .prs .pr em.dn{color:var(--warn,#E8A33D);font-size:15px} .prs .pr em.sx{color:var(--muted);font-size:14px}
+.chgtabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:3px;background:var(--sunk);border-radius:6px;padding:3px} .chgtabs button{border:0;background:none;border-radius:4px;min-height:38px;font-weight:600;font-size:13.5px;color:var(--muted)} .chgtabs button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.chg .mvo small{display:block;font-size:12.5px;color:var(--muted);margin-top:4px} .chg .mvo .ty{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tc,var(--muted));margin-bottom:2px}
+.chg label.f{display:grid;gap:5px;font-size:13px;color:var(--muted)} .chg textarea{min-height:110px;font:inherit} .chg .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mcard p{margin:4px 0 10px} .mcard .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .lrow b{display:block;font-size:14.5px}.lrow span{display:block;font-size:12.5px;color:var(--muted);line-height:1.4;margin-top:2px}
 .lw{display:flex;align-items:center;gap:4px}.lw input{width:100%;min-height:42px;padding:0 10px;text-align:right}.lw small,.lh small{color:var(--muted);font-size:12px}
 .lh{display:grid;justify-items:center;gap:2px}.lh input{width:22px;height:22px;accent-color:var(--accent)}
@@ -1495,28 +1500,57 @@ async function rsSearch(){
 let liftLog = S.lifts || [], liftOpen = {};
 const exName = st => String(st).replace(/\s+\d+\s*[×x].*$/, "").replace(/\s+\d+\s*(rounds?|min).*$/i, "").trim();
 const exScheme = st => (String(st).match(/(\d+\s*[×x]\s*[^,]+)$/) || [])[1] || "";
-function liftHint(ex){
-  const xs = liftLog.filter(x => x.ex.toLowerCase() === ex.toLowerCase()).sort((a, b) => b.date.localeCompare(a.date)), last = xs[0];
-  if (!last) return {text: /plank|push-?up|pull-?up|chin|dip|lunge|step-?up|bridge|dead bug|bird dog|carry|hang|jump|bound/i.test(ex) && !/db|dumbbell|barbell|weighted/i.test(ex) ? "Bodyweight is fine. Add weight if it feels easy." : "First time: pick a weight that leaves 2 reps in the tank.", next: null};
-  if (!last.weight) return {text: "Last time: bodyweight" + (last.hit ? ", all reps. Try 1–2 more reps." : ". Same reps again."), next: null};
+function exTarget(st){             // "Back squat 4 × 5" → {sets: 4, reps: 5, unit: "reps"}; "Plank 3 × 45 s" → unit "sec"; "Pull-ups 4 × max" → reps null
+  const sc = exScheme(st), m = sc.match(/(\d+)\s*[×x]\s*(\d+)?/);
+  return {sets: m ? +m[1] : null, reps: m && m[2] ? +m[2] : null, unit: /\d+\s*s\b/.test(sc) ? "sec" : "reps"};
+}
+const isBodyweight = ex => /plank|push-?up|pull-?up|chin|dip|lunge|step-?up|bridge|dead bug|bird dog|carry|hang|jump|bound|hollow|inverted/i.test(ex) && !/db|dumbbell|barbell|weighted|goblet/i.test(ex);
+function liftHint(ex, tgt){
+  tgt = tgt || {};
+  const xs = liftLog.filter(x => x.ex.toLowerCase() === ex.toLowerCase() && x.date < TODAY).sort((a, b) => b.date.localeCompare(a.date)), last = xs[0], u = tgt.unit === "sec" ? " s" : " reps";
+  if (!last) return {text: isBodyweight(ex) ? "Bodyweight is fine. Add weight if it feels easy." : "First time: pick a weight that leaves 2 reps in the tank.", next: null, nextReps: tgt.reps};
+  if (!last.weight){
+    if (last.reps){ const nr = last.reps + (tgt.unit === "sec" ? 5 : 1); return {text: "Last " + fmtD(last.date) + ": " + last.reps + u + ". Try " + nr + u + ".", next: null, nextReps: nr}; }
+    return {text: "Last time: bodyweight" + (last.hit ? ", all reps. Try 1–2 more reps." : ". Same reps again."), next: null, nextReps: tgt.reps};
+  }
   const inc = /squat|deadlift|rdl|hip thrust|leg press|trap/i.test(ex) ? 10 : 5;
   let next = last.weight, why = "";
   if (last.hit){ next = last.weight + inc; why = "all reps last time"; }
   else if (xs[1] && !xs[1].hit && xs[1].weight === last.weight){ next = Math.max(0, Math.round(last.weight * .9 / 5) * 5); why = "missed reps twice, so ease back"; }
   else why = "missed some reps, so repeat it";
-  return {text: "Last " + fmtD(last.date) + ": " + last.weight + " lb" + (last.hit ? " ✓" : "") + ". Try " + next + " lb (" + why + ").", next};
+  return {text: "Last " + fmtD(last.date) + ": " + last.weight + " lb" + (last.reps ? " × " + last.reps : "") + (last.hit ? " ✓" : "") + ". Try " + next + " lb (" + why + ").", next, nextReps: tgt.reps};
 }
 function liftLogHtml(s, key){
   if (s.type !== "lift") return '';
-  const open = liftOpen[key], date = key.slice(0, 10);
-  if (!open) return '<button class="linkbtn" type="button" data-act="lopen" data-key="' + key + '">' + ic("dumbbell") + ' Log weights</button>';
+  const open = liftOpen[key], date = key.slice(0, 10), logged = s.steps.some(st => liftLog.some(x => x.date === date && x.ex.toLowerCase() === exName(st[0]).toLowerCase()));
+  if (!open) return '<button class="linkbtn" type="button" data-act="lopen" data-key="' + key + '">' + ic("dumbbell") + (logged ? ' Edit your weights and reps' : ' Log weights and reps') + '</button>';
   const rows = s.steps.map((st, i) => {
-    const ex = exName(st[0]), h = liftHint(ex), today = liftLog.find(x => x.date === date && x.ex.toLowerCase() === ex.toLowerCase());
+    const ex = exName(st[0]), tg = exTarget(st[0]), h = liftHint(ex, tg), today = liftLog.find(x => x.date === date && x.ex.toLowerCase() === ex.toLowerCase());
     return '<div class="lrow"><div><b>' + esc(ex) + '</b><span>' + esc(exScheme(st[0])) + ' · ' + esc(h.text) + '</span></div>' +
       '<label class="lw"><input inputmode="decimal" id="lw-' + i + '" placeholder="' + (h.next != null ? h.next : '') + '" value="' + (today && today.weight != null ? today.weight : '') + '" aria-label="' + esc(ex) + ' weight in pounds"><small>lb</small></label>' +
-      '<label class="lh"><input type="checkbox" id="lh-' + i + '"' + (!today || today.hit ? ' checked' : '') + '><small>All reps</small></label></div>';
+      '<label class="lw"><input inputmode="numeric" id="lr-' + i + '" placeholder="' + (h.nextReps != null ? h.nextReps : '') + '" value="' + (today && today.reps != null ? today.reps : '') + '" aria-label="' + esc(ex) + (tg.unit === "sec" ? ' seconds per set' : ' reps per set') + '"><small>' + (tg.unit === "sec" ? 'sec' : 'reps') + '</small></label></div>';
   }).join("");
-  return '<div class="liftlog">' + rows + '<div class="fbtns"><button class="btn" type="button" data-act="lclose" data-key="' + key + '">Close</button><button class="btn primary" type="button" data-act="lsave" data-key="' + key + '">Save weights</button></div><p class="fine">Leave weight empty for bodyweight moves. Next time, Mileset suggests the weight to try.</p></div>';
+  return '<div class="liftlog"><p class="fine" style="margin:0">Optional. Weight and reps per set. Leave weight empty for bodyweight.</p>' + rows + '<div class="fbtns"><button class="btn" type="button" data-act="lclose" data-key="' + key + '">Close</button><button class="btn primary" type="button" data-act="lsave" data-key="' + key + '">Save</button></div><p class="fine">Next time, Mileset suggests what to try. Your week-by-week progress is in the Progress tab.</p></div>';
+}
+/* strength progress: per exercise, the best set of each week (estimated 1-rep max for weighted sets) */
+function strengthHtml(){
+  const since = addDays(TODAY, -84), by = {};
+  liftLog.filter(x => x.date >= since).forEach(x => { (by[x.ex.toLowerCase()] = by[x.ex.toLowerCase()] || {name: x.ex, xs: []}).xs.push(x); });
+  const e1 = x => x.weight ? x.weight * (1 + Math.min(12, x.reps || 0) / 30) : (x.reps || 0);
+  const rows = Object.values(by).map(g => {
+    g.xs.sort((a, b) => a.date.localeCompare(b.date));
+    const last = g.xs[g.xs.length - 1], wk = {};
+    g.xs.forEach(x => { const m = mondayOf(x.date); if (!wk[m] || e1(x) > e1(wk[m])) wk[m] = x; });
+    const weeks = Object.keys(wk).sort(), first = wk[weeks[0]], best = wk[weeks[weeks.length - 1]], wt = !!(last.weight);
+    const d = weeks.length > 1 ? (wt ? Math.round((best.weight || 0) - (first.weight || 0)) : (best.reps || 0) - (first.reps || 0)) : null;
+    const ch = d == null ? '<em class="sx">New</em>' : d > 0 ? '<em class="up">+' + d + (wt ? ' lb' : ' reps') + '</em>' : d < 0 ? '<em class="dn">' + d + (wt ? ' lb' : ' reps') + '</em>' : '<em class="sx">Same</em>';
+    const vals = weeks.map(m => e1(wk[m])), mx = Math.max(...vals), mn = Math.min(...vals);
+    const spark = vals.length > 1 ? '<svg class="spk" viewBox="0 0 60 20" aria-hidden="true"><polyline fill="none" stroke="var(--lift)" stroke-width="2" points="' + vals.map((v, i) => (i * 60 / (vals.length - 1)).toFixed(1) + ',' + (18 - (mx === mn ? 8 : (v - mn) / (mx - mn) * 16)).toFixed(1)).join(" ") + '"/></svg>' : '';
+    return {date: last.date, h: '<div class="pr"><div><b>' + esc(g.name) + '</b><span>' + (last.weight ? last.weight + ' lb' : 'Bodyweight') + (last.reps ? ' × ' + last.reps : '') + ' · ' + shortD(last.date) + (weeks.length > 1 ? ' · ' + weeks.length + ' weeks logged' : '') + '</span></div>' + spark + ch + '</div>'};
+  }).sort((a, b) => b.date.localeCompare(a.date));
+  return '<div class="pc wide prs"><div class="ph">' + ic("dumbbell") + '<span>Strength progress</span></div>' +
+    (rows.length ? rows.slice(0, 12).map(r => r.h).join("") + '<p class="fine" style="margin:6px 0 0">Change since your first logged week in the last 12 weeks, from your best set each week.</p>'
+      : '<div class="pf"><span>Open a strength session and tap "Log weights and reps". Your week-by-week progress shows up here.</span></div>') + '</div>';
 }
 
 /* ============ race fueling and hydration ============ */
@@ -1769,7 +1803,9 @@ function sessHtml(s, key, big){
     (future && s.k && F.offs[s.k] ? '<p class="fbnote">' + ic("gauge") + '<span>Reps ' + Math.abs(F.offs[s.k]) + ' s/mi ' + (F.offs[s.k] < 0 ? 'faster' : 'slower') + ' than the original plan, from how your last workouts went.</span></p>' : '') +
     (hp ? '<p class="fbnote">' + ic("sun") + '<span>Outdoors today: paces include ' + Math.round(hp * 1000) / 10 + '% for heat (' + heat.temp + '°F, dew ' + heat.dew + '° around ' + hr12(heat.hour) + '). Treadmill: subtract that back.</span></p>' : '') +
     (s.type === "race" ? raceCard() + (plan.raceDate ? '<button class="linkbtn" type="button" data-act="go" data-scr="fuelplan">' + ic("bolt") + ' Race fueling and hydration plan</button>' : '') : '') +
+    (s.custom ? '<p class="fbnote">' + ic("spark") + '<span>' + (s.own ? 'Your own workout.' : 'Your pick.') + (s.was ? ' Planned: ' + esc(s.was) + '.' : '') + '</span></p>' : '') +
     (s.type === "lift" && date <= TODAY ? liftLogHtml(s, key) : '') +
+    (!match && !isDone && date >= TODAY && s.type !== "race" && s.o ? '<button class="linkbtn" type="button" data-act="chgopen" data-key="' + key + '">' + ic("swap") + (s.custom ? ' Change it again' : ' Change workout') + '</button>' : '') +
     (note ? '<p class="fbnote">' + ic("gauge") + '<span>' + esc(note) + '</span></p>' : '') +
     (adj ? '<p class="adj a' + r.level + '">' + esc(adj) + '</p>' : '') +
     (big ? '<p class="why">' + esc(s.why) + '</p>' : '') +
@@ -1778,6 +1814,15 @@ function sessHtml(s, key, big){
         (as && s.type !== "lift" ? '<div class="assess v-' + VERDICT[as.verdict][1] + '"><b>' + VERDICT[as.verdict][0] + '</b><span>' + esc(as.why) + '</span></div>' : '') +
         (rv ? reviewHtml(rv, match) : '')
       : '<div class="row"><button class="btn ' + (isDone ? 'done' : big ? 'primary' : '') + '" type="button" data-act="done" data-key="' + key + '">' + (isDone ? ic("check") + 'Done' : 'Mark as done') + '</button></div>') + '</div>';
+}
+function missedCard(){
+  for (let k = 1; k <= 3; k++){
+    const date = addDays(TODAY, -k); let sk = null; try { sk = localStorage.getItem("hy-mskip-" + date); } catch(e){}
+    if (sk || !missedDay(date) || !moveTargets(date).length) continue;
+    return '<section class="card mcard" style="--tone:var(--warn,#E8A33D)"><div class="card-h">' + ic("cal") + '<span class="lbl">Missed ' + dayName(date).toLowerCase().replace(/^[a-z]/, c => c.toUpperCase()) + '</span></div>' +
+      '<p><b>' + esc(dayLabel(dayOf(date))) + '</b> didn\'t get done. Life happens. Move it to a day you can do it.</p><div class="row"><button class="btn primary" type="button" data-act="mvopen" data-date="' + date + '">' + ic("swap") + 'Move it</button><button class="linkbtn" type="button" data-act="mskip" data-date="' + date + '">Skip it</button></div></section>';
+  }
+  return '';
 }
 function sessionCard(day){
   const t = dayType(day);
@@ -1818,7 +1863,7 @@ function renderToday(){
   let wskip = null; try { wskip = localStorage.getItem("hy-wskip"); } catch(e){}
   const quickW = !wt && wskip !== TODAY && wAsk() ? '<section class="card qw" style="--tone:var(--lift)"><div class="card-h">' + ic("scale") + '<span class="lbl">Morning weigh-in</span><button class="linkbtn r" type="button" data-act="wskip">Not today</button></div>' +
     '<div class="wform"><input id="w-lb" inputmode="decimal" placeholder="' + (aw7 ? aw7.toFixed(1) : "Weight") + '" aria-label="Weight in pounds"><span>lb</span><button class="btn primary" type="button" data-act="wsave">Save</button></div>' + (wf && wf.err ? '<p class="err" role="alert">' + esc(wf.err) + '</p>' : '') + '</section>' : '';
-  h += checkinCard() + fuelTile + heroSummary(day) + quickW;
+  h += checkinCard() + fuelTile + heroSummary(day) + missedCard() + quickW;
   if (L && wxState === "idle") setTimeout(() => loadWeather(), 0);
   const nowKey = TODAY + "T" + String(new Date().getHours()).padStart(2, "0") + ":00", bw = wx && wxState === "ok" ? HP.bestWindow(wx.hours, nowKey, addDays(TODAY, 1)) : null;
   let wmi = 0, wdone = 0;
@@ -1847,27 +1892,107 @@ function renderPlan(){
   });
   return h + '</div>';
 }
-/* ---------- move a day: it trades places with another day in the same week ----------
+/* ---------- change a workout: similar options from the plan, search, or write your own ----------
+   Saved as profile.custom[origin key] (see applyCustom in plan.js), so it travels with its day when days move,
+   and the server's reminders and the Garmin calendar use it too. */
+let chg = null;
+const CHG_TYPES = [["easy", "Run"], ["long", "Long run"], ["workout", "Run workout"], ["lift", "Strength"], ["bike", "Ride"], ["swim", "Swim"], ["cardio", "Circuit"], ["walk", "Walk"], ["hyrox", "HYROX"]];
+function chgSess(){ if (!chg || !plan) return null; const d = dayOf(chg.key.slice(0, 10)); return d ? d.sessions[+chg.key.slice(11)] : null; }
+function openChange(key){
+  closeMenu(); const s0 = (dayOf(key.slice(0, 10)) || {sessions: []}).sessions[+key.slice(11)]; if (!s0) return;
+  chg = {key, tab: "similar", q: "", ex: null, err: "", own: {type: s0.type === "race" ? "easy" : s0.type, title: s0.title, mi: s0.mi || "", min: s0.min || "", steps: s0.steps.map(x => x[0]).join("\n")}};
+  const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
+  b.innerHTML = '<div class="sheet mvs chg" role="dialog" aria-modal="true" aria-labelledby="chg-h"></div>';
+  document.body.appendChild(b); chgRender();
+}
+const sessLine = x => x.type === "lift" ? x.steps.length + " exercises" : x.mi ? x.mi + " mi" + (x.min ? " · " + x.min + " min" : "") : x.min ? x.min + " min" : "";
+const chgItem = (x, i, src, sub) => '<button type="button" class="mvo t-' + x.type + '" data-act="chgpick" data-src="' + src + '" data-i="' + i + '"><div><span class="ty">' + esc(TYPE[x.type] || x.type) + '</span><b>' + esc(x.title) + '</b><span>' + esc(x.steps.map(z => z[0]).slice(0, 3).join(" · ")) + '</span>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div><i>›</i></button>';
+function chgResults(){
+  const s = chgSess(); if (!s) return '';
+  const words = chg.q.toLowerCase().split(/\s+/).filter(Boolean), lib = HP.library(plan);
+  chg.res = lib.map((x, i) => ({x, i})).filter(({x}) => words.every(w => x.tags.includes(w))).sort((a, b) => (b.x.type === s.type) - (a.x.type === s.type)).slice(0, 25);
+  return chg.res.length ? chg.res.map(({x}, n) => chgItem(x, n, "lib", sessLine(x))).join("") : '<p class="sub">Nothing matches "' + esc(chg.q) + '". Try "tempo", "hills", "bike", "upper body", or write your own.</p>';
+}
+function chgRender(){
+  const el = $(".sheet.chg"), s = chgSess(); if (!el) return; if (!s){ closeMenu(); return; }
+  const lift = s.type === "lift", tabs = [["similar", "Similar"], ["search", "Search"]].concat(lift ? [["ex", "Exercises"]] : []).concat([["own", "Your own"]]);
+  let body = '';
+  if (chg.tab === "similar"){
+    chg.alts = HP.alternatives(plan, s);
+    body = chg.alts.length ? '<div class="mvl">' + chg.alts.map((x, i) => chgItem(x, i, "alt", x.note)).join("") + '</div>' : '<p class="sub">No ready-made swaps for this one. Search, or write your own.</p>';
+  } else if (chg.tab === "search"){
+    body = '<input id="chg-q" type="search" enterkeyhint="search" placeholder="Tempo, hills, upper body, bike, 6 mi…" value="' + esc(chg.q) + '" aria-label="Search workouts"><div class="mvl" id="chg-res">' + chgResults() + '</div>';
+  } else if (chg.tab === "ex"){
+    if (chg.ex == null) body = '<p class="sub">Tap an exercise to swap it for one that works the same muscles. Sets and reps stay the same.</p><div class="mvl">' + s.steps.map((st, i) => '<button type="button" class="mvo t-lift" data-act="chgexsel" data-i="' + i + '"><div><b>' + esc(exName(st[0])) + '</b><span>' + esc(exScheme(st[0])) + '</span></div><i>›</i></button>').join("") + '</div>';
+    else { const nm = exName(s.steps[chg.ex][0]), al = HP.exAlts(nm);
+      body = '<p class="sub">Swap <b style="color:var(--ink)">' + esc(nm) + '</b>' + (al.group ? ' (' + esc(al.group.toLowerCase()) + ')' : '') + ' for:</p><div class="mvl">' + al.list.map(n => '<button type="button" class="mvo t-lift" data-act="chgex" data-name="' + esc(n) + '"><div><b>' + esc(n) + '</b><span>' + esc(exScheme(s.steps[chg.ex][0])) + '</span></div><i>›</i></button>').join("") + '</div>' +
+        '<label class="f">Or type your own exercise<input id="chg-exname" maxlength="60" placeholder="e.g. Hack squat"></label><button class="btn" type="button" data-act="chgex">Use this exercise</button><button class="linkbtn" type="button" data-act="chgexsel" data-i="">‹ All exercises</button>'; }
+  } else {
+    const o = chg.own;
+    body = '<label class="f">Type<select id="co-type">' + CHG_TYPES.map(([v, l]) => '<option value="' + v + '"' + (o.type === v ? ' selected' : '') + '>' + l + '</option>').join("") + '</select></label>' +
+      '<label class="f">Name<input id="co-title" maxlength="80" value="' + esc(o.title) + '" placeholder="e.g. Track 400s with the club"></label>' +
+      '<div class="two"><label class="f">Distance (mi)<input id="co-mi" inputmode="decimal" value="' + esc(String(o.mi || "")) + '" placeholder="optional"></label><label class="f">Time (min)<input id="co-min" inputmode="numeric" value="' + esc(String(o.min || "")) + '" placeholder="optional"></label></div>' +
+      '<label class="f">Steps, one per line' + (lift ? ' (e.g. Back squat 4 × 5)' : '') + '<textarea id="co-steps" maxlength="1600">' + esc(o.steps) + '</textarea></label>' +
+      '<button class="btn primary block" type="button" data-act="chgown">Use my workout</button><p class="fine" style="margin:0">Your own workouts aren\'t graded against plan paces. Strength steps written as "Exercise sets × reps" can be logged for progress.</p>';
+  }
+  el.innerHTML = '<h2 id="chg-h">Change workout</h2><p class="sub">' + DAYF[dow(chg.key.slice(0, 10))] + ', ' + fmtD(chg.key.slice(0, 10)) + ': <b style="color:var(--ink)">' + esc(s.title) + '</b>' + (s.was ? ' (planned: ' + esc(s.was) + ')' : '') + '</p>' +
+    '<div class="chgtabs" role="group" aria-label="How to change it">' + tabs.map(([k, l]) => '<button type="button" data-act="chgtab" data-k="' + k + '" aria-pressed="' + (chg.tab === k) + '">' + l + '</button>').join("") + '</div>' +
+    (chg.err ? '<p class="err" role="alert">' + esc(chg.err) + '</p>' : '') + body +
+    (s.custom ? '<button class="btn block" type="button" data-act="chgreset">Back to the planned workout</button>' : '') + '<button class="btn block" type="button" data-act="close">Cancel</button>';
+  if (chg.tab === "search"){ const q = $("#chg-q"); if (q && !chg.q) q.focus(); }
+}
+function setCustom(sess, msg){
+  const s = chgSess(); if (!s || !s.o) return;
+  const prof = {...plan.profile}, cu = {...(prof.custom || {})};
+  if (sess){ const c = HP.cleanSession(sess); if (!c){ chg.err = "That workout needs a name, a step, and a distance or time."; chgRender(); return; } delete c.custom; cu[s.o] = c; } else delete cu[s.o];
+  Object.keys(cu).forEach(k => { if (k.slice(0, 10) < addDays(TODAY, -45)) delete cu[k]; });
+  if (Object.keys(cu).length > 80){ chg.err = "Too many changed workouts on this plan. Rebuild it in Settings to start fresh."; chgRender(); return; }
+  if (Object.keys(cu).length) prof.custom = cu; else delete prof.custom;
+  const prev = plan; plan = buildPlan(prof); fbCache = null; chg = null; closeMenu(); save(); render();
+  toast(msg + (garmin.connected ? " Your Garmin calendar updates too." : ""));
+  if (mode === "account") api("PUT", "/api/profile", {profile: prof}).catch(e => { plan = prev; fbCache = null; render(); toast(e.message); });
+}
+
+/* ---------- move a day: it trades places with another day (up to a week away) ----------
    Stored as profile.swaps (see applySwaps in plan.js), so reminders and the Garmin calendar follow.
    Only days from today on, never race day, and never a day with anything done or logged. */
 function canMove(date){
   const d = plan && dayOf(date); if (!d || date < TODAY || d.sessions.some(s => s.type === "race")) return false;
   const m = dayMatches(date); return !d.sessions.some((s, i) => sessDone(date, i, m)) && !liftLog.some(x => x.date === date);
 }
-function moveTargets(date){ const wi = weekOf(date); return wi < 0 ? [] : plan.weeks[wi].days.filter(d => d.date !== date && canMove(d.date)); }
+/* a missed day: up to 7 days back, planned sessions, nothing done or logged. It can move to a day from today on. */
+function untouched(date){ const d = plan && dayOf(date); if (!d) return false; const m = dayMatches(date); return !d.sessions.some((s, i) => sessDone(date, i, m)) && !liftLog.some(x => x.date === date); }
+function missedDay(date){ const d = plan && dayOf(date); return !!d && date < TODAY && date >= addDays(TODAY, -7) && d.sessions.length > 0 && !d.sessions.some(s => s.type === "race") && untouched(date); }
+const canMoveFrom = date => canMove(date) || missedDay(date);
+function moveTargets(date){
+  const out = []; for (let k = -7; k <= 7; k++){ const x = addDays(date, k), d = k && x >= TODAY && dayOf(x); if (d && canMove(x)) out.push(d); }
+  return missedDay(date) ? out.sort((a, b) => (a.sessions.length ? 1 : 0) - (b.sessions.length ? 1 : 0) || a.date.localeCompare(b.date)) : out;
+}
 const dayLabel = d => d.sessions.length ? d.sessions.map(s => s.title).join(" + ") : "Rest day";
-const dayName = date => date === TODAY ? "Today" : DAYF[dow(date)];
-function moveBtn(date){ return canMove(date) && moveTargets(date).length ? '<button class="linkbtn mvb" type="button" data-act="mvopen" data-date="' + date + '" aria-label="Move ' + dayName(date) + ' to another day">' + ic("swap") + 'Move</button>' : ''; }
+const dayShort = date => date === TODAY ? "Today" : date === addDays(TODAY, 1) ? "Tomorrow" : date === addDays(TODAY, -1) ? "Yesterday" : DAYF[dow(date)];
+const dayName = date => date === TODAY ? "Today" : date === addDays(TODAY, 1) ? "Tomorrow" : date === addDays(TODAY, -1) ? "Yesterday" : DAYF[dow(date)] + (Math.abs(daysBetween(TODAY, date)) > 6 || weekOf(date) !== weekOf(TODAY) ? " " + fmtD(date) : "");
+function moveBtn(date){ return canMoveFrom(date) && moveTargets(date).length ? '<button class="linkbtn mvb" type="button" data-act="mvopen" data-date="' + date + '" aria-label="Move ' + dayName(date) + ' to another day">' + ic("swap") + 'Move</button>' : ''; }
 function lastSwap(date){ const sw = plan.profile.swaps || []; for (let i = sw.length - 1; i >= 0; i--) if (sw[i][0] === date || sw[i][1] === date) return {i, a: sw[i][0], b: sw[i][1]}; return null; }
-function movedNote(date){ const l = lastSwap(date); if (!l || weekOf(l.a) !== weekOf(l.b)) return ''; return 'Moved from ' + DAYF[dow(l.a === date ? l.b : l.a)]; }
+function movedNote(date){ const l = lastSwap(date); if (!l) return ''; const o = l.a === date ? l.b : l.a; if (date < TODAY && o >= TODAY) return ''; return 'Moved from ' + DAYF[dow(o)] + (weekOf(o) !== weekOf(date) ? ' ' + fmtD(o) : ''); }
+function isLastSwap(a, b){ const sw = plan.profile.swaps || [], x = sw[sw.length - 1]; return !!x && ((x[0] === a && x[1] === b) || (x[0] === b && x[1] === a)); }
 function openMove(date){
-  const d = dayOf(date), opts = moveTargets(date), l = lastSwap(date), o2 = l && (l.a === date ? l.b : l.a);
-  const undo = l && canMove(o2) && weekOf(o2) === weekOf(date) ? '<button class="btn block" type="button" data-act="mvpick" data-a="' + date + '" data-b="' + o2 + '">Put it back (' + dayName(o2) + ')</button>' : '';
+  const d = dayOf(date), opts = moveTargets(date), l = lastSwap(date), o2 = l && (l.a === date ? l.b : l.a), missed = missedDay(date);
+  const undo = l && Math.abs(daysBetween(date, o2)) <= 7 && untouched(o2) && untouched(date) && (canMove(o2) || isLastSwap(date, o2)) ? '<button class="btn block" type="button" data-act="mvpick" data-a="' + date + '" data-b="' + o2 + '">Put it back (' + dayName(o2) + ')</button>' : '';
+  if (missed){
+    const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
+    b.innerHTML = '<div class="sheet mvs" role="dialog" aria-modal="true" aria-labelledby="mv-h"><h2 id="mv-h">Move ' + dayName(date).toLowerCase().replace(/^[a-z]/, c => c.toUpperCase()) + '\'s workout</h2>' +
+      '<p class="sub"><b style="color:var(--ink)">' + esc(dayLabel(d)) + '</b> didn\'t happen. Pick the day you can do it. Whatever was planned on that day is skipped, so the week doesn\'t pile up.</p><div class="mvl">' +
+      opts.filter(o => o.date !== o2 || !undo).map(o => { const warn = HP.swapCheck(plan, date, o.date, true).concat(o.sessions.length ? ["Skips " + dayLabel(o) + "."] : []);
+        return '<button type="button" class="mvo t-' + dayType(o) + '" data-act="mvpick" data-a="' + date + '" data-b="' + o.date + '"><div><b>' + dayShort(o.date) + ' · ' + fmtD(o.date) + '</b><span>Now: ' + esc(dayLabel(o)) + '</span>' +
+          (warn.length ? warn.map(w => '<em>' + esc(w) + '</em>').join("") : '<i class="okm">Free day, fits your week</i>') + '</div><i>›</i></button>'; }).join("") +
+      '</div>' + undo + '<button class="btn block" type="button" data-act="close">Cancel</button></div>';
+    document.body.appendChild(b); const f = b.querySelector(".mvo, .btn"); if (f) f.focus(); return;
+  }
   const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
   b.innerHTML = '<div class="sheet mvs" role="dialog" aria-modal="true" aria-labelledby="mv-h"><h2 id="mv-h">Move ' + (date === TODAY ? 'today' : DAYF[dow(date)]) + '</h2>' +
-    '<p class="sub"><b style="color:var(--ink)">' + esc(dayLabel(d)) + '</b> trades places with the day you pick. Your week keeps the same ' + (plan.multi ? 'hours' : 'miles') + ' and sessions.</p><div class="mvl">' +
+    '<p class="sub"><b style="color:var(--ink)">' + esc(dayLabel(d)) + '</b> trades places with the day you pick. ' + (opts.some(o => weekOf(o.date) !== weekOf(date)) ? 'Same week keeps your ' + (plan.multi ? 'hours' : 'miles') + ' as built; a day in the next or last week shifts them between the two.' : 'Your week keeps the same ' + (plan.multi ? 'hours' : 'miles') + ' and sessions.') + '</p><div class="mvl">' +
     opts.filter(o => o.date !== o2 || !undo).map(o => { const warn = HP.swapCheck(plan, date, o.date);
-      return '<button type="button" class="mvo t-' + dayType(o) + '" data-act="mvpick" data-a="' + date + '" data-b="' + o.date + '"><div><b>' + dayName(o.date) + ' · ' + fmtD(o.date) + '</b><span>Now: ' + esc(dayLabel(o)) + '</span>' +
+      return '<button type="button" class="mvo t-' + dayType(o) + '" data-act="mvpick" data-a="' + date + '" data-b="' + o.date + '"><div><b>' + dayShort(o.date) + ' · ' + fmtD(o.date) + '</b><span>Now: ' + esc(dayLabel(o)) + '</span>' +
         (warn.length ? warn.map(w => '<em>' + esc(w) + '</em>').join("") : '<i class="okm">Fits your week</i>') + '</div><i>›</i></button>'; }).join("") +
     '</div>' + undo + '<button class="btn block" type="button" data-act="close">Cancel</button></div>';
   document.body.appendChild(b); const f = b.querySelector(".mvo, .btn"); if (f) f.focus();
@@ -2006,6 +2131,7 @@ function progressHtml(){
     pr("Fastest 5K+ run", f5, f5 && fmtPace(f5.minutes * 60 / f5.mi) + '/mi') + pr("Fastest 10K+ run", f10, f10 && fmtPace(f10.minutes * 60 / f10.mi) + '/mi') +
     (bigW && bigW.mi ? '<div class="pr"><div><b>Biggest week</b><span>Week of ' + shortD(bigW.ws) + '</span></div><em>' + half(bigW.mi) + ' mi</em></div>' : '');
   h += '<div class="pc wide prs"><div class="ph">' + ic("flag") + '<span>Personal records</span></div>' + (prs || '<div class="pf"><span>Log or sync runs and your bests show up here.</span></div>') + '</div>';
+  h += strengthHtml();
   return h;
 }
 
@@ -2344,7 +2470,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "61";
+const APP_VERSION = "62";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2688,11 +2814,15 @@ document.addEventListener("click", ev => {
   if (act === "lclose"){ delete liftOpen[a.dataset.key]; render(); return; }
   if (act === "lsave"){
     const key = a.dataset.key, date = key.slice(0, 10), d = dayOf(date), s = d && d.sessions[+key.slice(11)]; if (!s) return;
-    const sets = []; let bad = false;
-    s.steps.forEach((st, i) => { const raw = (($("#lw-" + i) || {}).value || "").trim(), w = raw === "" ? null : parseFloat(raw);
-      if (raw !== "" && !(w >= 0 && w <= 2000)) bad = true; sets.push({ex: exName(st[0]), weight: w, hit: !!($("#lh-" + i) || {}).checked}); });
-    if (bad){ toast("Weights should be numbers in pounds."); return; }
-    const apply = () => { sets.forEach(x => { liftLog = liftLog.filter(y => !(y.date === date && y.ex.toLowerCase() === x.ex.toLowerCase())); liftLog.push({date, ex: x.ex, weight: x.weight, hit: x.hit ? 1 : 0}); }); delete liftOpen[key]; save(); toast("Weights saved."); render(); };
+    const sets = []; let bad = "";
+    s.steps.forEach((st, i) => { const raw = (($("#lw-" + i) || {}).value || "").trim(), rr = (($("#lr-" + i) || {}).value || "").trim(), w = raw === "" ? null : parseFloat(raw), r = rr === "" ? null : Math.round(parseFloat(rr)), tg = exTarget(st[0]);
+      if (raw !== "" && !(w >= 0 && w <= 2000)) bad = "Weights should be numbers in pounds.";
+      if (rr !== "" && !(r >= 0 && r <= 1000)) bad = "Reps should be a number.";
+      if (raw === "" && rr === "") return;                               // nothing typed for this one: not logged
+      sets.push({ex: exName(st[0]), weight: w, reps: r, sets: tg.sets, hit: r == null || !tg.reps || r >= tg.reps}); });
+    if (bad){ toast(bad); return; }
+    if (!sets.length){ toast("Type a weight or reps for at least one exercise."); return; }
+    const apply = () => { sets.forEach(x => { liftLog = liftLog.filter(y => !(y.date === date && y.ex.toLowerCase() === x.ex.toLowerCase())); liftLog.push({date, ex: x.ex, weight: x.weight, reps: x.reps, sets: x.sets, hit: x.hit ? 1 : 0}); }); delete liftOpen[key]; save(); toast("Saved. Next time Mileset suggests what to try."); render(); };
     if (mode === "account") api("PUT", "/api/lifts", {date, sets}).then(apply).catch(e => toast(e.message)); else apply();
     return;
   }
@@ -2951,16 +3081,44 @@ document.addEventListener("click", ev => {
   if (act === "gotoday"){ ciForce = true; setTab("today", true); return; }
   if (act === "menu"){ openMenu(); return; }
   if (act === "close"){ closeMenu(); return; }
-  if (act === "mvopen"){ closeMenu(); if (canMove(a.dataset.date)) openMove(a.dataset.date); return; }
+  if (act === "chgopen"){ openChange(a.dataset.key); return; }
+  if (act === "chgtab"){ if (chg){ chg.tab = a.dataset.k; chg.err = ""; chg.ex = null; chgRender(); } return; }
+  if (act === "chgpick"){ if (!chg) return; const x = a.dataset.src === "alt" ? (chg.alts || [])[+a.dataset.i] : ((chg.res || [])[+a.dataset.i] || {}).x; if (x) setCustom(x, "Workout changed to " + x.title + "."); return; }
+  if (act === "chgexsel"){ if (chg){ chg.ex = a.dataset.i === "" ? null : +a.dataset.i; chg.err = ""; chgRender(); } return; }
+  if (act === "chgex"){
+    const s = chgSess(); if (!chg || !s || chg.ex == null) return;
+    const nm = (a.dataset.name || ($("#chg-exname") || {}).value || "").trim().replace(/\s+\d+\s*[×x].*$/, "").slice(0, 60);
+    if (!nm){ chg.err = "Type an exercise name."; chgRender(); return; }
+    const old = exName(s.steps[chg.ex][0]), steps = s.steps.map((st, i) => i === chg.ex ? [nm + (exScheme(st[0]) ? " " + exScheme(st[0]) : ""), null, null] : st);
+    setCustom({...s, steps, title: s.title.replace(/ · (yours|swapped)$/, "") + " · swapped", was: undefined}, old + " swapped for " + nm + ".");
+    return;
+  }
+  if (act === "chgown"){
+    if (!chg) return; const v = id => (($("#" + id) || {}).value || "").trim();
+    const o = chg.own = {type: v("co-type"), title: v("co-title"), mi: v("co-mi"), min: v("co-min"), steps: v("co-steps")};
+    const mi = o.mi === "" ? 0 : parseFloat(o.mi), min = o.min === "" ? 0 : parseFloat(o.min);
+    if (!o.title){ chg.err = "Give it a name."; chgRender(); return; }
+    if (o.mi !== "" && !(mi > 0 && mi <= 60)){ chg.err = "Distance should be 0 to 60 miles."; chgRender(); return; }
+    if (o.min !== "" && !(min > 0 && min <= 600)){ chg.err = "Time should be 1 to 600 minutes."; chgRender(); return; }
+    if (o.type !== "lift" && !mi && !min){ chg.err = "Add a distance or a time so your week adds up."; chgRender(); return; }
+    const run = ["easy", "long", "workout"].includes(o.type), lines = o.steps.split(/\n+/).map(x => x.trim()).filter(Boolean).slice(0, 12);
+    setCustom({type: o.type, title: o.title, mi: run ? mi : 0, min, k: o.type === "long" ? "L" : o.type === "workout" ? "T" : "E", own: 1, why: "Your own workout.",
+      steps: (lines.length ? lines : [o.title]).map((t, i) => [t, run && lines.length <= 1 && mi ? mi : null, run && o.type !== "workout" && lines.length <= 1 ? (o.type === "long" ? "L" : "E") : null])}, "Your workout is set.");
+    return;
+  }
+  if (act === "chgreset"){ setCustom(null, "Back to the planned workout."); return; }
+  if (act === "mvopen"){ closeMenu(); if (canMoveFrom(a.dataset.date)) openMove(a.dataset.date); return; }
+  if (act === "mskip"){ try { localStorage.setItem("hy-mskip-" + a.dataset.date, "1"); } catch(e){} render(); return; }
   if (act === "mvpick"){
     const A = a.dataset.a, B = a.dataset.b; closeMenu();
-    if (!canMove(A) || !canMove(B) || weekOf(A) !== weekOf(B)){ toast("That day can't move any more."); render(); return; }
+    const undoing = isLastSwap(A, B) && untouched(A) && untouched(B);
+    if (!undoing && (!canMoveFrom(A) || !canMove(B) || Math.abs(daysBetween(A, B)) > 7)){ toast("That day can't move any more."); render(); return; }
     const prof = {...plan.profile}, sw = (prof.swaps || []).slice(), last = sw[sw.length - 1];
     if (last && ((last[0] === A && last[1] === B) || (last[0] === B && last[1] === A))) sw.pop(); else sw.push([A, B]);
     if (sw.length > 200){ toast("Too many moves on this plan. Rebuild it in Settings to start fresh."); return; }
     if (sw.length) prof.swaps = sw; else delete prof.swaps;
     const prev = plan; plan = buildPlan(prof); fbCache = null; save(); render();
-    toast(dayName(A) + " and " + dayName(B) + " swapped." + (garmin.connected ? " Your Garmin calendar updates too." : ""));
+    toast((A < TODAY && !undoing ? dayName(A) + "'s workout moved to " + dayName(B).replace(/^[A-Z]/, c => c.toLowerCase()) + "." : undoing ? "Put back." : dayName(A) + " and " + dayName(B) + " swapped.") + (garmin.connected ? " Your Garmin calendar updates too." : ""));
     if (mode === "account") api("PUT", "/api/profile", {profile: prof}).catch(e => { plan = prev; fbCache = null; render(); toast(e.message); });
     return;
   }
@@ -2968,6 +3126,7 @@ document.addEventListener("click", ev => {
   if (act === "reset"){ closeMenu(); scr = null; plan = null; for (const k in done) delete done[k]; for (const k in food) delete food[k]; store.set(null); setup = {step: -1, p: blankProfile()}; render(); window.scrollTo(0, 0); return; }
 });
 document.addEventListener("input", ev => {
+  if (ev.target.id === "chg-q" && chg){ chg.q = ev.target.value; const r = $("#chg-res"); if (r) r.innerHTML = chgResults(); return; }
   if (!["s-goal", "s-pr", "s-easy", "a-wp"].includes(ev.target.id)) return;
   const el = ev.target, f = fmtDigits(el.value);
   if (el.value !== f) el.value = f;
