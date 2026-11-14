@@ -63,7 +63,7 @@ button{cursor:pointer}
 .top{display:flex;align-items:center;gap:12px}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}
 .logo{width:36px;height:36px;border-radius:5px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent-2),var(--accent));flex:none}
-.logo svg{width:20px;height:20px}
+.logo svg{width:20px;height:20px} .logo svg.mark{width:12px;height:26px;color:#fff} .logo.hdr{width:auto;background:none;padding:0 2px} .logo.hdr svg.mark{width:16px;height:34px} .brand b.word{font-weight:900;letter-spacing:.08em}
 .brand b{font:800 19px/1 var(--f-display);letter-spacing:-.02em}
 .pill{display:inline-flex;align-items:center;gap:6px;border-radius:6px;padding:4px 10px;font:600 12px/1.2 var(--f-body);background:var(--sunk);color:var(--muted);white-space:nowrap}
 .pill.demo{background:color-mix(in srgb,var(--work) 16%,transparent);color:var(--work)}
@@ -1659,6 +1659,7 @@ function crewHtml(){
 }
 
 /* ============ icons ============ */
+const MARK = '<svg class="mark" viewBox="-16 -24 92 344" fill="none" stroke="currentColor" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M58 -10 L30 95 L52 102 L18 205 L44 212 L26 300"/><path d="M30 95 L8 140 M18 205 L4 236"/></svg>';
 const IC = {
   mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
   bolt:'<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
@@ -1718,13 +1719,13 @@ function openInstall(){
       '<li><span>Scroll down and tap <b>Add to Home Screen</b>.</span></li><li><span>Tap <b>Add</b>. Then open Mileset from your home screen.</span></li></ol>' +
       '<p class="sub">Apple only lets you add apps from Safari\'s Share menu, so this one takes 3 taps.</p>'
     : '<ol><li><span>Open your browser\'s menu <b>⋮</b>.</span></li><li><span>Tap <b>Install app</b> or <b>Add to Home screen</b>.</span></li></ol>';
-  b.innerHTML = '<div class="sheet inst" role="dialog" aria-modal="true" aria-label="Get the Mileset app"><div class="inst-h"><span class="logo">' + ic("bolt") + '</span><div><b>Add Mileset to your home screen</b><span>Opens full screen, like any app.</span></div></div>' + steps +
+  b.innerHTML = '<div class="sheet inst" role="dialog" aria-modal="true" aria-label="Get the Mileset app"><div class="inst-h"><span class="logo">' + MARK + '</span><div><b>Add Mileset to your home screen</b><span>Opens full screen, like any app.</span></div></div>' + steps +
     '<button class="btn block" type="button" data-act="close">Got it</button></div>';
   document.body.appendChild(b); b.querySelector("button").focus();
   if (isIOS && !inApp){ b.style.paddingBottom = "56px"; const ar = document.createElement("div"); ar.className = "inst-arrow"; ar.setAttribute("aria-hidden", "true"); ar.textContent = "Share is down here ↓"; document.body.appendChild(ar); setTimeout(() => ar.remove(), 9000); }
 }
 function header(){
-  return '<header class="top"><div class="brand"><span class="logo">' + ic("bolt") + '</span><b>Mileset</b></div>' + (mode === "sample" ? '<span class="pill demo">Sample</span>' : mode === "account" || API ? '' : '<span class="pill demo">Demo</span>') +
+  return '<header class="top"><div class="brand" aria-label="Mileset"><span class="logo hdr">' + MARK + '</span><b class="word">MILESET</b></div>' + (mode === "sample" ? '<span class="pill demo">Sample</span>' : mode === "account" || API ? '' : '<span class="pill demo">Demo</span>') +
     (showGetApp() ? '<button class="getapp" type="button" data-act="getapp">' + ic("download") + '<span>Get app</span></button>' : '') +
     (plan ? '<button class="iconbtn" type="button" data-act="menu" aria-label="Settings">' + ic("gear") + '</button>' : '') + '</header>';
 }
@@ -2311,7 +2312,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "57";
+const APP_VERSION = "58";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
