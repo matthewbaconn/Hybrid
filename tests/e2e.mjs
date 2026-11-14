@@ -55,23 +55,26 @@ await check("Build a plan (4 steps)", async () => {
   if (await page.locator('.hub-hero[data-scr="session"]').count()){ await open("session"); await page.waitForSelector(".hero .sess-t"); await noOverflow(); await shot("02b-session"); await back(); }
   return t;
 });
-await check("Move a day (swap within the week, saved, put back)", async () => {
+await check("Move a day (calendar picker, preview, saved, put back)", async () => {
   await tab("plan"); await page.waitForSelector(".day-h");
-  const btn = page.locator(".day-h .mvb").first(); if (!(await btn.count())) throw new Error("no Move button on the plan");
+  const btn = page.locator(".day-h .mvb").last(); if (!(await btn.count())) throw new Error("no Move button on the plan");
   const from = await btn.getAttribute("data-date"), label = async d => (await page.locator("#d-" + d + " .day-b").innerText()).split("\n")[0];
   const before = await label(from);
-  await btn.click(); await page.waitForSelector(".sheet.mvs .mvo"); await noOverflow(); await shot("02c-move-sheet");
-  const opt = page.locator(".sheet.mvs .mvo").first(), to = await opt.getAttribute("data-b"), toBefore = await label(to);
-  const warnOrOk = await opt.locator("em, .okm").first().innerText();
-  await opt.click(); await page.waitForTimeout(600);
-  if (await label(from) !== toBefore || await label(to) !== before) throw new Error("days didn't trade places: " + from + "/" + to);
-  if (!/Moved from/.test(await page.innerText("#d-" + to + " .day-h"))) throw new Error("no 'Moved from' note");
-  await page.waitForTimeout(800); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar:not([hidden])", {timeout: 15000}); await page.waitForTimeout(300); await tab("plan");
-  if (await label(to) !== before) throw new Error("move wasn't saved to the account");
+  await btn.click(); await page.waitForSelector(".sheet.mvs .mvcal"); await noOverflow(); await shot("02c-move-sheet");
+  const to = await page.evaluate(() => { const c = [...document.querySelectorAll('.sheet.mvs .mvd[data-act="mvsel"]')].find(x => document.getElementById("d-" + x.dataset.d)); return c ? c.dataset.d : null; });
+  if (!to) throw new Error("no open day in the same week");
+  await page.click('.sheet.mvs .mvd[data-d="' + to + '"]'); await page.waitForSelector(".sheet.mvs .mvpv");
+  const pv = await page.innerText(".sheet.mvs .mvpv"); if (!/After the move/i.test(pv)) throw new Error("no preview: " + pv);
+  await shot("02c2-move-preview");
+  await page.locator('.sheet.mvs .mvpv ~ [data-act="mvpick"]').first().click(); await page.waitForTimeout(700);
+  await tab("plan"); const toBefore = (await page.locator("#d-" + to).count()) ? await label(to) : null;
+  if (toBefore !== before) throw new Error("day didn't move: " + from + " → " + to + " shows " + toBefore);
+  await page.waitForTimeout(600); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar:not([hidden])", {timeout: 15000}); await page.waitForTimeout(300); await tab("plan");
+  if (await page.locator("#d-" + to).count() && await label(to) !== before) throw new Error("move wasn't saved to the account");
   await shot("02d-moved");
-  await page.click('#d-' + to + ' .mvb'); await page.waitForSelector(".sheet.mvs"); await page.click('.sheet.mvs [data-act="mvpick"].btn'); await page.waitForTimeout(800);
-  if (await label(from) !== before || await label(to) !== toBefore) throw new Error("put back didn't restore");
-  await tab("today"); return from + " ⇄ " + to + " · " + warnOrOk;
+  const back = page.locator('#d-' + to + ' .mvb'); if (await back.count()){ await back.click(); await page.waitForSelector(".sheet.mvs"); const pb = page.locator('.sheet.mvs [data-act="mvpick"]:has-text("Put it back")'); if (await pb.count()){ await pb.click(); await page.waitForTimeout(800); } else await page.click('.sheet.mvs [data-act="close"]'); }
+  if (await label(from) !== before) throw new Error("put back didn't restore");
+  await tab("today"); return from + " → " + to + " · " + pv.replace(/\n/g, " ").slice(0, 90);
 });
 await check("Change a workout (similar option, saved, back to planned)", async () => {
   await tab("plan"); await page.waitForSelector(".day-h");
