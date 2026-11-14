@@ -2449,7 +2449,7 @@ function plEnd(){
   plSay("Done. Nice work. Tell me how hard it felt.");
   const el = document.getElementById("player"); if (el) el.remove();
   aw = {open: true, err: "", busy: false, pre: {name: s.title, minutes: min, mi: mi || "", venue: s.venue || (PL.mi > .05 ? "outside" : "")}};
-  PL = null; tab = "today"; scr = null; render();
+  PL = null; tab = "today"; go("workouts");
   setTimeout(() => { const f = document.querySelector(".aform"); if (f) f.scrollIntoView({behavior: "smooth", block: "center"}); }, 60);
 }
 function plAct(k){
