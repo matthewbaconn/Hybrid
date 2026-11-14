@@ -89,6 +89,13 @@ jobs:
           printf '%s' "$SID" | npx wrangler secret put STRAVA_CLIENT_ID
           printf '%s' "$SSEC" | npx wrangler secret put STRAVA_CLIENT_SECRET
 
+      - name: Save the mailing address for email footers (optional; US CAN-SPAM)
+        env:
+          ADDR: ${{ secrets.MAIL_ADDRESS }}
+        run: |
+          if [ -z "$ADDR" ]; then echo "::warning::MAIL_ADDRESS not added yet. Marketing emails (day-7 nudge) must stay off until it is."; exit 0; fi
+          printf '%s' "$ADDR" | npx wrangler secret put MAIL_ADDRESS
+
       - name: Notification keys (made once, kept on Cloudflare)
         run: |
           have=$(npx wrangler secret list 2>/dev/null || true)
