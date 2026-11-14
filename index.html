@@ -311,7 +311,7 @@ button{cursor:pointer}
 /* profile */
 .me-card{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid rgba(255,255,255,.05);border-radius:8px;padding:18px;width:100%;color:var(--ink);text-align:left}
 .avatar{flex:none;width:58px;height:58px;border-radius:50%;background:var(--accent);display:grid;place-items:center;font:800 24px var(--f-display);color:#fff}
-.me-card div{flex:1;min-width:0} .me-card b{display:block;font:700 19px/1.2 var(--f-display)} .me-card span{font-size:13px;color:var(--muted);overflow-wrap:anywhere} .me-card > i{font-style:normal;color:var(--muted);font-size:20px}
+.me-card div{flex:1;min-width:0} .me-card b{display:block;font:700 19px/1.2 var(--f-display)} .me-card span{font-size:13px;color:var(--muted);overflow-wrap:anywhere;word-break:break-all} .me-card > i{font-style:normal;color:var(--muted);font-size:20px}
 .form{display:grid;gap:16px}
 .form label{display:grid;gap:8px;font-weight:600;font-size:14px}
 .form label small{font-weight:400;color:var(--muted);font-size:12.5px}
@@ -2512,7 +2512,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "63";
+const APP_VERSION = "64";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2579,7 +2579,7 @@ function healthHtml(){
     '<p class="sub" style="margin-top:6px">Linking a watch to Strava: in the Strava app, open Settings → Applications, Services, and Devices.</p></div>';
 }
 function healthSteps(){
-  if (SHORTCUT_URL) return '<ol class="steps-plain"><li>Add the Hybrid Health shortcut. It\'s one tap.<a class="btn primary block" style="margin-top:10px" href="' + esc(SHORTCUT_URL) + '" target="_blank" rel="noopener">Get the shortcut</a></li>' +
+  if (SHORTCUT_URL) return '<ol class="steps-plain"><li>Add the Apple Health shortcut. It\'s one tap.<a class="btn primary block" style="margin-top:10px" href="' + esc(SHORTCUT_URL) + '" target="_blank" rel="noopener">Get the shortcut</a></li>' +
     '<li>Come back and tap Sync. The first time, allow Health access.<button class="btn block" style="margin-top:10px" type="button" data-act="hsync">Sync from Apple Health</button></li></ol>' +
     '<p class="sub">After that, the morning check-in has a Sync button. Garmin watch? Turn on Apple Health in Garmin Connect under Connected Apps.</p>';
   if (!healthKey) return '<p class="sub">This is on. To see the steps again, make a new link (your old one stops working).</p><button class="btn primary block" type="button" data-act="hlmake">New link</button><button class="linkbtn" type="button" data-act="hloff" style="color:var(--crit)">Turn it off</button>';
@@ -2668,7 +2668,7 @@ function renderScreen(){
   else if (s === "workouts") h = workoutCard();
   else if (s === "weather") h = weatherCard();
   else if (s === "weight") h = weighCard() + (p ? bodyCards() : '') + '<section class="card"><label class="tgl"><input type="checkbox" id="w-ask"' + (wAsk() ? ' checked' : '') + '><span>Ask me on Today each morning</span></label><p class="sub">Shows a quick weigh-in on Today until you\'ve weighed in. Totally optional.</p></section>';
-  else if (s === "session") h = day ? sessionCard(day) + (canMove(TODAY) && moveTargets(TODAY).length ? '<button class="btn block mvtoday" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t train today? Move it</button>' : '') : '<p class="sub">Nothing planned today.</p>';
+  else if (s === "session") h = day ? sessionCard(day) + (day.sessions.length && canMove(TODAY) && moveTargets(TODAY).length ? '<button class="btn block mvtoday" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t train today? Move it</button>' : '') : '<p class="sub">Nothing planned today.</p>';
   else if (s.startsWith("t-")) h = renderTraining(s.slice(2));
   else h = settingsScreen(s);
   return back + h;

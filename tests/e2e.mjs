@@ -220,6 +220,31 @@ await check("Settings: notifications", async () => {
   if (/being set up/i.test(t)) throw new Error("server has no notification key");
   return "notifications: " + (/Turn on notifications/.test(t) ? "offered" : /blocked/.test(t) ? "offered (this test browser blocks them)" : t.replace(/\n/g, " ").slice(0, 80));
 });
+await check("Glitch scan: every screen fits the phone, tab bar never covered", async () => {
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
+  await page.route(/tile\.openstreetmap\.org/, r => r.fulfill({status: 200, contentType: "image/png", body: png}));   // real map layers, no outside wait
+  const bad = [];
+  const settle = () => page.waitForFunction(() => !document.documentElement.dataset.nav, null, {timeout: 3000}).catch(() => {});   // screen-change animation finished
+  const covered = async () => { const n = await probeBar(); if (!n) return 0; await page.waitForTimeout(700); return probeBar(); };   // only a real overlap, not a frame of the screen-change animation
+  const probeBar = async () => { await settle(); return page.evaluate(() => { const bar = document.querySelector("#tabbar"); if (!bar || bar.hidden) return 0; const r = bar.getBoundingClientRect();
+    return [0.15, 0.35, 0.65, 0.85].reduce((n, fx) => n + [12, 30].filter(dy => { const e = document.elementFromPoint(r.left + r.width * fx, r.top + dy); return e && !e.closest("#tabbar") && !e.closest(".toast"); }).length, 0); }); };
+  for (const t of ["today", "plan", "activities", "training", "recovery", "more"]){
+    await tab(t); const H = await page.evaluate(() => document.documentElement.scrollHeight);
+    for (let y = 0; y < H; y += 350){ await page.evaluate(y => window.scrollTo(0, y), y); await page.waitForTimeout(120); const n = await covered(); if (n){ bad.push(t + " tab bar covered at " + y + "px"); break; } }
+    const w = await page.evaluate(() => document.documentElement.scrollWidth); if (w > 392) bad.push(t + " is " + w + "px wide");
+  }
+  await tab("today");
+  const screens = ["fuel", "workouts", "weather", "weight", "settings", "set-acct", "set-train", "set-help", "set-watch", "set-notif", "set-hr", "set-run", "set-profile", "set-about", "t-races", "t-paces", "t-miles", "t-body", "t-setup", "faq", "fuelplan", "meals", "crews"];
+  for (const s of screens){
+    await page.evaluate(s => { const x = document.createElement("button"); x.dataset.act = "go"; x.dataset.scr = s; x.hidden = true; document.body.appendChild(x); x.click(); x.remove(); }, s);
+    await page.waitForTimeout(250);
+    const w = await page.evaluate(() => document.documentElement.scrollWidth); if (w > 392) bad.push(s + " is " + w + "px wide");
+    if (await covered()) bad.push(s + " covers the tab bar");
+    while (await page.locator('[data-act="back"]').count()){ await page.click('[data-act="back"]'); await page.waitForTimeout(150); }
+  }
+  await page.unroute(/tile\.openstreetmap\.org/); await tab("today");
+  if (bad.length) throw new Error(bad.join("; ")); return "6 tabs scrolled top to bottom, " + screens.length + " screens";
+});
 await check("Log out and back in (data kept)", async () => {
   await open("fuel"); const before = await page.locator(".card:has(.fdate) .fl li").count(); await back();
   await settings(); await page.click('[data-act="logout"]'); await page.waitForSelector(".welcome h1", {timeout: 10000});
