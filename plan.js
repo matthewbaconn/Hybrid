@@ -896,7 +896,7 @@ function applyCustom(plan){
     let changed = false;
     w.days.forEach(d => { d.sessions = d.sessions.map((s, i) => {
       const o = d.date + "-" + i, c = cu && s.type !== "race" ? cleanSession(cu[o]) : null;
-      if (c){ changed = true; return {...c, o, was: s.title}; }
+      if (c){ changed = true; return {...c, o, was: s.title, wasSteps: s.steps.map(x => x[0])}; }
       return {...s, o};
     }); });
     if (changed) weekTotals(w);
@@ -1002,7 +1002,7 @@ const EX_GROUPS = [
   ["Single leg", ["Walking lunge", "Reverse lunge", "Bulgarian split squat", "Split squat", "Step-ups", "Lateral lunge"]],
   ["Push", ["Bench press", "Dumbbell bench press", "Incline dumbbell press", "Push-ups", "Incline push-ups", "Machine chest press", "Dips"]],
   ["Overhead push", ["Overhead press", "Dumbbell shoulder press", "Landmine press", "Pike push-ups"]],
-  ["Pull down", ["Pull-ups", "Chin-ups", "Assisted pull-ups", "Lat pulldown", "Band pulldown"]],
+  ["Pull down", ["Pull-ups", "Chin-ups", "Assisted pull-ups", "Negative pull-ups", "Lat pulldown", "Band pulldown", "Inverted row"]],
   ["Row", ["Dumbbell row", "Single-arm row", "Cable row", "Barbell row", "Band row", "Inverted row", "Lat pulldown or band row"]],
   ["Calves", ["Calf raise", "Single-leg calf raise", "Seated calf raise"]],
   ["Core", ["Plank", "Side plank", "Copenhagen plank", "Dead bug", "Bird dog", "Pallof press", "Hollow hold"]],

@@ -650,6 +650,11 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .liftlog{display:grid;gap:12px;margin-top:12px;padding-top:14px;border-top:1px solid var(--line)}
 .lrow{display:grid;grid-template-columns:1fr 84px 74px;gap:8px;align-items:center}
 .prs .pr .spk{width:60px;height:20px;flex:none} .prs .pr em.up{color:var(--good,#4CAF7A);font-size:15px} .prs .pr em.dn{color:var(--warn,#E8A33D);font-size:15px} .prs .pr em.sx{color:var(--muted);font-size:14px}
+.steps li.exl{display:flex;align-items:center;gap:10px} .steps li.exl > span{flex:1;min-width:0}
+.exwas{display:block;font-style:normal;font-size:12.5px;color:var(--muted);margin-top:2px}
+.exsw{position:relative;flex:none;display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 10px;border-radius:999px;background:var(--sunk);color:var(--muted);font-size:12.5px;font-weight:600;cursor:pointer}
+.exsw .ic{width:14px;height:14px} .exsw:active{transform:scale(.96)}
+.exsw select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px;-webkit-appearance:none;appearance:none}
 .chgtabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:3px;background:var(--sunk);border-radius:6px;padding:3px} .chgtabs button{border:0;background:none;border-radius:4px;min-height:38px;font-weight:600;font-size:13.5px;color:var(--muted)} .chgtabs button[aria-pressed="true"]{background:var(--accent);color:#fff}
 .chg .mvo small{display:block;font-size:12.5px;color:var(--muted);margin-top:4px} .chg .mvo .ty{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tc,var(--muted));margin-bottom:2px}
 .chg label.f{display:grid;gap:5px;font-size:13px;color:var(--muted)} .chg textarea{min-height:110px;font:inherit} .chg .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -1832,6 +1837,26 @@ function weekOf(date){ return plan.weeks.findIndex(w => date >= w.start && date 
 function dayOf(date){ const wi = weekOf(date); return wi < 0 ? null : plan.weeks[wi].days[dow(date)]; }
 // no watch? pace by feel: the talk test (Foster 1999 / Reed 2014: tracks ventilatory thresholds well)
 const TALK = {E: "talk in full sentences · 3/10", L: "talk in full sentences · 3–4/10", M: "a few sentences at a time · 5/10", H: "short phrases · 6/10", T: "a few words at a time · 7/10", I: "one or two words · 8/10", R: "fast but relaxed, no talking · 9/10", G: "race effort"};
+/* strength: swap one exercise for another that works the same muscles, from a dropdown right on the exercise.
+   Same sets and reps. The planned exercise is always first in the list, so it's easy to put back. */
+function exStepHtml(s, st, i, key){
+  const now = exName(st[0]), planned = s.wasSteps && s.wasSteps[i] ? exName(s.wasSteps[i]) : now, al = HP.exAlts(planned);
+  if (!al.list.length && planned === now) return '<li><span>' + esc(st[0]) + '</span></li>';
+  const opts = [planned].concat(al.list).filter((x, j, a) => a.indexOf(x) === j);
+  return '<li class="exl"><span>' + esc(st[0]) + (now !== planned ? '<em class="exwas">instead of ' + esc(planned) + '</em>' : '') + '</span>' +
+    '<label class="exsw">' + ic("swap") + '<span>Swap</span><select data-exsw="' + key + '" data-i="' + i + '" aria-label="Swap ' + esc(now) + ' for another exercise">' +
+    '<option value="" disabled selected>Swap ' + esc(now) + ' for…</option>' +
+    opts.map(x => '<option value="' + esc(x) + '"' + (x === now ? ' disabled' : '') + '>' + esc(x) + (x === planned ? ' (planned)' : '') + '</option>').join("") +
+    '<option value="__other">Something else…</option></select></label></li>';
+}
+function swapExercise(key, i, name){
+  const d = dayOf(key.slice(0, 10)), s = d && d.sessions[+key.slice(11)]; if (!s || !s.o) return;
+  if (name === "__other"){ openChange(key); if (chg){ chg.tab = "ex"; chg.ex = i; chgRender(); } return; }
+  const scheme = exScheme(s.steps[i][0]), steps = s.steps.map((st, j) => j === i ? [name + (scheme ? " " + scheme : ""), null, null] : st);
+  const back = s.wasSteps && steps.every((st, j) => st[0] === s.wasSteps[j]);
+  chg = {key};
+  setCustom(back ? null : {...s, steps}, back ? exName(s.steps[i][0]) + " is back to " + name + "." : exName(s.steps[i][0]) + " swapped for " + name + ".");
+}
 function stepHtml(st, offs){
   const [text, , k, plus] = st, off = (offs && offs[k]) || 0;
   const pc = k ? (k === "E" || k === "L" ? pace(plan.P, k) : fmtPace(plan.P[k] + off + (plus || 0))) + '/mi' : '', tg = HP.targetOf(plan.profile), hr = tg === "hr" && k ? HP.hrFor(k, zonesNow(), plan.profile.goal) : null;
@@ -1870,13 +1895,13 @@ function sessHtml(s, key, big){
       (HP.targetOf(plan.profile) === "hr" && HP.hrFor(s.type === "race" ? "G" : s.k, zonesNow(), plan.profile.goal) ? (r0 => '<div><b>Z' + r0.zone + '</b><span>' + r0.lo + '–' + r0.hi + ' bpm</span></div>')(HP.hrFor(s.type === "race" ? "G" : s.k, zonesNow(), plan.profile.goal)) :
       '<div><b>' + (s.type === "race" ? fmtPace(plan.P.G) : s.k === "E" || s.k === "L" ? fmtPace(plan.P[s.k][0]) + '+' : fmtPace((plan.P[s.k] || plan.P.T) + ((offs && offs[s.k]) || 0))) + '</b><span>' + (s.type === "race" ? "Goal pace" : "Key pace") + '</span></div>');
   return '<div class="sess t-' + s.type + '">' + (big ? '<span class="chip">' + TYPE[s.type] + '</span>' : '') +
-    '<h3 class="sess-t">' + esc(s.title) + '</h3><div class="stats">' + stats + '</div><ul class="steps">' + s.steps.map(st => stepHtml(st, offs)).join("") + '</ul>' +
+    '<h3 class="sess-t">' + esc(s.title) + '</h3><div class="stats">' + stats + '</div><ul class="steps">' + s.steps.map((st, i) => s.type === "lift" && s.o && !match && !isDone && date >= TODAY ? exStepHtml(s, st, i, key) : stepHtml(st, offs)).join("") + '</ul>' +
     (future && s.k && F.offs[s.k] ? '<p class="fbnote">' + ic("gauge") + '<span>Reps ' + Math.abs(F.offs[s.k]) + ' s/mi ' + (F.offs[s.k] < 0 ? 'faster' : 'slower') + ' than the original plan, from how your last workouts went.</span></p>' : '') +
     (big && ["easy", "long", "workout"].includes(s.type) && !isDone ? venueHtml(s, key) : '') +
     (big && !isDone && date === TODAY && s.steps && s.steps.length && s.type !== "lift" && s.type !== "race" ? '<button class="btn primary block" type="button" data-act="play" data-key="' + key + '">' + ic("run") + ' Start with my phone</button><p class="fine">No watch needed: a voice coach calls every step, the phone keeps time' + (s.venue === "treadmill" ? '' : ' and can track distance by GPS') + ', then it logs itself.</p>' : '') +
     (hp ? '<p class="fbnote">' + ic("sun") + '<span>Outdoors today: paces include ' + Math.round(hp * 1000) / 10 + '% for heat (' + heat.temp + '°F, dew ' + heat.dew + '° around ' + hr12(heat.hour) + '). Treadmill: subtract that back.</span></p>' : '') +
     (s.type === "race" ? raceCard() + (plan.raceDate ? '<button class="linkbtn" type="button" data-act="go" data-scr="fuelplan">' + ic("bolt") + ' Race fueling and hydration plan</button>' : '') : '') +
-    (s.custom ? '<p class="fbnote">' + ic("spark") + '<span>' + (s.own ? 'Your own workout.' : 'Your pick.') + (s.was ? ' Planned: ' + esc(s.was) + '.' : '') + '</span></p>' : '') +
+    (s.custom && s.was !== s.title ? '<p class="fbnote">' + ic("spark") + '<span>' + (s.own ? 'Your own workout.' : 'Your pick.') + (s.was ? ' Planned: ' + esc(s.was) + '.' : '') + '</span></p>' : '') +
     (s.type === "lift" && date <= TODAY ? liftLogHtml(s, key) : '') +
     (!match && !isDone && date >= TODAY && s.type !== "race" && s.o ? '<button class="linkbtn" type="button" data-act="chgopen" data-key="' + key + '">' + ic("swap") + (s.custom ? ' Change it again' : ' Change workout') + '</button>' : '') +
     (note ? '<p class="fbnote">' + ic("gauge") + '<span>' + esc(note) + '</span></p>' : '') +
@@ -2792,7 +2817,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "67";
+const APP_VERSION = "68";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -3456,7 +3481,7 @@ document.addEventListener("click", ev => {
     const nm = (a.dataset.name || ($("#chg-exname") || {}).value || "").trim().replace(/\s+\d+\s*[×x].*$/, "").slice(0, 60);
     if (!nm){ chg.err = "Type an exercise name."; chgRender(); return; }
     const old = exName(s.steps[chg.ex][0]), steps = s.steps.map((st, i) => i === chg.ex ? [nm + (exScheme(st[0]) ? " " + exScheme(st[0]) : ""), null, null] : st);
-    setCustom({...s, steps, title: s.title.replace(/ · (yours|swapped)$/, "") + " · swapped", was: undefined}, old + " swapped for " + nm + ".");
+    setCustom({...s, steps}, old + " swapped for " + nm + ".");
     return;
   }
   if (act === "chgown"){
@@ -3499,6 +3524,7 @@ document.addEventListener("input", ev => {
   if (el.value !== f) el.value = f;
 });
 document.addEventListener("change", ev => {
+  if (ev.target.dataset && ev.target.dataset.exsw){ const v = ev.target.value; if (v) swapExercise(ev.target.dataset.exsw, +ev.target.dataset.i, v); return; }
   const sk = ev.target.dataset && ev.target.dataset.set;
   if (sk === "run_time" && mode !== "account"){ uset.run_time = ev.target.value; render(); return; }
   if (sk === "run_time"){ uset.run_time = ev.target.value; safeRender(); }

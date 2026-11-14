@@ -97,6 +97,24 @@ await check("Change a workout (similar option, saved, back to planned)", async (
   if (await title() !== before) throw new Error("reset didn't restore: " + await title());
   await tab("today"); return before + " → " + pick + " → own → back · search 'bike': " + hits;
 });
+await check("Swap one exercise from its dropdown (saved, then put back)", async () => {
+  await tab("plan"); await page.waitForSelector(".day-h");
+  for (let k = 0; k < 3 && !(await page.locator("select[data-exsw]").count()); k++){ await page.click('[data-act="wk"][data-dir="1"]'); await page.waitForTimeout(300); }
+  const sel = page.locator("select[data-exsw]").first(); if (!(await sel.count())) throw new Error("no swap dropdown on any strength exercise");
+  const key = await sel.getAttribute("data-exsw"), i = await sel.getAttribute("data-i");
+  const li = () => page.locator('select[data-exsw="' + key + '"][data-i="' + i + '"]').locator("xpath=ancestor::li[1]");
+  const before = (await li().innerText()).split("\n")[0];
+  const pick = await sel.evaluate(s => [...s.options].find(o => o.value && o.value !== "__other" && !o.disabled).value);
+  await sel.selectOption(pick); await page.waitForTimeout(800); await shot("02h-exercise-swap");
+  const after = await li().innerText(); if (!after.startsWith(pick) || !/instead of/.test(after)) throw new Error("swap not shown: " + after.replace(/\n/g, " | "));
+  await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar:not([hidden])", {timeout: 15000}); await page.waitForTimeout(300); await tab("plan");
+  for (let k = 0; k < 3 && !(await page.locator('select[data-exsw="' + key + '"]').count()); k++){ await page.click('[data-act="wk"][data-dir="1"]'); await page.waitForTimeout(300); }
+  if (!(await li().innerText()).startsWith(pick)) throw new Error("swap wasn't saved");
+  const planned = await page.locator('select[data-exsw="' + key + '"][data-i="' + i + '"]').evaluate(s => [...s.options].find(o => / \(planned\)$/.test(o.text)).value);
+  await page.locator('select[data-exsw="' + key + '"][data-i="' + i + '"]').selectOption(planned); await page.waitForTimeout(800);
+  if (!(await li().innerText()).startsWith(before.replace(/\s+\d+\s*[×x].*$/, "")) || /instead of/.test(await li().innerText())) throw new Error("put back didn't restore");
+  await tab("today"); return before + " → " + pick + " → back";
+});
 await check("Missed workout moves forward, custom workouts follow their day (plan logic)", async () => {
   const r = await page.evaluate(() => { const p = {goal: "half", raceDate: "2027-02-07", goalSec: 6300, weekly: 22, longest: 8, days: [0, 2, 4, 6], longDay: 6, lifts: 2, start: "2026-11-09", prDist: "10k", prSec: 2910};
     const pl = HP.buildPlan(p, "2026-11-14"), sun = pl.weeks[0].days[6], mon = pl.weeks[1].days[0], wed = pl.weeks[0].days[2];
