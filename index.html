@@ -82,6 +82,11 @@ button{cursor:pointer}
 
 /* greeting */
 .hello h1{font:800 30px/1.1 var(--f-display);letter-spacing:-.035em}
+.bib{position:relative;margin:14px 0 4px;padding:12px 18px 10px;background:#F4F1EA;color:#16171c;border-radius:6px;display:grid;grid-template-columns:1fr auto;align-items:end;column-gap:12px;box-shadow:0 1px 0 rgba(0,0,0,.4),0 10px 24px -14px rgba(0,0,0,.8);transform:rotate(-.6deg)}
+.bib i{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--bg);box-shadow:inset 0 1px 1px rgba(0,0,0,.5)}.bib i:nth-child(1){left:8px;top:8px}.bib i:nth-child(2){right:8px;top:8px}.bib i:nth-child(3){left:8px;bottom:8px}.bib i:nth-child(4){right:8px;bottom:8px}
+.bib small{grid-column:1/-1;font:800 11px/1.2 var(--f-body);letter-spacing:.16em;text-transform:uppercase;color:#800000;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bib b{font:800 52px/.95 var(--f-display);letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:#16171c}.bib span{font:600 13px/1.3 var(--f-body);color:#555;text-align:right;padding-bottom:6px}
+.hello .kick{margin:0 0 6px;font:700 12px/1 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2)}
 .hello .sub{margin-top:6px}
 .count{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 
@@ -1890,6 +1895,24 @@ function sessionCard(day){
   return '<article class="card hero t-' + t + '"><header class="hero-h"><div><div class="d">Today</div><div class="dd">' + DAYF[dow(TODAY)] + ', ' + fmtD(TODAY) + '</div></div><span class="chip">' + TYPE[t] + '</span></header><div class="hero-b">' +
     (day.sessions.length ? day.sessions.map((s, i) => sessHtml(s, TODAY + "-" + i, true)).join("") : '<div class="sess"><h3 class="sess-t">Rest day</h3><p class="muted">An easy walk or mobility is plenty. Sleep and food do the work today.</p></div>') + '</div></article>';
 }
+/* the hello line talks about THIS person's day, like a coach would, not a generic "Hi" */
+function greeting(p, w){
+  const nm = p.name ? esc(p.name) : "", hr = new Date().getHours(), day = dayOf(TODAY), ss = day ? day.sessions : [];
+  const tod = hr < 5 ? "Up early" : hr < 12 ? "Morning" : hr < 17 ? "Afternoon" : "Evening", r = readiness(checkins[TODAY], sigOn(TODAY));
+  const m = dayMatches(TODAY), allDone = ss.length && ss.every((s, i) => sessDone(TODAY, i, m)), hard = ss.find(s => s.type === "workout" || s.type === "long" || s.type === "race");
+  const n = plan.raceDate ? daysBetween(TODAY, plan.raceDate) : null, yday = actsOn(addDays(TODAY, -1)), lastSport = yday.length ? HP.actSummary(plan, acts, yday[yday.length - 1], TODAY, maxHrNow()) : null;
+  const who = nm ? ", " + nm : "";
+  let head, sub = "";
+  if (n === 0) { head = "Race day" + who + "."; sub = "Trust the work. Start slower than you want to."; }
+  else if (allDone) { head = "Done for today" + who + "."; sub = "Eat, hydrate, sleep. That's training too."; }
+  else if (n != null && n > 0 && n <= 7) { head = n + (n === 1 ? " day" : " days") + " out" + who + "."; sub = "The hay is in the barn. Stay fresh."; }
+  else if (!ss.length) { head = "Rest day" + who + "."; sub = lastSport && lastSport.rpe >= 7 ? "After yesterday's " + esc(lastSport.name.toLowerCase()) + ", you earned it." : "Walk, stretch, eat well. Fitness is built today."; }
+  else if (r && r.level >= 1 && hard) { head = tod + who + ". Go easy on yourself."; sub = "Your check-in says tired. The plan already softened today's " + esc(hard.title.toLowerCase().split(" ·")[0]) + "."; }
+  else if (hard && hard.type === "long") { head = "Long run day" + who + "."; sub = "Slow is correct. Bring fuel if it's over 75 minutes."; }
+  else if (hard) { head = esc(hard.title.split(" ·")[0]) + " day" + who + "."; sub = r && r.level === 0 && r.score >= 80 ? "Check-in looks great. Go get it." : "Warm up properly, then hit your paces."; }
+  else { head = tod + who + "."; sub = "Easy today. Conversational pace, nothing to prove."; }
+  return {h: head, sub};
+}
 function heroSummary(day){
   const t = dayType(day), m = dayMatches(TODAY), F = fb(), r = readiness(checkins[TODAY], sigOn(TODAY));
   if (!day.sessions.length) return '<section class="hub-hero t-rest" style="cursor:default"><div class="hh"><span>Today</span><span class="chip">Rest</span></div><h3>Rest day</h3><p style="color:rgba(255,255,255,.8)">An easy walk or mobility is plenty. Sleep and food do the work today.</p></section>';
@@ -1908,12 +1931,13 @@ function heroSummary(day){
 }
 function renderToday(){
   const p = plan.profile, first = plan.weeks[0].start, last = addDays(plan.weeks[plan.weeks.length - 1].start, 6);
-  let h = '<section class="hello"><h1>' + (p.name ? 'Hi ' + esc(p.name) : 'Today') + '</h1>';
-  const wi = weekOf(TODAY), w = plan.weeks[wi];
-  h += '<p class="sub">' + DAYF[dow(TODAY)] + ', ' + fmtD(TODAY) + '</p><div class="count">';
-  if (plan.raceDate){ const n = daysBetween(TODAY, plan.raceDate); h += '<span class="pill">' + ic("flag") + (n > 0 ? n + ' days to ' + HP.raceName(p) : n === 0 ? 'Race day' : 'Race done') + '</span>'; }
+  const wi = weekOf(TODAY), w = plan.weeks[wi], g = greeting(p, w);
+  let h = '<section class="hello"><p class="kick">' + DAYF[dow(TODAY)] + ' · ' + fmtD(TODAY) + '</p><h1>' + g.h + '</h1>' + (g.sub ? '<p class="sub">' + g.sub + '</p>' : '');
+  h += '<div class="count">';
   if (w) h += '<span class="pill">Week ' + w.n + ' of ' + plan.weeks.length + '</span><span class="pill">' + esc(w.phase) + '</span>';
-  h += '</div>' + syncLine() + '</section>';
+  h += '</div>';
+  if (plan.raceDate){ const n = daysBetween(TODAY, plan.raceDate); if (n >= 0) h += '<div class="bib" aria-label="' + n + ' days to ' + esc(HP.raceName(p)) + '"><i></i><i></i><i></i><i></i><small>' + esc(p.raceName || HP.raceName(p)) + '</small><b>' + (n === 0 ? 'GO' : n) + '</b><span>' + (n === 0 ? 'race day' : n === 1 ? 'day to go' : 'days to go') + ' · ' + fmtD(plan.raceDate) + '</span></div>'; }
+  h += syncLine() + '</section>';
   if (TODAY < first){ h += '<section class="card"><h2 class="sec-t">Your plan starts ' + fmtD(first) + '</h2><p class="sub">Keep running easy until then. Open the Plan tab to see week 1.</p></section>'; return h; }
   if (TODAY > last){ h += '<section class="card"><h2 class="sec-t">Plan complete</h2><p class="sub">Nice work. Open settings to build your next plan.</p></section>'; return h; }
   const day = dayOf(TODAY), f = fuelFor(p, day, TODAY), e = eaten(TODAY), left = f.cal - e.cal;
