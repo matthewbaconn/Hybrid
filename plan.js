@@ -106,7 +106,7 @@ function workoutFor(goal, phase, i, P){
 
 function buildPlan(p, today){
   today = today || isoLocal(new Date());
-  if (isMulti(p.goal)) return applySwaps(applyCustom(buildMulti(p, today)));
+  if (isMulti(p.goal)) return applyVenues(applySwaps(applyCustom(buildMulti(p, today))));
   const goal = p.goal, fit = fitnessFrom(p), P = {...fit.pace};
   const goalSec = p.goal !== "fitness" && p.goalSec ? p.goalSec : null;
   P.G = goalSec ? goalSec / RACES[goal].mi : (goal !== "fitness" ? fit.pred[goal] / RACES[goal].mi : P.T);
@@ -234,7 +234,7 @@ function buildPlan(p, today){
     }
     weeks.push({n: i + 1, start: ws, phase, miles: half(days.reduce((a, d) => a + d.sessions.reduce((b, s) => b + (s.mi || 0), 0), 0)), days});
   }
-  return applySwaps(applyCustom({profile: p, P, pred: fit.pred, weeks, start, raceDate, created: today}));
+  return applyVenues(applySwaps(applyCustom({profile: p, P, pred: fit.pred, weeks, start, raceDate, created: today})));
 }
 
 
@@ -723,6 +723,18 @@ function raceSplits(plan){
    Turns one planned session into a Garmin workout: warm-up/cool-down, rep blocks with recoveries,
    and pace targets (as speed in m/s). Runs, rides, swims and cardio; lifts stay in the app. */
 const MI_M = 1609.34;
+/* treadmill or outside: one choice per run (profile.venues["YYYY-MM-DD-i"]), or a default (profile.venue).
+   Only one workout ever goes to the watch: the choice changes its name and notes, never adds a second one. */
+const RUN_TYPES = new Set(["easy", "long", "workout"]);
+function applyVenues(plan){
+  const p = plan.profile || {}, v = p.venues || {}, def = p.venue === "treadmill" ? "treadmill" : null;
+  plan.weeks.forEach(w => w.days.forEach(d => d.sessions.forEach((s, i) => {
+    if (!RUN_TYPES.has(s.type)) return;
+    const c = v[d.date + "-" + i] || def; if (c === "treadmill" || c === "outside") s.venue = c;
+  })));
+  return plan;
+}
+const mph = secPerMi => Math.round(3600 / secPerMi * 10) / 10;
 function garminWorkout(plan, s, offs, extra, date){
   if (!s || s.type === "lift" || s.type === "walk" || (s.type === "race" && s.multi)) return null;
   const P = plan.P, off = offs || {};
@@ -760,7 +772,8 @@ function garminWorkout(plan, s, offs, extra, date){
       if (mi > 0) out.push(step({intensity, description: L, durationType: "DISTANCE", durationValue: Math.round(mi * MI_M), durationValueType: "METER", ...paceTarget(k, plus)}));
       else out.push(step({intensity, description: L, durationType: "OPEN"}));
     });
-    return {workoutName: String(s.title).slice(0, 80), description: ("Mileset · " + (s.why || "")).slice(0, 1024), sport: "RUNNING", workoutProvider: "HYBRD", workoutSourceId: "HYBRD",
+    const tm = s.venue === "treadmill";
+    return {workoutName: ((tm ? "Treadmill · " : "") + s.title).slice(0, 80), description: ((tm ? "Treadmill: 1% incline. " : "") + "Mileset · " + (s.why || "")).slice(0, 1024), sport: "RUNNING", workoutProvider: "HYBRD", workoutSourceId: "HYBRD",
       isSessionTransitionEnabled: false, poolLength: null, poolLengthUnit: null, segments: [{segmentOrder: 1, sport: "RUNNING", poolLength: null, poolLengthUnit: null, steps: out}]};
   }
   // time-based sessions (rides, swims, cardio, walk-runs): one step with the plan's instructions
@@ -956,5 +969,5 @@ function swapCheck(plan, a, b, dropA){        // dropA: a is a missed day, so wh
   return scan().filter(m => !before.includes(m));   // only what this move adds, not what the week already had
 }
 
-root.HP = {sportOf, effortOf, loadOf, actSummary, SPORTS, PLAN_RPE, cleanSession, alternatives, library, exAlts, exAll, exGroup, applySwaps, swapCheck, isHard, garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
+root.HP = {applyVenues, mph, sportOf, effortOf, loadOf, actSummary, SPORTS, PLAN_RPE, cleanSession, alternatives, library, exAlts, exAll, exGroup, applySwaps, swapCheck, isHard, garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
 })(typeof globalThis !== "undefined" ? globalThis : self);

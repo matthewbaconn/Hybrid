@@ -731,6 +731,7 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .scard{background:var(--surface)} .scard.hi{background:color-mix(in srgb,var(--accent) 14%,var(--surface))} .icard{background:var(--surface)}
 .rg-w circle{filter:none!important}
 a.scard{text-decoration:none;color:var(--ink)}
+.venue{margin:10px 0}.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.seg button{padding:8px 14px;background:transparent;border:0;color:var(--muted);font:600 14px/1 inherit}.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
 .rpe{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:6px}
 .rpe button{min-height:38px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 14px/1 inherit;font-variant-numeric:tabular-nums}
 .rpe button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -1823,13 +1824,19 @@ function estTime(s){
   const avg = s.type === "workout" ? (plan.P.E[0] + k) / 2 : k;
   return s.mi * avg;
 }
+function venueHtml(s, key){
+  const v = s.venue || "outside", P = plan.P, ks = [...new Set((s.steps || []).map(st => st[2]).filter(k => k && P[k] != null))];
+  const sp = k => Array.isArray(P[k]) ? HP.mph(Math.max(P[k][0], P[k][1])) + "–" + HP.mph(Math.min(P[k][0], P[k][1])) : String(HP.mph(P[k]));
+  return '<div class="venue"><div class="seg" role="group" aria-label="Where are you running this">' + [["outside", "Outside"], ["treadmill", "Treadmill"]].map(([k, l]) => '<button type="button" data-act="venue" data-key="' + key + '" data-v="' + k + '" aria-pressed="' + (v === k) + '">' + l + '</button>').join("") + '</div>' +
+    (v === "treadmill" ? '<p class="sub">Set a 1% incline. Speeds: ' + ks.map(k => (HP.PNAME[k] || k) + ' ' + sp(k) + ' mph').join(" · ") + '.' + (garmin.connected ? ' Your watch gets one workout, labeled Treadmill.' : '') + '</p>' : '') + '</div>';
+}
 const VERDICT = {ok: ["On target", "good"], easy: ["Came in fast", "easy"], hard: ["Too hard", "warn"], unknown: ["Couldn't check", "muted"]};
 function sessHtml(s, key, big){
   const date = key.slice(0, 10), idx = +key.slice(11), match = dayMatches(date)[idx], manualDone = !!done[key], isDone = manualDone || !!match;
   const F = fb(), future = !match && date >= TODAY, note = future ? F.notes[key] : null;
   let offs = future ? F.offs : (F.assess[key] || {}).offsBefore;
   if (future && F.extra[key]) s = {...s, steps: HP.withExtraRep(s.steps)};
-  const heat = future && date === TODAY && s.type === "workout" && !s.base ? heatToday() : null, hp = heat && heat.pct >= .01 ? heat.pct : 0;
+  const heat = future && date === TODAY && s.type === "workout" && !s.base && s.venue !== "treadmill" ? heatToday() : null, hp = heat && heat.pct >= .01 ? heat.pct : 0;
   if (hp){ const o = {...(offs || {})}; for (const k of HP.PACE_KEYS) if (plan.P[k] && !Array.isArray(plan.P[k])) o[k] = (o[k] || 0) + plan.P[k] * hp; offs = o; }
   const as = match ? F.assess[key] : null, rv = match ? reviewFor(match) : null, t = estTime(s);
   const r = date === TODAY ? readiness(checkins[TODAY], sigOn(TODAY)) : null, adj = r && r.level && ADJ[r.level][s.type];
@@ -1841,6 +1848,7 @@ function sessHtml(s, key, big){
   return '<div class="sess t-' + s.type + '">' + (big ? '<span class="chip">' + TYPE[s.type] + '</span>' : '') +
     '<h3 class="sess-t">' + esc(s.title) + '</h3><div class="stats">' + stats + '</div><ul class="steps">' + s.steps.map(st => stepHtml(st, offs)).join("") + '</ul>' +
     (future && s.k && F.offs[s.k] ? '<p class="fbnote">' + ic("gauge") + '<span>Reps ' + Math.abs(F.offs[s.k]) + ' s/mi ' + (F.offs[s.k] < 0 ? 'faster' : 'slower') + ' than the original plan, from how your last workouts went.</span></p>' : '') +
+    (big && ["easy", "long", "workout"].includes(s.type) && !isDone ? venueHtml(s, key) : '') +
     (hp ? '<p class="fbnote">' + ic("sun") + '<span>Outdoors today: paces include ' + Math.round(hp * 1000) / 10 + '% for heat (' + heat.temp + '°F, dew ' + heat.dew + '° around ' + hr12(heat.hour) + '). Treadmill: subtract that back.</span></p>' : '') +
     (s.type === "race" ? raceCard() + (plan.raceDate ? '<button class="linkbtn" type="button" data-act="go" data-scr="fuelplan">' + ic("bolt") + ' Race fueling and hydration plan</button>' : '') : '') +
     (s.custom ? '<p class="fbnote">' + ic("spark") + '<span>' + (s.own ? 'Your own workout.' : 'Your pick.') + (s.was ? ' Planned: ' + esc(s.was) + '.' : '') + '</span></p>' : '') +
@@ -3073,6 +3081,15 @@ document.addEventListener("click", ev => {
     const wd = ((document.getElementById("w-date") || {}).value || TODAY), date = /^\d{4}-\d{2}-\d{2}$/.test(wd) && wd <= TODAY ? wd : TODAY;
     if (!(lb >= 70 && lb <= 500)){ wf = {err: "Enter your weight in pounds, like 182.4."}; render(); return; }
     saveRemote("PUT", "/api/weight", {date, lb}).then(() => { weights[date] = Math.round(lb * 10) / 10; wf = null; save(); render(); if (date !== TODAY) toast("Saved for " + fmtD(date) + "."); }).catch(e => { wf = {err: e.message}; render(); });
+    return;
+  }
+  if (act === "venue"){
+    const k = a.dataset.key, v = a.dataset.v, prof = {...plan.profile}, vs = {...(prof.venues || {})};
+    if (v === (prof.venue || "outside")) delete vs[k]; else vs[k] = v;
+    Object.keys(vs).forEach(x => { if (x.slice(0, 10) < addDays(TODAY, -14)) delete vs[x]; });
+    if (Object.keys(vs).length) prof.venues = vs; else delete prof.venues;
+    const prev = plan; plan = buildPlan(prof); fbCache = null; save(); render();
+    if (mode === "account") api("PUT", "/api/profile", {profile: prof}).catch(e => { plan = prev; fbCache = null; render(); toast(e.message); });
     return;
   }
   if (act === "rpe"){
