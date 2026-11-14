@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Marathon Training Plan That Adapts to Your Sleep: Should You Run After a Bad Night? · Mileset</title>
+<meta name="description" content="Slept badly before a long run or workout? Check your readiness in 20 seconds and see how to adjust today's session. The same rules the Mileset marathon plan uses every morning.">
+<meta property="og:title" content="A marathon plan that adapts to your sleep · Mileset">
+<meta property="og:description" content="Bad night? Check your readiness and see what to do with today's run.">
+<meta property="og:image" content="https://hybrdrunning.com/recovery.jpg">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://hybrdrunning.com/marathon-plan-that-adapts-to-sleep">
+<link rel="icon" href="icon.png">
+<style>
+:root{--bg:#0A0B0F;--surface:#14161C;--sunk:#1E212B;--ink:#F5F6FA;--muted:#9CA3B4;--line:#262A35;--accent:#800000;--accent-2:#E0464C;
+  --easy:#22D3EE;--long:#34D399;--work:#FACC15;--lift:#FF6FB5;--swim:#60A5FA;--bike:#A3E635;
+  --f-display:"SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;--f-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{width:min(760px,100% - 40px);margin:0 auto}
+.nav{border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font:800 20px/1 var(--f-display);text-decoration:none}
+.brand img{width:30px;height:30px;border-radius:7px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 22px;border-radius:8px;border:0;font:700 15.5px/1 var(--f-body);text-decoration:none;cursor:pointer;background:var(--accent);color:#fff}
+.btn.sm{min-height:40px;padding:0 16px;font-size:14.5px}
+.tag{display:inline-block;padding:7px 12px;border-radius:999px;background:rgba(224,70,76,.12);color:#ff8a8f;font:700 12.5px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;margin-top:36px}
+h1{font:800 clamp(34px,5.4vw,54px)/1.05 var(--f-display);letter-spacing:-.03em;margin:16px 0 12px}
+h1 em{font-style:normal;color:var(--accent-2)}
+.lead{color:var(--muted);margin:0 0 26px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;margin:0 0 18px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:560px){.row{grid-template-columns:1fr}}
+label{display:block;font-weight:600;font-size:14.5px;margin-bottom:6px}
+label small{display:block;color:var(--muted);font-weight:400}
+input,select{width:100%;min-height:46px;border-radius:8px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font:500 16px var(--f-body);padding:0 12px}
+.dur{display:flex;gap:8px}.dur input{text-align:center}
+.out{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:6px 0 14px}
+@media(max-width:560px){.out{grid-template-columns:1fr 1fr}}
+.stat{background:var(--sunk);border-radius:10px;padding:14px}
+.stat span{display:block;color:var(--muted);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.stat b{display:block;font:800 30px/1.1 var(--f-display);margin-top:6px}
+.stat b small{font-size:15px;color:var(--muted);font-weight:600}
+.plan{margin:0;padding-left:20px;color:var(--ink)}.plan li{margin:4px 0}
+.note{color:var(--muted);font-size:15px}
+h2{font:800 24px/1.2 var(--f-display);margin:30px 0 10px}
+.cta{background:linear-gradient(135deg,#800000,#BE383E);border:0}
+.cta p{margin:6px 0 16px;color:#ffe3e4}
+.cta .btn{background:#fff;color:#800000}
+.src{font-size:14px;color:var(--muted)}.src li{margin:6px 0}
+footer{color:var(--muted);font-size:13.5px;padding:30px 0 50px}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px}
+.seg button{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font:600 14.5px var(--f-body);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent)}
+.hms{display:flex;gap:8px}.hms input{text-align:center}
+table{width:100%;border-collapse:collapse;font-size:15px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.05em}
+.splits{max-height:360px;overflow:auto}
+.hide{display:none}
+
+.week{display:grid;gap:8px}
+.day{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:start;background:var(--sunk);border-radius:10px;padding:12px}
+.day>b{font:800 15px/1.6 var(--f-display);color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-block;padding:5px 10px;border-radius:999px;font:700 13.5px/1.3 var(--f-body);color:#0A0B0F}
+.chip.easy{background:var(--easy)}.chip.long{background:var(--long)}.chip.q{background:var(--work)}.chip.lift{background:var(--lift)}.chip.rest{background:var(--line);color:var(--muted)}
+.why{display:block;width:100%;color:var(--muted);font-size:13.5px;margin-top:4px}
+.q{margin:0 0 14px}.q>b{display:block;font-weight:600;font-size:14.5px;margin-bottom:6px}
+.big{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:0 0 10px}
+.big b{font:800 54px/1 var(--f-display)}.big span{font:800 22px/1.2 var(--f-display)}
+.l0{color:var(--long)}.l1{color:var(--work)}.l2{color:#ff8a8f}
+.adj{background:var(--sunk);border-radius:10px;padding:14px;margin:0 0 10px}
+</style>
+</head>
+<body>
+<header class="nav"><div class="wrap"><a class="brand" href="/"><img src="icon.png" alt="">Mileset</a><a class="btn sm" href="https://app.hybrdrunning.com/?src=site">Open the app</a></div></header>
+<main class="wrap">
+<span class="tag">Marathon training · sleep</span>
+<h1>Slept badly. <em>Run today?</em></h1>
+<p class="lead">Most marathon plans assume you slept 8 hours. Real weeks have night shifts, exams, kids and race nerves. Answer five quick questions and see whether to run today's session as written, ease off, or swap it for recovery.</p>
+
+<section class="card" id="ci">
+  <div class="q"><b>Sleep last night</b><div class="seg" data-k="sleep_h"></div></div>
+  <div class="q"><b>Sleep quality</b><div class="seg" data-k="sleep_q"></div></div>
+  <div class="q"><b>Legs</b><div class="seg" data-k="soreness"></div></div>
+  <div class="q"><b>Energy</b><div class="seg" data-k="energy"></div></div>
+  <div class="q"><b>Stress</b><div class="seg" data-k="stress"></div></div>
+  <div class="row">
+    <div><label for="ses">Today's planned session</label><select id="ses"><option value="easy">Easy run</option><option value="workout" selected>Intervals or tempo</option><option value="long">Long run</option><option value="lift">Strength session</option></select></div>
+    <div><label for="hrv">HRV vs your normal <small>optional, from your watch</small></label><select id="hrv"><option value="0">Don't know / normal</option><option value="1">12% or more below normal</option></select></div>
+    <div><label for="rhr">Resting heart rate <small>optional</small></label><select id="rhr"><option value="0">Don't know / normal</option><option value="1">5+ bpm above normal</option></select></div>
+    <div><label for="ss">Watch sleep score <small>optional</small></label><select id="ss"><option value="0">Don't know / 60 or more</option><option value="1">Below 60</option></select></div>
+  </div>
+</section>
+
+<section class="card" aria-live="polite">
+  <div class="big"><b id="score">–</b><span id="word"></span></div>
+  <div class="adj" id="adj"></div>
+  <p class="note" id="why" style="margin:0"></p>
+</section>
+
+<section class="card cta">
+  <h2 style="margin:0">Get this every morning, without the quiz.</h2>
+  <p>Mileset builds your marathon plan around your race date and training days, then reads your sleep, HRV and resting heart rate from Garmin or Apple Health and adjusts today's session with these same rules. A 10-second check-in sharpens it. The first 100 members before Jan 1, 2027 get it free for life.</p>
+  <a class="btn" href="https://app.hybrdrunning.com/?src=site">Start free</a>
+</section>
+
+<h2>Does one bad night ruin a run?</h2>
+<p class="note">Usually not. A large review of sleep-loss studies found the effects on exercise are mixed: some maximal efforts hold up after a short night, while studies in athletes report drops in sport-specific performance, and sleep loss reliably hurts mood, reaction time and accuracy. One rough night before an easy run is rarely a reason to skip it. Several short nights in a row, plus heavy legs and high stress, is a different story.</p>
+
+<h2>Why adjust the hard days, not the easy ones</h2>
+<p class="note">In a 2016 study of 40 recreational runners, one group followed a fixed plan and the other did its harder sessions only on days when morning heart rate variability was in its normal range. The HRV-guided group did fewer moderate and hard sessions, yet improved its 3000 m time by about 2% (the fixed-plan group's change was not significant). Both groups improved VO2max. The lesson: timing your hard sessions to the days you're recovered can matter more than hitting every one on the calendar. That's why the advice above trims or moves workouts and long runs first, and keeps easy running easy.</p>
+
+<h2>How much sleep do runners need?</h2>
+<p class="note">A 2021 expert consensus on sleep in athletes notes that many athletes sleep short or broken, and recommends an individual target over one fixed number: how much you need to feel rested, not a rule like "exactly 8". If you're under 5 hours, this check treats the day as a recovery day no matter how the other answers look.</p>
+
+<h2>How the score works</h2>
+<ul class="note">
+  <li><b>Out of 100:</b> sleep hours up to 8 (30 points), sleep quality (20), fresh legs (20), energy (20), low stress (10).</li>
+  <li><b>Watch data:</b> HRV clearly below your 2-week normal takes off 8, resting HR 5+ bpm high takes off 6, a sleep score under 60 takes off 5.</li>
+  <li><b>70 or more:</b> ready to train. <b>50 to 69:</b> go easier. <b>Under 50, or under 5 hours of sleep:</b> recovery day.</li>
+</ul>
+
+<h2>Sources</h2>
+<ul class="src">
+  <li>Fullagar HHK, et al. Sleep and athletic performance: the effects of sleep loss on exercise performance, and physiological and cognitive responses to exercise. <i>Sports Med</i> 2015;45(2):161–186.</li>
+  <li>Vesterinen V, et al. Individual endurance training prescription with heart rate variability. <i>Med Sci Sports Exerc</i> 2016;48(7):1347–1354.</li>
+  <li>Walsh NP, et al. Sleep and the athlete: narrative review and 2021 expert consensus recommendations. <i>Br J Sports Med</i> 2021;55(7):356–368.</li>
+</ul>
+<p class="note">Planning race day? Get your splits from the <a href="/race-pace-calculator">race pace calculator</a> and your carbs per hour from the <a href="/fueling-calculator">fueling calculator</a>. This page is general training information, not medical advice. If you feel ill, have chest pain or feel faint, don't train: see a clinician.</p>
+</main>
+<footer class="wrap">© Mileset · <a href="/">Home</a> · <a href="/race-pace-calculator">Race pace calculator</a> · <a href="/fueling-calculator">Fueling calculator</a> · <a href="/hyrox-pace-calculator">HYROX pace calculator</a> · <a href="/half-marathon-plan-for-lifters">Half marathon plan for lifters</a> · <a href="https://app.hybrdrunning.com/privacy.html">Privacy</a></footer>
+<script>
+(function(){
+  // same options, score and adjustments as the app (plan.js readiness + ADJ)
+  var Q={sleep_h:[[4.5,"<5"],[5,"5"],[6,"6"],[7,"7"],[8,"8"],[9,"9+"]],sleep_q:[[1,"Awful"],[2,"Poor"],[3,"OK"],[4,"Good"],[5,"Great"]],soreness:[[1,"Fresh"],[2,"Light"],[3,"Some"],[4,"Sore"],[5,"Very"]],energy:[[1,"Drained"],[2,"Low"],[3,"OK"],[4,"Good"],[5,"Great"]],stress:[[1,"Calm"],[2,"Low"],[3,"Some"],[4,"High"],[5,"Very"]]};
+  var c={sleep_h:6,sleep_q:2,soreness:3,energy:3,stress:3};
+  var ADJ={1:{workout:"Easier today: do one rep fewer and run the reps at the slow end of the range.",long:"Easier today: cut 2 mi and keep every mile easy.",easy:"Keep it strictly conversational. Slow is fine.",lift:"Drop one set from each exercise."},
+    2:{workout:"Recovery day: swap this for 30–40 min very easy, or rest. Move the workout to a later day this week.",long:"Recovery day: make it half the distance, all easy, or move it.",easy:"Make it 20–30 min very easy, or rest.",lift:"Skip it, or keep it light and short."}};
+  var WORD=["Ready to train","Go easier today","Recovery day"];
+  var $=function(id){return document.getElementById(id)};
+  document.querySelectorAll(".seg").forEach(function(el){
+    var k=el.getAttribute("data-k");
+    Q[k].forEach(function(o){var b=document.createElement("button");b.type="button";b.textContent=o[1];b.setAttribute("aria-pressed",String(c[k]===o[0]));
+      b.addEventListener("click",function(){c[k]=o[0];el.querySelectorAll("button").forEach(function(x){x.setAttribute("aria-pressed","false")});b.setAttribute("aria-pressed","true");calc()});el.appendChild(b)});
+  });
+  function calc(){
+    var pen=0,notes=[];
+    if($("hrv").value==="1"){pen+=8;notes.push("HRV below your normal (−8)")}
+    if($("rhr").value==="1"){pen+=6;notes.push("resting HR up (−6)")}
+    if($("ss").value==="1"){pen+=5;notes.push("low sleep score (−5)")}
+    var score=Math.max(0,-pen+Math.round(Math.min(1,c.sleep_h/8)*30+(c.sleep_q-1)/4*20+(5-c.soreness)/4*20+(c.energy-1)/4*20+(5-c.stress)/4*10));
+    var level=c.sleep_h<5||score<50?2:score<70?1:0,s=$("ses").value;
+    $("score").textContent=score;$("word").textContent=WORD[level];$("word").className="l"+level;
+    $("adj").textContent=level?ADJ[level][s]:"Run it as planned. Warm up well and keep easy parts easy.";
+    $("why").textContent=(c.sleep_h<5?"Under 5 hours of sleep: recovery day, whatever else you answered. ":"")+(notes.length?"Watch: "+notes.join(", ")+". ":"")+(level===2&&s!=="easy"?"Missing one hard session won't cost you fitness; stacking fatigue can.":level===1?"You still train, just with less load. Check in again tomorrow.":"");
+  }
+  ["ses","hrv","rhr","ss"].forEach(function(id){$(id).addEventListener("change",calc)});
+  calc();
+})();
+</script>
+</body>
+</html>
