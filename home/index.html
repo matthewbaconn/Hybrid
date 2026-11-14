@@ -39,7 +39,7 @@ img{max-width:100%;display:block}
 
 /* hero */
 .hero{position:relative;padding:56px 0 40px}
-.hero::before{content:"";position:absolute;inset:-120px 0 auto;height:620px;background:radial-gradient(60% 55% at 70% 30%,rgba(128,0,0,.38),transparent 70%),radial-gradient(40% 40% at 15% 10%,rgba(34,211,238,.10),transparent 70%);pointer-events:none;z-index:-1}
+.hero::before{content:"";position:absolute;inset:-120px 0 auto;height:640px;background:repeating-linear-gradient(90deg,transparent 0 119px,rgba(255,255,255,.035) 119px 120px),radial-gradient(55% 60% at 75% 25%,rgba(128,0,0,.42),transparent 70%);pointer-events:none;-webkit-mask-image:linear-gradient(#000 55%,transparent);mask-image:linear-gradient(#000 55%,transparent);z-index:-1}
 .hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}
 .tag{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:rgba(224,70,76,.12);color:#ff8a8f;font:700 12.5px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase}
 .tag i{width:7px;height:7px;border-radius:50%;background:#ff5a60;box-shadow:0 0 0 4px rgba(255,90,96,.18)}
@@ -131,6 +131,19 @@ footer a:hover{color:var(--ink)}
   .band{grid-template-columns:1fr}
   .final{padding:52px 20px}
 }
+.made{display:inline-block;font:700 12.5px/1 var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:#ff8a8f;border-bottom:2px solid var(--accent);padding-bottom:6px}
+.bibcard{position:relative;background:#F4F1EA !important;border:0 !important;color:#16171c;transform:rotate(-.8deg);padding:16px 22px !important;box-shadow:0 18px 40px -20px rgba(0,0,0,.9)}
+.bibcard i{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--bg)}.bibcard i:nth-child(1){left:9px;top:9px}.bibcard i:nth-child(2){right:9px;top:9px}.bibcard i:nth-child(3){left:9px;bottom:9px}.bibcard i:nth-child(4){right:9px;bottom:9px}
+.bibcard b{color:#800000 !important}.bibcard .fnum{font:800 34px/1 var(--f-display);letter-spacing:-.03em;color:#16171c !important}.bibcard span{color:#4a4a4a !important}
+.also{padding:96px 0 24px}.also h2{max-width:14em}
+.also-list{list-style:none;margin:28px 0 0;padding:0;border-top:1px solid var(--line)}
+.also-list li{display:grid;grid-template-columns:72px 1fr;gap:20px;padding:26px 0;border-bottom:1px solid var(--line)}
+.also-list .n{font:800 15px/1.6 var(--f-display);color:var(--c);letter-spacing:.06em}
+.also-list h3{font:800 clamp(22px,2.4vw,28px)/1.15 var(--f-display);letter-spacing:-.02em;margin:0 0 8px}.also-list p{margin:0;color:var(--muted);max-width:40em}
+.note{margin:72px auto 24px;max-width:680px;padding:36px 32px;border-left:4px solid var(--accent);background:var(--surface);border-radius:0 12px 12px 0}
+.note h2{margin-top:0}.note p{color:#c9cdd8}.note a{color:#ff8a8f}
+.note .sig{font:italic 600 28px/1 Georgia,"Times New Roman",serif;color:var(--ink);margin:22px 0 0;transform:rotate(-2deg);display:inline-block}
+@media (max-width:640px){.also-list li{grid-template-columns:1fr;gap:6px}.note{padding:26px 20px}}
 .founding{margin-top:22px;display:grid;gap:4px;max-width:520px;padding:14px 16px;border-radius:10px;background:rgba(190,56,62,.16);border:1px solid rgba(212,88,92,.5)}
 .founding b{font-weight:800;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#fff}.founding span{font-size:15px;color:var(--muted);line-height:1.5}.founding strong{color:var(--ink)}
 </style>
@@ -147,15 +160,15 @@ footer a:hover{color:var(--ink)}
   <section class="hero">
     <div class="wrap">
       <div class="rv">
-        <span class="tag"><i></i>Early access</span>
+        <span class="made">Made in Florida by a runner who lifts</span>
         <h1>Train for anything.<br><em>Eat for it too.</em></h1>
-        <p class="lead">Mileset builds a week-by-week plan around your life, with strength days, daily food targets and a plan that eases off when you're run down.</p>
+        <p class="lead">A week-by-week plan built around your actual life: early shifts, leg day, pickleball on Thursday, a race in 10 days. It eases off when you're run down, and it works with or without a watch.</p>
         <div class="ctas">
           <a class="btn primary" href="https://app.hybrdrunning.com/?src=site">Get early access</a>
           <a class="btn ghost" href="#how">See how it works</a>
         </div>
         <p class="fine">Free while in early access. Works on any phone, no download needed.</p>
-        <div class="founding"><b>Founding 100</b><span>The first 100 members get Mileset free for life, including anything paid we add later. <strong id="fspots">Limited spots</strong> · ends Jan 1, 2027</span></div>
+        <div class="founding bibcard"><i></i><i></i><i></i><i></i><b>Founding 100</b><strong class="fnum" id="fspots">Limited spots</strong><span>The first 100 members get Mileset free for life, including anything paid we add later. Ends Jan 1, 2027.</span></div>
       </div>
       <div class="phones rv" aria-hidden="true">
         <div class="phone p1"><img src="plan.jpg" alt="" width="780" height="1688" loading="eager"></div>
@@ -223,12 +236,28 @@ footer a:hover{color:var(--ink)}
         <div class="shot rv"><div class="phone"><img src="fuel.jpg" alt="The Fuel screen with calories and macros left today" width="780" height="1688" loading="eager" decoding="async"></div></div>
       </article>
     </section>
+    <section class="also" id="more">
+      <h2 class="rv">The stuff other apps skip.</h2>
+      <ol class="also-list">
+        <li class="rv" style="--c:var(--easy)"><span class="n">01</span><div><h3>No watch? It still works.</h3><p>Tap "Start with my phone" and a voice coach calls every rep, keeps time, and tracks distance by GPS if you want. Pace by feel with the talk test, rate how hard it was from 1 to 10, and the plan adapts to that. A watch makes it sharper. It isn't required.</p></div></li>
+        <li class="rv" style="--c:var(--work)"><span class="n">02</span><div><h3>Pickleball counts.</h3><p>Soccer, yoga, a hike, a spin class. Whatever you did, Mileset figures out what it was, how hard it was and how it fits your week. If it replaced an easy run, it gets checked off. You get a plain-English summary after every activity.</p></div></li>
+        <li class="rv" style="--c:var(--lift)"><span class="n">03</span><div><h3>Training that knows your cycle.</h3><p>Optional for women: your phase, your symptoms and your own pattern steer the hard days. It stays on your phone. It never touches our servers.</p></div></li>
+        <li class="rv" style="--c:var(--accent-2)"><span class="n">04</span><div><h3>Race in 10 days? Still yes.</h3><p>Signed up late? Mileset builds a taper from where you are now instead of telling you it's too soon.</p></div></li>
+        <li class="rv" style="--c:var(--swim)"><span class="n">05</span><div><h3>Treadmill or outside, your call.</h3><p>Pick per run. Treadmill gets speeds in mph and no heat adjustment. Your watch still gets one workout, not two.</p></div></li>
+      </ol>
+    </section>
+    <section class="note rv" aria-labelledby="note-h">
+      <h2 id="note-h">Why I built this</h2>
+      <p>I'm 21, in nursing school, and I work a shift that starts at 4:30 in the morning. I played football, I lift, and I ran the Marine Corps Marathon. Every plan I found assumed running was my whole life. None of them knew what to do with leg day, a bad night of sleep, or a week where school ate everything.</p>
+      <p>So I built the plan I wanted: one that bends around a real schedule and still gets you to the start line ready. If something's off or missing, email me at <a href="mailto:milesetapp@gmail.com">milesetapp@gmail.com</a>. I read every one.</p>
+      <p class="sig">Matthew</p>
+    </section>
 
     <section class="connects rv">
       <div>
         <span class="kicker" style="--c:var(--accent-2)">Connects to your watch</span>
         <h2>Your workouts come in on their own.</h2>
-        <p>Link Garmin or Strava once. Runs, rides, lifts, routes, sleep and heart rate sync automatically. Apple Watch, WHOOP and Oura come in through Apple Health.</p>
+        <p>Link Garmin or Strava once. Runs, rides, lifts, routes, sleep and heart rate sync automatically. Apple Watch, WHOOP and Oura come in through Apple Health. No watch? Your phone is enough.</p>
         <div class="badges"><span class="gbn"><img src="https://app.hybrdrunning.com/brand/garmin-white.png" alt="Garmin" width="463" height="72"><em>Connect</em></span><span class="cws"><img src="https://app.hybrdrunning.com/brand/compatible-strava-orange.svg" alt="Compatible with Strava" width="437" height="37"></span></div>
       </div>
       <div class="apps">

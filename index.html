@@ -82,6 +82,11 @@ button{cursor:pointer}
 
 /* greeting */
 .hello h1{font:800 30px/1.1 var(--f-display);letter-spacing:-.035em}
+.bib{position:relative;margin:14px 0 4px;padding:12px 18px 10px;background:#F4F1EA;color:#16171c;border-radius:6px;display:grid;grid-template-columns:1fr auto;align-items:end;column-gap:12px;box-shadow:0 1px 0 rgba(0,0,0,.4),0 10px 24px -14px rgba(0,0,0,.8);transform:rotate(-.6deg)}
+.bib i{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--bg);box-shadow:inset 0 1px 1px rgba(0,0,0,.5)}.bib i:nth-child(1){left:8px;top:8px}.bib i:nth-child(2){right:8px;top:8px}.bib i:nth-child(3){left:8px;bottom:8px}.bib i:nth-child(4){right:8px;bottom:8px}
+.bib small{grid-column:1/-1;font:800 11px/1.2 var(--f-body);letter-spacing:.16em;text-transform:uppercase;color:#800000;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bib b{font:800 52px/.95 var(--f-display);letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:#16171c}.bib span{font:600 13px/1.3 var(--f-body);color:#555;text-align:right;padding-bottom:6px}
+.hello .kick{margin:0 0 6px;font:700 12px/1 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2)}
 .hello .sub{margin-top:6px}
 .count{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 
@@ -731,6 +736,26 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .scard{background:var(--surface)} .scard.hi{background:color-mix(in srgb,var(--accent) 14%,var(--surface))} .icard{background:var(--surface)}
 .rg-w circle{filter:none!important}
 a.scard{text-decoration:none;color:var(--ink)}
+#player{position:fixed;inset:0;z-index:200;background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--pt) 28%,var(--bg)) 0%,var(--bg) 70%);color:var(--ink);display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 20px)}
+.pl-top{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.pl-now{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center}
+.pl-now small{color:var(--pt);font-weight:700;letter-spacing:.12em;text-transform:uppercase}.pl-now h2{font-size:26px;margin:8px 0 4px;line-height:1.2}
+.pl-pace{color:var(--muted);margin:2px 0}.pl-big{font:800 min(28vw,140px)/1 inherit;font-variant-numeric:tabular-nums;margin:18px 0 4px;letter-spacing:-.03em}
+.pl-mi{min-height:22px;color:var(--muted);font-variant-numeric:tabular-nums}.pl-next{text-align:center;color:var(--muted);margin:0 0 14px}
+.pl-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}.pl-btns button,.pl-opts button{min-height:56px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:700 16px/1 inherit}
+.pl-btns .pl-end{background:var(--pt);border-color:var(--pt);color:#fff}.pl-opts{display:flex;gap:10px;justify-content:center;margin-top:10px}.pl-opts button{min-height:40px;padding:0 16px;font-size:13px;color:var(--muted)}
+.talk{display:block;font-style:normal;font-size:12px;color:var(--muted);margin-top:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px}.chips button{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 13px/1 inherit}.chips button[aria-pressed="true"]{background:var(--race);border-color:var(--race);color:#fff}
+.fbar{display:grid;grid-template-columns:1fr 90px 44px;gap:10px;align-items:center;margin:8px 0;font-size:13.5px}.fbar span{color:var(--muted)}.fbar div{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden}.fbar i{display:block;height:100%;border-radius:4px}.fbar b{text-align:right;font-variant-numeric:tabular-nums}
+.pc[role="button"]{cursor:pointer}.pc .ph i{margin-left:auto;font-style:normal;color:var(--muted)}
+.venue{margin:10px 0}.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.seg button{padding:8px 14px;background:transparent;border:0;color:var(--muted);font:600 14px/1 inherit}.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.rpe{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:6px}
+.rpe button{min-height:38px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 14px/1 inherit;font-variant-numeric:tabular-nums}
+.rpe button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.rpe-w{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+.asum{margin-top:12px;padding:12px 14px;border-left:3px solid var(--tc,var(--accent));background:color-mix(in srgb,var(--accent) 6%,transparent);border-radius:0 8px 8px 0}
+.asum b{display:block;margin-bottom:4px}.asum p{margin:4px 0;font-size:14px;color:var(--ink-2,var(--muted))}
+.asub{display:block;font-size:13px;color:var(--muted);margin:-2px 0 6px}
 </style>
 </head>
 <body>
@@ -899,20 +924,35 @@ function actLine(a){
   return [a.mi ? r2(a.mi) + ' mi' : '', a.minutes ? a.minutes + ' min' : '', pace, a.avg_hr ? a.avg_hr + ' bpm' : '', a.cal ? comma(a.cal) + ' cal' : ''].filter(Boolean).join(' · ');
 }
 const r2 = x => Math.round(x * 100) / 100;
+/* every activity counts: effort 1-10 (no watch needed) and a plain-words summary after each one */
+const RPE_W = ["", "Very easy", "Easy", "Easy", "Steady", "Moderate", "Moderate", "Hard", "Hard", "Very hard", "Max"];
+function effortPicker(id, val){
+  return '<div class="rpe" role="group" aria-label="Effort from 1 to 10" data-for="' + id + '">' + [1,2,3,4,5,6,7,8,9,10].map(n => '<button type="button" data-act="rpe" data-for="' + id + '" data-v="' + n + '" aria-pressed="' + (val === n) + '" aria-label="' + n + ' ' + RPE_W[n] + '">' + n + '</button>').join("") + '</div><span class="rpe-w" id="' + id + '-w">' + (val ? RPE_W[val] : '1 = could do it all day · 10 = all-out') + '</span>';
+}
+function maxHrNow(){ try { const c = hrCfg(); if (c.base) return c.method === "lthr" ? Math.round(c.base / .9) : c.base; } catch(e){} const p = plan && plan.profile; return p && p.age ? Math.round(208 - .7 * p.age) : 0; }
+function summaryHtml(a){
+  if (!plan || !a) return '';
+  const sm = HP.actSummary(plan, feedActs(), a, TODAY, maxHrNow());
+  return '<div class="asum"><b>' + esc(sm.headline) + '</b>' + sm.lines.map(l => '<p>' + esc(l) + '</p>').join("") +
+    (mode !== "sample" && !(a.rpe > 0) ? '<p class="feelq">How hard did it feel? It makes the numbers yours.</p>' + effortPicker("ar-" + a.id, 0) : '') + '</div>';
+}
 function workoutCard(){
   const list = actsOn(TODAY);
   let h = '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("watch") + '<span class="lbl">Today\'s workouts</span>' +
     (strava.connected ? '<span class="r">Strava · ' + agoText(strava.last_sync) + '</span>' : '') + '</div>';
   const matchedIds = new Set(Object.values(dayMatches(TODAY)).map(a => a.id));
-  const extraReviews = list.filter(a => reviewFor(a)).map(a => reviewHtml(reviewFor(a), a)).join("");
+  const extraReviews = list.map(a => reviewFor(a) ? reviewHtml(reviewFor(a), a) + (a.type !== "run" ? summaryHtml(a) : '') : summaryHtml(a)).join("");
   h += list.length ? '<ul class="fl">' + list.map(a => '<li class="act t-' + (a.type === "run" ? "easy" : a.type === "lift" ? "lift" : "long") + '"><div class="fi"><b>' + esc(a.name) + '</b><span>' + actLine(a) + '</span></div>' +
       '<span class="src src-' + a.source + '">' + (a.source === "strava" ? 'Strava' : a.source === "garmin" ? '<img class="gsrc" src="brand/garmin-white.png" alt="Garmin" width="463" height="72">' : 'Logged') + '</span>' +
       (a.source === "manual" ? '<button class="x" type="button" data-act="adel" data-id="' + esc(a.id) + '" aria-label="Remove ' + esc(a.name) + '">✕</button>' : '') + '</li>').join("") + '</ul>' + extraReviews
     : '<p class="sub">Nothing logged yet today. Finished workouts add calories to today\'s target and check off your plan.</p>';
   if (aw.open){
     h += '<div class="aform"><div class="two"><label>Type<select id="a-type">' + [["run","Run"],["lift","Strength"],["bike","Bike"],["swim","Swim"],["other","Other"]].map(([v, l]) => '<option value="' + v + '">' + l + '</option>').join("") + '</select></label>' +
-      '<label>Name<input id="a-name" placeholder="Optional"></label></div>' +
-      '<div class="three"><label>Miles<input id="a-mi" inputmode="decimal" placeholder="0"></label><label>Minutes<input id="a-min" inputmode="numeric" placeholder="0"></label><label>Calories<input id="a-cal" inputmode="numeric" placeholder="watch"></label></div>' +
+      '<label>Name<input id="a-name" placeholder="Optional" value="' + esc((aw.pre || {}).name || '') + '"></label></div>' +
+      '<div class="two"><label>Sport<input id="a-sport" list="a-sports" placeholder="Pickleball, yoga, soccer…" maxlength="30"></label><label>Where<select id="a-venue"><option value="">—</option><option value="outside"' + ((aw.pre || {}).venue === "outside" ? ' selected' : '') + '>Outside</option><option value="treadmill"' + ((aw.pre || {}).venue === "treadmill" ? ' selected' : '') + '>Treadmill / indoors</option></select></label></div>' +
+      '<datalist id="a-sports">' + ["Pickleball","Tennis","Padel","Soccer","Basketball","Volleyball","Yoga","Pilates","Hike","Walk","Rowing","Elliptical","Stair climber","Climbing","Boxing","Dance","Golf","HIIT","Spin class","Surfing"].map(x => '<option value="' + x + '">').join("") + '</datalist>' +
+      '<div class="q"><span class="ql">How hard was it?</span>' + effortPicker("a-rpe", 0) + '</div>' +
+      '<div class="three"><label>Miles<input id="a-mi" inputmode="decimal" placeholder="0" value="' + ((aw.pre || {}).mi || '') + '"></label><label>Minutes<input id="a-min" inputmode="numeric" placeholder="0" value="' + ((aw.pre || {}).minutes || '') + '"></label><label>Calories<input id="a-cal" inputmode="numeric" placeholder="watch"></label></div>' +
       '<div class="two"><label>Rep pace (/mi)<input id="a-wp" inputmode="numeric" placeholder="workouts"></label><label>Avg heart rate<input id="a-hr" inputmode="numeric" placeholder="optional"></label></div><div class="two"><label>Date<input id="a-date" type="date" max="' + TODAY + '" value="' + TODAY + '"></label><span></span></div>' +
       '<p class="err" role="alert">' + esc(aw.err) + '</p><div class="fbtns"><button class="btn" type="button" data-act="atoggle">Cancel</button><button class="btn primary" type="button" data-act="asave"' + (aw.busy ? ' disabled' : '') + '>Save workout</button></div></div>';
   } else h += '<button class="btn block" type="button" data-act="atoggle">' + ic("plus") + 'Log a workout</button>';
@@ -968,7 +1008,7 @@ function actCard(a){
   const pts = ptsOf(a), tone = ACT_TONE[a.type] || "long", src = a.source === "strava" ? "Strava" : a.source === "garmin" ? "Garmin" : a.source === "sample" ? "Sample" : "Logged";
   return '<article class="card actc" style="--tc:var(--' + tone + ')" data-act="actopen" data-id="' + esc(a.id) + '" tabindex="0" role="button" aria-label="Open ' + esc(a.name) + '">' +
     '<div class="ah"><span class="aic">' + ic(ACT_IC[a.type] || "watch") + '</span><div><b>' + esc((me && me.name) || (plan && plan.profile.name) || "You") + '</b><span>' + whenTxt(a) + ' · ' + src + '</span></div></div>' +
-    '<h3>' + esc(a.name) + '</h3><div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
+    '<h3>' + esc(a.name) + '</h3>' + (plan && a.type !== "run" && a.type !== "lift" ? '<span class="asub">' + esc(HP.actSummary(plan, feedActs(), a, TODAY, maxHrNow()).headline) + '</span>' : '') + '<div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
     (pts && pts.length > 1 ? '<div class="amap" data-map="' + esc(a.id) + '">' + routeSvg(pts) + '</div>' : '') + '</article>';
 }
 function feedActs(){
@@ -1000,7 +1040,7 @@ function actDetail(a){
   const pts = ptsOf(a), tone = ACT_TONE[a.type] || "long", rv = reviewFor(a);
   let h = '<div class="adet-h"><button class="arrow" type="button" data-act="actback" aria-label="Back to activities">‹</button><div><h1>' + esc(a.name) + '</h1><span class="sub">' + whenTxt(a) + ' · ' + (a.source === "strava" ? 'Strava' : a.source === "sample" ? 'Sample' : 'Logged by hand') + '</span></div></div>';
   if (pts && pts.length > 1) h += '<div class="amap big" data-map="' + esc(a.id) + '" data-big="1">' + routeSvg(pts) + '</div>';
-  h += '<section class="card" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv, a) : '') + '</section>';
+  h += '<section class="card" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv, a) : '') + summaryHtml(a) + '</section>';
   let laps = null; try { laps = a.laps ? (typeof a.laps === "string" ? JSON.parse(a.laps) : a.laps) : null; } catch(e){}
   laps = (laps || []).filter(l => l[0] > 50 && l[1] > 0);
   if (a.type === "run" && laps.length > 1){
@@ -1790,9 +1830,15 @@ function header(){
 }
 function weekOf(date){ return plan.weeks.findIndex(w => date >= w.start && date <= addDays(w.start, 6)); }
 function dayOf(date){ const wi = weekOf(date); return wi < 0 ? null : plan.weeks[wi].days[dow(date)]; }
+// no watch? pace by feel: the talk test (Foster 1999 / Reed 2014: tracks ventilatory thresholds well)
+const TALK = {E: "talk in full sentences · 3/10", L: "talk in full sentences · 3–4/10", M: "a few sentences at a time · 5/10", H: "short phrases · 6/10", T: "a few words at a time · 7/10", I: "one or two words · 8/10", R: "fast but relaxed, no talking · 9/10", G: "race effort"};
 function stepHtml(st, offs){
   const [text, , k, plus] = st, off = (offs && offs[k]) || 0;
-  return '<li><span>' + esc(text) + (k ? ' <b class="pc">' + (k === "E" || k === "L" ? pace(plan.P, k) : fmtPace(plan.P[k] + off + (plus || 0))) + '/mi</b>' : '') + '</span></li>';
+  const pc = k ? (k === "E" || k === "L" ? pace(plan.P, k) : fmtPace(plan.P[k] + off + (plus || 0))) + '/mi' : '', tg = HP.targetOf(plan.profile), hr = tg === "hr" && k ? HP.hrFor(k, zonesNow(), plan.profile.goal) : null;
+  const main = !k ? '' : tg === "feel" && TALK[k] ? '<b class="pc">' + TALK[k].split(" · ").reverse().join(" · ") + '</b><i class="talk">about ' + pc + '</i>'
+    : hr ? '<b class="pc">Z' + hr.zone + ' · ' + hr.lo + '–' + hr.hi + ' bpm</b><i class="talk">about ' + pc + (TALK[k] ? ' · ' + TALK[k].split(" · ")[0] : '') + '</i>'
+    : '<b class="pc">' + pc + '</b>' + (TALK[k] ? '<i class="talk">' + TALK[k] + '</i>' : '');
+  return '<li><span>' + esc(text) + (main ? ' ' + main : '') + '</span></li>';
 }
 const minOnly = s => s.type === "race" ? !!s.multi : !s.mi;
 function estTime(s){
@@ -1801,13 +1847,19 @@ function estTime(s){
   const avg = s.type === "workout" ? (plan.P.E[0] + k) / 2 : k;
   return s.mi * avg;
 }
+function venueHtml(s, key){
+  const v = s.venue || "outside", P = plan.P, ks = [...new Set((s.steps || []).map(st => st[2]).filter(k => k && P[k] != null))];
+  const sp = k => Array.isArray(P[k]) ? HP.mph(Math.max(P[k][0], P[k][1])) + "–" + HP.mph(Math.min(P[k][0], P[k][1])) : String(HP.mph(P[k]));
+  return '<div class="venue"><div class="seg" role="group" aria-label="Where are you running this">' + [["outside", "Outside"], ["treadmill", "Treadmill"]].map(([k, l]) => '<button type="button" data-act="venue" data-key="' + key + '" data-v="' + k + '" aria-pressed="' + (v === k) + '">' + l + '</button>').join("") + '</div>' +
+    (v === "treadmill" ? '<p class="sub">Set a 1% incline. Speeds: ' + ks.map(k => (HP.PNAME[k] || k) + ' ' + sp(k) + ' mph').join(" · ") + '.' + (garmin.connected ? ' Your watch gets one workout, labeled Treadmill.' : '') + '</p>' : '') + '</div>';
+}
 const VERDICT = {ok: ["On target", "good"], easy: ["Came in fast", "easy"], hard: ["Too hard", "warn"], unknown: ["Couldn't check", "muted"]};
 function sessHtml(s, key, big){
   const date = key.slice(0, 10), idx = +key.slice(11), match = dayMatches(date)[idx], manualDone = !!done[key], isDone = manualDone || !!match;
   const F = fb(), future = !match && date >= TODAY, note = future ? F.notes[key] : null;
   let offs = future ? F.offs : (F.assess[key] || {}).offsBefore;
   if (future && F.extra[key]) s = {...s, steps: HP.withExtraRep(s.steps)};
-  const heat = future && date === TODAY && s.type === "workout" && !s.base ? heatToday() : null, hp = heat && heat.pct >= .01 ? heat.pct : 0;
+  const heat = future && date === TODAY && s.type === "workout" && !s.base && s.venue !== "treadmill" ? heatToday() : null, hp = heat && heat.pct >= .01 ? heat.pct : 0;
   if (hp){ const o = {...(offs || {})}; for (const k of HP.PACE_KEYS) if (plan.P[k] && !Array.isArray(plan.P[k])) o[k] = (o[k] || 0) + plan.P[k] * hp; offs = o; }
   const as = match ? F.assess[key] : null, rv = match ? reviewFor(match) : null, t = estTime(s);
   const r = date === TODAY ? readiness(checkins[TODAY], sigOn(TODAY)) : null, adj = r && r.level && ADJ[r.level][s.type];
@@ -1815,10 +1867,13 @@ function sessHtml(s, key, big){
   const stats = s.type === "lift" ? '<div><b>' + s.steps.length + '</b><span>Exercises</span></div><div><b>' + (s.min ? s.min + ' min' : '~50 min') + '</b><span>Time</span></div>'
     : minOnly(s) ? (s.yd ? '<div><b>' + comma(s.yd) + ' yd</b><span>Distance</span></div>' : s.bmi ? '<div><b>~' + s.bmi + ' mi</b><span>At an easy pace</span></div>' : s.type === "race" ? '<div><b>' + esc(HP.raceName(plan.profile)) + '</b><span>Event</span></div>' : '') + tstat + '<div><b>' + (s.type === "race" ? 'Steady' : s.type === "hyrox" ? 'Hard' : /hard|threshold|interval|race effort|7–8/i.test(s.steps.map(x => x[0]).join(" ")) ? 'Mixed' : 'Easy') + '</b><span>Effort</span></div>'
     : '<div><b>' + s.mi + ' mi</b><span>Distance</span></div>' + (t ? '<div><b>' + fmtTime(t).replace(/:\d\d$/, "") + (t >= 3600 ? '' : ' min') + '</b><span>About</span></div>' : '') +
-      '<div><b>' + (s.type === "race" ? fmtPace(plan.P.G) : s.k === "E" || s.k === "L" ? fmtPace(plan.P[s.k][0]) + '+' : fmtPace((plan.P[s.k] || plan.P.T) + ((offs && offs[s.k]) || 0))) + '</b><span>' + (s.type === "race" ? "Goal pace" : "Key pace") + '</span></div>';
+      (HP.targetOf(plan.profile) === "hr" && HP.hrFor(s.type === "race" ? "G" : s.k, zonesNow(), plan.profile.goal) ? (r0 => '<div><b>Z' + r0.zone + '</b><span>' + r0.lo + '–' + r0.hi + ' bpm</span></div>')(HP.hrFor(s.type === "race" ? "G" : s.k, zonesNow(), plan.profile.goal)) :
+      '<div><b>' + (s.type === "race" ? fmtPace(plan.P.G) : s.k === "E" || s.k === "L" ? fmtPace(plan.P[s.k][0]) + '+' : fmtPace((plan.P[s.k] || plan.P.T) + ((offs && offs[s.k]) || 0))) + '</b><span>' + (s.type === "race" ? "Goal pace" : "Key pace") + '</span></div>');
   return '<div class="sess t-' + s.type + '">' + (big ? '<span class="chip">' + TYPE[s.type] + '</span>' : '') +
     '<h3 class="sess-t">' + esc(s.title) + '</h3><div class="stats">' + stats + '</div><ul class="steps">' + s.steps.map(st => stepHtml(st, offs)).join("") + '</ul>' +
     (future && s.k && F.offs[s.k] ? '<p class="fbnote">' + ic("gauge") + '<span>Reps ' + Math.abs(F.offs[s.k]) + ' s/mi ' + (F.offs[s.k] < 0 ? 'faster' : 'slower') + ' than the original plan, from how your last workouts went.</span></p>' : '') +
+    (big && ["easy", "long", "workout"].includes(s.type) && !isDone ? venueHtml(s, key) : '') +
+    (big && !isDone && date === TODAY && s.steps && s.steps.length && s.type !== "lift" && s.type !== "race" ? '<button class="btn primary block" type="button" data-act="play" data-key="' + key + '">' + ic("run") + ' Start with my phone</button><p class="fine">No watch needed: a voice coach calls every step, the phone keeps time' + (s.venue === "treadmill" ? '' : ' and can track distance by GPS') + ', then it logs itself.</p>' : '') +
     (hp ? '<p class="fbnote">' + ic("sun") + '<span>Outdoors today: paces include ' + Math.round(hp * 1000) / 10 + '% for heat (' + heat.temp + '°F, dew ' + heat.dew + '° around ' + hr12(heat.hour) + '). Treadmill: subtract that back.</span></p>' : '') +
     (s.type === "race" ? raceCard() + (plan.raceDate ? '<button class="linkbtn" type="button" data-act="go" data-scr="fuelplan">' + ic("bolt") + ' Race fueling and hydration plan</button>' : '') : '') +
     (s.custom ? '<p class="fbnote">' + ic("spark") + '<span>' + (s.own ? 'Your own workout.' : 'Your pick.') + (s.was ? ' Planned: ' + esc(s.was) + '.' : '') + '</span></p>' : '') +
@@ -1847,6 +1902,24 @@ function sessionCard(day){
   return '<article class="card hero t-' + t + '"><header class="hero-h"><div><div class="d">Today</div><div class="dd">' + DAYF[dow(TODAY)] + ', ' + fmtD(TODAY) + '</div></div><span class="chip">' + TYPE[t] + '</span></header><div class="hero-b">' +
     (day.sessions.length ? day.sessions.map((s, i) => sessHtml(s, TODAY + "-" + i, true)).join("") : '<div class="sess"><h3 class="sess-t">Rest day</h3><p class="muted">An easy walk or mobility is plenty. Sleep and food do the work today.</p></div>') + '</div></article>';
 }
+/* the hello line talks about THIS person's day, like a coach would, not a generic "Hi" */
+function greeting(p, w){
+  const nm = p.name ? esc(p.name) : "", hr = new Date().getHours(), day = dayOf(TODAY), ss = day ? day.sessions : [];
+  const tod = hr < 5 ? "Up early" : hr < 12 ? "Morning" : hr < 17 ? "Afternoon" : "Evening", r = readiness(checkins[TODAY], sigOn(TODAY));
+  const m = dayMatches(TODAY), allDone = ss.length && ss.every((s, i) => sessDone(TODAY, i, m)), hard = ss.find(s => s.type === "workout" || s.type === "long" || s.type === "race");
+  const n = plan.raceDate ? daysBetween(TODAY, plan.raceDate) : null, yday = actsOn(addDays(TODAY, -1)), lastSport = yday.length ? HP.actSummary(plan, acts, yday[yday.length - 1], TODAY, maxHrNow()) : null;
+  const who = nm ? ", " + nm : "";
+  let head, sub = "";
+  if (n === 0) { head = "Race day" + who + "."; sub = "Trust the work. Start slower than you want to."; }
+  else if (allDone) { head = "Done for today" + who + "."; sub = "Eat, hydrate, sleep. That's training too."; }
+  else if (n != null && n > 0 && n <= 7) { head = n + (n === 1 ? " day" : " days") + " out" + who + "."; sub = "The hay is in the barn. Stay fresh."; }
+  else if (!ss.length) { head = "Rest day" + who + "."; sub = lastSport && lastSport.rpe >= 7 ? "After yesterday's " + esc(lastSport.name.toLowerCase()) + ", you earned it." : "Walk, stretch, eat well. Fitness is built today."; }
+  else if (r && r.level >= 1 && hard) { head = tod + who + ". Go easy on yourself."; sub = "Your check-in says tired. The plan already softened today's " + esc(hard.title.toLowerCase().split(" ·")[0]) + "."; }
+  else if (hard && hard.type === "long") { head = "Long run day" + who + "."; sub = "Slow is correct. Bring fuel if it's over 75 minutes."; }
+  else if (hard) { head = esc(hard.title.split(" ·")[0]) + " day" + who + "."; sub = r && r.level === 0 && r.score >= 80 ? "Check-in looks great. Go get it." : "Warm up properly, then hit your paces."; }
+  else { head = tod + who + "."; sub = "Easy today. Conversational pace, nothing to prove."; }
+  return {h: head, sub};
+}
 function heroSummary(day){
   const t = dayType(day), m = dayMatches(TODAY), F = fb(), r = readiness(checkins[TODAY], sigOn(TODAY));
   if (!day.sessions.length) return '<section class="hub-hero t-rest" style="cursor:default"><div class="hh"><span>Today</span><span class="chip">Rest</span></div><h3>Rest day</h3><p style="color:rgba(255,255,255,.8)">An easy walk or mobility is plenty. Sleep and food do the work today.</p></section>';
@@ -1865,12 +1938,13 @@ function heroSummary(day){
 }
 function renderToday(){
   const p = plan.profile, first = plan.weeks[0].start, last = addDays(plan.weeks[plan.weeks.length - 1].start, 6);
-  let h = '<section class="hello"><h1>' + (p.name ? 'Hi ' + esc(p.name) : 'Today') + '</h1>';
-  const wi = weekOf(TODAY), w = plan.weeks[wi];
-  h += '<p class="sub">' + DAYF[dow(TODAY)] + ', ' + fmtD(TODAY) + '</p><div class="count">';
-  if (plan.raceDate){ const n = daysBetween(TODAY, plan.raceDate); h += '<span class="pill">' + ic("flag") + (n > 0 ? n + ' days to ' + HP.raceName(p) : n === 0 ? 'Race day' : 'Race done') + '</span>'; }
+  const wi = weekOf(TODAY), w = plan.weeks[wi], g = greeting(p, w);
+  let h = '<section class="hello"><p class="kick">' + DAYF[dow(TODAY)] + ' · ' + fmtD(TODAY) + '</p><h1>' + g.h + '</h1>' + (g.sub ? '<p class="sub">' + g.sub + '</p>' : '');
+  h += '<div class="count">';
   if (w) h += '<span class="pill">Week ' + w.n + ' of ' + plan.weeks.length + '</span><span class="pill">' + esc(w.phase) + '</span>';
-  h += '</div>' + syncLine() + '</section>';
+  h += '</div>';
+  if (plan.raceDate){ const n = daysBetween(TODAY, plan.raceDate); if (n >= 0) h += '<div class="bib" aria-label="' + n + ' days to ' + esc(HP.raceName(p)) + '"><i></i><i></i><i></i><i></i><small>' + esc(p.raceName || HP.raceName(p)) + '</small><b>' + (n === 0 ? 'GO' : n) + '</b><span>' + (n === 0 ? 'race day' : n === 1 ? 'day to go' : 'days to go') + ' · ' + fmtD(plan.raceDate) + '</span></div>'; }
+  h += syncLine() + '</section>';
   if (TODAY < first){ h += '<section class="card"><h2 class="sec-t">Your plan starts ' + fmtD(first) + '</h2><p class="sub">Keep running easy until then. Open the Plan tab to see week 1.</p></section>'; return h; }
   if (TODAY > last){ h += '<section class="card"><h2 class="sec-t">Plan complete</h2><p class="sub">Nice work. Open settings to build your next plan.</p></section>'; return h; }
   const day = dayOf(TODAY), f = fuelFor(p, day, TODAY), e = eaten(TODAY), left = f.cal - e.cal;
@@ -1882,7 +1956,7 @@ function renderToday(){
   const quickW = !wt && wskip !== TODAY && wAsk() ? '<section class="card qw" style="--tone:var(--lift)"><div class="card-h">' + ic("scale") + '<span class="lbl">Morning weigh-in</span><button class="linkbtn r" type="button" data-act="wskip">Not today</button></div>' +
     '<div class="wform"><input id="w-lb" inputmode="decimal" placeholder="' + (aw7 ? aw7.toFixed(1) : "Weight") + '" aria-label="Weight in pounds"><span>lb</span><button class="btn primary" type="button" data-act="wsave">Save</button></div>' + (wf && wf.err ? '<p class="err" role="alert">' + esc(wf.err) + '</p>' : '') + '</section>' : '';
   const mvT = day.sessions.length && canMove(TODAY) && moveTargets(TODAY).length && !day.sessions.some((s, i) => sessDone(TODAY, i, dayMatches(TODAY)));
-  h += checkinCard() + fuelTile + heroSummary(day) + (mvT ? '<button class="linkbtn hmove" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t do it today? Move it</button>' : '') + missedCard() + quickW;
+  h += checkinCard() + cycleCard(day) + fuelTile + heroSummary(day) + (mvT ? '<button class="linkbtn hmove" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t do it today? Move it</button>' : '') + missedCard() + quickW;
   if (L && wxState === "idle") setTimeout(() => loadWeather(), 0);
   const nowKey = TODAY + "T" + String(new Date().getHours()).padStart(2, "0") + ":00", bw = wx && wxState === "ok" ? HP.bestWindow(wx.hours, nowKey, addDays(TODAY, 1)) : null;
   let wmi = 0, wdone = 0;
@@ -2092,6 +2166,8 @@ function runClass(a){
 }
 function loadOf(a){
   const z = zoneOf(a.avg_hr), m = a.minutes || 0;
+  if (a.rpe > 0) return m * .6 * [0, .8, 1, 1.3, 1.6, 2, 2.4, 2.8, 3.2, 3.6, 4][Math.min(10, Math.round(a.rpe))];   // how it felt, 1-10
+  if (!z && a.type === "other") return m * .6 * Math.max(.8, HP.sportOf(a).rpe * .4);
   if (z) return m * .6 * [1, 1.5, 2.2, 3, 4][z - 1];
   if (a.type === "run") return m * .6 * [1.5, 2.6, 3.6][runClass(a)];
   return m * .6 * ({lift: 1.3, bike: 1.2, swim: 1.4}[a.type] || 1);
@@ -2103,6 +2179,71 @@ function fitnessSeries(days, list){
   return out;
 }
 const hmin = m => { m = Math.round(m); return m >= 60 ? Math.floor(m / 60) + 'h ' + (m % 60) + 'm' : m + 'm'; };
+/* ---------- Progress, opened up: every card on the Progress tab taps into one of these ---------- */
+const TYPE_C = {run: "var(--easy)", lift: "var(--lift)", bike: "var(--work)", swim: "var(--accent-2)", other: "var(--long)"};
+function barsSvg(vals, labels, colorOf, W, H, ref, title){
+  const mx = Math.max(1, ref || 0, ...vals.map(v => Array.isArray(v) ? v.reduce((a, b) => a + b[0], 0) : v)), bw = (W - 8) / vals.length;
+  let o = '<svg class="pchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(title) + '">';
+  if (ref) o += '<line x1="0" x2="' + W + '" y1="' + (H - 18 - ref / mx * (H - 30)).toFixed(1) + '" y2="' + (H - 18 - ref / mx * (H - 30)).toFixed(1) + '" stroke="var(--muted)" stroke-dasharray="4 4" stroke-opacity=".6"/>';
+  vals.forEach((v, i) => { let y = H - 18; (Array.isArray(v) ? v : [[v, colorOf(i)]]).forEach(([x, c]) => { const hh = x / mx * (H - 30); y -= hh; o += '<rect x="' + (4 + i * bw + 1).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + Math.max(2, bw - 3).toFixed(1) + '" height="' + Math.max(0, hh).toFixed(1) + '" rx="2" fill="' + c + '"/>'; }); });
+  labels.forEach((l, i) => { if (l) o += '<text x="' + (i === labels.length - 1 ? W - 2 : 4 + i * bw + bw / 2).toFixed(1) + '" y="' + (H - 4) + '" text-anchor="' + (i === labels.length - 1 ? 'end' : 'middle') + '">' + l + '</text>'; });
+  return o + '</svg>';
+}
+function loadDetail(){
+  const all = feedActs(), byDay = {}; all.forEach(a => (byDay[a.date] = byDay[a.date] || []).push(a));
+  const fs_ = fitnessSeries(90, all), cur = fs_[fs_.length - 1], opt = Math.max(1, cur.ctl * 7);
+  const days = Array.from({length: 28}, (_, i) => addDays(TODAY, -27 + i));
+  const dv = days.map(d => (byDay[d] || []).map(a => [loadOf(a), TYPE_C[a.type] || "var(--long)"]));
+  const load7 = Math.round(days.slice(-7).reduce((t, d) => t + (byDay[d] || []).reduce((u, a) => u + loadOf(a), 0), 0));
+  const load28 = days.reduce((t, d) => t + (byDay[d] || []).reduce((u, a) => u + loadOf(a), 0), 0), ratio = load28 ? load7 / (load28 / 4) : 0;
+  const first = all.reduce((m, a) => !m || a.date < m ? a.date : m, null), young = !first || first > addDays(TODAY, -21);
+  const verdict = !load7 ? ["Nothing logged this week", "Log or sync a workout and your load shows up here."]
+    : young ? ["Building your baseline", "Mileset needs about 3 weeks of workouts to know what's normal for you. Until then, add no more than about 10% a week."]
+    : ratio > 1.5 ? ["Big jump", "This week is over 1.5× your 4-week average. That's when injuries creep in. Keep the next two days easy."]
+    : ratio > 1.3 ? ["Building fast", "A bit above your usual. Fine for a week, then hold steady."]
+    : ratio >= .8 ? ["In the sweet spot", "Right in line with what your body is used to (0.8 to 1.3× your 4-week average)."]
+    : ["Lighter week", "Below your usual. Good for recovery or a taper; otherwise there's room to do more."];
+  const wks = Array.from({length: 12}, (_, i) => { const ws = addDays(mondayOf(TODAY), -7 * (11 - i)); return Array.from({length: 7}, (_, j) => (byDay[addDays(ws, j)] || []).reduce((t, a) => t + loadOf(a), 0)).reduce((a, b) => a + b, 0); });
+  let h = '<section class="card" style="--tone:var(--lift)"><div class="card-h"><span class="lbl">Last 7 days</span><span class="r">' + load7 + ' load</span></div>' +
+    '<p><b>' + verdict[0] + '.</b> ' + verdict[1] + '</p>' + (young ? '' : '<div class="gauge"><i style="left:' + Math.max(2, Math.min(97, ratio / 2 * 100)).toFixed(1) + '%"></i></div>') + '' +
+    '<div class="pf" style="display:flex;justify-content:space-between;gap:12px"><span>Ratio to your 4-week average</span><b>' + (ratio && !young ? ratio.toFixed(2) + '×' : '–') + '</b></div></section>';
+  h += '<section class="card"><div class="card-h"><span class="lbl">Daily load · 4 weeks</span></div>' + barsSvg(dv, days.map((d, i) => i % 7 === 6 ? shortD(d) : ''), () => "var(--long)", 340, 150, opt / 7, "Training load each day for 4 weeks") +
+    '<div class="legend">' + Object.entries({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Other sports"}).map(([k, l]) => '<span><i style="--c:' + TYPE_C[k] + '"></i>' + l + '</span>').join("") + '</div><p class="fine">Dashed line: a typical day for your current fitness.</p></section>';
+  h += '<section class="card"><div class="card-h"><span class="lbl">Weekly load · 12 weeks</span></div>' + barsSvg(wks, wks.map((_, i) => i % 3 === 2 ? shortD(addDays(mondayOf(TODAY), -7 * (11 - i))) : ''), i => i === 11 ? "var(--accent-2)" : "var(--lift)", 340, 140, 0, "Training load per week, 12 weeks") + '</section>';
+  const recent = all.filter(a => a.date >= addDays(TODAY, -6)).slice(0, 12);
+  h += '<section class="card"><div class="card-h"><span class="lbl">What made up this week</span></div>' + (recent.length ? '<ul class="fl">' + recent.map(a => '<li class="act" data-act="actgo" data-id="' + esc(a.id) + '" role="button" tabindex="0"><div class="fi"><b>' + esc(a.name) + '</b><span>' + whenTxt(a) + ' · ' + durTxt(a.minutes) + (a.rpe ? ' · felt ' + a.rpe + '/10' : '') + '</span></div><span class="fc">' + Math.round(loadOf(a)) + '</span></li>').join("") + '</ul>' : '<p class="sub">No workouts in the last 7 days.</p>') +
+    '<p class="fine">Load = time × how hard it was (heart rate zone, or the 1 to 10 you tap, or what the sport usually is). Every sport counts.</p></section>';
+  return h;
+}
+function fitDetail(){
+  const all = feedActs(), fs_ = fitnessSeries(90, all), cur = fs_[fs_.length - 1], form = cur.ctl - cur.atl, W = 340, H = 170;
+  const mx = Math.max(1, ...fs_.map(x => Math.max(x.ctl, x.atl))), X = i => 6 + i * (W - 12) / (fs_.length - 1), Y = v => 10 + (1 - v / mx) * (H - 34);
+  const path = k => fs_.map((x, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(x[k]).toFixed(1)).join('');
+  let svg = '<svg class="pchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Fitness and fatigue, 90 days"><path d="' + path("atl") + '" fill="none" stroke="var(--race)" stroke-width="2" stroke-opacity=".8"/><path d="' + path("ctl") + '" fill="none" stroke="var(--long)" stroke-width="3"/>';
+  [0, 30, 60, 89].forEach(i => svg += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 4) + '" text-anchor="' + (i === 89 ? 'end' : i ? 'middle' : 'start') + '">' + shortD(fs_[i].d) + '</text>');
+  svg += '</svg>';
+  const fw = form >= 5 ? ["Fresh", "You're rested. A good time for a hard session or a race."] : form <= -20 ? ["Very tired", "Fatigue is well above fitness. Back off for a few days."] : form <= -10 ? ["Tired", "Normal in a big training block. Protect sleep and easy days."] : ["Steady", "Training and recovery are in balance."];
+  const wkAgo = fs_[fs_.length - 29] || fs_[0], trend = cur.ctl - wkAgo.ctl;
+  return '<section class="card" style="--tone:var(--long)"><div class="wsum"><div><span>Fitness</span><b>' + Math.round(cur.ctl) + '</b></div><div><span>Fatigue</span><b>' + Math.round(cur.atl) + '</b></div><div><span>Form</span><b>' + (form >= 0 ? '+' : '−') + Math.abs(Math.round(form)) + '</b></div></div>' +
+    '<p><b>' + fw[0] + '.</b> ' + fw[1] + '</p><p class="sub">Fitness ' + (trend >= 0 ? 'up ' : 'down ') + Math.abs(Math.round(trend)) + ' in the last 4 weeks.</p></section>' +
+    '<section class="card"><div class="card-h"><span class="lbl">90 days</span></div>' + svg + '<div class="legend"><span><i style="--c:var(--long)"></i>Fitness (6-week load)</span><span><i style="--c:var(--race)"></i>Fatigue (1-week load)</span></div>' +
+    '<p class="fine">Form = fitness minus fatigue. It dips in hard weeks and rises when you rest. Before a race you want it positive.</p></section>';
+}
+function focusDetail(){
+  const all = feedActs(), r30 = all.filter(a => a.date > addDays(TODAY, -30) && a.type === "run"), fm = [0, 0, 0]; r30.forEach(a => fm[runClass(a)] += a.minutes || 0);
+  const ft = fm[0] + fm[1] + fm[2], FN = ["Aerobic (easy)", "Threshold (comfortably hard)", "Speed (hard)"], FC = ["var(--long)", "var(--easy)", "var(--work)"];
+  const easyPct = ft ? Math.round(fm[0] / ft * 100) : 0;
+  let h = '<section class="card"><div class="card-h"><span class="lbl">Running · last 30 days</span><span class="r">' + hmin(ft) + '</span></div>' +
+    FN.map((n, i) => '<div class="fbar"><span>' + n + '</span><div><i style="width:' + (ft ? fm[i] / ft * 100 : 0) + '%;background:' + FC[i] + '"></i></div><b>' + (ft ? Math.round(fm[i] / ft * 100) : 0) + '%</b></div>').join("") +
+    '<p class="sub">' + (!ft ? 'No runs in the last 30 days.' : easyPct >= 75 ? 'About ' + easyPct + '% easy: right where most coaches want it (around 80%).' : 'Only ' + easyPct + '% easy. Most runners improve faster with around 80% easy and the rest hard. Slow the easy days down.') + '</p></section>';
+  const z = hrZones(), zt = [0, 0, 0, 0, 0]; all.filter(a => a.date > addDays(TODAY, -30)).forEach(a => { const q = zoneOf(a.avg_hr); if (q) zt[q - 1] += a.minutes || 0; });
+  const zs = zt.reduce((a, b) => a + b, 0), ZC = ["#9CA3B4", "var(--easy)", "var(--long)", "var(--work)", "var(--race)"];
+  h += '<section class="card"><div class="card-h"><span class="lbl">Heart rate zones · 30 days</span><button class="linkbtn r" type="button" data-act="go" data-scr="set-hr">' + (z ? 'Edit' : 'Set up') + '</button></div>' +
+    (!z ? '<p class="sub">Set your max or threshold heart rate and your time in each zone shows up here.</p>' :
+      HR_NAMES.map((n, i) => '<div class="fbar"><span>Z' + (i + 1) + ' ' + n + (z[i] ? ' · ' + (z[i][0] || '<' + (z[i][1] + 1)) + (z[i][1] ? '–' + z[i][1] : '+') : '') + '</span><div><i style="width:' + (zs ? zt[i] / zs * 100 : 0) + '%;background:' + ZC[i] + '"></i></div><b>' + hmin(zt[i]) + '</b></div>').join("") +
+      (zs ? '' : '<p class="sub">No heart rate in your workouts from the last 30 days.</p>')) + '</section>';
+  return h;
+}
 function progressHtml(){
   const acts = feedActs(), wk0 = mondayOf(TODAY), N = 12;
   const weeks = Array.from({length: N}, (_, i) => { const ws = addDays(wk0, -7 * (N - 1 - i)), we = addDays(ws, 6), xs = acts.filter(a => a.date >= ws && a.date <= we);
@@ -2131,9 +2272,9 @@ function progressHtml(){
   const c1 = cum(0), c0 = cum(30), cmax = Math.max(1, c1[29], c0[29]), spark = (arr, mx, col, fill) => { const pts = arr.map((v, i) => (i * 150 / 29).toFixed(1) + ',' + (56 - v / mx * 50).toFixed(1)); return (fill ? '<polygon points="0,56 ' + pts.join(' ') + ' 150,56" fill="' + col + '" opacity=".25"/>' : '') + '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2.4" stroke-linejoin="round"/>'; };
   const fs_ = fitnessSeries(90, acts), cur = fs_[fs_.length - 1], form = cur.ctl - cur.atl, fmx = Math.max(1, ...fs_.map(x => Math.max(x.ctl, x.atl)));
   h += '<div class="pgrid">' +
-    '<div class="pc"><div class="ph">' + ic("bars") + '<span>Last 30 days</span></div><div class="pv">' + hmin(m30) + '</div><svg viewBox="0 0 150 58" aria-hidden="true">' + spark(c0, cmax, "var(--muted)") + spark(c1, cmax, "var(--accent-2)", true) + '</svg>' +
+    '<div class="pc" data-act="go" data-scr="p-load" role="button" tabindex="0"><div class="ph">' + ic("bars") + '<span>Last 30 days</span><i>›</i></div><div class="pv">' + hmin(m30) + '</div><svg viewBox="0 0 150 58" aria-hidden="true">' + spark(c0, cmax, "var(--muted)") + spark(c1, cmax, "var(--accent-2)", true) + '</svg>' +
       '<div class="pf"><span>vs prior 30</span><b class="' + (diff >= 0 ? 'up' : 'down') + '">' + (diff >= 0 ? '+' : '−') + hmin(Math.abs(diff)) + '</b></div></div>' +
-    '<div class="pc"><div class="ph">' + ic("heart") + '<span>Your fitness</span></div><div class="pv">' + Math.round(cur.ctl) + '</div><svg viewBox="0 0 150 58" aria-hidden="true">' + spark(fs_.slice(-60).map(x => x.atl), fmx, "var(--muted)") + spark(fs_.slice(-60).map(x => x.ctl), fmx, "var(--long)", true) + '</svg>' +
+    '<div class="pc" data-act="go" data-scr="p-fit" role="button" tabindex="0"><div class="ph">' + ic("heart") + '<span>Your fitness</span><i>›</i></div><div class="pv">' + Math.round(cur.ctl) + '</div><svg viewBox="0 0 150 58" aria-hidden="true">' + spark(fs_.slice(-60).map(x => x.atl), fmx, "var(--muted)") + spark(fs_.slice(-60).map(x => x.ctl), fmx, "var(--long)", true) + '</svg>' +
       '<div class="pf"><span>Form · ' + (form >= 5 ? 'fresh' : form <= -10 ? 'tired' : 'steady') + '</span><b class="' + (form >= 0 ? 'up' : 'down') + '">' + (form >= 0 ? '+' : '−') + Math.abs(Math.round(form)) + '</b></div></div></div>';
   // race prediction
   const p = plan.profile, runG = ["5k","10k","half","marathon"].includes(p.goal), gk = runG ? p.goal : "half", pred = plan.pred[gk];
@@ -2146,9 +2287,9 @@ function progressHtml(){
   const r30 = acts.filter(a => a.date > addDays(TODAY, -30) && a.type === "run"), fm = [0, 0, 0]; r30.forEach(a => fm[runClass(a)] += a.minutes || 0);
   const ft = fm[0] + fm[1] + fm[2], fi = ft ? fm.indexOf(Math.max(...fm)) : 0, FN = ["Aerobic", "Threshold", "Speed"], FC = ["var(--long)", "var(--easy)", "var(--work)"];
   h += '<div class="pgrid">' +
-    '<div class="pc"><div class="ph">' + ic("dumbbell") + '<span>Training load</span></div><div class="pv">' + load7 + '<small>load</small></div><div class="gauge"><i style="left:' + pos.toFixed(1) + '%"></i></div>' +
+    '<div class="pc" data-act="go" data-scr="p-load" role="button" tabindex="0"><div class="ph">' + ic("dumbbell") + '<span>Training load</span><i>›</i></div><div class="pv">' + load7 + '<small>load</small></div><div class="gauge"><i style="left:' + pos.toFixed(1) + '%"></i></div>' +
       '<div class="pf"><span>' + wkActs.length + ' in 7 days</span><b>' + (load7 < opt * .64 ? 'Low' : load7 <= opt * 1.15 ? 'Good' : load7 <= opt * 1.35 ? 'High' : 'Very high') + '</b></div></div>' +
-    '<div class="pc"><div class="ph">' + ic("gauge") + '<span>Training focus</span></div><div class="pv" style="font-size:26px">' + (ft ? FN[fi] : '–') + '</div><div class="fbars">' +
+    '<div class="pc" data-act="go" data-scr="p-focus" role="button" tabindex="0"><div class="ph">' + ic("gauge") + '<span>Training focus</span><i>›</i></div><div class="pv" style="font-size:26px">' + (ft ? FN[fi] : '–') + '</div><div class="fbars">' +
       fm.map((v, i) => '<div><i style="width:' + (ft ? v / ft * 100 : 0) + '%;background:' + FC[i] + '"></i></div>').join("") + '</div>' +
       '<div class="pf"><span>' + (ft ? Math.round(fm[fi] / ft * 100) + '% · last 30 days' : 'No runs in 30 days') + '</span></div></div></div>';
   // heart rate zones
@@ -2206,7 +2347,7 @@ function renderSetup(){
       (p.goal === "bike" ? '<div class="q"><span class="ql">Ride distance</span>' + optList("bikeEvent", Object.entries(HP.BIKE_EVENTS).map(([k, v]) => [k, v[0]]), p.bikeEvent || "62") + '</div>' : '') +
       (!noRace ? (p.raceName ? '<div class="picked"><div><b>' + esc(p.raceName) + '</b><span>' + (p.raceCity ? esc(p.raceCity) + ' · ' : '') + DAYF[dow(p.raceDate)] + ', ' + fmtD(p.raceDate) + ' ' + String(p.raceDate).slice(0, 4) + '</span></div><button class="linkbtn" type="button" data-act="raceclear">Change</button></div>' : '') +
         (mode === "account" ? '<button class="btn block" type="button" data-act="racefind">' + ic("flag") + 'Find my race</button>' : '') +
-        '<div class="two"><div class="q"><label for="s-date">Race date</label><input id="s-date" type="date" min="' + addDays(TODAY, 14) + '" value="' + esc(p.raceDate) + '"></div>' +
+        '<div class="two"><div class="q"><label for="s-date">Race date</label><input id="s-date" type="date" min="' + addDays(TODAY, 1) + '" value="' + esc(p.raceDate) + '"></div>' +
         (["5k","10k","half","marathon","50k"].includes(p.goal) ? '<div class="q"><label for="s-goal">Goal time</label><input id="s-goal" inputmode="numeric" placeholder="' + ({"5k":"22:00","10k":"48:00","half":"1:45:00","marathon":"3:45:00","50k":"5:30:00"}[p.goal]) + '" value="' + (p.goalSec ? fmtTime(p.goalSec) : '') + '"></div>' : '<div></div>') + '</div><p class="hint">' + (["5k","10k","half","marathon","50k"].includes(p.goal) ? 'Goal time is optional. Just type the numbers; the colons fill in. Leave it blank to use your current fitness.' : 'Not sure of the exact date? Pick your best guess. You can change it later.') + '</p>' : p.goal === "everyday" ? '' : '<p class="sub">You\'ll get a 12-week plan that ends with a 5K time trial to see your progress.</p>');
   } else if (st.step === 1){
     const k = (RACES[p.goal] || {}).kind, noRun = k === "swim" || k === "bike";
@@ -2250,7 +2391,7 @@ function readStep(){
     if (p.goal === "everyday"){ p.raceDate = null; p.goalSec = null; p.raceName = null; }
     if (p.goal !== "fitness" && p.goal !== "everyday" && document.getElementById("s-date")){ p.raceDate = v("s-date") || p.raceDate; const g = document.getElementById("s-goal") ? v("s-goal") : ""; p.goalSec = g ? parseTime(g) : null;
       if (g && !p.goalSec) return "Type the goal time as numbers, like 14500 for 1:45:00.";
-      if (!p.raceDate || p.raceDate < addDays(TODAY, 14)) return "Pick a race date at least 2 weeks away."; }
+      if (!p.raceDate || p.raceDate <= TODAY) return "Pick a race date from tomorrow on."; }
   } else if (st.step === 1){
     const k = (RACES[p.goal] || {}).kind;
     if (k === "fit"){ p.fitLevel = radio("fitLevel") || p.fitLevel || "some"; p.cardio = radio("cardio") || p.cardio || "walk"; p.hours = null;
@@ -2347,6 +2488,136 @@ function render(){
   app.querySelectorAll(".amap[data-map]").forEach(n => { const o = keepMaps[n.dataset.map + "|" + (n.dataset.big || "")]; if (o && o !== n){ n.replaceWith(o); try { o._map.invalidateSize(false); } catch(e){} } });
   if ((tab === "activities" || scr) && app.querySelector(".amap[data-map]")) mountMaps();
 }
+/* ============ phone coach: run a session with no watch ============
+   Steps expand into timed blocks (distances use your target pace), a voice calls each one, the screen
+   stays on, GPS counts distance outside if you allow it. At the end the log form opens prefilled. */
+let PL = null;
+function plPace(k){ const P = plan.P, v = P[k || "E"] != null ? P[k || "E"] : P.E; return Array.isArray(v) ? (v[0] + v[1]) / 2 : v; }
+function playerSteps(s){
+  const out = [], push = (label, sec, k, kind) => out.push({label, sec: sec ? Math.max(5, Math.round(sec)) : null, k, kind: kind || "work"});
+  (s.steps || []).forEach(st => {
+    const [L, mi, k] = st, rm = /^(?:finish with )?(\d+) × (\d+(?:\.\d+)?)\s*(m|mi|min|s)\b/i.exec(String(L));
+    if (rm){
+      const n = Math.min(30, +rm[1]), v = +rm[2], u = rm[3].toLowerCase();
+      const work = u === "min" ? v * 60 : u === "s" ? v : u === "m" ? v / 1609.34 * plPace(k) : v * plPace(k);
+      const restTxt = (/,\s*(.+?) between/.exec(L) || /\/\s*(.+)$/.exec(L) || [])[1] || "";
+      const rM = /(\d+)\s*m\b/.exec(restTxt), rT = /(\d+(?:\.\d+)?)\s*(min|s)\b/.exec(restTxt);
+      const rest = rM ? +rM[1] / 1609.34 * plPace("E") * 1.15 : rT ? +rT[1] * (rT[2] === "min" ? 60 : 1) : 90;
+      for (let r = 1; r <= n; r++){ push("Rep " + r + " of " + n + (k ? " · " + (HP.PNAME[k] || "") : ""), work, k); if (r < n) push("Recover" + (restTxt ? ": " + restTxt : ""), rest, "E", "rest"); }
+      return;
+    }
+    const m = /(\d+)\s*(?:–\d+\s*)?min\b/.exec(L);
+    if (mi > 0) push(L, mi * plPace(k), k, /^warm/i.test(L) ? "warm" : /^cool/i.test(L) ? "cool" : "work");
+    else if (m) push(L, +m[1] * 60, k, /^warm/i.test(L) ? "warm" : "work");
+    else push(L, null, k, "open");
+  });
+  if (!out.length && s.min) push(s.title, s.min * 60, "E");
+  return out;
+}
+function plSay(t){ try { if (!PL || !PL.voice || !window.speechSynthesis) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.rate = 1.02; speechSynthesis.speak(u); } catch(e){} }
+function plFmt(sec){ sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ":" + pad(sec % 60); }
+function plDist(a, b){ const R = 3958.8, r = x => x * Math.PI / 180, dLa = r(b.latitude - a.latitude), dLo = r(b.longitude - a.longitude); const h = Math.sin(dLa / 2) ** 2 + Math.cos(r(a.latitude)) * Math.cos(r(b.latitude)) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); }
+function playerOpen(s, key){
+  const steps = playerSteps(s); if (!steps.length) return toast("This session has no steps to play.");
+  PL = {s, key, steps, i: 0, left: steps[0].sec, start: Date.now(), last: Date.now(), paused: false, voice: true, gps: null, mi: 0, wake: null};
+  const el = document.createElement("div"); el.id = "player"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Phone coach"); document.body.appendChild(el);
+  el.addEventListener("click", e => { const b = e.target.closest("[data-pl]"); if (b) plAct(b.dataset.pl); });
+  try { navigator.wakeLock && navigator.wakeLock.request("screen").then(w => PL && (PL.wake = w)).catch(() => {}); } catch(e){}
+  PL.tick = setInterval(plTick, 250);
+  plSay("Starting " + s.title + ". " + plCue(steps[0])); plDraw();
+}
+function plCue(st){ const hz = HP.targetOf(plan.profile) === "hr" ? HP.hrFor(st.k, zonesNow(), plan.profile.goal) : null; return st.label.replace(/·/g, ",") + (hz ? ". Zone " + String(hz.zone).replace("–", " to ") + ", " + hz.lo + " to " + hz.hi + " beats" : "") + (st.sec ? ". " + (st.sec >= 90 ? Math.round(st.sec / 60) + " minutes" : st.sec + " seconds") : ". Tap next when you're done") + (st.k && TALK[st.k] ? ". Effort: " + TALK[st.k].split(" · ")[0] : "") + "."; }
+function plTick(){
+  if (!PL || PL.paused) { if (PL) PL.last = Date.now(); return; }
+  const now = Date.now(), dt = (now - PL.last) / 1000; PL.last = now;
+  const st = PL.steps[PL.i];
+  if (st.sec){ const before = PL.left; PL.left -= dt; if (before > 10 && PL.left <= 10 && st.sec > 30) plSay("10 seconds"); if (PL.left <= 0) return plNext(); }
+  plDraw(true);
+}
+function plNext(){
+  if (!PL) return;
+  if (PL.i >= PL.steps.length - 1) return plEnd();
+  PL.i++; PL.left = PL.steps[PL.i].sec; try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch(e){}
+  plSay(plCue(PL.steps[PL.i])); plDraw();
+}
+function plEnd(){
+  if (!PL) return;
+  const min = Math.max(1, Math.round((Date.now() - PL.start) / 60000)), s = PL.s, mi = PL.mi > .05 ? Math.round(PL.mi * 100) / 100 : (s.mi && PL.i >= PL.steps.length - 1 ? s.mi : 0);
+  clearInterval(PL.tick); if (PL.gps != null) navigator.geolocation.clearWatch(PL.gps); try { PL.wake && PL.wake.release(); } catch(e){}
+  plSay("Done. Nice work. Tell me how hard it felt.");
+  const el = document.getElementById("player"); if (el) el.remove();
+  aw = {open: true, err: "", busy: false, pre: {name: s.title, minutes: min, mi: mi || "", venue: s.venue || (PL.mi > .05 ? "outside" : "")}};
+  PL = null; tab = "today"; go("workouts");
+  setTimeout(() => { const f = document.querySelector(".aform"); if (f) f.scrollIntoView({behavior: "smooth", block: "center"}); }, 60);
+}
+function plAct(k){
+  if (!PL) return;
+  if (k === "pause"){ PL.paused = !PL.paused; plSay(PL.paused ? "Paused" : "Go"); plDraw(); }
+  else if (k === "next") plNext();
+  else if (k === "end") plEnd();
+  else if (k === "voice"){ PL.voice = !PL.voice; if (!PL.voice && window.speechSynthesis) speechSynthesis.cancel(); plDraw(); }
+  else if (k === "gps"){
+    if (PL.gps != null){ navigator.geolocation.clearWatch(PL.gps); PL.gps = null; plDraw(); return; }
+    if (!navigator.geolocation) return toast("This phone can't share location here.");
+    let prev = null;
+    PL.gps = navigator.geolocation.watchPosition(p => { if (!PL || PL.paused || p.coords.accuracy > 35) return; if (prev){ const d = plDist(prev, p.coords); if (d < .2) PL.mi += d; } prev = p.coords; }, () => { toast("Location wasn't shared. Time still counts."); if (PL){ PL.gps = null; plDraw(); } }, {enableHighAccuracy: true, maximumAge: 2000});
+    plDraw();
+  }
+}
+function plDraw(light){
+  const el = document.getElementById("player"); if (!el || !PL) return;
+  const st = PL.steps[PL.i], nx = PL.steps[PL.i + 1], tone = st.kind === "rest" ? "var(--easy)" : st.k && !["E", "L"].includes(st.k) ? "var(--race)" : "var(--accent)";
+  const big = st.sec ? plFmt(PL.left) : plFmt((Date.now() - PL.start) / 1000);
+  if (light){ const b = el.querySelector(".pl-big"); if (b) b.textContent = big; const g = el.querySelector(".pl-mi"); if (g) g.textContent = PL.gps != null ? (Math.round(PL.mi * 100) / 100) + " mi" : ""; return; }
+  el.style.setProperty("--pt", tone);
+  el.innerHTML = '<div class="pl-top"><span>' + esc(PL.s.title) + '</span><span>' + (PL.i + 1) + ' / ' + PL.steps.length + '</span></div>' +
+    '<div class="pl-now"><small>' + (st.kind === "rest" ? "Recover" : st.kind === "warm" ? "Warm up" : st.kind === "cool" ? "Cool down" : "Now") + '</small><h2>' + esc(st.label) + '</h2>' +
+    (st.k ? '<p class="pl-pace">' + ((h0 => h0 ? 'Zone ' + h0.zone + ' · ' + h0.lo + '–' + h0.hi + ' bpm · ' : '')(HP.targetOf(plan.profile) === "hr" ? HP.hrFor(st.k, zonesNow(), plan.profile.goal) : null)) + (st.k === "E" || st.k === "L" ? pace(plan.P, st.k) : fmtPace(plan.P[st.k])) + '/mi' + (TALK[st.k] ? ' · ' + TALK[st.k] : '') + '</p>' : '') +
+    '<div class="pl-big" aria-live="off">' + big + '</div><div class="pl-mi">' + (PL.gps != null ? (Math.round(PL.mi * 100) / 100) + ' mi' : '') + '</div>' +
+    (st.sec ? '' : '<p class="pl-pace">Open step: tap Next when you finish it.</p>') + '</div>' +
+    (nx ? '<p class="pl-next">Next: ' + esc(nx.label) + (nx.sec ? ' · ' + plFmt(nx.sec) : '') + '</p>' : '<p class="pl-next">Last step</p>') +
+    '<div class="pl-btns"><button type="button" data-pl="pause">' + (PL.paused ? 'Resume' : 'Pause') + '</button><button type="button" data-pl="next">Next</button><button type="button" data-pl="end" class="pl-end">Finish</button></div>' +
+    '<div class="pl-opts"><button type="button" data-pl="voice" aria-pressed="' + PL.voice + '">Voice ' + (PL.voice ? 'on' : 'off') + '</button>' + (PL.s.venue === "treadmill" ? '' : '<button type="button" data-pl="gps" aria-pressed="' + (PL.gps != null) + '">GPS ' + (PL.gps != null ? 'on' : 'off') + '</button>') + '</div>';
+}
+/* ============ cycle-aware training: opt-in, stored only on this phone ============ */
+let cyc = (() => { try { return JSON.parse(localStorage.getItem("hy-cycle") || "null") || {}; } catch(e){ return {}; } })(), cycOpen = false;
+function cycSave(){ try { localStorage.setItem("hy-cycle", JSON.stringify(cyc)); } catch(e){} }
+function cycleCard(day){
+  if (!plan || mode === "sample") return '';
+  if (!cyc.on){
+    if (plan.profile.sex !== "f" || cyc.dismissed) return '';
+    if (!cycOpen) return '<section class="card cyc" style="--tone:var(--race)"><div class="card-h">' + ic("spark") + '<span class="lbl">Train with your cycle</span><button class="linkbtn r" type="button" data-act="cycno">Not for me</button></div><p class="sub">Mileset can adjust hard days to your cycle and how you feel. Private: it stays on this phone, never on our servers.</p><button class="btn block" type="button" data-act="cycset">Set it up</button></section>';
+  }
+  if (cycOpen || !cyc.on) return '<section class="card cyc" style="--tone:var(--race)"><div class="card-h">' + ic("spark") + '<span class="lbl">Cycle-aware training</span></div>' +
+    '<div class="two"><label>First day of your last period<input id="cy-last" type="date" max="' + TODAY + '" value="' + esc(cyc.last || '') + '"></label><label>Cycle length (days)<input id="cy-len" inputmode="numeric" value="' + (cyc.len || 28) + '"></label></div>' +
+    '<div class="two"><label>Period length (days)<input id="cy-plen" inputmode="numeric" value="' + (cyc.plen || 5) + '"></label><label>Hormonal birth control<select id="cy-hc"><option value="">No</option><option value="1"' + (cyc.hormonal ? ' selected' : '') + '>Yes</option></select></label></div>' +
+    '<p class="fine">Stored only on this phone. Not sent to Mileset, not shared, not used for ads. Turn it off anytime and it\'s erased.</p>' +
+    '<div class="fbtns">' + (cyc.on ? '<button class="btn" type="button" data-act="cycoff" style="color:var(--crit)">Turn off and erase</button>' : '<button class="btn" type="button" data-act="cycset">Cancel</button>') + '<button class="btn primary" type="button" data-act="cycsave">Save</button></div></section>';
+  const sym = (cyc.log && cyc.log[TODAY]) || [], adv = HP.cycleAdvice(cyc, TODAY, day ? day.sessions : [], sym);
+  if (!adv) return '';
+  const pat = HP.cyclePattern(cyc, checkins);
+  return '<section class="card cyc" style="--tone:var(--race)"><div class="card-h">' + ic("spark") + '<span class="lbl">Cycle · day ' + adv.day + ' · ' + esc(adv.name) + '</span><button class="linkbtn r" type="button" data-act="cycset">Edit</button></div>' +
+    (adv.today ? '<p><b>' + esc(adv.today) + '</b></p>' : '') + '<p class="sub">' + esc(adv.tip) + '</p>' +
+    '<p class="feelq">How are you today?</p><div class="chips">' + HP.CYCLE_SYM.map(([k, l]) => '<button type="button" data-act="cycsym" data-k="' + k + '" aria-pressed="' + sym.includes(k) + '">' + l + '</button>').join("") + '</div>' +
+    (adv.key !== "period" ? '<button class="linkbtn" type="button" data-act="cycstart">Period started today</button>' : '') +
+    (adv.late ? '<p class="fine">Your period looks later than usual. Tap "Period started today" when it comes so the phases stay right.</p>' : '') +
+    (pat ? '<p class="fine">Your pattern so far: readiness is highest in your ' + HP.CYCLE[pat[0][0]].name.toLowerCase() + ' phase (' + pat[0][1] + ') and lowest in your ' + HP.CYCLE[pat[pat.length - 1][0]].name.toLowerCase() + ' phase (' + pat[pat.length - 1][1] + ').</p>' : '') + '</section>';
+}
+function cycAct(act, a){
+  if (act === "cycno"){ cyc.dismissed = 1; cycSave(); render(); return true; }
+  if (act === "cycset"){ cycOpen = !cycOpen; render(); return true; }
+  if (act === "cycoff"){ cyc = {dismissed: 1}; cycOpen = false; cycSave(); render(); toast("Cycle tracking off. Your cycle data was erased from this phone."); return true; }
+  if (act === "cycsave"){
+    const v = id => ((document.getElementById(id) || {}).value || "").trim(), last = v("cy-last"), len = +v("cy-len") || 28, plen = +v("cy-plen") || 5;
+    if (!/^\d{4}-\d\d-\d\d$/.test(last) || last > TODAY) return toast("Pick the first day of your last period."), true;
+    if (len < 20 || len > 45) return toast("Cycle length is usually 21 to 40 days."), true;
+    const starts = (cyc.starts || []).concat(cyc.last && cyc.last !== last ? [cyc.last] : []).filter(x => x < last).slice(-12);
+    cyc = {...cyc, on: true, last, len, plen: Math.min(10, Math.max(2, plen)), hormonal: v("cy-hc") === "1", starts}; cycOpen = false; cycSave(); render(); toast("Cycle-aware training is on."); return true;
+  }
+  if (act === "cycstart"){ const starts = (cyc.starts || []).concat(cyc.last ? [cyc.last] : []).slice(-12); if (cyc.last && daysBetween(cyc.last, TODAY) >= 18) cyc.len = Math.round(((cyc.len || 28) * 2 + daysBetween(cyc.last, TODAY)) / 3); cyc = {...cyc, starts, last: TODAY}; cycSave(); render(); toast("Logged. Day 1."); return true; }
+  if (act === "cycsym"){ const k = a.dataset.k; cyc.log = cyc.log || {}; const t = new Set(cyc.log[TODAY] || []); t.has(k) ? t.delete(k) : t.add(k); cyc.log[TODAY] = [...t]; Object.keys(cyc.log).forEach(d => { if (d < addDays(TODAY, -120)) delete cyc.log[d]; }); cycSave(); render(); return true; }
+  return false;
+}
 function toast(msg){
   let t = $(".toast"); if (!t){ t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
   t.textContent = msg; clearTimeout(toastT); toastT = setTimeout(() => t.remove(), 3200);
@@ -2359,7 +2630,7 @@ function settingsScreen(k){
   const help = group("", (API ? row("set-report", "Report a problem", "Something broken or confusing? Tell us.", "flag") : '') + (mode === "account" && isOwner ? row("set-reports", "Reported problems", reports.length + ' waiting', "bars") : '') + row("set-about", "How Mileset works", "Your plan, readiness and calories, explained", "spark") +
     row("set-health-info", "Health and safety", "Read before changing how you eat or train", "heart") + row("set-terms", "Terms of use", "", "flag") + '<a class="srow" href="privacy.html" target="_blank" rel="noopener">' + ic("lock") + '<div><b>Privacy policy</b><span>What we collect and how it\'s used</span></div><i>›</i></a>');
   const training = group("Your plan", row("", "Race, training days and lifting", plan ? HP.raceName(pr) + (plan.raceDate ? ' · ' + fmtD(plan.raceDate) : '') + ' · rebuilds your plan' : '', "cal", "edit") +
-    row("set-hr", "Heart rate zones", hrSummary(), "heart") + row("set-run", "Running", 'Usual run time ' + hr12(+String(uset.run_time || "07:00").slice(0, 2)) + (wxLoc() ? ' · ' + esc(wxLoc().place || 'weather on') : ''), "sun"));
+    row("set-hr", "Heart rate zones", hrSummary(), "heart") + row("set-run", "Running", (plan ? ({pace: "By pace", hr: "By heart rate", feel: "By feel"})[HP.targetOf(plan.profile)] + ' · ' : '') + (plan && plan.profile.venue === "treadmill" ? 'Treadmill · ' : '') + 'Usual run time ' + hr12(+String(uset.run_time || "07:00").slice(0, 2)) + (wxLoc() ? ' · ' + esc(wxLoc().place || 'weather on') : ''), "sun"));
   const card = (to, title, sub, icon, act) => '<button class="scard" type="button" data-act="' + (act || 'go') + '"' + (to ? ' data-scr="' + to + '"' : '') + '>' + '<div><b>' + title + '</b><span>' + sub + '</span></div><i>' + (icon ? ic(icon) : '›') + '</i></button>';
   const invite = API ? card("", "Invite a friend", "Send them Mileset. It's free to try.", "share", "invite").replace('class="scard"', 'class="scard hi"') : '';
   const helpCard = card("set-help", "Help and support", "Report a problem, how Mileset works, health and safety, terms and privacy");
@@ -2386,7 +2657,7 @@ function settingsScreen(k){
   if (k === "set-health-info") return '<section class="card legal">' + legalHtml("health") + '</section>';
   if (k === "set-terms") return '<section class="card legal">' + legalHtml("terms") + '</section>';
   if (k === "set-profile") return profileForm();
-  if (k === "set-run") return '<section class="card form"><label>Usual run time<small>Used for the heat adjustment and the best time to run.</small><input type="time" data-set="run_time" value="' + esc(uset.run_time || "07:00") + '"></label></section>' +
+  if (k === "set-run") return (plan ? runByHtml() : '') + (plan ? '<section class="card"><div class="card-h"><span class="lbl">Where you usually run</span></div><div class="seg" role="group" aria-label="Where you usually run">' + [["outside", "Outside"], ["treadmill", "Treadmill"]].map(([v, l]) => '<button type="button" data-act="venuedef" data-v="' + v + '" aria-pressed="' + ((plan.profile.venue || "outside") === v) + '">' + l + '</button>').join("") + '</div><p class="sub">Every run uses this unless you change that one run. Treadmill runs show speeds in mph, skip the heat adjustment' + (garmin.connected ? ', and go to your watch labeled Treadmill (still one workout per run)' : '') + '.</p></section>' : '') + '<section class="card form"><label>Usual run time<small>Used for the heat adjustment and the best time to run.</small><input type="time" data-set="run_time" value="' + esc(uset.run_time || "07:00") + '"></label></section>' +
     '<section class="card"><div class="card-h"><span class="lbl">Weather location</span><span class="r">' + esc(wxLoc() ? wxLoc().place || 'Set' : 'Not set') + '</span></div><button class="btn block" type="button" data-act="wxset">Change location</button></section>';
   if (k === "set-about") return '<section class="card about"><p><b>Your plan</b> is built from your goal race, your recent race time and how much you run now. It builds up for a few weeks, then eases off before race day.</p>' +
     '<p><b>Readiness</b> comes from your morning check-in (and your watch, if connected). On low days, today\'s run gets shorter or easier, and hard workouts move later in the week.</p>' +
@@ -2437,6 +2708,15 @@ function hrZones(c){
   return [[lo, b[0] - 1], [b[0], b[1] - 1], [b[1], b[2] - 1], [b[2], b[3] - 1], [b[3], c.method === "max" ? c.base : null]];
 }
 function zoneOf(hr){ const z = hrZones(); if (!z || !hr) return 0; for (let i = 4; i >= 0; i--) if (hr >= (z[i][0] || 0)) return i + 1; return 1; }
+function runByHtml(){
+  const t = HP.targetOf(plan.profile), z = zonesNow();
+  return '<section class="card"><div class="card-h"><span class="lbl">Run by</span></div><div class="seg" role="group" aria-label="Run by">' +
+    [["pace", "Pace"], ["hr", "Heart rate"], ["feel", "Feel"]].map(([v, l]) => '<button type="button" data-act="runby" data-v="' + v + '" aria-pressed="' + (t === v) + '">' + l + '</button>').join("") + '</div>' +
+    '<p class="sub">' + (t === "hr" ? 'Every run shows a heart-rate zone first' + (garmin.connected ? ', and your watch beeps when you leave it' : '') + '. Paces stay as a guide.' : t === "feel" ? 'Every run shows how it should feel (the talk test, 1 to 10). Great without a watch.' : 'Every run shows a target pace. Heart rate and feel are shown as a guide.') + '</p>' +
+    (t === "hr" ? (z ? '<p class="sub">' + (z.estimated ? 'Zones are estimated from your age (max ' + z.base + ' bpm). Set your own for better targets.' : 'Zones from your ' + (z.method === "lthr" ? 'threshold ' : 'max ') + z.base + ' bpm.') + '</p>' : '<p class="sub">Add your age or max heart rate to get zones.</p>') +
+      '<button class="btn block" type="button" data-act="go" data-scr="set-hr">' + ic("heart") + (z && !z.estimated ? ' Edit heart rate zones' : ' Set up heart rate zones') + '</button>' : '') + '</section>';
+}
+function zonesNow(){ const u = mode === "account" ? uset : {...uset, ...hrLocal()}; return HP.zonesFrom(u, plan && plan.profile.age); }
 function hrSummary(){ const c = hrCfg(); return c.base ? (c.method === "lthr" ? 'Threshold ' + c.base + ' bpm' : 'Max ' + c.base + ' bpm') : 'Set by max HR or lactate threshold'; }
 let hrEdit = null;
 function hrScreen(){
@@ -2512,7 +2792,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "64";
+const APP_VERSION = "67";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2633,7 +2913,7 @@ function askNotif(){
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 const SCR_T = {fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
   settings: "Settings", "set-notif": "Notifications", "set-watch": "Devices and apps", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
-  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Mileset works", "set-email": "Email", "set-password": "Password",  "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", members: "Members", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew"};
+  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Mileset works", "set-email": "Email", "set-password": "Password",  "p-load": "Training load", "p-fit": "Fitness and form", "p-focus": "Training focus and zones", "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", members: "Members", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew"};
 const SCR_UP = {"set-acct": "settings", "set-train": "settings", "set-help": "settings", "set-health-info": "set-help", "set-terms": "set-help", "set-about": "set-help", "set-report": "set-help", "set-reports": "set-help", "set-profile": "set-acct", "set-email": "set-acct", "set-password": "set-acct", "set-account": "set-acct", "set-hr": "set-train", "set-run": "set-train", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", meals: "fuel", crew: "crews"};
 let navDir = null;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -2669,6 +2949,9 @@ function renderScreen(){
   else if (s === "weather") h = weatherCard();
   else if (s === "weight") h = weighCard() + (p ? bodyCards() : '') + '<section class="card"><label class="tgl"><input type="checkbox" id="w-ask"' + (wAsk() ? ' checked' : '') + '><span>Ask me on Today each morning</span></label><p class="sub">Shows a quick weigh-in on Today until you\'ve weighed in. Totally optional.</p></section>';
   else if (s === "session") h = day ? sessionCard(day) + (day.sessions.length && canMove(TODAY) && moveTargets(TODAY).length ? '<button class="btn block mvtoday" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t train today? Move it</button>' : '') : '<p class="sub">Nothing planned today.</p>';
+  else if (s === "p-load") h = plan ? loadDetail() : '';
+  else if (s === "p-fit") h = plan ? fitDetail() : '';
+  else if (s === "p-focus") h = plan ? focusDetail() : '';
   else if (s.startsWith("t-")) h = renderTraining(s.slice(2));
   else h = settingsScreen(s);
   return back + h;
@@ -2812,6 +3095,7 @@ document.addEventListener("click", ev => {
     if (mode === "account") api("PUT", "/api/done", {key: k, done: on}).catch(e => { if (on) delete done[k]; else done[k] = 1; render(); toast(e.message); });
     return;
   }
+  if (act === "actgo"){ const id = a.dataset.id; nav("fwd", () => { scr = null; tab = "activities"; actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actopen"){ const id = a.dataset.id; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actback"){ nav("back", () => { actSel = null; render(); }); return; }
   if (act === "afilt"){ actFilter = a.dataset.k; render(); return; }
@@ -2846,7 +3130,7 @@ document.addEventListener("click", ev => {
   if (act === "racefind"){ if (setup) readStepSoft(); openRaceSearch(); return; }
   if (act === "rspick"){
     const r = rsv && rsv.res && rsv.res[+a.dataset.i]; if (!r) return;
-    if (r.date < addDays(TODAY, 14)){ rsv.err = "That race is less than 2 weeks away, too soon to build a plan for. Pick a later race."; rsRender(); return; }
+    if (r.date <= TODAY){ rsv.err = "That race has already started. Pick a later one."; rsRender(); return; }
     if (!setup){ const p0 = plan ? {...plan.profile} : blankProfile(); delete p0.sample; delete p0.start; if (p0.goal === "everyday" || p0.goal === "fitness") p0.goal = "half"; setup = {step: 0, p: p0}; scr = null; }
     if (r.sport && r.sport !== "other" && RACES[r.sport]) setup.p.goal = r.sport;
     Object.assign(setup.p, {raceDate: r.date, raceName: r.name, raceCity: r.city || null, raceUrl: r.url || null}); setup.err = "";
@@ -3053,14 +3337,54 @@ document.addEventListener("click", ev => {
     saveRemote("PUT", "/api/weight", {date, lb}).then(() => { weights[date] = Math.round(lb * 10) / 10; wf = null; save(); render(); if (date !== TODAY) toast("Saved for " + fmtD(date) + "."); }).catch(e => { wf = {err: e.message}; render(); });
     return;
   }
+  if (/^cyc/.test(act) && cycAct(act, a)) return;
+  if (act === "play"){ const [d, i] = [a.dataset.key.slice(0, 10), +a.dataset.key.slice(11)], day = dayOf(d), sx = day && day.sessions[i]; if (sx) playerOpen(sx, a.dataset.key); return; }
+  if (act === "runby"){
+    const v = a.dataset.v, prof = {...plan.profile};
+    if (v === "pace") delete prof.target; else prof.target = v;
+    const prev = plan; plan = buildPlan(prof); fbCache = null; save(); render();
+    toast(v === "hr" ? "Runs now go by heart rate." : v === "feel" ? "Runs now go by feel." : "Runs now go by pace.");
+    if (mode === "account") api("PUT", "/api/profile", {profile: prof}).catch(e => { plan = prev; fbCache = null; render(); toast(e.message); });
+    return;
+  }
+  if (act === "venuedef"){
+    const v = a.dataset.v, prof = {...plan.profile};
+    if (v === "treadmill") prof.venue = "treadmill"; else delete prof.venue;
+    if (prof.venues){ const vs = {}; Object.entries(prof.venues).forEach(([k, x]) => { if (x !== (prof.venue || "outside")) vs[k] = x; }); if (Object.keys(vs).length) prof.venues = vs; else delete prof.venues; }
+    const prev = plan; plan = buildPlan(prof); fbCache = null; save(); render();
+    toast(v === "treadmill" ? "Runs default to the treadmill." + (garmin.connected ? " Your watch updates too." : "") : "Runs default to outside.");
+    if (mode === "account") api("PUT", "/api/profile", {profile: prof}).catch(e => { plan = prev; fbCache = null; render(); toast(e.message); });
+    return;
+  }
+  if (act === "venue"){
+    const k = a.dataset.key, v = a.dataset.v, prof = {...plan.profile}, vs = {...(prof.venues || {})};
+    if (v === (prof.venue || "outside")) delete vs[k]; else vs[k] = v;
+    Object.keys(vs).forEach(x => { if (x.slice(0, 10) < addDays(TODAY, -14)) delete vs[x]; });
+    if (Object.keys(vs).length) prof.venues = vs; else delete prof.venues;
+    const prev = plan; plan = buildPlan(prof); fbCache = null; save(); render();
+    if (mode === "account") api("PUT", "/api/profile", {profile: prof}).catch(e => { plan = prev; fbCache = null; render(); toast(e.message); });
+    return;
+  }
+  if (act === "rpe"){
+    const n = +a.dataset.v, f = a.dataset.for, g = a.parentElement;
+    g.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === a)));
+    const w = document.getElementById(f + "-w"); if (w) w.textContent = RPE_W[n];
+    if (f === "a-rpe"){ aw.rpe = n; return; }
+    const act0 = acts.find(x => "ar-" + x.id === f); if (!act0) return;
+    act0.rpe = n; save();
+    (mode === "account" ? api("PUT", "/api/activity/" + act0.id + "/effort", {rpe: n}) : Promise.resolve()).then(() => { render(); toast("Got it. Effort " + n + "/10."); }).catch(e => toast(e.message));
+    return;
+  }
   if (act === "atoggle"){ aw = {open: !aw.open, err: "", busy: false}; render(); return; }
   if (act === "asave"){
-    const v = id => ((document.getElementById(id) || {}).value || "").trim(), x = {work_pace: parseTime(v("a-wp")) || 0, type: v("a-type") || "run", name: v("a-name"), mi: parseFloat(v("a-mi")) || 0, minutes: n0(v("a-min")), cal: n0(v("a-cal")), avg_hr: n0(v("a-hr")), date: v("a-date") || TODAY};
+    const v = id => ((document.getElementById(id) || {}).value || "").trim(), x = {work_pace: parseTime(v("a-wp")) || 0, type: v("a-type") || "run", name: v("a-name"), mi: parseFloat(v("a-mi")) || 0, minutes: n0(v("a-min")), cal: n0(v("a-cal")), avg_hr: n0(v("a-hr")), date: v("a-date") || TODAY,
+      sport: v("a-sport"), venue: v("a-venue"), rpe: aw.rpe || 0};
+    if (x.sport && x.type === "run" && !/run|jog|treadmill/i.test(x.sport)) x.type = "other";   // typed a sport but left Run selected
     if (!x.mi && !x.minutes){ aw.err = "Add a distance or a time."; render(); return; }
     if (x.date > TODAY){ aw.err = "Pick today or an earlier day."; render(); return; }
     aw.busy = true; render();
-    (mode === "account" ? api("POST", "/api/activity", x).then(j => j.activity) : Promise.resolve({...x, id: Date.now().toString(36), source: "manual", name: x.name || ({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Workout"})[x.type]}))
-      .then(saved => { acts.push(saved); aw = {open: false, err: "", busy: false}; save(); render(); toast("Workout saved."); if (mode === "account" && coachOn) waitForReview(saved.id); })
+    (mode === "account" ? api("POST", "/api/activity", x).then(j => j.activity) : Promise.resolve({...x, id: Date.now().toString(36), source: "manual", name: x.name || x.sport || ({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Workout"})[x.type]}))
+      .then(saved => { acts.push(saved); aw = {open: false, err: "", busy: false}; save(); render(); toast(HP.actSummary(plan, acts, saved, TODAY, maxHrNow()).headline + ". Saved."); if (mode === "account" && coachOn) waitForReview(saved.id); })
       .catch(e => { aw.busy = false; aw.err = e.message; render(); });
     return;
   }
@@ -3202,7 +3526,7 @@ function bodyFields(p, pre){
     '<div class="q"><label for="' + pre + '-age">Age</label><input id="' + pre + '-age" inputmode="numeric" placeholder="30" value="' + (p.age ?? '') + '"></div></div>' +
     '<div class="two"><div class="q"><label for="' + pre + '-w">Weight (lb)</label><input id="' + pre + '-w" inputmode="decimal" placeholder="180" value="' + (p.weight ?? '') + '"></div>' +
     (showGoal ? '<div class="q"><label for="' + pre + '-gw">Goal weight (lb)</label><input id="' + pre + '-gw" inputmode="decimal" placeholder="' + (ev && bg === "lose" ? 'Needed' : 'Optional') + '" value="' + (p.goalWeight ?? '') + '"></div>' : '<div></div>') + '</div>' +
-    '<div class="q"><span class="ql">Sex</span><p class="hint">Only used in the resting-calorie formula.</p>' + optList(pre + "sex", [["m","Male"],["f","Female"],["x","Prefer not to say"]], p.sex || "") + '</div>' +
+    '<div class="q"><span class="ql">Sex</span><p class="hint">Used in the resting-calorie formula. Female athletes can also turn on cycle-aware training (it stays on your phone).</p>' + optList(pre + "sex", [["m","Male"],["f","Female"],["x","Prefer not to say"]], p.sex || "") + '</div>' +
     '<div class="q"><span class="ql">Outside of workouts, your day is…</span>' + optList(pre + "daily", [["sit","Mostly sitting"],["some","On my feet some"],["feet","On my feet most of the day"]], p.daily || "some") + '</div>' +
     '<p class="hint">Mileset works out your resting burn (BMR) from your height, weight, age and sex, adds your daily activity and workouts, then sets food targets for your goal.</p>';
 }

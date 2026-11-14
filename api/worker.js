@@ -333,6 +333,7 @@ async function garminWorkouts(env, userId, opts){
   if (!link) return {ok: false, why: "not_connected"};
   const st = await settingsOf(env, userId), L = localNow(st.tz), today = L.date;
   const U = await loadUser(env, userId, today); if (!U || !U.plan) return {ok: false, why: "no_plan"};
+  U.plan.hrZones = HP.zonesFrom(st, U.plan.profile && U.plan.profile.age);   // runs by heart rate get bpm targets on the watch
   const tok = await garminToken(env, link);
   let perms = null; try { perms = JSON.parse(link.permissions || "null"); } catch(e){}
   if (!Array.isArray(perms) || (opts && opts.recheck)) perms = await garminPerms(env, link, tok) || perms;
@@ -377,7 +378,7 @@ async function loadUser(env, userId, today){
   const since = HP.addDays(today, -70);
   const [p, a, w, c, f, u, hd] = await env.DB.batch([
     env.DB.prepare("SELECT data FROM profiles WHERE user_id = ?").bind(userId),
-    env.DB.prepare("SELECT id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, laps, work_pace FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(userId, since),
+    env.DB.prepare("SELECT id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, laps, work_pace, sport, rpe, venue FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(userId, since),
     env.DB.prepare("SELECT date, lb FROM weights WHERE user_id = ? AND date >= ?").bind(userId, HP.addDays(today, -200)),
     env.DB.prepare("SELECT date, sleep_h, sleep_q, soreness, energy, stress FROM checkins WHERE user_id = ? AND date >= ?").bind(userId, HP.addDays(today, -14)),
     env.DB.prepare("SELECT date, cal FROM food WHERE user_id = ? AND date >= ?").bind(userId, HP.addDays(today, -14)),
@@ -1028,7 +1029,7 @@ async function route(req, env, path, ctx){
     const [c, w, a, s] = await env.DB.batch([
       env.DB.prepare("SELECT date, sleep_h, sleep_q, soreness, energy, stress FROM checkins WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since),
       env.DB.prepare("SELECT date, lb FROM weights WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since120),
-      env.DB.prepare("SELECT id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, work_pace, CASE WHEN date >= ? THEN laps END AS laps, CASE WHEN date >= ? THEN poly END AS poly, start_local, elev_ft, sport, max_hr FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(since, since, user.id, since120),
+      env.DB.prepare("SELECT id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, work_pace, CASE WHEN date >= ? THEN laps END AS laps, CASE WHEN date >= ? THEN poly END AS poly, start_local, elev_ft, sport, max_hr, rpe, venue FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(since, since, user.id, since120),
       env.DB.prepare("SELECT athlete_name, last_sync FROM strava_links WHERE user_id = ?").bind(user.id)
     ]);
     const [rv, cn, ps, ik, hd, ll, mp, gl] = await env.DB.batch([
@@ -1146,15 +1147,24 @@ async function route(req, env, path, ctx){
     const b = await body(req), type = ["run", "lift", "bike", "swim", "other"].includes(b.type) ? b.type : "other";
     const mi = Math.max(0, Math.min(200, Number(b.mi) || 0)), minutes = n0(b.minutes);
     if (!isDate(b.date) || (!mi && !minutes)) throw new HttpError(400, "Add a distance or a time.");
-    const x = {id: rand(10), source: "manual", date: b.date, type, name: String(b.name || "").trim().slice(0, 80) || ({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Workout"})[type],
-      mi: Math.round(mi * 100) / 100, minutes, cal: n0(b.cal), avg_hr: n0(b.avg_hr), work_pace: n0(b.work_pace) > 150 && n0(b.work_pace) < 1200 ? n0(b.work_pace) : 0};
-    await env.DB.prepare("INSERT INTO activities (id, user_id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, work_pace, created) VALUES (?, ?, 'manual', NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(x.id, user.id, x.date, x.type, x.name, x.mi, x.minutes, x.cal, x.avg_hr, x.work_pace, now()).run();
+    const x = {id: rand(10), source: "manual", date: b.date, type, name: String(b.name || "").trim().slice(0, 80) || String(b.sport || "").replace(/[^\w .&'-]/g, "").trim().slice(0, 30) || ({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Workout"})[type],
+      mi: Math.round(mi * 100) / 100, minutes, cal: n0(b.cal), avg_hr: n0(b.avg_hr), work_pace: n0(b.work_pace) > 150 && n0(b.work_pace) < 1200 ? n0(b.work_pace) : 0,
+      sport: String(b.sport || "").replace(/[^\w .&'-]/g, "").trim().slice(0, 30) || null, rpe: n0(b.rpe) >= 1 && n0(b.rpe) <= 10 ? n0(b.rpe) : null, venue: ["treadmill", "outside"].includes(b.venue) ? b.venue : null};
+    await env.DB.prepare("INSERT INTO activities (id, user_id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, work_pace, sport, rpe, venue, created) VALUES (?, ?, 'manual', NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(x.id, user.id, x.date, x.type, x.name, x.mi, x.minutes, x.cal, x.avg_hr, x.work_pace, x.sport, x.rpe, x.venue, now()).run();
     if (x.type === "run") ctx.waitUntil(afterNewActivities(env, user.id, [x.id], "manual").catch(e => console.log("manual review", e && e.stack || e)));
     return {activity: x};
   }
   m = path.match(/^\/api\/activity\/([a-f0-9]{20})$/);
   if (M === "DELETE" && m){ await env.DB.prepare("DELETE FROM activities WHERE id = ? AND user_id = ?").bind(m[1], user.id).run(); return {ok: true}; }
+  // how hard it felt (1-10), for any activity: Strava/Garmin ones too. Only the owner's own row.
+  m = path.match(/^\/api\/activity\/([a-f0-9]{20})\/effort$/);
+  if (M === "PUT" && m){
+    const b = await body(req), rpe = n0(b.rpe);
+    if (rpe < 1 || rpe > 10) throw new HttpError(400, "Pick 1 to 10.");
+    await env.DB.prepare("UPDATE activities SET rpe = ? WHERE id = ? AND user_id = ?").bind(rpe, m[1], user.id).run();
+    return {ok: true, rpe};
+  }
   if (M === "PUT" && path === "/api/settings"){
     const b = await body(req), cur = await settingsOf(env, user.id), next = {...cur};
     if (typeof b.tz === "string" && b.tz.length < 60){ try { new Intl.DateTimeFormat("en", {timeZone: b.tz}); next.tz = b.tz; } catch(e){} }

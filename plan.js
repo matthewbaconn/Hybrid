@@ -106,7 +106,7 @@ function workoutFor(goal, phase, i, P){
 
 function buildPlan(p, today){
   today = today || isoLocal(new Date());
-  if (isMulti(p.goal)) return applySwaps(applyCustom(buildMulti(p, today)));
+  if (isMulti(p.goal)) return applyVenues(applySwaps(applyCustom(buildMulti(p, today))));
   const goal = p.goal, fit = fitnessFrom(p), P = {...fit.pace};
   const goalSec = p.goal !== "fitness" && p.goalSec ? p.goalSec : null;
   P.G = goalSec ? goalSec / RACES[goal].mi : (goal !== "fitness" ? fit.pred[goal] / RACES[goal].mi : P.T);
@@ -116,10 +116,13 @@ function buildPlan(p, today){
     N = Math.floor(daysBetween(start, raceDate) / 7) + 1;
     if (N > 24){ start = addDays(mondayOf(raceDate), -23 * 7); N = 24; }
   } else N = 12;
-  const tw = TAPER[goal].length, B = Math.max(1, N - tw);
+  // race under ~2-3 weeks away: no time to build, so every week is taper from current fitness
+  const tw = TAPER[goal].length, short = !!raceDate && N <= tw, B = short ? 0 : Math.max(1, N - tw);
+  const tIdx = i => short ? tw - N + i : i - B;
   const m0 = Math.max(8, p.weekly || 0), [mul, floorM, cap] = PEAK[goal];
   let peak = Math.min(cap, Math.max(m0 * mul, Math.min(floorM, m0 * 1.6)));
   peak = Math.min(peak, m0 * Math.pow(1.1, Math.max(1, B - 1)));
+  if (short) peak = m0;
   const runDays = p.days.slice().sort((a, b) => a - b), longDay = p.longDay;
   // quality days: furthest from the long run, 2+ days away
   const gap = (a, b) => Math.min(Math.abs(a - b), 7 - Math.abs(a - b));
@@ -135,7 +138,7 @@ function buildPlan(p, today){
       phase = i < B * .4 ? "Base" : i < B * .85 ? "Build" : "Peak";
       miles = m0 + (peak - m0) * (B === 1 ? 1 : i / (B - 1));
       if (i % 4 === 3 && i < B - 1) { miles *= .8; phase = phase + " · lighter"; }
-    } else { phase = i === N - 1 && goal !== "fitness" ? "Race week" : "Taper"; miles = peak * TAPER[goal][i - B]; }
+    } else { phase = i === N - 1 && goal !== "fitness" ? "Race week" : "Taper"; miles = peak * TAPER[goal][tIdx(i)]; }
     miles = half(miles);
     const isLight = /lighter/.test(phase), ph = phase.split(" ·")[0];
     const days = Array.from({length: 7}, (_, d) => ({date: addDays(ws, d), sessions: []}));
@@ -157,7 +160,7 @@ function buildPlan(p, today){
       const l0 = Math.max(3, p.longest || 3), lg = Math.max(l0, LONG_GOAL[goal]);
       const ramp = l0 + (lg - l0) * Math.min(1, B === 1 ? 1 : i / Math.max(1, B - 1 - (goal === "marathon" ? 1 : 0)));
       let L = Math.min(capL, Math.max(Math.round(miles * .28), Math.round(ramp)), prevLong + 2, Math.max(4, Math.round(miles * (goal === "marathon" ? .5 : .45))));
-      if (ph === "Taper") L = Math.max(3, Math.round(prevLong * [.65, .45, .35][Math.min(2, i - B)]));
+      if (ph === "Taper") L = Math.max(3, Math.round(prevLong * [.65, .45, .35][Math.min(2, tIdx(i))]));
       if (isLight) L = Math.max(3, Math.round(L * .8));
       L = half(L); if (!isLight && ph !== "Taper") prevLong = Math.max(prevLong, L);
       const mpFinish = goal === "marathon" && (ph === "Build" || ph === "Peak") && i % 2 === 1;
@@ -231,7 +234,7 @@ function buildPlan(p, today){
     }
     weeks.push({n: i + 1, start: ws, phase, miles: half(days.reduce((a, d) => a + d.sessions.reduce((b, s) => b + (s.mi || 0), 0), 0)), days});
   }
-  return applySwaps(applyCustom({profile: p, P, pred: fit.pred, weeks, start, raceDate, created: today}));
+  return applyVenues(applySwaps(applyCustom({profile: p, P, pred: fit.pred, weeks, start, raceDate, created: today})));
 }
 
 
@@ -251,11 +254,11 @@ function buildMulti(p, today){
   let start = p.start || mondayOf(today), N, raceDate = null;
   if (p.raceDate && kind !== "fit"){ raceDate = p.raceDate; N = Math.floor(daysBetween(start, raceDate) / 7) + 1; if (N > 24){ start = addDays(mondayOf(raceDate), -23 * 7); N = 24; } }
   else N = kind === "fit" ? 52 : 12;   // everyday plans run a year in 12-week blocks
-  const TW = TAPER_W[goal] || [.65], tw = Math.min(TW.length, Math.max(0, N - 2)), B = Math.max(1, N - tw);
+  const TW = TAPER_W[goal] || [.65], short = !!raceDate && N <= Math.max(2, TW.length), tw = short ? N : Math.min(TW.length, Math.max(0, N - 2)), B = short ? 0 : Math.max(1, N - tw);
   const swimEv = goal === "swim" ? (p.swimEvent || "1500") : null;
   const fitH = kind === "fit" ? ({new: 1.5, some: 2.5, regular: 4})[p.fitLevel] || 2.5 : null;
   const [hLo, hHi] = swimEv ? ({"1500": [2, 4], "5000": [3, 6], "10000": [4, 8]}[swimEv] || R.hours) : R.hours, h0 = Math.max(hLo * .7, Math.min(hHi, fitH || p.hours || (p.weekly ? p.weekly * easyPace / 3600 + 1 : hLo)));
-  let hPeak = Math.min(hHi, Math.max(hLo, h0 * 1.5)); hPeak = Math.max(h0, Math.min(hPeak, h0 * Math.pow(1.1, Math.max(1, B - 1))));
+  let hPeak = Math.min(hHi, Math.max(hLo, h0 * 1.5)); hPeak = Math.max(h0, Math.min(hPeak, h0 * Math.pow(1.1, Math.max(1, B - 1)))); if (short) hPeak = h0;
   const days = p.days.slice().sort((a, b) => a - b), longDay = p.longDay;
   const gap = (a, b) => Math.min(Math.abs(a - b), 7 - Math.abs(a - b));
   const swimPace = SWIM_PACE[p.swimLevel || "ok"], yd = min => Math.max(400, Math.round(min * 60 / swimPace * 100 / 50) * 50);
@@ -275,7 +278,7 @@ function buildMulti(p, today){
       phase = i < B * .4 ? "Base" : i < B * .85 ? "Build" : "Peak";
       H = h0 + (hPeak - h0) * (B === 1 ? 1 : i / (B - 1));
       if (i % 4 === 3 && i < B - 1){ H *= .8; phase += " · lighter"; }
-    } else { phase = i === N - 1 && raceDate ? "Race week" : "Taper"; H = hPeak * TW[Math.min(TW.length - 1, i - B)]; }
+    } else { phase = i === N - 1 && raceDate ? "Race week" : "Taper"; H = hPeak * TW[Math.max(0, Math.min(TW.length - 1, short ? TW.length - N + i : i - B))]; }
     const ph = phase.split(" ·")[0], light = /lighter/.test(phase) || ph === "Taper" || ph === "Race week", frac = B === 1 ? 1 : Math.min(1, i / Math.max(1, B - 1));
     const wk = Array.from({length: 7}, (_, d) => ({date: addDays(ws, d), sessions: []}));
     const raceIdx = raceDate && raceDate >= ws && raceDate <= addDays(ws, 6) ? dow(raceDate) : null;
@@ -440,6 +443,44 @@ const ADJ = {
   1: {walk: "Easier today: a shorter, relaxed walk is plenty.", cardio: "Easier today: 2–3 rounds at a steady effort, or swap it for a walk.", swim: "Easier today: swim the main set at a steady effort and skip the last third.", bike: "Easier today: keep the whole ride easy and cut 20–30 min.", hyrox: "Easier today: half the rounds, at a steady effort.", workout: "Easier today: do one rep fewer and run the reps at the slow end of the range.", long: "Easier today: cut 2 mi and keep every mile easy.", race: "", easy: "Keep it strictly conversational. Slow is fine.", lift: "Drop one set from each exercise."},
   2: {walk: "Recovery day: a gentle 15–20 min walk, or rest.", cardio: "Recovery day: skip the circuit. An easy walk instead.", swim: "Recovery day: an easy 20 min swim, or rest.", bike: "Recovery day: 30–40 min very easy spin, or rest.", hyrox: "Recovery day: skip the stations. An easy 20–30 min walk or spin instead.", workout: "Recovery day: swap this for 30–40 min very easy, or rest. Move the workout to a later day this week.", long: "Recovery day: make it half the distance, all easy, or move it.", race: "", easy: "Make it 20–30 min very easy, or rest.", lift: "Skip it, or keep it light and short."}
 };
+/* ---------- every activity counts ----------
+   Pickleball, soccer, yoga, a hike: anything you do is classified from the sport your watch/Strava sent
+   (or the name you typed), given an effort score and counted as training load (session RPE × minutes,
+   Foster 2001: works with no heart-rate data at all). Easy-ish sports can stand in for a missed easy run. */
+const SPORTS = [
+  [/pickle|tennis|padel|badminton|squash|racquet|table.?tennis|ping.?pong|racket/i, "Racquet sport", 5],
+  [/soccer|futbol|basketball|volleyball|football|hockey|rugby|lacrosse|ultimate|handball|netball|softball|baseball|cricket/i, "Team sport", 6],
+  [/yoga|pilates|stretch|mobility|barre|tai.?chi|breath|meditat/i, "Yoga & mobility", 2],
+  [/hike|trek/i, "Hike", 4], [/walk/i, "Walk", 2],
+  [/row|erg|kayak|canoe|paddl|stand.?up|\bsup\b/i, "Rowing & paddling", 5],
+  [/ellip|stair|stepper|step|elliptical/i, "Cardio machine", 4],
+  [/ski|snowboard|skate|inline|rollerski/i, "Snow & skate", 5],
+  [/climb|boulder/i, "Climbing", 5],
+  [/box|kickbox|martial|mma|jiu|bjj|karate|judo|wrestl|muay/i, "Combat sport", 7],
+  [/dance|zumba/i, "Dance", 4], [/golf/i, "Golf", 2], [/surf|kite|wind/i, "Water sport", 4],
+  [/hiit|crossfit|bootcamp|circuit|hyrox|f45|orangetheory/i, "HIIT", 7],
+  [/spin|peloton|cycl|ride|bike/i, "Ride", 4], [/swim/i, "Swim", 4],
+  [/run|jog|treadmill|track/i, "Run", 4], [/weight|strength|lift|gym|workout/i, "Strength", 5]
+];
+const TYPE_SPORT = {run: ["Run", 4], bike: ["Ride", 4], swim: ["Swim", 4], lift: ["Strength", 5], other: ["Activity", 4]};
+function sportOf(a){
+  const t = (a.sport || "") + " " + (a.name || "");
+  if (a.type !== "run" && a.type !== "lift") for (const [re, label, rpe] of SPORTS) if (re.test(t)) return {label, rpe};
+  const [label, rpe] = TYPE_SPORT[a.type] || TYPE_SPORT.other; return {label, rpe};
+}
+const FEEL_RPE = {"easy": 3, "just right": 5, "hard": 7, "very hard": 9};
+// effort 1-10: what the athlete said > heart rate vs max > what the sport usually is
+function effortOf(a, maxHr){
+  if (a.rpe > 0) return Math.min(10, Math.max(1, Math.round(a.rpe)));
+  if (a.feel && FEEL_RPE[a.feel]) return FEEL_RPE[a.feel];
+  if (a.avg_hr > 0 && maxHr > 0){ const f = a.avg_hr / maxHr; return f < .6 ? 2 : f < .68 ? 3 : f < .75 ? 4 : f < .8 ? 5 : f < .85 ? 6 : f < .89 ? 7 : f < .93 ? 8 : 9; }
+  return sportOf(a).rpe;
+}
+const PLAN_RPE = {easy: 3, long: 4, workout: 7, race: 8, lift: 5, hyrox: 7, walk: 2, cardio: 4, bike: 4, swim: 4, brick: 6};
+const loadOf = (a, maxHr) => Math.round((a.minutes || 0) * effortOf(a, maxHr));
+const SUB_TYPES = new Set(["easy", "walk", "cardio"]);
+const maxHrFor = p => p ? (p.maxHr || (p.age ? Math.round(208 - .7 * p.age) : 0)) : 0;   // Tanaka 2001 when no max is set
+const niceSport = a => { const t = String(a.sport || "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ").toLowerCase().trim(); return t && !/^(workout|other|activity|run|ride|swim|weight ?training)$/.test(t) ? t.replace(/^\w/, c => c.toUpperCase()) : ""; };
 function dayMatches(plan, acts, date){
   const day = dayOf(plan, date); if (!day) return {};
   const as = acts.filter(a => a.date === date), pools = {run: as.filter(a => a.type === "run"), lift: as.filter(a => a.type === "lift"), bike: as.filter(a => a.type === "bike"), swim: as.filter(a => a.type === "swim"), other: as.filter(a => a.type === "other" || a.type === "lift")}, used = new Set(), m = {};
@@ -449,8 +490,45 @@ function dayMatches(plan, acts, date){
     const a = take(k) || (s.type === "race" && s.multi ? as.find(x => !used.has(x)) : null);
     if (a){ used.add(a); m[i] = a; }
   });
+  // second pass: a different sport done instead of an easy session (pickleball on an easy-run day) counts for it
+  // when it was at least ~60% of the planned effort. Runs, workouts, long runs and races still need the real thing.
+  day.sessions.forEach((s, i) => {
+    if (m[i] || !SUB_TYPES.has(s.type)) return;
+    const want = sessionMinutes(plan, s) * (PLAN_RPE[s.type] || 3) * .6;
+    const a = as.find(x => !used.has(x) && x.type !== "run" && x.minutes > 0 && loadOf(x, maxHrFor(plan.profile)) >= want);
+    if (a){ used.add(a); m[i] = {...a, sub: sportOf(a).label}; }
+  });
   return m;
 }
+/* what one activity did, in plain words, without AI (works for any sport and with no watch) */
+function actSummary(plan, acts, a, today, maxHr){
+  maxHr = maxHr || maxHrFor(plan && plan.profile); const sp = sportOf(a), rpe = effortOf(a, maxHr), load = loadOf(a, maxHr);
+  const word = rpe <= 2 ? "very easy" : rpe <= 4 ? "easy" : rpe <= 6 ? "moderate" : rpe <= 8 ? "hard" : "all-out";
+  const how = a.rpe > 0 || a.feel ? "from how you said it felt" : a.avg_hr > 0 && maxHr ? "from your heart rate" : "typical for " + sp.label.toLowerCase();
+  const out = {label: sp.label, rpe, load, word, lines: []};
+  out.name = niceSport(a) || sp.label;
+  out.headline = out.name + (a.minutes ? " · " + a.minutes + " min" : "") + " · " + word;
+  out.lines.push("Effort " + rpe + "/10 (" + how + "). Training load " + load + ".");
+  if (!plan) return out;
+  const m = dayMatches(plan, acts, a.date), idx = Object.keys(m).find(i => m[i].id === a.id), day = dayOf(plan, a.date);
+  const s = idx != null && day ? day.sessions[idx] : null;
+  if (s && m[idx].sub) out.lines.push("Counted as today's " + (s.type === "easy" ? "easy run" : s.title.toLowerCase()) + ": same aerobic work, different sport.");
+  else if (s) out.lines.push("Checked off: " + s.title + ".");
+  else if (day && !day.sessions.length) out.lines.push("Bonus on a rest day. It counts toward this week; keep tomorrow's first few minutes relaxed.");
+  else out.lines.push("Extra on top of the plan. It counts toward this week's load.");
+  // this week vs plan
+  const ws = addDays(plan.start, Math.max(0, weekIdx(plan, a.date)) * 7), we = addDays(ws, 6), w = plan.weeks[weekIdx(plan, a.date)];
+  if (w){
+    const planned = w.days.reduce((t, d) => t + d.sessions.reduce((u, x) => u + sessionMinutes(plan, x) * (PLAN_RPE[x.type] || 4), 0), 0);
+    const got = acts.filter(x => x.date >= ws && x.date <= we).reduce((t, x) => t + loadOf(x, maxHr), 0);
+    if (planned > 0) out.lines.push("This week: " + Math.round(got / planned * 100) + "% of planned load done (" + got + " of " + Math.round(planned) + ").");
+  }
+  // a hard day changes tomorrow
+  const nd = dayOf(plan, addDays(a.date, 1)), hardNext = nd && nd.sessions.find(x => x.type === "workout" || x.type === "long");
+  if (rpe >= 7 && (a.minutes || 0) >= 40 && hardNext && a.date >= addDays(today || a.date, -1)) out.lines.push("That was hard. Tomorrow's " + hardNext.title.toLowerCase() + " stays, but start it 10 s/mi slower and only push if your legs come around.");
+  return out;
+}
+
 
 /* ---------- runs adjust from how the last ones went ----------
    Workouts: reps (laps, or the work pace typed in) vs target. More than 6 s/mi faster = too easy:
@@ -499,8 +577,14 @@ function feedback(plan, acts, today){
   for (const x of all){
     if (x.date > today) break;
     const a = matchOf(x.date)[x.i]; if (!a) continue;
-    if (x.s.own) continue;                       // a workout the athlete wrote has no plan paces to grade against
+    if (x.s.own || a.sub) continue;                       // a workout the athlete wrote has no plan paces to grade against
     const as = assess(plan, x.s, a, offs), key = x.date + "-" + x.i; as.offsBefore = {...offs}; out.assess[key] = as;
+    // no watch, no pace data: how hard it felt (1-10) adapts the plan instead
+    if (as.verdict === "unknown" && a.rpe > 0){
+      const r = a.rpe, t = x.s.type;
+      as.verdict = t === "workout" ? (r <= 5 ? "easy" : r >= 9 ? "hard" : "ok") : t === "easy" || t === "long" ? (r >= 6 ? "hard" : "ok") : "unknown";
+      as.byFeel = true; as.why = "Felt " + r + "/10. With no pace data, how it felt steers the next sessions.";
+    }
     if (x.s.type === "workout" && !x.s.base && PACE_KEYS.includes(x.s.k) && x.s.k !== "G"){
       if (as.verdict === "easy"){ offs[x.s.k] = Math.max(-15, (offs[x.s.k] || 0) - 5); pendingExtra = true; }
       else if (as.verdict === "hard"){ offs[x.s.k] = Math.min(15, (offs[x.s.k] || 0) + 5); pendingExtra = false; }
@@ -645,13 +729,91 @@ function raceSplits(plan){
    Turns one planned session into a Garmin workout: warm-up/cool-down, rep blocks with recoveries,
    and pace targets (as speed in m/s). Runs, rides, swims and cardio; lifts stay in the app. */
 const MI_M = 1609.34;
+/* ---------- cycle-aware training (opt-in; the data stays on the athlete's phone) ----------
+   Research (McNulty 2020 meta-analysis; Elliott-Sale 2021) finds small, very individual effects of the cycle on
+   performance, so this follows how SHE feels first and the textbook second: phase for context, symptoms decide. */
+function cyclePhase(cfg, date){
+  if (!cfg || !cfg.on) return null;
+  const starts = (cfg.starts || []).concat(cfg.last ? [cfg.last] : []).filter(x => x <= date).sort();
+  if (!starts.length) return null; cfg = {...cfg, last: starts[starts.length - 1]};
+  const len = Math.min(45, Math.max(20, +cfg.len || 28)), plen = Math.min(10, Math.max(2, +cfg.plen || 5));
+  const day = daysBetween(cfg.last, date) % len + 1, ov = len - 14, late = daysBetween(cfg.last, date) >= len + 7;
+  const key = day <= plen ? "period" : day < ov - 1 ? "follicular" : day <= ov + 1 ? "ovulation" : day > len - 5 ? "premenstrual" : "luteal";
+  return {day, len, key, next: addDays(cfg.last, Math.ceil((daysBetween(cfg.last, date) + 1) / len) * len), late, hormonal: !!cfg.hormonal};
+}
+const CYCLE = {
+  period: {name: "Period", tip: "Train as planned if you feel fine: research shows little effect for most athletes. If cramps or fatigue hit, swap hard work for easy miles. Eat iron-rich food (red meat, lentils, spinach with vitamin C).",
+    hard: "If you have cramps or feel flat, run this as an easy run today and move the workout. If you feel good, go for it."},
+  follicular: {name: "Follicular", tip: "Many athletes feel their best here. A good window for your hardest sessions, heavy lifts and time trials.",
+    hard: "Good timing for a hard session. Go for the top of the target range if you feel it."},
+  ovulation: {name: "Around ovulation", tip: "Energy is often high. Ligaments may be a little looser around now, so warm up properly before fast running, jumps or heavy lifts.",
+    hard: "Do the full warm-up and strides before the fast work."},
+  luteal: {name: "Luteal", tip: "Body temperature and heart rate run a little higher, so effort can feel harder and heat hits more. Pace hot runs by effort, drink more, add salt, and eat about 100 to 200 more calories.",
+    hard: "Heart rate may read a few beats higher for the same pace. Hit the paces, ignore a slightly higher HR."},
+  premenstrual: {name: "Premenstrual", tip: "Sleep and mood can dip. Protect sleep, keep carbs up, and let check-ins steer the hard days.",
+    hard: "If your check-in is low, cut a rep or two. Consistency beats one big session."}
+};
+const CYCLE_SYM = [["cramps", "Cramps"], ["fatigue", "Low energy"], ["bloat", "Bloating"], ["head", "Headache"], ["sleep", "Poor sleep"], ["strong", "Feeling strong"]];
+function cycleAdvice(cfg, date, sessions, symptoms){
+  const ph = cyclePhase(cfg, date); if (!ph) return null;
+  const C = CYCLE[ph.key], sym = symptoms || [], hard = (sessions || []).find(x => x.type === "workout" || x.type === "long" || x.type === "hyrox");
+  const rough = sym.some(x => x !== "strong") && sym.length >= 2 || sym.includes("cramps");
+  let today = hard ? C.hard : "";
+  if (hard && rough) today = "With " + sym.filter(x => x !== "strong").map(x => (CYCLE_SYM.find(y => y[0] === x) || [x, x])[1].toLowerCase()).join(" and ") + ", make today easy: same time, easy effort. Move " + hard.title.toLowerCase() + " to a better day.";
+  else if (hard && sym.includes("strong")) today = "Feeling strong: this is a good day to push " + hard.title.toLowerCase() + ".";
+  return {...ph, name: C.name, tip: ph.hormonal ? "On hormonal birth control the phases are flattened, so Mileset goes by your symptoms and check-ins." : C.tip, today, rough};
+}
+// her own pattern: average check-in readiness per phase once there's enough data
+function cyclePattern(cfg, checkins){
+  if (!cfg || !cfg.on) return null;
+  const by = {}; Object.values(checkins || {}).forEach(c => { if (!c.date) return; const ph = cyclePhase(cfg, c.date); const r = readiness(c); if (!ph || !r || !r.score) return; (by[ph.key] = by[ph.key] || []).push(r.score); });
+  const rows = Object.entries(by).filter(([, v]) => v.length >= 3).map(([k, v]) => [k, Math.round(v.reduce((a, b) => a + b, 0) / v.length), v.length]);
+  return rows.length >= 2 ? rows.sort((a, b) => b[1] - a[1]) : null;
+}
+/* ---------- run by pace, heart rate or feel (profile.target) ----------
+   Zones: % of max HR (default 60/70/80/90) or of lactate-threshold HR (85/90/95/100), from Settings > Heart rate
+   zones; with nothing set, max HR is estimated from age (Tanaka 2001). Each pace maps to the zone it trains. */
+const HR_PCT = {max: [60, 70, 80, 90], lthr: [85, 90, 95, 100]};
+function zonesFrom(u, age){
+  u = u || {}; const m = u.hr_method === "lthr" && u.hr_lthr ? "lthr" : "max";
+  const base = m === "lthr" ? u.hr_lthr : (u.hr_max || (age > 0 ? Math.round(208 - .7 * age) : 0)); if (!base) return null;
+  const pct = Array.isArray(u["hr_pct_" + m]) && u["hr_pct_" + m].length === 4 ? u["hr_pct_" + m] : HR_PCT[m], b = pct.map(x => Math.round(base * x / 100));
+  return {estimated: m === "max" && !u.hr_max, method: m, base,
+    z: [[m === "max" ? Math.round(base * .5) : Math.round(base * .7), b[0] - 1], [b[0], b[1] - 1], [b[1], b[2] - 1], [b[2], b[3] - 1], [b[3], m === "max" ? base : Math.round(base * 1.06)]]};
+}
+const KEY_ZONE = {E: 1, L: 1, M: 2, H: 2.5, T: 3, I: 4, G: null, R: null};
+function hrFor(k, zones, goal){
+  if (!zones || !k) return null;
+  let zi = KEY_ZONE[k];
+  if (k === "G") zi = ({"5k": 4, "10k": 3.5, half: 2.5, marathon: 2, "50k": 1.5})[goal] ?? 3;
+  if (zi == null) return null;
+  const Z = zones.z, f = Math.floor(zi);
+  if (zi === f) return {zone: f + 1, lo: Z[f][0], hi: Z[f][1]};
+  return {zone: f + 1 + "–" + (f + 2), lo: Math.round((Z[f][0] + Z[f][1]) / 2), hi: Math.round((Z[f + 1][0] + Z[f + 1][1]) / 2)};   // spans two zones
+}
+const targetOf = p => p && (p.target === "hr" || p.target === "feel") ? p.target : "pace";
+/* treadmill or outside: one choice per run (profile.venues["YYYY-MM-DD-i"]), or a default (profile.venue).
+   Only one workout ever goes to the watch: the choice changes its name and notes, never adds a second one. */
+const RUN_TYPES = new Set(["easy", "long", "workout"]);
+function applyVenues(plan){
+  const p = plan.profile || {}, v = p.venues || {}, def = p.venue === "treadmill" ? "treadmill" : null;
+  plan.weeks.forEach(w => w.days.forEach(d => d.sessions.forEach((s, i) => {
+    if (!RUN_TYPES.has(s.type)) return;
+    const c = v[d.date + "-" + i] || def; if (c === "treadmill" || c === "outside") s.venue = c;
+  })));
+  return plan;
+}
+const mph = secPerMi => Math.round(3600 / secPerMi * 10) / 10;
 function garminWorkout(plan, s, offs, extra, date){
   if (!s || s.type === "lift" || s.type === "walk" || (s.type === "race" && s.multi)) return null;
   const P = plan.P, off = offs || {};
   const steps0 = extra ? withExtraRep(s.steps || []) : (s.steps || []);
   let order = 0;
   const speed = sec => Math.round(MI_M / sec * 1000) / 1000;
+  const mode = targetOf(plan.profile), hz = mode === "hr" ? plan.hrZones || zonesFrom(null, plan.profile && plan.profile.age) : null;
   const paceTarget = (k, plus) => {
+    if (mode === "feel") return {targetType: "OPEN"};
+    if (mode === "hr"){ const r = hrFor(k, hz, plan.profile.goal); return r ? {targetType: "HEART_RATE", targetValueLow: r.lo, targetValueHigh: r.hi} : {targetType: "OPEN"}; }
     if (!k || P[k] == null) return {targetType: "OPEN"};
     if (Array.isArray(P[k])) return {targetType: "PACE", targetValueLow: speed(Math.max(P[k][0], P[k][1]) + 15), targetValueHigh: speed(Math.min(P[k][0], P[k][1]))};
     const c = P[k] + (off[k] || 0) + (plus || 0);
@@ -682,7 +844,8 @@ function garminWorkout(plan, s, offs, extra, date){
       if (mi > 0) out.push(step({intensity, description: L, durationType: "DISTANCE", durationValue: Math.round(mi * MI_M), durationValueType: "METER", ...paceTarget(k, plus)}));
       else out.push(step({intensity, description: L, durationType: "OPEN"}));
     });
-    return {workoutName: String(s.title).slice(0, 80), description: ("Mileset · " + (s.why || "")).slice(0, 1024), sport: "RUNNING", workoutProvider: "HYBRD", workoutSourceId: "HYBRD",
+    const tm = s.venue === "treadmill";
+    return {workoutName: ((tm ? "Treadmill · " : "") + s.title).slice(0, 80), description: ((tm ? "Treadmill: 1% incline. " : "") + "Mileset · " + (s.why || "")).slice(0, 1024), sport: "RUNNING", workoutProvider: "HYBRD", workoutSourceId: "HYBRD",
       isSessionTransitionEnabled: false, poolLength: null, poolLengthUnit: null, segments: [{segmentOrder: 1, sport: "RUNNING", poolLength: null, poolLengthUnit: null, steps: out}]};
   }
   // time-based sessions (rides, swims, cardio, walk-runs): one step with the plan's instructions
@@ -878,5 +1041,5 @@ function swapCheck(plan, a, b, dropA){        // dropA: a is a missed day, so wh
   return scan().filter(m => !before.includes(m));   // only what this move adds, not what the week already had
 }
 
-root.HP = {applyCustom, cleanSession, alternatives, library, exAlts, exAll, exGroup, applySwaps, swapCheck, isHard, garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
+root.HP = {zonesFrom, hrFor, targetOf, HR_PCT, cyclePhase, cycleAdvice, cyclePattern, CYCLE, CYCLE_SYM, applyVenues, mph, sportOf, effortOf, loadOf, actSummary, SPORTS, PLAN_RPE, cleanSession, alternatives, library, exAlts, exAll, exGroup, applySwaps, swapCheck, isHard, garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
 })(typeof globalThis !== "undefined" ? globalThis : self);
