@@ -2840,7 +2840,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "72";
+const APP_VERSION = "73";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2949,8 +2949,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-15";
+const NEW_ID = "2026-11-15.2";
 const NEWS = [
+  ["run", "Gentler first weeks at low mileage", "Running under about 3 miles a day? Your plan now uses fewer of your run days early on, so week one is close to what you run now. Rest days fill the rest.", null, null, "2026-11-15.2"],
   ["watch", "Watch connected? No more morning survey", "Today now shows your readiness, sleep, HRV and resting heart rate straight from your watch. Tap Add how you feel if you want to adjust it.", null, null, "2026-11-15"],
   ["swap", "Changing a workout is easier", "Tap Change workout: similar options show first, and the search box on top finds anything else.", null, null, "2026-11-14.2"],
   ["run", "No watch? Run with your phone", "Open today's run and tap Start with my phone. A voice calls every step, keeps time and can track distance by GPS. Then rate how hard it felt.", null],

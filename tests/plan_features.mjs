@@ -44,4 +44,18 @@ const cy = {on: true, last: "2026-11-01", len: 28, plen: 5};
 t(HP.cyclePhase(cy, "2026-11-02").key === "period" && HP.cyclePhase(cy, "2026-11-20").key === "luteal", "cycle phases");
 t(/make today easy/.test(HP.cycleAdvice(cy, "2026-11-02", [{type: "workout", title: "Tempo"}], ["cramps"]).today), "cramps turn a hard day easy");
 t(HP.cyclePhase({on: false, last: "2026-11-01"}, "2026-11-02") === null, "cycle off: nothing");
+// low mileage on many days: week 1 stays within ~20% of what the athlete runs now (beginner 5K page sends people here)
+const DAYSETS = {3: [1, 3, 6], 4: [1, 3, 5, 6], 5: [0, 1, 3, 5, 6], 6: [0, 1, 2, 3, 5, 6]}; let over = [];
+for (const goal of ["5k", "10k", "half", "fitness"]) for (const wk of [0, 5, 8, 10, 12, 15, 20]) for (const n of [3, 4, 5, 6]) {
+  const lp = HP.buildPlan({goal, days: DAYSETS[n], longDay: 6, weekly: wk, longest: 3, raceDate: goal === "fitness" ? undefined : "2027-02-28"}, "2026-11-16");
+  if (lp.weeks[0].miles > Math.max(8, wk) * 1.2) over.push(goal + " " + wk + "mi " + n + "d = " + lp.weeks[0].miles);
+}
+t(!over.length, "low-mileage week 1 within 20% of current miles" + (over.length ? ": " + over.join(", ") : ""));
+const b5 = HP.buildPlan({goal: "5k", days: DAYSETS[5], longDay: 6, weekly: 8, longest: 3, raceDate: "2027-02-28"}, "2026-11-16");
+const runsW1 = b5.weeks[0].days.filter(d => d.sessions.some(s => s.mi)).map(d => HP.dow(d.date));
+t(runsW1.length === 3 && runsW1.every((d, i) => !i || d - runsW1[i - 1] > 1), "8 mi on 5 days: 3 runs, none back to back (" + runsW1 + ")");
+const old5 = HP.buildPlan({goal: "5k", days: DAYSETS[5], longDay: 6, weekly: 8, longest: 3, raceDate: "2027-02-28", start: "2026-11-09"}, "2026-11-15");
+t(old5.weeks[0].days.filter(d => d.sessions.some(s => s.mi)).length === 5, "weeks before the change keep their run days (check-offs stay put)");
+const s20 = HP.buildPlan({goal: "half", days: DAYSETS[5], longDay: 6, weekly: 20, longest: 8, raceDate: "2027-02-28"}, "2026-11-16");
+t(s20.weeks.every(w => /Race week/.test(w.phase) || w.days.filter(d => d.sessions.some(s => s.mi)).length === 5), "20 mi/week on 5 days still runs all 5 days");
 console.log(bad ? bad + " failed" : "ALL PASS"); process.exit(bad ? 1 : 0);

@@ -51,6 +51,7 @@ function raceName(p){
   return R.name;
 }
 const isMulti = goal => !!(RACES[goal] && RACES[goal].kind);
+const LOWVOL_FROM = "2026-11-16";   // first week with the low-mileage run-day cap
 const LONG_CAP = {"5k":9, "10k":11, "half":13, "marathon":20, "50k":22, "fitness":10};
 const LONG_GOAL = {"5k":7, "10k":9, "half":12, "marathon":20, "50k":22, "fitness":7};   // longest run reached at peak
 const PEAK = {"5k":[1.25,18,40], "10k":[1.3,22,45], "half":[1.35,28,50], "marathon":[1.4,35,55], "50k":[1.45,38,60], "fitness":[1.2,15,35]};
@@ -207,7 +208,19 @@ function buildPlan(p, today){
       used += mi;
     });
     // easy runs fill the rest
-    const easyDays = runDays.filter(d => !days[d].sessions.some(s => s.type !== "lift"));
+    let easyDays = runDays.filter(d => !days[d].sessions.some(s => s.type !== "lift"));
+    // low mileage on many days: every easy run is at least 3 mi, so 8 mi/week on 5 days would plan 15.
+    // Run fewer days that week (about one per 2.75 mi, never under 3) and leave the rest as rest days,
+    // spread so runs don't land back to back. Weeks before LOWVOL_FROM keep their old shape (check-offs).
+    const allowed = Math.max(3, Math.floor(miles / 2.75)), runs = runDays.length - easyDays.length;
+    if (raceIdx == null && ws >= LOWVOL_FROM && runDays.length > allowed && easyDays.length > Math.max(0, allowed - runs)){
+      const keep = [], busy = runDays.filter(d => !easyDays.includes(d));
+      for (let n = Math.max(0, allowed - runs); n > 0; n--){
+        const pick = easyDays.filter(d => !keep.includes(d)).map(d => [d, Math.min(7, ...busy.concat(keep).map(b => gap(d, b)))]).sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
+        if (pick) keep.push(pick[0]);
+      }
+      easyDays = easyDays.filter(d => keep.includes(d));
+    }
     const left = Math.max(0, miles - used);
     easyDays.forEach((d, k) => {
       let e = raceIdx != null ? (d === raceIdx - 1 ? 2 : (d > raceIdx ? 0 : 3)) : Math.max(3, half(left / Math.max(1, easyDays.length)));
