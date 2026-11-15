@@ -1,0 +1,29 @@
+name: Member account check (owner only)
+# Manual. preview: masked signals for every real account (no names or emails printed).
+# delete: removes ONE account the owner asked to delete (matched by SHA-256 of its email's local part); see api/account-check.mjs.
+on:
+  workflow_dispatch:
+    inputs:
+      mode: {description: "preview or delete", default: "preview"}
+      target_sha: {description: "SHA-256 of the email's local part (before @), lowercase", default: ""}
+      confirm: {description: "type DELETE to delete", default: ""}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: cd api && npm install --no-save --no-audit --no-fund wrangler@4 >/dev/null
+      - name: Point wrangler at the live database
+        working-directory: api
+        run: |
+          id=$(npx wrangler d1 list --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s).find(d=>d.name==="hybrid");process.stdout.write(x?x.uuid:"")})')
+          sed -i "s/REPLACED_BY_DEPLOY_WORKFLOW/$id/" wrangler.toml
+      - name: Check accounts
+        working-directory: api
+        env: {MODE: "${{ inputs.mode }}", TARGET: "${{ inputs.target_sha }}", CONFIRM: "${{ inputs.confirm }}"}
+        run: node account-check.mjs
