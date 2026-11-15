@@ -21,6 +21,13 @@ for (const [name, w, h] of [['phone', 390, 844], ['desktop', 1280, 900]]) {
   await p.goto(page); await p.waitForTimeout(900);          // no key: private rooms stay locked, nothing invented
   for (const v of ['growth', 'money', 'me']) { await p.click(`#nav [data-v="${v}"]`);
     if (!(await p.textContent(`#${v}`)).includes('private')) errs.push(`${name}: ${v} must be locked without the key`); }
+  // the paste-to-unlock box: a wrong paste is refused, a well-formed key is stored (it can't open the real office here, and says so)
+  await p.click('#nav [data-v="growth"]');
+  await p.fill('#growth .ukey', 'hello'); await p.click('#growth .ugo');
+  if (!(await p.textContent('#growth .umsg')).includes("doesn't look like")) errs.push(`${name}: a bad paste must be refused`);
+  await p.fill('#growth .ukey', 'https://app.hybrdrunning.com/hq/#k=' + 'A'.repeat(43)); await p.click('#growth .ugo'); await p.waitForTimeout(1500);
+  if ((await p.evaluate(() => localStorage.getItem('hq-k'))) !== 'A'.repeat(43)) errs.push(`${name}: a pasted link must store its key on this device`);
+  if (!(await p.textContent('#growth')).includes('private')) errs.push(`${name}: a wrong key must leave the room locked`);
   await p.close();
 }
 await b.close();
