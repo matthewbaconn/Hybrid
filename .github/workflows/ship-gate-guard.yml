@@ -1,0 +1,50 @@
+name: Ship gate guard
+
+# Only the ship gate may put APP changes on main (Matthew, Nov 14 2026). Everyone works under the same GitHub
+# account, so GitHub itself can't tell the ship gate from another agent. This check can: every push to main that
+# touches the app must come from a merged claude/* pull request carrying the ship gate's test comment.
+# A bypass turns this run red (the audit and the hourly worker read failed runs) and names the commit.
+# It changes nothing and blocks nothing by itself: it makes a bypass impossible to miss.
+# WHEN IT GOES RED (recovery): 1) the hourly worker / 5:13am audit see the failed run and tell Matthew which commit
+# bypassed the gate; 2) the ship gate tests that commit the normal way; if it passes, it records "Ship gate:" on a PR
+# for it and the next app merge turns the check green again; if it fails, the ship gate reverts the commit through its
+# own gated PR. Nothing is auto-reverted by this workflow: an unreviewed revert would be a second bypass.
+on:
+  push:
+    branches: [main]
+    paths: ["index.html", "plan.js", "sw.js", "api/**"]
+  workflow_dispatch:        # test the guard against any past commit without making a new one
+    inputs:
+      sha:
+        description: "Commit on main to judge (full or short SHA)"
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Was this app change shipped by the ship gate?
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ inputs.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          SHA=$(gh api "repos/$REPO/commits/$SHA" --jq .sha)      # accept a short SHA; fail clearly on an unknown one
+          echo "Judging commit $SHA"
+          prs=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '[.[] | select(.merged_at != null and .base.ref == "main")] | .[].number')
+          if [ -z "$prs" ]; then
+            echo "::error::App files changed on main by commit ${SHA:0:7} with NO merged pull request (pushed directly, outside the ship gate)."
+            exit 1
+          fi
+          for n in $prs; do
+            gated=$(gh api "repos/$REPO/issues/$n/comments" --paginate --jq '[.[] | select(.body | test("^Ship gate:"; "m"))] | length')
+            if [ "$gated" -gt 0 ]; then echo "PR #$n carries the ship gate's test comment. OK."; exit 0; fi
+          done
+          echo "::error::App files changed on main by commit ${SHA:0:7} via PR(s) $prs, but none carries a 'Ship gate:' test comment (merged outside the ship gate)."
+          exit 1
