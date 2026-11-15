@@ -31,6 +31,14 @@ Plans adapt to sleep, HRV and workouts from Garmin, Strava and Apple Health.
 - Tools: `gh` (REST: `gh api`), `wrangler` (in `api/`), Resend, Buffer MCP, Meta Ads MCP.
 - The repo is **public**. Never commit secrets, member data, `.dev.vars` or `.claude/MEMORY.md`.
 
+## What's new pop-up (Matthew, Nov 14: "always do this when I add a feature")
+Every release that adds or changes something members can see must update the What's new pop-up in index.html
+(grep `NEW_ID`): set `NEW_ID` to the release date (YYYY-MM-DD) and replace `NEWS` with that release's features,
+one entry each: [icon, short title, one sentence on how to use it, the screen "Show me" opens (or null), optional
+sex filter]. Members see it once on their next open; "Show me" goes to the screen with a pill to come back; it's
+also under More > What's new. Bug fixes and invisible changes don't go in. The ship gate checks this before merging:
+a member-facing PR without a NEWS/NEW_ID update gets one added (or is sent back) first.
+
 ## Hard rules
 1. Real athletes use Mileset. Never change, reset or delete members' data; only fix code.
    Schema changes go through new migrations that keep existing rows intact.
