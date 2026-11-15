@@ -609,7 +609,9 @@ async function cron(env, ctx){
       const U = () => loadUser(env, id, L.date);
       if (st.n_morning && inWindow(L.hm, st.morning) && await once(env, id, "morning", L.date)){
         const u = await U(); if (u && !u.checkins[L.date]){ const fbk = HP.feedback(u.plan, u.acts, L.date);
-          await pushTo(env, id, {title: "Morning check-in · 20 seconds", body: "Today: " + sessionsText(u, L.date, fbk) + ". Tap to check in and see today's fuel.", tag: "morning-" + L.date}); }
+          const watch = Object.keys(u.dev || {}).some(k => k >= HP.addDays(L.date, -3) && k <= L.date);      // a watch sends the numbers: no survey to fill in
+          await pushTo(env, id, watch ? {title: "Good morning", body: "Today: " + sessionsText(u, L.date, fbk) + ". Your readiness and sleep are in.", tag: "morning-" + L.date}
+            : {title: "Morning check-in · 20 seconds", body: "Today: " + sessionsText(u, L.date, fbk) + ". Tap to check in and see today's fuel.", tag: "morning-" + L.date}); }
       }
       if (st.n_bed && inWindow(L.hm, st.bedtime) && await once(env, id, "bed", L.date)){
         const u = await U(); if (u){ const tm = HP.addDays(L.date, 1), fbk = HP.feedback(u.plan, u.acts, tm);

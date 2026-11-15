@@ -895,6 +895,19 @@ const CIQ = [
 ];
 let ciForce = false;
 const morningNow = () => { const h = new Date().getHours(); return h >= 3 && h < 12; };
+/* A connected watch (Garmin, or Apple Health sending data) replaces the morning survey: readiness, sleep and the
+   night's numbers show instead (Matthew, Nov 15). The survey stays one tap away for anyone who wants to add how they feel. */
+const watchLinked = () => !!(garmin.connected || (healthLink && healthLink.on) || Object.keys(dev || {}).some(k => k >= addDays(TODAY, -3) && k <= TODAY));
+function watchReadyCard(){
+  const sg = sigOn(TODAY), r = readiness(null, sg);
+  if (!r) return morningNow() ? '<section class="card ci-done wr" style="--tone:var(--long)"><div class="ci-row"><div><strong>Waiting for your watch</strong><span>Last night\'s sleep and today\'s readiness show here once your watch syncs.</span></div><button class="linkbtn" type="button" data-act="ciopen">Check in by hand</button></div></section>' : '';
+  const n1 = x => Math.round(x * 10) / 10;
+  const bits = [sg.sleep_h ? n1(sg.sleep_h) + ' h sleep' : '', sg.sleep_score != null ? 'sleep score ' + sg.sleep_score : '',
+    sg.hrv ? 'HRV ' + Math.round(sg.hrv) + ' ms' + (sg.hrvA ? ' (your normal ' + Math.round(sg.hrvA) + ')' : '') : '',
+    sg.rhr ? 'resting HR ' + Math.round(sg.rhr) + (sg.rhrA ? ' (your normal ' + Math.round(sg.rhrA) + ')' : '') : ''].filter(Boolean);
+  return '<section class="card ci-done wr" style="--tone:var(--' + r.tone + ')"><div class="ci-row"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>From your watch · ' + esc(bits.join(' · ')) + '</span></div><button class="linkbtn" type="button" data-act="ciopen">Add how you feel</button></div>' +
+    (r.watch ? '<p class="sub">' + esc(r.watch.join(' · ')) + '.</p>' : '') + '</section>';
+}
 function checkinCard(){
   const c = checkins[TODAY], r = readiness(c, sigOn(TODAY));
   if (c && !ci){
@@ -903,6 +916,7 @@ function checkinCard(){
       c.sleep_h + ' h sleep · ' + ["", "very low", "low", "OK", "good", "great"][c.energy] + ' energy' + (r.watch ? ' · ' + esc(r.watch[0]) : '') + '</span></div><button class="linkbtn" type="button" data-act="ciedit">Edit</button></div>' +
       (mn ? reviewHtml({headline: mn.headline, meaning: (mn.lines || []).join(" ")}) : coachOn && mode === "account" && notePending ? '<p class="sub">Coach note on its way…</p>' : '') + '</section>';
   }
+  if (!c && !ci && !ciForce && watchLinked()) return watchReadyCard();          // watch connected: no survey, the watch's own read
   if (!c && !ci && !ciForce && !morningNow()) return '';
   const ws = dev[TODAY] && dev[TODAY].sleep_h;
   if (!c && ws && (!ci || ci.sleep_h == null)){ const opts = CIQ[0][2].map(o => o[0]); ci = {...(ci || {}), sleep_h: opts.reduce((a, b) => Math.abs(b - ws) < Math.abs(a - ws) ? b : a), fromWatch: true}; }
@@ -1281,12 +1295,12 @@ function renderRecovery(){
     h += '<section class="card" style="--tone:var(--' + r.tone + ')"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span><span class="r">from your watch</span></div><div class="rings">' +
       ring(r.score, 100, "var(--" + r.tone + ")", "Readiness", String(r.score), r.word) + (sg.sleep_h ? ring(sg.sleep_h, 8, "var(--accent-2)", "Sleep", (Math.round(sg.sleep_h * 10) / 10) + " h", sg.sleep_score != null ? "score " + sg.sleep_score : "last night") : '') +
       (sg.hrv ? ring(sg.hrv, sg.hrvA ? sg.hrvA * 1.3 : 120, "var(--lift)", "HRV", sg.hrv + " ms", sg.hrvA ? "normal " + Math.round(sg.hrvA) : "last night") : '') + '</div>' +
-      '<div class="verdict v' + r.level + '"><b>' + r.word + '</b><span>' + ["Train as planned.", "Today's session is trimmed. See the note on the Today tab.", "Today is easy or rest. Your workout moves later in the week."][r.level] + ' Do the check-in for a fuller read.</span></div><button class="btn block" type="button" data-act="gotoday">Do the check-in</button></section>'; }
+      '<div class="verdict v' + r.level + '"><b>' + r.word + '</b><span>' + ["Train as planned.", "Today's session is trimmed. See the note on the Today tab.", "Today is easy or rest. Your workout moves later in the week."][r.level] + '</span></div><button class="linkbtn" type="button" data-act="gotoday">Add how you feel (optional)</button></section>'; }
   else if (r) h += '<section class="card" style="--tone:var(--' + r.tone + ')"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span></div><div class="rings">' +
     ring(r.score, 100, "var(--" + r.tone + ")", "Readiness", String(r.score), r.word) + ring(c.sleep_h, 8, "var(--accent-2)", "Sleep", (c.sleep_h >= 9 ? "9+" : c.sleep_h < 5 ? "<5" : c.sleep_h) + " h", ["", "awful", "poor", "OK", "good", "great"][c.sleep_q] + " quality") +
     ring(6 - c.soreness, 5, "var(--lift)", "Legs", ["", "fresh", "light", "some", "sore", "very sore"][c.soreness], "energy " + ["", "very low", "low", "OK", "good", "great"][c.energy]) + '</div>' +
     '<div class="verdict v' + r.level + '"><b>' + r.word + '</b><span>' + ["Train as planned.", "Today's session is trimmed. See the note on the Today tab.", "Today is easy or rest. Your workout moves later in the week."][r.level] + '</span></div></section>';
-  else h += '<section class="card" style="--tone:var(--long)"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span></div><p class="sub">Do the 20-second morning check-in and your readiness shows here.</p><button class="btn primary" type="button" data-act="gotoday">Do today\'s check-in</button></section>';
+  else h += '<section class="card" style="--tone:var(--long)"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span></div>' + (watchLinked() ? '<p class="sub">Your readiness shows here once your watch syncs last night\'s sleep.</p><button class="linkbtn" type="button" data-act="gotoday">Check in by hand</button>' : '<p class="sub">Do the 20-second morning check-in and your readiness shows here.</p><button class="btn primary" type="button" data-act="gotoday">Do today\'s check-in</button>') + '</section>';
   h += watchCard(days);
   const rs = days.map(d => { const x = readiness(checkins[d], sigOn(d)); return x ? x.score : null; }), sl = days.map(d => dev[d] && dev[d].sleep_h ? Math.round(dev[d].sleep_h * 10) / 10 : checkins[d] ? checkins[d].sleep_h : null);
   const lab = days.map((d, i) => i % 2 === 1 ? '' : String(parseD(d).getUTCDate()));
@@ -1943,7 +1957,7 @@ function greeting(p, w){
   else if (allDone) { head = "Done for today" + who + "."; sub = "Eat, hydrate, sleep. That's training too."; }
   else if (n != null && n > 0 && n <= 7) { head = n + (n === 1 ? " day" : " days") + " out" + who + "."; sub = "The hay is in the barn. Stay fresh."; }
   else if (!ss.length) { head = "Rest day" + who + "."; sub = lastSport && lastSport.rpe >= 7 ? "After yesterday's " + esc(lastSport.name.toLowerCase()) + ", you earned it." : "Walk, stretch, eat well. Fitness is built today."; }
-  else if (r && r.level >= 1 && hard) { head = tod + who + ". Go easy on yourself."; sub = "Your check-in says tired. The plan already softened today's " + esc(hard.title.toLowerCase().split(" ·")[0]) + "."; }
+  else if (r && r.level >= 1 && hard) { head = tod + who + ". Go easy on yourself."; sub = (r.watchOnly ? "Your watch shows a rough night." : "Your check-in says tired.") + " The plan already softened today's " + esc(hard.title.toLowerCase().split(" ·")[0]) + "."; }
   else if (hard && hard.type === "long") { head = "Long run day" + who + "."; sub = "Slow is correct. Bring fuel if it's over 75 minutes."; }
   else if (hard) { head = esc(hard.title.split(" ·")[0]) + " day" + who + "."; sub = r && r.level === 0 && r.score >= 80 ? "Check-in looks great. Go get it." : "Warm up properly, then hit your paces."; }
   else { head = tod + who + "."; sub = "Easy today. Conversational pace, nothing to prove."; }
@@ -2938,6 +2952,7 @@ async function pushOn(){
 const NEW_ID = "2026-11-15.2";
 const NEWS = [
   ["run", "Gentler first weeks at low mileage", "Running under about 3 miles a day? Your plan now uses fewer of your run days early on, so week one is close to what you run now. Rest days fill the rest.", null, null, "2026-11-15.2"],
+  ["watch", "Watch connected? No more morning survey", "Today now shows your readiness, sleep, HRV and resting heart rate straight from your watch. Tap Add how you feel if you want to adjust it.", null, null, "2026-11-15"],
   ["swap", "Changing a workout is easier", "Tap Change workout: similar options show first, and the search box on top finds anything else.", null, null, "2026-11-14.2"],
   ["run", "No watch? Run with your phone", "Open today's run and tap Start with my phone. A voice calls every step, keeps time and can track distance by GPS. Then rate how hard it felt.", null],
   ["heart", "Run by pace, heart rate or feel", "Pick how your runs are set. Heart rate shows your zone and bpm on every step, and your Garmin gets heart rate targets.", "set-run"],
@@ -3388,6 +3403,7 @@ document.addEventListener("click", ev => {
   }
   if (act === "ciset"){ ci = ci || {}; ci[a.dataset.k] = +a.dataset.v; if (a.dataset.k === "sleep_h") ci.fromWatch = false; ci.err = ""; render(); return; }
   if (act === "ciedit"){ ci = {...checkins[TODAY]}; render(); return; }
+  if (act === "ciopen"){ ciForce = true; render(); return; }
   if (act === "cisave"){
     const d = ci || {}; if (CIQ.some(([k]) => d[k] == null)){ ci = {...d, err: "Answer all five so the plan can adjust."}; render(); return; }
     const c = {date: TODAY, sleep_h: d.sleep_h, sleep_q: d.sleep_q, soreness: d.soreness, energy: d.energy, stress: d.stress};
