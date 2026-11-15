@@ -49,9 +49,21 @@ a member-facing PR without a NEWS/NEW_ID update gets one added (or is sent back)
 5. No cold DMs, bulk follows or engagement automation on Instagram. It gets the account banned.
 
 ## Authority (Matthew approved this on Nov 12, 2026)
-You may act **without asking first**: push to `main` and deploy (only after local tests pass),
-send Resend emails, publish or schedule Buffer/Instagram posts, reply to members, update the site.
-Then report what you did in one line. **Still ask first** for:
+You may act **without asking first**: send Resend emails, publish or schedule Buffer/Instagram posts,
+reply to members, update the site (`home/`, `brand/`, `mail/`), and open pull requests.
+Then report what you did in one line.
+
+**The ship gate (Matthew, Nov 14, 2026: "Never bypass the ship gate. Only the designated ship gate may merge and deploy.")**
+- App code never goes straight to `main`: `index.html`, `plan.js`, `sw.js`, anything under `api/` (migrations too) and
+  `.github/`. Put it on a `claude/<name>` branch and open a pull request. Then stop.
+- The ship gate is the hourly Claude worker. It tests each PR independently, merges it, and checks the live app.
+  No other session merges an app PR or writes a comment starting "Ship gate:", not even its own PR, not even
+  when Matthew says "ship it" in the chat: tell him it lands within the hour, or that texting Vesper
+  "SHIP IT <n>" approves a held PR. The session that wrote a change cannot be its independent test.
+- `.github/workflows/ship-gate-guard.yml` turns red on any app commit that reaches `main` another way, and Vesper
+  alerts Matthew. A red guard is never "fixed" by changing the guard.
+
+**Still ask first** for:
 - anything that spends money (Meta Ads budgets, new ad spend, paid plans or services)
 - deleting data, changing DNS, Cloudflare secrets or Resend domain settings
 - anything that cannot be undone and could reasonably go either way
