@@ -30,6 +30,30 @@ for (const [name, w, h] of [['phone', 390, 844], ['desktop', 1280, 900]]) {
   if (!(await p.textContent('#growth')).includes('private')) errs.push(`${name}: a wrong key must leave the room locked`);
   await p.close();
 }
+// opening the private link: the install manifest starts from the link (so a home-screen app opens unlocked);
+// on a desktop the key leaves the address bar, in iPhone Safari it stays so "Add to Home Screen" keeps it
+const KEY = 'B'.repeat(43);
+for (const [name, opts] of [['desktop', { viewport: { width: 1280, height: 900 } }],
+                            ['iphone', { viewport: { width: 390, height: 844 }, isMobile: true, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1' }]]) {
+  const ctx = await b.newContext(opts), p = await ctx.newPage();
+  p.on('pageerror', e => errs.push(`${name} link: ${e.message}`));
+  await p.goto(page + '#k=' + KEY); await p.waitForTimeout(600);
+  const href = await p.getAttribute('#mf', 'href');
+  let mf = null; try { mf = JSON.parse(decodeURIComponent(href.replace(/^data:application\/manifest\+json,/, ''))); } catch (e) {}
+  if (!mf || !mf.start_url.endsWith('#k=' + KEY)) errs.push(`${name}: the home-screen manifest must start from the private link`);
+  if (mf && !/icon-192\.png$/.test(mf.icons[0].src)) errs.push(`${name}: manifest icons must resolve`);
+  if ((await p.evaluate(() => localStorage.getItem('hq-k'))) !== KEY) errs.push(`${name}: the link must store its key`);
+  const hash = await p.evaluate(() => location.hash);
+  if (name === 'desktop' && hash) errs.push('desktop: the key must leave the address bar');
+  if (name === 'iphone' && hash !== '#k=' + KEY) errs.push('iphone: the key must stay in the address for Add to Home Screen');
+  if (name === 'iphone' && !(await p.textContent('#install')).includes('opens unlocked')) errs.push('iphone: install tip must say it opens unlocked');
+  await p.goto(page); await p.waitForTimeout(400);       // reopening without the link still installs unlocked
+  if (!(decodeURIComponent(await p.getAttribute('#mf', 'href'))).includes('#k=' + KEY)) errs.push(`${name}: a stored key must still go into the install manifest`);
+  if (name === 'iphone' && (await p.evaluate(() => location.hash)) !== '#k=' + KEY) errs.push('iphone: a stored key must come back into the address');
+  await ctx.close();
+}
+// without a key, the plain manifest is untouched
+{ const p = await b.newPage(); await p.goto(page); if ((await p.getAttribute('#mf', 'href')) !== 'manifest.webmanifest') errs.push('no key: manifest must stay plain'); await p.close(); }
 await b.close();
 if (errs.length) { console.error(errs.join('\n')); process.exit(1); }
-console.log('HQ OK: 5 rooms, phone + desktop, private rooms locked without the key');
+console.log('HQ OK: 5 rooms, phone + desktop, private rooms locked without the key, private link installs unlocked');

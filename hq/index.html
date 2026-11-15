@@ -1,7 +1,21 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Mileset HQ</title><meta name="robots" content="noindex">
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" id="mf" href="manifest.webmanifest">
+<script>
+// "Open a link and everything is unlocked" (Matthew, Nov 14). An iPhone home-screen app keeps its own storage,
+// so the app itself has to start from the private link. Once this device holds the key, the install manifest's
+// start address carries it in the #k= part, which browsers never send to any server.
+(function(){ try {
+  var m = location.hash.match(/k=([A-Za-z0-9_-]{40,})/), k = m ? m[1] : localStorage.getItem("hq-k");
+  if (!k || !/^[A-Za-z0-9_-]{40,}$/.test(k)) return;
+  var base = location.href.split("#")[0].split("?")[0], u = function(p){ return new URL(p, base).href; };
+  var mf = {name:"Mileset HQ", short_name:"HQ", description:"Mileset's virtual headquarters: who's working, what's stuck.",
+    start_url: base + "#k=" + k, scope: u("./"), display:"standalone", orientation:"portrait", background_color:"#07080B",
+    theme_color:"#07080B", icons:[{src:u("icon-192.png"), sizes:"192x192", type:"image/png"}, {src:u("icon-512.png"), sizes:"512x512", type:"image/png"}]};
+  document.getElementById("mf").href = "data:application/manifest+json," + encodeURIComponent(JSON.stringify(mf));
+} catch(e){} })();
+</script>
 <meta name="theme-color" content="#07080B">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -452,7 +466,8 @@ cv.addEventListener("click", e => { const b = cv.getBoundingClientRect(), x = (e
   if (best) openSheet(best.id); });
 function tick(){ document.getElementById("clock").textContent = new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}) + (feed && feed.t && !DEMO ? " · updated " + ago(feed.t) : ""); }
 const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
-if (!standalone && /iphone|ipad|ipod/i.test(navigator.userAgent)) document.getElementById("install").style.display = "block";
+const IOS_BROWSER = !standalone && /iphone|ipad|ipod/i.test(navigator.userAgent);
+if (IOS_BROWSER) document.getElementById("install").style.display = "block";
 
 // ---------- private office (owner only) ----------
 // The words (assignments, summaries, history, approvals, decisions) arrive encrypted (AES-256-GCM) in hq-full.json.
@@ -462,8 +477,13 @@ const PRIV_RAW = "https://raw.githubusercontent.com/matthewbaconn/Hybrid/vesper/
 let PRIV = null, privErr = "";
 function takeKey(){ const m = location.hash.match(/k=([A-Za-z0-9_-]{40,})/); if (!m) return false;
   try { localStorage.setItem("hq-k", m[1]); } catch(e){}
-  try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} return true; }
+  // In iPhone Safari the key stays in the address so "Add to Home Screen" installs an app that opens unlocked
+  // (older iPhones install the page address, not the manifest). Everywhere else it is wiped from the address.
+  if (!IOS_BROWSER) try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} return true; }
 takeKey();
+if (IOS_BROWSER) { let k = null; try { k = localStorage.getItem("hq-k"); } catch(e){}
+  if (k) { if (!/k=/.test(location.hash)) try { history.replaceState(null, "", location.pathname + location.search + "#k=" + k); } catch(e){}
+    document.getElementById("install").innerHTML = "Put HQ on your home screen from this page: tap <b>Share</b>, then <b>Add to Home Screen</b>. It opens unlocked. Don't send this page to anyone: its address carries your key."; } }
 addEventListener("hashchange", () => { if (takeKey()) loadPriv(); });
 const b64 = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), c => c.charCodeAt(0));
 const DEMO_PRIV = () => { const t = Date.now(), iso = m => new Date(t - m * 60000).toISOString().slice(0, 19) + "Z", day = n => new Date(t + n * 864e5).toISOString().slice(0, 10);
