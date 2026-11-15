@@ -751,7 +751,7 @@ async function outbox(env){
   if (own) await pushTo(env, own, {title: "Member update sent", body: "\"" + subject + "\" went to " + res.sent + " member" + (res.sent === 1 ? "" : "s") + (res.failed ? " (" + res.failed + " failed)" : "") + ".", tag: "mail-" + id}).catch(() => {});
 }
 /* ---------- Strong at 180 food estimates (Matthew's own plan page) ----------
-   A tiny MCP server the plan page calls through a claude.ai custom connector named "HYBRD Food",
+   A tiny MCP server the plan page calls through a claude.ai custom connector named "Mileset Food" (was "HYBRD Food"),
    so food estimates run on this app's Anthropic key instead of the claude.ai plan's usage.
    The URL carries a private key; only its SHA-256 is stored here. */
 const S180_KEY_SHA = "9c30c89dd7693c1dc13b323debad38ea03d6868b9967ce3806361a3a0622fba2";
@@ -764,7 +764,7 @@ async function foodMcp(req, env, key){
   const one = async x => {
     const ok = result => ({jsonrpc: "2.0", id: x.id, result}), bad = (code, message) => ({jsonrpc: "2.0", id: x.id ?? null, error: {code, message}});
     if (x.id === undefined) return null;   // notifications need no answer
-    if (x.method === "initialize") return ok({protocolVersion: (x.params && x.params.protocolVersion) || "2025-06-18", capabilities: {tools: {}}, serverInfo: {name: "HYBRD Food", version: "1.0"}});
+    if (x.method === "initialize") return ok({protocolVersion: (x.params && x.params.protocolVersion) || "2025-06-18", capabilities: {tools: {}}, serverInfo: {name: "Mileset Food", version: "1.0"}});
     if (x.method === "ping") return ok({});
     if (x.method === "tools/list") return ok({tools: [{name: "estimate_nutrition", description: "Estimate nutrition for a food log entry. Runs the given instructions (and optional food photos) and returns the JSON object they ask for.",
       inputSchema: {type: "object", properties: {prompt: {type: "string", description: "Instructions ending with the JSON shape to reply in"}, images: {type: "array", items: {type: "string"}, description: "JPEG photos as base64, at most 4"}, effort: {type: "string"}}, required: ["prompt"]}}]});
