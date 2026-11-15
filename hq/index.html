@@ -117,6 +117,9 @@ a.lnk{color:#ff9aa0;text-decoration:none}
 .k.deadline{background:#3a1a20;color:#ff9aa0}.k.shift{background:#14283a;color:#8fbcf5}.k.class{background:#123226;color:#6fe0ab}
 .p .m{margin-left:auto;flex:none;font-size:10px;color:var(--mut);border:1px solid var(--line);border-radius:8px;padding:1px 6px}
 .spark{display:block;width:100%;height:64px;margin-top:8px}
+.unlock{display:block;margin-top:10px;text-align:left;color:var(--mut);font-size:12.5px;-webkit-user-select:text;user-select:text}.unlock b{display:block;color:var(--ink);font-size:13.5px;margin-bottom:2px}.unlock i{font-style:normal;color:var(--ink);background:var(--line);border-radius:6px;padding:0 5px}
+.urow{display:flex;gap:7px;margin-top:8px}.ukey{flex:1;min-width:0;font:15px -apple-system,system-ui,sans-serif;color:var(--ink);background:#0b0d13;border:1px solid var(--line);border-radius:10px;padding:10px;-webkit-user-select:text;user-select:text}
+.ugo{flex:none;width:auto;padding:10px 14px;background:#3a1a20;border-color:#5a2a30}.umsg{display:block;font-style:normal;margin-top:6px;color:var(--amber);min-height:1em}
 button{font:600 14px -apple-system,system-ui,sans-serif;color:var(--ink);background:#161925;border:1px solid var(--line);border-radius:11px;padding:12px 10px;width:100%}
 @media (min-width:1000px){
   body{padding-bottom:28px}
@@ -506,7 +509,7 @@ document.getElementById("priv").addEventListener("click", e => { const m = e.tar
 function renderPriv(){
   const box = document.getElementById("priv"), lock = document.getElementById("lock");
   renderBrief(); renderGrowth(); renderMoney(); renderMe();
-  if (!PRIV){ box.classList.remove("on"); lock.style.display = "block"; if (privErr) lock.textContent = "🔒 " + privErr; return; }
+  if (!PRIV){ box.classList.remove("on"); lock.style.display = "block"; if (!lock.querySelector(".unlock") || lock.dataset.err !== privErr){ lock.dataset.err = privErr; lock.innerHTML = "🔒 " + esc(privErr || "Assignments, history, approvals and decisions are private.") + UNLOCK; } return; }
   box.classList.add("on"); lock.style.display = "none";
   const o = PRIV.o || {}, nm = id => TEAM[id] ? TEAM[id].n : id === "drill" ? "Recovery drill (test)" : id, k = o.kpis || null;
   const kp = k && typeof k === "object" ? Object.entries(k.latest || k).filter(([a, v]) => typeof v === "number").slice(0, 3) : [];
@@ -552,7 +555,17 @@ function privDesk(id){ if (!PRIV) return ""; const d = (PRIV.d || []).find(x => 
     ${d.hist && d.hist.length ? `<div class="hist">${d.hist.map(h => `<div class="item"><div class="h"><span class="${rtone[h[1]] || "sk"}">${esc(rword[h[1]] || h[1])}</span><small>${esc(fmtT(h[0]))}</small></div>${h[2] ? `<div class="why">${linkify(h[2], h[3])}</div>` : ""}</div>`).join("")}</div>` : `<div class="rl">No runs in the last 3 days.</div>`}`; }
 
 // ---------- command center (Nov 14 directive): every number is real, or it says it isn't measured ----------
-const LOCKED = `<div class="lock" style="margin-top:14px">🔒 This room is private. Open the HQ link Vesper sent you once on this device to unlock it.</div>`;
+// Unlocking: the key normally arrives in the private link (#k=...). A home-screen app on iPhone keeps its own
+// storage (separate from Safari), and so does every browser, so each one also accepts the link pasted in here.
+const UNLOCK = `<div class="unlock"><b>Unlock on this device</b><span>In Telegram, send Vesper <i>hq link</i>, copy the link it replies with, and paste it here.</span>
+  <div class="urow"><input class="ukey" type="password" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your private HQ link" aria-label="Private HQ link"><button class="ugo" type="button">Unlock</button></div><em class="umsg"></em></div>`;
+const LOCKED = `<div class="lock" style="margin-top:14px">🔒 This room is private.${UNLOCK}</div>`;
+function tryUnlock(box){ const inp = box.querySelector(".ukey"), msg = box.querySelector(".umsg"), m = String(inp.value || "").trim().match(/(?:k=)?([A-Za-z0-9_-]{40,})\s*$/);
+  if (!m){ msg.textContent = "That doesn't look like the private link. Copy the whole link Vesper sent."; return; }
+  try { localStorage.setItem("hq-k", m[1]); } catch(e){ msg.textContent = "This browser won't let HQ remember the key (private browsing?)."; return; }
+  inp.value = ""; msg.textContent = "Unlocking…"; loadPriv().then(() => { if (!PRIV){ const b = document.querySelector(".umsg"); if (b) b.textContent = privErr || "That key didn't open the office. Ask Vesper for a fresh link."; } }); }
+document.addEventListener("click", e => { const b = e.target.closest(".ugo"); if (b) tryUnlock(b.closest(".unlock")); });
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.classList && e.target.classList.contains("ukey")) tryUnlock(e.target.closest(".unlock")); });
 const usd = v => "$" + Number(v || 0).toFixed(2);
 const sum = o => Object.values(o || {}).reduce((a, b) => a + (+b || 0), 0);
 const dstr = iso => { const d = new Date(iso + "T12:00:00"); return isNaN(d) ? iso : d.toLocaleDateString([], {month:"short", day:"numeric"}); };
@@ -618,7 +631,7 @@ function bars(obj, empty){ const e = Object.entries(obj || {}).sort((a, b) => b[
   return e.slice(0, 8).map(([k, v]) => `<div class="bar"><span>${esc(label(k))}</span><div class="t"><i style="width:${Math.max(4, v / mx * 100)}%"></i></div><em>${v}</em></div>`).join(""); }
 function renderGrowth(){
   const el = document.getElementById("growth"); if (!el) return;
-  if (!PRIV){ el.innerHTML = LOCKED; return; }
+  if (!PRIV){ if (!el.querySelector(".unlock")) el.innerHTML = LOCKED; return; }
   const G = growthNow();
   if (!G){ el.innerHTML = `<div class="cards"><div class="card hero wide"><h4>Members</h4><div class="big">–</div><div class="note">Not measured yet. Vesper counts members every night at 11:45pm; the first count will appear here.</div></div></div>`; return; }
   const {g, f} = G, days = Math.max(1, Math.ceil((new Date("2027-01-01T00:00:00-05:00") - Date.now()) / 864e5));
@@ -648,7 +661,7 @@ function renderGrowth(){
 }
 function renderMoney(){
   const el = document.getElementById("money"); if (!el) return;
-  if (!PRIV){ el.innerHTML = LOCKED; return; }
+  if (!PRIV){ if (!el.querySelector(".unlock")) el.innerHTML = LOCKED; return; }
   const o = PRIV.o || {}, M = PRIV.money, sp = o.spend;
   const tone = r => r >= 1 ? "" : r >= .75 ? "a" : "g", w = r => Math.min(100, Math.max(2, r * 100));
   const rowsOf = (obj, n) => Object.entries(obj || {}).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, v]) => `<div class="row"><span>${esc(k)}</span><small>${usd(v)}</small></div>`).join("");
@@ -670,7 +683,7 @@ function renderMoney(){
 }
 function renderMe(){
   const el = document.getElementById("me"); if (!el) return;
-  if (!PRIV){ el.innerHTML = LOCKED; return; }
+  if (!PRIV){ if (!el.querySelector(".unlock")) el.innerHTML = LOCKED; return; }
   const me = PRIV.me;
   if (!me){ el.innerHTML = `<div class="cards"><div class="card wide"><h4>My week</h4><div class="none">Not available yet. It arrives with Vesper's next update.</div></div></div>`; return; }
   const t12 = h => { if (!h) return ""; const [a, b] = h.split(":").map(Number); return ((a + 11) % 12 + 1) + (b ? ":" + String(b).padStart(2, "0") : "") + (a < 12 ? "am" : "pm"); };
