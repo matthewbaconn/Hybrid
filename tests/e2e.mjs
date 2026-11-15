@@ -89,7 +89,8 @@ await check("Change a workout (similar option, saved, back to planned)", async (
   if (await title() !== pick) throw new Error("change wasn't saved to the account");
   if (!/Planned:/.test(await page.innerText("#d-" + d))) throw new Error("no 'Planned:' note");
   await page.click('[data-act="chgopen"][data-key="' + key + '"]'); await page.waitForSelector(".sheet.chg");
-  await page.click('.sheet.chg [data-act="chgtab"][data-k="search"]'); await page.fill("#chg-q", "bike"); await page.waitForTimeout(200);
+  if (!(await page.locator('#chg-res [data-act="chgpick"]').count())) throw new Error("no similar options shown first");
+  await page.fill("#chg-q", "bike"); await page.waitForTimeout(200);
   const hits = await page.locator('#chg-res [data-act="chgpick"]').count(); if (!hits) throw new Error("search 'bike' found nothing");
   await page.click('.sheet.chg [data-act="chgtab"][data-k="own"]'); await page.fill("#co-title", "Club track night"); await page.fill("#co-mi", "5"); await page.fill("#co-steps", "Warm up 2 mi\n6 × 400 m hard, 200 m jog\nCool down 1 mi");
   await page.click('[data-act="chgown"]'); await page.waitForTimeout(800); if (await title() !== "Club track night") throw new Error("own workout not set: " + await title());
