@@ -12,7 +12,38 @@ const results = [], problems = [];
 let step = "";
 const ok = (name, detail) => { results.push("✅ " + name + (detail ? " — " + detail : "")); console.log("ok   " + name + (detail ? " — " + detail : "")); };
 const fail = (name, detail) => { problems.push(name + ": " + detail); results.push("❌ " + name + " — " + detail); console.log("FAIL " + name + " — " + detail); };
-async function check(name, fn){ step = name; try { const d = await fn(); ok(name, d); } catch(e){ fail(name, String(e && e.message || e).split("\n")[0].slice(0, 300)); } }
+// One failed check must not break the ones after it (Nov 14: three nightly runs each had ONE real failure that
+// cascaded into 4-14, because the page was left on a stuck screen). After any failure the app is reloaded to its
+// home screen (and signed back in if needed). A check that continues from a failed one is reported as "not run",
+// never as a second failure and never as a pass.
+const failedChecks = new Set(), notRun = [];
+let recoveries = 0;
+const skip = (name, why) => { notRun.push(name); results.push("⏭ " + name + " — " + why); console.log("skip " + name + " — " + why); };
+async function recover(name){
+  if (!results.some(r => r.startsWith("✅ Build a plan"))) return;          // before the app exists there is nothing to restore
+  try {
+    await page.goto(SITE, {waitUntil: "domcontentloaded", timeout: 30000});
+    await page.waitForSelector("#tabbar, .welcome h1", {timeout: 20000});
+    if (!(await page.isVisible("#tabbar"))){                                         // the failure left us signed out: sign back in
+      await page.click('[data-act="authlogin"]'); await page.fill("#a-email", email); await page.fill("#a-pass", pass); await page.click('#authform [type="submit"]');
+      await page.waitForSelector("#tabbar", {state: "visible", timeout: 20000});
+    }
+    await page.waitForTimeout(500); recoveries++;
+    console.log("     recovered: app reloaded to its home screen after \"" + name + "\" failed");
+  } catch(e){ console.log("     could NOT recover after \"" + name + "\": " + String(e && e.message || e).split("\n")[0].slice(0, 160)); }
+}
+// opts.needs: checks this one continues from (not run if any failed). opts.needsOne: not run only if ALL of them failed.
+async function check(name, fn, opts){
+  step = name;
+  const dead = opts && opts.needs && [].concat(opts.needs).find(n => failedChecks.has(n));
+  const allDead = opts && opts.needsOne && opts.needsOne.every(n => failedChecks.has(n)) && opts.needsOne[0];
+  if (dead || allDead){ failedChecks.add(name); return skip(name, "not run: it continues from \"" + (dead || allDead) + "\", which failed"); }
+  try {
+    if (process.env.E2E_BREAK === name){ await page.click('[data-scr="weather"]').catch(() => {}); throw new Error("induced failure (E2E_BREAK), page left on another screen"); }   // test of the test: see tests/README
+    const d = await fn(); ok(name, d);
+  } catch(e){ fail(name, String(e && e.message || e).split("\n")[0].slice(0, 300)); failedChecks.add(name); await recover(name); }
+}
+const ensure = async (sel, sc) => { if (!(await page.$(sel))) await open(sc); };   // open a screen only if the check isn't already on it
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({viewport: {width: 390, height: 844}, userAgent: iPhone, deviceScaleFactor: 2, isMobile: true, hasTouch: true});
@@ -169,25 +200,25 @@ await check("Log a workout (with rep pace)", async () => {
   await page.click('[data-act="asave"]'); await page.waitForSelector(".fl li.act", {timeout: 15000});
   return (await page.innerText(".fl li.act .fi")).replace(/\n/g, " · ");
 });
-if (!FAST) await check("AI review after workout", async () => { await page.waitForSelector(".view .coach", {timeout: 40000}); const t = (await page.locator(".view .coach").first().innerText()).split("\n")[0]; return t; });
-await check("Fuel card counts training", async () => { await back(); await open("fuel"); const t = await page.innerText(".left + .macs + p"); if (!/training/.test(t)) throw new Error(t); return t; });
+if (!FAST) await check("AI review after workout", async () => { await page.waitForSelector(".view .coach", {timeout: 40000}); const t = (await page.locator(".view .coach").first().innerText()).split("\n")[0]; return t; }, {needs: "Log a workout (with rep pace)"});
+await check("Fuel card counts training", async () => { if (await page.$('[data-act="back"]')) await back(); await open("fuel"); const t = await page.innerText(".left + .macs + p"); if (!/training/.test(t)) throw new Error(t); return t; }, {needs: "Log a workout (with rep pace)"});
 if (!FAST) await check("Food by text (AI)", async () => {
-  await page.fill("#food-text", "2 scrambled eggs and a slice of toast"); await page.click('[data-act="fadd"]');
+  await ensure("#food-text", "fuel"); await page.fill("#food-text", "2 scrambled eggs and a slice of toast"); await page.click('[data-act="fadd"]');
   await page.waitForFunction(() => [...document.querySelectorAll(".card:has(.fdate) .fl li .fi b")].length >= 1, null, {timeout: 40000});
   return (await page.locator(".card:has(.fdate) .fl li .fi b").allInnerTexts()).join(", ");
 });
 if (!FAST) await check("Food by photo (AI reads a label)", async () => {
-  const before = await page.locator(".card:has(.fdate) .fl li").count();
+  await ensure("#food-text", "fuel"); const before = await page.locator(".card:has(.fdate) .fl li").count();
   await page.setInputFiles("#food-photo", "tests/label.jpg"); await page.waitForSelector(".thumb img", {timeout: 10000}); await page.click('[data-act="fadd"]');
   await page.waitForFunction(n => document.querySelectorAll(".card:has(.fdate) .fl li").length > n, before, {timeout: 45000});
   return (await page.locator(".card:has(.fdate) .fl li .fi b").allInnerTexts()).slice(-1)[0];
 });
 await check("Food by hand, for yesterday", async () => {
-  await page.click('[data-act="fday"][data-dir="-1"]'); await page.click('[data-act="fmanual"]').catch(() => {});
+  await ensure("#food-text", "fuel"); await page.click('[data-act="fday"][data-dir="-1"]'); await page.click('[data-act="fmanual"]').catch(() => {});
   await page.fill("#m-name", "Pasta"); await page.fill("#m-cal", "700"); await page.fill("#m-protein", "25"); await page.click('[data-act="fsave"]');
   await page.waitForSelector(".card:has(.fdate) .fl li >> text=Pasta", {timeout: 15000}); const d = await page.innerText(".fdate"); await page.click('[data-act="fday"][data-dir="1"]'); return d.replace(/\n/g, " ");
 });
-await check("Eaten shows on fuel card", async () => { const t = await page.innerText(".left .sub"); if (/^0 eaten/.test(t) && !FAST) throw new Error(t); await shot("03-fuel"); await back(); return t; });
+await check("Eaten shows on fuel card", async () => { await ensure("#food-text", "fuel"); const t = await page.innerText(".left .sub"); if (/^0 eaten/.test(t) && !FAST) throw new Error(t); await shot("03-fuel"); await back(); return t; }, FAST ? undefined : {needsOne: ["Food by text (AI)", "Food by photo (AI reads a label)"]});
 await check("Plan tab", async () => {
   await tab("plan"); await noOverflow(); const n = await page.locator(".day").count(); if (n !== 7) throw new Error(n + " day cards");
   await page.click('[data-act="wk"][data-dir="1"]'); await page.waitForTimeout(200); const tips = await page.locator(".fueltip").count(); await shot("04-plan"); return n + " days · " + tips + " fuel tips next week";
@@ -200,7 +231,7 @@ await check("Activities tab (feed + detail)", async () => {
   await page.click(".actc >> nth=0"); await page.waitForSelector(".adet-h", {timeout: 5000}); const t = await page.innerText(".adet-h h1"); await noOverflow(); await shot("06c-activity");
   await page.click('[data-act="actback"]'); await page.waitForSelector(".afilt");
   return n + " activit" + (n === 1 ? "y" : "ies") + " · opened " + t;
-});
+}, {needs: "Log a workout (with rep pace)"});
 await check("Today overview", async () => {
   await tab("today"); const order = await page.$$eval("#app .view > *", els => els.map(e => e.classList.contains("ci-done") ? "readiness" : e.dataset.scr || e.className));
   const ci = order.indexOf("readiness"), fu = order.indexOf("fuel");
@@ -272,7 +303,7 @@ await check("Log out and back in (data kept)", async () => {
   await settings(); await page.click('[data-act="logout"]'); await page.waitForSelector(".welcome h1", {timeout: 10000});
   await page.click('[data-act="authlogin"]'); await page.fill("#a-email", email); await page.fill("#a-pass", pass); await page.click('#authform [type="submit"]');
   await page.waitForSelector(".hub-hero", {timeout: 15000}); await page.waitForTimeout(800);
-  await open("fuel"); const after = await page.locator(".card:has(.fdate) .fl li").count(); await back(); await open("weight"); const w = await page.innerText(".wrow b"); await back();
+  await open("fuel"); const after = await page.locator(".card:has(.fdate) .fl li").count(); await back(); await open("weight"); const w = failedChecks.has("Weigh-in") ? "not checked (Weigh-in failed)" : await page.innerText(".wrow b"); await back();
   if (after !== before) throw new Error("food items " + before + " → " + after); return after + " food items, weight " + w;
 });
 await check("Delete account", async () => {
@@ -285,5 +316,5 @@ if (consoleErrors.length) fail("No JavaScript errors", consoleErrors.slice(0, 5)
 await browser.close();
 const summary = "## Hybrid browser test\n\n" + results.map(r => "- " + r).join("\n") + "\n";
 if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
-console.log("\n" + (problems.length ? problems.length + " problem(s)" : "All browser checks passed."));
+console.log("\n" + (problems.length ? problems.length + " problem(s)" : "All browser checks passed.") + (notRun.length ? " · " + notRun.length + " not run (they continue from a failed check)" : "") + (recoveries ? " · recovered " + recoveries + " time(s)" : ""));
 if (problems.length){ for (const p of problems) console.log("::error::" + p); process.exit(1); }
