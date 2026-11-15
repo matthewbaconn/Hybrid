@@ -155,9 +155,12 @@ await check("Morning check-in + AI coach note", async () => {
   return "readiness " + score + " · " + (await page.innerText(".ci-done .coach b"));
 });
 if (!FAST) await check("Weather + best time to run", async () => {
-  await open("weather"); await page.fill("#wx-city", "Vero Beach"); await page.click('[data-act="wxcity"]');
-  await page.waitForSelector(".wx-t", {timeout: 20000});
-  const best = await page.$(".wx-best"); const out = (await page.innerText(".wx-t")) + " in " + (await page.innerText(".wx-c span")) + (best ? " · " + (await best.innerText()).replace(/\n/g, " ") : ""); await back(); return out;
+  await open("weather");
+  try {
+    await page.fill("#wx-city", "Vero Beach"); await page.click('[data-act="wxcity"]');
+    await page.waitForSelector(".wx-t", {timeout: 20000});
+    const best = await page.$(".wx-best"); return (await page.innerText(".wx-t")) + " in " + (await page.innerText(".wx-c span")) + (best ? " · " + (await best.innerText()).replace(/\n/g, " ") : "");
+  } finally { if (await page.$('[data-act="back"]')) await back(); }   // the weather service being slow mustn't fail every check after this one
 });
 await check("Weigh-in", async () => { await open("weight"); await page.fill("#w-lb", "182.4"); await page.click('[data-act="wsave"]'); await page.waitForSelector(".wrow"); const t = (await page.innerText(".wrow")).replace(/\n/g, " "); await back(); return t; });
 await check("Log a workout (with rep pace)", async () => {
