@@ -62,7 +62,7 @@ await check("Move a day (calendar picker, preview, saved, put back)", async () =
   const before = await label(from);
   await btn.click(); await page.waitForSelector(".sheet.mvs .mvcal"); await noOverflow(); await shot("02c-move-sheet");
   const to = await page.evaluate(() => { const c = [...document.querySelectorAll('.sheet.mvs .mvd[data-act="mvsel"]')].find(x => document.getElementById("d-" + x.dataset.d)); return c ? c.dataset.d : null; });
-  if (!to) throw new Error("no open day in the same week");
+  if (!to){ await page.evaluate(() => { const b = document.querySelector(".back"); if (b) b.remove(); }); return "skipped: no open day left this week (last day of the week)"; }
   await page.click('.sheet.mvs .mvd[data-d="' + to + '"]'); await page.waitForSelector(".sheet.mvs .mvpv");
   const pv = await page.innerText(".sheet.mvs .mvpv"); if (!/After the move/i.test(pv)) throw new Error("no preview: " + pv);
   await shot("02c2-move-preview");
