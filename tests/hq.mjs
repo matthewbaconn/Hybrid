@@ -70,9 +70,14 @@ for (const [name, opts] of [['desktop', { viewport: { width: 1280, height: 900 }
   await p.evaluate(() => { Object.defineProperty(document, 'hidden', {configurable: true, get: () => false}); document.dispatchEvent(new Event('visibilitychange')); });
   await p.waitForTimeout(800);
   if (hits.live <= first.live || hits.feed <= first.feed) errs.push(`reopen: HQ must refresh the feed and live counts (live ${first.live}->${hits.live}, feed ${first.feed}->${hits.feed})`);
+  // the Refresh button refreshes right away, even inside the 3-second guard, and says when it's done
+  const before = hits.live; await p.click('#refresh'); await p.waitForTimeout(600);
+  if (hits.live <= before) errs.push('refresh button: must fetch the live counts again');
+  if (!/Up to date|Refresh/.test(await p.textContent('#refresh'))) errs.push('refresh button: must show it finished');
+  const box = await p.locator('#refresh').boundingBox(); if (!box || box.height < 30) errs.push('refresh button: must be easy to tap (30px+)');
   await p.close(); }
 // without a key, the plain manifest is untouched
 { const p = await b.newPage(); await p.goto(page); if ((await p.getAttribute('#mf', 'href')) !== 'manifest.webmanifest') errs.push('no key: manifest must stay plain'); await p.close(); }
 await b.close();
 if (errs.length) { console.error(errs.join('\n')); process.exit(1); }
-console.log('HQ OK: 5 rooms, phone + desktop, private rooms locked without the key, private link installs unlocked, every open refreshes');
+console.log('HQ OK: 5 rooms, phone + desktop, private rooms locked without the key, private link installs unlocked, every open refreshes, Refresh button');

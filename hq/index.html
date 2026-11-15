@@ -30,7 +30,8 @@ body{margin:0;background:radial-gradient(120% 40% at 50% -10%,#2a0a0d 0%,var(--b
 .wrap{max-width:520px;margin:0 auto}
 .top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;padding:0 4px}
 h1{margin:0;font:800 21px/1.1 -apple-system,system-ui,sans-serif;letter-spacing:.14em}
-.clock{color:var(--mut);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
+.clock{color:var(--mut);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:4px 8px}
+.rf{font:inherit;font-size:12.5px;color:var(--ink);background:#1a1d24;border:1px solid var(--line);border-radius:18px;padding:7px 12px;min-height:34px;cursor:pointer;-webkit-tap-highlight-color:transparent}.rf:active{background:#3a1a20}.rf[disabled]{opacity:.6}
 .live{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);margin-right:6px;animation:blink 2s ease-in-out infinite}
 .live.off{background:var(--amber);box-shadow:0 0 8px var(--amber)}
 @keyframes blink{50%{opacity:.35}}
@@ -145,7 +146,7 @@ button{font:600 14px -apple-system,system-ui,sans-serif;color:var(--ink);backgro
 }
 </style></head><body><div class="wrap">
 <div class="banner" id="banner"></div>
-<div class="top"><h1>MILESET HQ</h1><div class="clock"><span class="live" id="live"></span><span id="clock"></span></div></div>
+<div class="top"><h1>MILESET HQ</h1><div class="clock"><span class="live" id="live"></span><span id="clock"></span><button class="rf" id="refresh" aria-label="Refresh HQ">↻ Refresh</button></div></div>
 <nav class="nav" id="nav">
 <button data-v="hq" class="on"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V5l7-2v18M12 9h7v12M8 8v.01M8 12v.01M8 16v.01M15.5 13v.01M15.5 17v.01"/></svg>HQ</button>
 <button data-v="growth"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>Growth</button>
@@ -745,10 +746,24 @@ resize(); requestAnimationFrame(frame); load(); tick();
 setInterval(load, 120000); setInterval(tick, 20000);
 // Every open refreshes everything: the office feed, the private rooms and the live member counts. A home-screen app
 // resumes from memory (no reload), so opening it again fires visibilitychange / pageshow / focus instead.
-let lastRefresh = 0;
-function refreshAll(){ const t = Date.now(); if (t - lastRefresh < 3000) return; lastRefresh = t; last = performance.now(); load(); loadPriv(); loadLive(); tick(); }
+// The page updates itself too: a home-screen app can keep an old copy of HQ in memory for days, so every refresh
+// checks the published build and reloads when a newer HQ is live.
+const HQ_BUILD = "2026-11-15.3";
+let lastRefresh = 0, lastBuildCheck = 0;
+async function newerBuild(){
+  if (DEMO || location.protocol === "file:") return false;
+  try { const r = await fetch(location.pathname + "?b=" + Date.now(), {cache:"no-store"}); if (!r.ok) return false;
+    const m = (await r.text()).match(/HQ_BUILD = "([^"]+)"/); return !!(m && m[1] !== HQ_BUILD); } catch(e){ return false; }
+}
+async function refreshAll(force){
+  const t = Date.now(); if (!force && t - lastRefresh < 3000) return; lastRefresh = t; last = performance.now();
+  if (force || t - lastBuildCheck > 60000){ lastBuildCheck = t; if (await newerBuild()){ location.reload(); return; } }
+  await Promise.all([load(), loadPriv(), loadLive()]); tick();
+}
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshAll(); });
 addEventListener("pageshow", e => { if (e.persisted) refreshAll(); });
-addEventListener("focus", refreshAll); addEventListener("online", refreshAll);
-document.getElementById("clock").addEventListener("click", refreshAll);   // tap the clock to refresh now
+addEventListener("focus", () => refreshAll()); addEventListener("online", () => refreshAll());
+const rfb = document.getElementById("refresh");
+rfb.addEventListener("click", async () => { rfb.disabled = true; rfb.textContent = "Refreshing…";
+  await refreshAll(true); rfb.textContent = "✓ Up to date"; setTimeout(() => { rfb.textContent = "↻ Refresh"; rfb.disabled = false; }, 1500); });
 </script></body></html>
