@@ -12,7 +12,7 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{background:var(--bg)}
 body{margin:0;background:radial-gradient(120% 40% at 50% -10%,#2a0a0d 0%,var(--bg) 60%);color:var(--ink);font:15px/1.4 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
-  padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 24px);min-height:100vh;-webkit-user-select:none;user-select:none}
+  padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 92px);min-height:100vh;-webkit-user-select:none;user-select:none}
 .wrap{max-width:520px;margin:0 auto}
 .top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;padding:0 4px}
 h1{margin:0;font:800 21px/1.1 -apple-system,system-ui,sans-serif;letter-spacing:.14em}
@@ -50,8 +50,8 @@ h2{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut
 @media (min-width:1000px){
   .wrap{max-width:1180px}
   .grid{display:grid;grid-template-columns:minmax(380px,520px) 1fr;column-gap:22px;align-items:start;
-    grid-template-areas:"floor office" "team office" "today office"}
-  .b-floor{grid-area:floor}.b-team{grid-area:team}.b-today{grid-area:today}
+    grid-template-areas:"floor office" "today office"}
+  .b-floor{grid-area:floor}.b-today{grid-area:today}
   .b-office{grid-area:office;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding-right:4px}
   .b-office h2:first-child,.b-office .lock{margin-top:0}
   .roster{grid-template-columns:1fr 1fr 1fr}
@@ -78,11 +78,66 @@ a.lnk{color:#ff9aa0;text-decoration:none}
 .panel{width:100%;max-width:520px;margin:0 auto;background:#0d0f16;border-top:1px solid var(--line);border-radius:18px 18px 0 0;padding:16px 16px calc(env(safe-area-inset-bottom) + 22px)}
 .panel h3{margin:0 0 2px;font-size:18px}.panel .rl{color:var(--mut);font-size:12.5px}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:14px 0;font-size:14px}.kv span{color:var(--mut)}
+.view{display:none}.view.on{display:block}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:8;display:flex;justify-content:space-around;padding:6px 6px calc(env(safe-area-inset-bottom) + 6px);
+  background:rgba(9,10,14,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line)}
+.nav button{flex:1;width:auto;margin:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;border:0;border-radius:12px;background:none;color:var(--mut);font:600 10.5px -apple-system,system-ui,sans-serif;position:relative;cursor:pointer}
+.nav button svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav button.on{color:var(--ink)}.nav button.on svg{stroke:#ff6b72}
+.nav .n{position:absolute;top:1px;left:calc(50% + 6px);min-width:16px;padding:0 4px;border-radius:8px;background:var(--red);color:#fff;font-size:10px;line-height:16px}
+.brief{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:12px 0 12px}.brief .q.lead,.brief .q.full{grid-column:1/-1}
+.brief .q:not(.lead):not(.full){padding:9px 10px;gap:8px}.brief .q:not(.lead):not(.full) b{font-size:13px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.brief .q:not(.lead):not(.full) span.sub{-webkit-line-clamp:1;font-size:11.5px}
+.q{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:13px;background:var(--card);border:1px solid var(--line);cursor:pointer;min-width:0}
+.q.lead{background:linear-gradient(160deg,#2a0f13 0%,var(--card) 75%);border-color:#3a1a20}
+.q .dot{width:9px;height:9px;border-radius:50%;flex:none;margin-top:5px;background:var(--grey)}
+.q .dot.g{background:var(--green);box-shadow:0 0 10px var(--green)}.q .dot.a{background:var(--amber);box-shadow:0 0 10px var(--amber)}.q .dot.r{background:var(--red);box-shadow:0 0 10px var(--red)}
+.q small{display:block;color:var(--mut);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase}
+.q b{display:block;font-size:14.5px;line-height:1.3;margin-top:1px}.q span.sub{display:block;color:var(--mut);font-size:12px;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.q div{min-width:0}
+.cards{display:grid;grid-template-columns:1fr;gap:9px;margin-top:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;min-width:0}
+.card.hero{background:linear-gradient(160deg,#2a0f13 0%,var(--card) 70%);border-color:#3a1a20}
+.card h4{margin:0 0 8px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.card h4 i{font-style:normal;text-transform:none;letter-spacing:0;color:var(--grey)}
+.big{font:800 44px/1 -apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.big small{font:600 13px -apple-system,system-ui,sans-serif;color:var(--mut);letter-spacing:0;margin-left:8px}
+.chip{display:inline-block;margin-top:8px;padding:3px 9px;border-radius:10px;font-size:12px;font-weight:600;background:var(--line)}
+.chip.g{background:#123226;color:#6fe0ab}.chip.a{background:#2a2412;color:var(--amber)}.chip.r{background:#3a1a20;color:#ff9aa0}
+.meter{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin:8px 0 5px}.meter i{display:block;height:100%;border-radius:4px;background:var(--red)}
+.meter.g i{background:var(--green)}.meter.a i{background:var(--amber)}
+.bar{display:grid;grid-template-columns:112px 1fr 30px;gap:8px;align-items:center;font-size:13px;margin:6px 0}
+.bar .t{height:8px;border-radius:4px;background:var(--line);overflow:hidden}.bar .t i{display:block;height:100%;background:var(--red);border-radius:4px}
+.bar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bar em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums;color:var(--mut)}
+.note{color:var(--mut);font-size:12px;line-height:1.45;margin-top:6px}
+.none{color:var(--grey);font-size:13px}
+.day{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px}.day:first-child{border-top:0}
+.day .d{flex:none;width:44px;color:var(--mut);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;padding-top:2px}.day.now .d{color:#ff6b72;font-weight:700}
+.day .e{min-width:0;flex:1}.day .e div{margin:1px 0}.day .e small{color:var(--mut)}
+.k{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;margin-right:6px;background:var(--line);text-transform:uppercase;letter-spacing:.05em}
+.k.deadline{background:#3a1a20;color:#ff9aa0}.k.shift{background:#14283a;color:#8fbcf5}.k.class{background:#123226;color:#6fe0ab}
+.p .m{margin-left:auto;flex:none;font-size:10px;color:var(--mut);border:1px solid var(--line);border-radius:8px;padding:1px 6px}
+.spark{display:block;width:100%;height:64px;margin-top:8px}
 button{font:600 14px -apple-system,system-ui,sans-serif;color:var(--ink);background:#161925;border:1px solid var(--line);border-radius:11px;padding:12px 10px;width:100%}
+@media (min-width:1000px){
+  body{padding-bottom:28px}
+  .nav{position:static;-webkit-backdrop-filter:none;margin:12px 0 4px;background:none;border:0;padding:0;backdrop-filter:none;justify-content:flex-start;gap:6px}
+  .nav button{flex:none;width:auto;flex-direction:row;gap:7px;padding:8px 14px;border:1px solid var(--line);border-radius:22px;font-size:13px}
+  .nav button.on{background:#3a1a20;border-color:#5a2a30}
+  .brief{grid-template-columns:repeat(4,1fr)}.brief .q.lead,.brief .q.full{grid-column:span 2}.brief .q:not(.lead):not(.full){grid-column:auto}.cards{grid-template-columns:1fr 1fr}.cards .wide{grid-column:1/-1}
+  .nav .n{position:static;margin-left:2px}
+}
 </style></head><body><div class="wrap">
 <div class="banner" id="banner"></div>
 <div class="top"><h1>MILESET HQ</h1><div class="clock"><span class="live" id="live"></span><span id="clock"></span></div></div>
-<div class="answer" id="answer"><div class="dot"></div><div id="answerText">Opening the office…</div></div>
+<nav class="nav" id="nav">
+<button data-v="hq" class="on"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V5l7-2v18M12 9h7v12M8 8v.01M8 12v.01M8 16v.01M15.5 13v.01M15.5 17v.01"/></svg>HQ</button>
+<button data-v="growth"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>Growth</button>
+<button data-v="team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.700 6 6M16 5.200a3.200 3.200 0 010 5.600M18 14.300c1.800.800 3 2.600 3 4.700"/></svg>Team</button>
+<button data-v="money"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.800 9.200c-.500-.900-1.500-1.400-2.800-1.400-1.700 0-3 .900-3 2.200 0 3 6 1.300 6 4.200 0 1.300-1.300 2.200-3 2.200-1.400 0-2.500-.600-3-1.500M12 6v1.800M12 16.400V18"/></svg>Money</button>
+<button data-v="me"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2.500"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>My week</button>
+</nav>
+<section class="view on" id="v-hq">
+<div class="brief" id="brief"><div class="q lead"><span class="dot"></span><div><small>Mileset HQ</small><b id="answerText">Opening the office…</b></div></div></div>
 <div class="grid">
 <div class="b-floor"><div class="stage"><canvas id="cv" aria-label="Office floor with one character per employee"></canvas></div>
 <div class="streak"><span id="streakText"></span><div class="pips" id="pips"></div></div>
@@ -95,12 +150,17 @@ button{font:600 14px -apple-system,system-ui,sans-serif;color:var(--ink);backgro
 <div class="list tabp on" id="appr"></div><div class="list tabp" id="jobs"></div><div class="list tabp" id="cfeed"></div><div class="list tabp" id="dec"></div>
 </div>
 </div>
-<div class="b-team"><h2>The team</h2><div class="roster" id="roster"></div>
-</div>
 <div class="b-today"><h2>Today</h2><div class="list" id="ticker"></div>
 </div>
 </div>
 <div class="foot" id="foot">Everything here is live from each employee's run log. A lit desk with a bubble is a real run happening now; dimmed people are between runs. Someone walking to Vesper just finished a run and is handing in the result.</div>
+</section>
+<section class="view" id="v-growth"><div id="growth"></div></section>
+<section class="view" id="v-team"><h2>The team</h2><div class="roster" id="roster"></div>
+<div class="note" style="margin:10px 4px 0">Tap anyone to see what they actually did. Results come from each employee's own run log, checked by the 5am audit.</div></section>
+<section class="view" id="v-money"><div id="money"></div></section>
+<section class="view" id="v-me"><div id="me"></div></section>
+
 </div>
 <div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
 <script>
@@ -357,18 +417,14 @@ function apply(){
   banner.textContent = b; banner.style.display = b ? "block" : "none"; live.classList.toggle("off", !!b && !DEMO);
   const nm = id => TEAM[id] ? TEAM[id].n : id === "drill" ? "Recovery drill (test)" : id;
   const bad = agents.filter(a => ["f","x","vb"].includes(a.code)), work = agents.filter(a => a.code === "w");
-  const ans = document.getElementById("answer"); ans.className = "answer";
-  let txt;
-  if (!feed){ txt = "Waiting for the live feed."; ans.classList.add("warn"); }
-  else if (bad.length){ txt = `${bad.length} need${bad.length === 1 ? "s" : ""} a look: ` + bad.map(a => `${a.t.n} (${STATE[a.code][0].toLowerCase()})`).join(", ") + "."; ans.classList.add("bad"); }
-  else txt = "Nothing stuck. " + (work.length ? work.map(a => a.t.n).join(", ") + (work.length === 1 ? " is" : " are") + " working right now." : "Everyone's between runs.");
-  document.getElementById("answerText").textContent = txt;
+  renderBrief();
   const sk = f.sk || [0, 7];
   document.getElementById("streakText").textContent = `No silent failures: ${sk[0]} of ${sk[1]} days`;
   document.getElementById("pips").innerHTML = Array.from({length: sk[1]}, (_, i) => `<div class="pip${i < sk[0] ? " on" : ""}"></div>`).join("");
   document.getElementById("roster").innerHTML = agents.map(a => { const s = STATE[a.code], r = rows[a.id];
     const sub = a.id === "vesper" ? s[0] : a.code === "w" ? "Working since " + fmtT(r[2]) : a.code === "n" ? s[0] : s[0].split(" ·")[0] + (r && r[2] ? " · " + fmtT(r[2]) : "");
-    return `<div class="p" data-id="${a.id}"><span class="sw" style="background:${s[1]};box-shadow:0 0 8px ${s[1]}"></span><div><b>${esc(a.t.n)}</b><small>${esc(sub)}</small></div></div>`; }).join("");
+    const d = PRIV && (PRIV.d || []).find(x => x.id === a.id), mdl = d && d.model ? (/opus/.test(d.model) ? "Opus" : /sonnet/.test(d.model) ? "Sonnet" : /haiku/.test(d.model) ? "Haiku" : "") : "";
+    return `<div class="p" data-id="${a.id}"><span class="sw" style="background:${s[1]};box-shadow:0 0 8px ${s[1]}"></span><div><b>${esc(a.t.n)}</b><small>${esc(sub)}</small></div>${mdl ? `<span class="m">${mdl}</span>` : ""}</div>`; }).join("");
   document.querySelectorAll(".p").forEach(el => el.onclick = () => openSheet(el.dataset.id));
   const tone = {ok:"ok", skipped:"sk", failed:"bad"}, word = {ok:"finished a run", skipped:"checked in, no work", failed:"failed a run"};
   document.getElementById("ticker").innerHTML = f.tl && f.tl.length ? f.tl.map(x => `<div class="row"><span><b>${esc(nm(x[1]))}</b> <span class="${tone[x[2]] || "sk"}">${esc(word[x[2]] || x[2])}</span></span><small>${esc(fmtT(x[0]))}</small></div>`).join("")
@@ -407,7 +463,21 @@ function takeKey(){ const m = location.hash.match(/k=([A-Za-z0-9_-]{40,})/); if 
 takeKey();
 addEventListener("hashchange", () => { if (takeKey()) loadPriv(); });
 const b64 = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+const DEMO_PRIV = () => { const t = Date.now(), iso = m => new Date(t - m * 60000).toISOString().slice(0, 19) + "Z", day = n => new Date(t + n * 864e5).toISOString().slice(0, 10);
+  return {v:1, t:iso(1), o:{streak:[2,7], working:["product-lead"], attention:["growth-sprint"], runs_today:9, ok_today:5, failed_today:1, approvals:1, plan_min_today:42,
+      spend:{spent:.42, cap:1.06, mail_left:.5, runs:6, by_model:{haiku:.12, sonnet:.30}, by_job:{chat:.31, email:.11}, cached_share:.62}},
+    d:[{id:"product-lead", s:"w", last:iso(22), next:iso(-1418), sum:"Demo feature PR", art:"", hist:[[iso(1500),"ok","Demo: built a feature",""]], jobs:[["B1","Demo job","building"]], runs:1, min:18, model:"claude-opus-5-5", ok7:3, fail7:0},
+       {id:"worker", s:"s", last:iso(14), next:iso(-46), sum:"No jobs", art:"", hist:[], jobs:[], runs:7, min:9, model:"claude-opus-5-5", ok7:11, fail7:0},
+       {id:"instagram", s:"i", last:iso(900), next:iso(-2000), sum:"Queued 3 posts", art:"", hist:[], jobs:[], runs:0, min:0, model:"claude-sonnet-5-5", ok7:1, fail7:0}],
+    f:[[iso(14),"worker","skipped","No jobs"],[iso(69),"ceo-shift","ok","Demo: sharpened the backlog"]], a:[{k:"backlog", n:"B4", title:"Demo decision: approve a partner outreach list", why:"needs you"}],
+    dec:[["Nov 14","Demo decision","Implemented and verified","demo"]], done:[], jobs:[["B1","Demo: shorten onboarding to 3 steps","product lead","building"]],
+    g:{trend:[[day(-2),10,0,92],[day(-1),11,1,91],[day(0),12,1,90]], asof:day(0), src7:{ig:2, reddit:1, unknown:1}, src_all:{unknown:6, ig:3, reddit:1},
+       funnel:{signed_up:10, plan:8, workout:5, d7_eligible:6, active_d7:3}, visits7:{"/":41, "/fueling-calculator":17, "app:/":22}, members:[[day(-6),6],[day(-5),6],[day(-4),7],[day(-3),7],[day(-2),8],[day(-1),9],[day(0),10]], week_ago:{date:day(-7), funnel:{signed_up:6}}},
+    money:{today:.42, today_cap:1.06, month:3.1, month_cap:17, from:day(-3)}, fix:"GROWTH FIX OF THE WEEK: demo fix (product lead)",
+    me:{days:[[day(0),[["shift","Demo shift","04:30","12:30"]]],[day(1),[]],[day(2),[["deadline","Demo exam","09:00",""]]],[day(3),[]],[day(4),[]],[day(5),[]],[day(6),[]]],
+        overdue:[[day(-2),"Demo overdue paper"]], todos:["Demo to-do"], rem:[[iso(-300),"Demo reminder",""]], cal:null}}; };
 async function loadPriv(){
+  if (DEMO){ PRIV = DEMO_PRIV(); privErr = ""; if (feed) apply(); renderPriv(); return; }
   let k = null; try { k = localStorage.getItem("hq-k"); } catch(e){}
   if (!k || !crypto.subtle){ renderPriv(); return; }
   try {
@@ -417,7 +487,7 @@ async function loadPriv(){
     const blob = await r.json();
     const key = await crypto.subtle.importKey("raw", b64(k), "AES-GCM", false, ["decrypt"]);
     const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv:b64(blob.iv), additionalData:new TextEncoder().encode("mileset-hq-v1")}, key, b64(blob.ct));
-    PRIV = JSON.parse(new TextDecoder().decode(pt)); privErr = "";
+    PRIV = JSON.parse(new TextDecoder().decode(pt)); privErr = ""; if (feed) apply();
   } catch(e){ privErr = /feed 404/.test(String(e)) ? "Vesper hasn't published the private office yet." : "Couldn't unlock the private office on this device (old key?). Ask Vesper for a new HQ link."; }
   renderPriv();
 }
@@ -435,6 +505,7 @@ document.getElementById("priv").addEventListener("click", e => { const m = e.tar
   const it = e.target.closest(".item"); if (it && !e.target.closest("a")) it.classList.toggle("open"); });
 function renderPriv(){
   const box = document.getElementById("priv"), lock = document.getElementById("lock");
+  renderBrief(); renderGrowth(); renderMoney(); renderMe();
   if (!PRIV){ box.classList.remove("on"); lock.style.display = "block"; if (privErr) lock.textContent = "🔒 " + privErr; return; }
   box.classList.add("on"); lock.style.display = "none";
   const o = PRIV.o || {}, nm = id => TEAM[id] ? TEAM[id].n : id === "drill" ? "Recovery drill (test)" : id, k = o.kpis || null;
@@ -447,12 +518,13 @@ function renderPriv(){
       <div class="kpi"><b>${(o.working || []).length}</b><span>working now</span></div>
       <div class="kpi"><b style="color:${o.failed_today ? "var(--red)" : "inherit"}">${o.failed_today ?? 0}</b><span>failed runs today</span></div></div>
     <div class="rl" style="margin-top:8px">${(o.attention || []).length ? "Needs a look: " + esc(o.attention.map(nm).join(", ")) + ". " : ""}${(o.working || []).length ? "Working: " + esc(o.working.map(nm).join(", ")) + "." : "Nobody is mid-run."}
-    ${kp.length ? "<br>Mileset: " + kp.map(([a, v]) => esc(a.replace(/_/g, " ")) + " " + esc(v)).join(" · ") : "<br>Mileset numbers: not tracked yet (first nightly KPI snapshot pending)."}</div>
+    ${(() => { const G = growthNow(); return G && (G.members !== null || G.accounts !== null) ? "<br>Mileset: " + (G.members !== null ? G.members + " real members" : G.accounts + " accounts") + (G.n7 !== null ? " · +" + G.n7 + " in 7 days" : "") + (G.left !== null ? " · " + G.left + " founding spots left" : "") : "<br>Mileset numbers: not measured yet (first nightly count pending)."; })()}</div>
     ${spendLine(o)}`;
   const ap = PRIV.a || [];
   document.getElementById("appr").innerHTML = capped("appr", ap.map(a => `<div class="item"><div class="h"><span>${a.k === "pr" ? `<span class="tag ${a.why === "SHIP IT" ? "ship" : "you"}">${esc(a.why === "SHIP IT" ? "SHIP IT " + a.n : a.repo + " #" + a.n)}</span>` + linkify(a.title, a.url) : `<span class="tag you">backlog ${esc(a.n)}</span>` + esc(a.title)}</span></div>
     ${a.k === "backlog" && a.why ? `<div class="why">${esc(a.why)}</div>` : a.k === "pr" && a.why !== "SHIP IT" ? `<div class="why">${esc(a.why)}</div>` : ""}</div>`), "Nothing waiting on you.");
   const tb = document.querySelector('#tabs [data-t="appr"]'); tb.innerHTML = "Approvals" + (ap.length ? `<span class="n">${ap.length}</span>` : "");
+  const hb = document.querySelector('#nav [data-v="hq"]'), old = hb.querySelector(".n"); if (old) old.remove(); if (ap.length) hb.insertAdjacentHTML("beforeend", `<span class="n">${ap.length}</span>`);
   const jobs = PRIV.jobs || [];
   document.getElementById("jobs").innerHTML = capped("jobs", jobs.map(j => `<div class="item"><div class="h"><span><span class="tag">${esc(j[0])}</span>${esc(j[1])}</span></div><div class="why">${esc(j[2] ? j[2] + " · " : "")}${esc(j[3])}</div></div>`), "The backlog is empty.");
   const fd = PRIV.f || [];
@@ -475,9 +547,148 @@ function spendLine(o){
   return `<div class="rl" style="margin-top:8px">${h}</div>`;
 }
 function privDesk(id){ if (!PRIV) return ""; const d = (PRIV.d || []).find(x => x.id === id); if (!d) return "";
-  return `${typeof d.min === "number" || d.runs ? `<div class="rl" style="margin:0 0 6px"><b style="color:var(--ink)">Today:</b> ${d.runs || 0} run${d.runs === 1 ? "" : "s"} · ${d.min || 0} min of work</div>` : ""}${d.sum ? `<div class="rl" style="margin:0 0 6px"><b style="color:var(--ink)">Latest:</b> ${linkify(d.sum, d.art)}</div>` : ""}
+  return `${d.model ? `<div class="rl" style="margin:0 0 6px"><b style="color:var(--ink)">Model:</b> ${esc(d.model.replace("claude-", ""))} · on your Claude plan (no API cost)</div>` : ""}${typeof d.ok7 === "number" ? `<div class="rl" style="margin:0 0 6px"><b style="color:var(--ink)">Last 3 days:</b> ${d.ok7} run${d.ok7 === 1 ? "" : "s"} with output${d.fail7 ? ` · <span class="bad">${d.fail7} failed</span>` : " · 0 failed"}</div>` : ""}${typeof d.min === "number" || d.runs ? `<div class="rl" style="margin:0 0 6px"><b style="color:var(--ink)">Today:</b> ${d.runs || 0} run${d.runs === 1 ? "" : "s"} · ${d.min || 0} min of work</div>` : ""}${d.sum ? `<div class="rl" style="margin:0 0 6px"><b style="color:var(--ink)">Latest:</b> ${linkify(d.sum, d.art)}</div>` : ""}
     ${d.jobs && d.jobs.length ? `<div class="rl" style="margin:0 0 6px"><b style="color:var(--ink)">Assigned:</b> ${d.jobs.map(j => "#" + esc(j[0]) + " " + esc(j[1].length > 110 ? j[1].slice(0, 107) + "…" : j[1])).join("<br>")}</div>` : ""}
     ${d.hist && d.hist.length ? `<div class="hist">${d.hist.map(h => `<div class="item"><div class="h"><span class="${rtone[h[1]] || "sk"}">${esc(rword[h[1]] || h[1])}</span><small>${esc(fmtT(h[0]))}</small></div>${h[2] ? `<div class="why">${linkify(h[2], h[3])}</div>` : ""}</div>`).join("")}</div>` : `<div class="rl">No runs in the last 3 days.</div>`}`; }
+
+// ---------- command center (Nov 14 directive): every number is real, or it says it isn't measured ----------
+const LOCKED = `<div class="lock" style="margin-top:14px">🔒 This room is private. Open the HQ link Vesper sent you once on this device to unlock it.</div>`;
+const usd = v => "$" + Number(v || 0).toFixed(2);
+const sum = o => Object.values(o || {}).reduce((a, b) => a + (+b || 0), 0);
+const dstr = iso => { const d = new Date(iso + "T12:00:00"); return isNaN(d) ? iso : d.toLocaleDateString([], {month:"short", day:"numeric"}); };
+let view = "hq";
+function go(v){ view = v; document.querySelectorAll(".view").forEach(el => el.classList.toggle("on", el.id === "v-" + v));
+  document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  if (v === "hq") resize(); try { scrollTo(0, 0); } catch(e){} }
+document.getElementById("nav").addEventListener("click", e => { const b = e.target.closest("button"); if (b) go(b.dataset.v); });
+function growthNow(){ const g = PRIV && PRIV.g; if (!g) return null;
+  const f = g.funnel || {}, last = (g.trend || []).slice(-1)[0] || [];
+  return {g, f, members: typeof f.signed_up === "number" ? f.signed_up : null, accounts: typeof last[1] === "number" ? last[1] : null,
+    left: typeof last[3] === "number" ? last[3] : null, n7: g.src7 ? sum(g.src7) : null, asof: g.asof || last[0] || ""}; }
+function renderBrief(){
+  const el = document.getElementById("brief"); if (!el) return;
+  const nm = id => TEAM[id] ? TEAM[id].n : id, o = (PRIV && PRIV.o) || null, f = feed || null;
+  const bad = agents.filter(a => ["f","x","vb"].includes(a.code)), work = agents.filter(a => a.code === "w" && a.id !== "vesper");
+  const stale = f && f.t ? (Date.now() - new Date(f.t)) / 60000 : null, sk = (f && f.sk) || [0, 7];
+  const Q = [];
+  // 1. healthy?
+  if (!f) Q.push(["a", "Is the company healthy?", "Waiting for the live feed.", "", "hq"]);
+  else if (f.ok === false) Q.push(["r", "Is the company healthy?", "The site or app needs attention.", "Vesper is on it and will message you.", "hq"]);
+  else if (bad.length) Q.push(["r", "Is the company healthy?", `${bad.length} employee${bad.length === 1 ? " needs" : "s need"} a look.`, bad.map(a => `${a.t.n} (${STATE[a.code][0].toLowerCase()})`).join(", "), "team"]);
+  else if (stale > 40) Q.push(["a", "Is the company healthy?", "Live feed is delayed.", `Last update ${ago(f.t)}. Vesper may be offline.`, "hq"]);
+  else Q.push(["g", "Is the company healthy?", "Yes. Site is up and nothing is stuck.", `No silent failures: ${sk[0]} of ${sk[1]} days.`, "team"]);
+  // 2. growing?
+  const G = growthNow();
+  if (!PRIV) Q.push(["n", "Is the company growing?", "Private. Unlock HQ to see members.", "", "growth"]);
+  else if (!G || G.n7 === null) Q.push(["n", "Is the company growing?", "Not measured yet.", "The first nightly member count hasn't arrived.", "growth"]);
+  else Q.push([G.n7 > 0 ? "g" : "a", "Is the company growing?", G.n7 > 0 ? `Yes: +${G.n7} new member${G.n7 === 1 ? "" : "s"} in 7 days.` : "No new members in the last 7 days.",
+    (G.members !== null ? `${G.members} real members` : "") + (G.left !== null ? ` · ${G.left} founding spots left` : "") + (G.asof ? ` · as of ${dstr(G.asof)}` : ""), "growth"]);
+  // 3. what is Vesper working on
+  if (work.length) Q.push(["g", "Working right now", work.map(a => a.t.n).join(", "), work.map(a => nowText(a)).join(" · "), "team"]);
+  else { const nx = o && PRIV.d ? PRIV.d.filter(d => d.next && !d.drill).sort((a, b) => a.next < b.next ? -1 : 1)[0] : null;
+    Q.push(["n", "Working right now", "Everyone is between runs.", nx ? `Next up: ${nm(nx.id)} at ${fmtT(nx.next)}.` : "", "team"]); }
+  // 4. accomplished today
+  if (o){ const done = (PRIV.f || []).filter(x => x[2] === "ok" && new Date(x[0]).toDateString() === new Date().toDateString());
+    Q.push([o.ok_today ? "g" : "n", "Done today", o.ok_today ? `${o.ok_today} run${o.ok_today === 1 ? "" : "s"} produced real output.` : "Nothing finished yet today.",
+      done.length ? `${nm(done[0][1])}: ${done[0][3] || "done"}` : `${o.runs_today || 0} runs started today.`, "hq"]); }
+  // 5. problems
+  const probs = []; if (o && o.failed_today) probs.push(`${o.failed_today} failed run${o.failed_today === 1 ? "" : "s"} today`);
+  const M = PRIV && PRIV.money; if (M && M.month_cap && M.month / M.month_cap >= .75) probs.push(`API budget ${Math.round(M.month / M.month_cap * 100)}% used`);
+  const od = PRIV && PRIV.me && PRIV.me.overdue ? PRIV.me.overdue.length : 0; if (od) probs.push(`${od} overdue deadline${od === 1 ? "" : "s"}`);
+  if (G && G.n7 === 0) probs.push("no sign-ups this week");
+  if (PRIV) Q.push([probs.length ? "a" : "g", "Needs attention", probs.length ? probs.join(" · ") : "Nothing right now.", "", probs.length && od ? "me" : "growth"]);
+  // 6. next
+  if (PRIV){ const j = (PRIV.jobs || [])[0]; Q.push(["n", "What happens next", PRIV.fix ? PRIV.fix.replace(/^GROWTH FIX OF THE WEEK:?\s*/i, "") : j ? j[1] : "The backlog is empty.", PRIV.fix ? "This week's growth fix" : j ? `Top of the backlog${j[2] ? " · " + j[2] : ""}` : "", "hq"]); }
+  // 7. need anything from me
+  if (PRIV){ const n = (PRIV.a || []).length; Q.push([n ? "a" : "g", "Do you need me?", n ? `Yes: ${n} decision${n === 1 ? "" : "s"} waiting for you.` : "No. Nothing is waiting on you.", n ? (PRIV.a[0].title || "") : "", "appr"]); }
+  else Q.push(["n", "Do you need me?", "Private. Unlock HQ to see approvals.", "", "hq"]);
+  el.innerHTML = Q.map((q, i) => `<div class="q${i === 0 ? " lead" : i === 1 || (i === Q.length - 1 && Q.length % 2 === 1) ? " full" : ""}" data-go="${q[4]}"><span class="dot ${q[0]}"></span><div><small>${esc(q[1])}</small><b${i === 0 ? ' id="answerText"' : ""}>${esc(q[2])}</b>${q[3] ? `<span class="sub">${esc(q[3])}</span>` : ""}</div></div>`).join("");
+}
+document.getElementById("brief").addEventListener("click", e => { const q = e.target.closest(".q"); if (!q) return; const t = q.dataset.go;
+  if (t === "appr"){ go("hq"); const b = document.querySelector('#tabs [data-t="appr"]'); if (b){ b.click(); document.getElementById("tabs").scrollIntoView({behavior:"smooth", block:"start"}); } }
+  else if (t !== "hq") go(t); });
+function spark(pts){ if (!pts || pts.length < 2) return `<div class="note">The trend line appears after two nightly counts.</div>`;
+  const ys = pts.map(p => p[1]), lo = Math.min(...ys), hi = Math.max(...ys), r = hi - lo || 1, W2 = 300, H2 = 64;
+  const xy = pts.map((p, i) => [i / (pts.length - 1) * (W2 - 8) + 4, H2 - 8 - (p[1] - lo) / r * (H2 - 18)]);
+  const line = xy.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+  return `<svg class="spark" viewBox="0 0 ${W2} ${H2}" preserveAspectRatio="none" aria-label="Members over time"><path d="${line} L${W2 - 4} ${H2} L4 ${H2} Z" fill="rgba(190,56,62,.16)"/><path d="${line}" fill="none" stroke="#BE383E" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
+    <div class="note" style="display:flex;justify-content:space-between"><span>${esc(dstr(pts[0][0]))}: ${pts[0][1]}</span><span>${esc(dstr(pts[pts.length - 1][0]))}: ${pts[pts.length - 1][1]}</span></div>`; }
+function bars(obj, empty){ const e = Object.entries(obj || {}).sort((a, b) => b[1] - a[1]); if (!e.length) return `<div class="none">${empty}</div>`;
+  const mx = Math.max(...e.map(x => x[1])) || 1; const label = k => k === "unknown" ? "Direct / unknown" : k;
+  return e.slice(0, 8).map(([k, v]) => `<div class="bar"><span>${esc(label(k))}</span><div class="t"><i style="width:${Math.max(4, v / mx * 100)}%"></i></div><em>${v}</em></div>`).join(""); }
+function renderGrowth(){
+  const el = document.getElementById("growth"); if (!el) return;
+  if (!PRIV){ el.innerHTML = LOCKED; return; }
+  const G = growthNow();
+  if (!G){ el.innerHTML = `<div class="cards"><div class="card hero wide"><h4>Members</h4><div class="big">–</div><div class="note">Not measured yet. Vesper counts members every night at 11:45pm; the first count will appear here.</div></div></div>`; return; }
+  const {g, f} = G, days = Math.max(1, Math.ceil((new Date("2027-01-01T00:00:00-05:00") - Date.now()) / 864e5));
+  const filled = G.left !== null ? Math.max(0, 100 - G.left) : null, pace = G.left !== null ? (G.left / days) : null;
+  const wk = g.week_ago && g.week_ago.funnel && typeof g.week_ago.funnel.signed_up === "number" && G.members !== null ? G.members - g.week_ago.funnel.signed_up : null;
+  const step = (name, n, of) => `<div class="bar"><span>${name}</span><div class="t"><i style="width:${of ? Math.max(3, n / of * 100) : 0}%"></i></div><em>${n}${of ? "" : ""}</em></div>`;
+  const pct = (a, b) => b ? Math.round(a / b * 100) + "%" : "–";
+  el.innerHTML = `<div class="cards">
+   <div class="card hero wide"><h4>Members <i>counted nightly${G.asof ? " · as of " + esc(dstr(G.asof)) : ""}</i></h4>
+     <div class="big">${G.members !== null ? G.members : G.accounts !== null ? G.accounts : "–"}<small>${G.members !== null ? "real members" : "accounts (includes test accounts)"}</small></div>
+     ${G.n7 === null ? "" : `<span class="chip ${G.n7 > 0 ? "g" : "a"}">${G.n7 > 0 ? "+" + G.n7 + " in the last 7 days" : "No new members in 7 days"}</span>`}
+     ${wk === null ? "" : ` <span class="chip">${wk >= 0 ? "+" : ""}${wk} vs a week ago</span>`}
+     ${spark(g.members)}</div>
+   <div class="card"><h4>Founding 100</h4>${filled === null ? `<div class="none">Spots left: not reported yet.</div>` :
+     `<div style="font-size:15px"><b>${filled}</b> of 100 filled · <b>${G.left}</b> left</div><div class="meter"><i style="width:${filled}%"></i></div>
+      <div class="note">${days} days to Jan 1. Filling it needs about <b style="color:var(--ink)">${pace < 1 ? pace.toFixed(1) : Math.ceil(pace)}</b> new member${pace <= 1 ? "" : "s"} a day.</div>`}</div>
+   <div class="card"><h4>Where sign-ups came from <i>last 7 days</i></h4>${bars(g.src7, "No sign-ups in the last 7 days.")}
+     <h4 style="margin-top:14px">All time</h4>${bars(g.src_all, "No data yet.")}</div>
+   <div class="card"><h4>Activation funnel <i>all real members</i></h4>${typeof f.signed_up !== "number" ? `<div class="none">Not measured yet.</div>` :
+     step("Signed up", f.signed_up, f.signed_up) + step("Built a plan", f.plan || 0, f.signed_up) + step("Did a workout", f.workout || 0, f.signed_up) +
+     `<div class="note">${pct(f.plan || 0, f.signed_up)} build a plan · ${pct(f.workout || 0, f.signed_up)} check off a workout.<br>Still active after day 7: <b style="color:var(--ink)">${f.active_d7 || 0} of ${f.d7_eligible || 0}</b> who have been here a week (${pct(f.active_d7 || 0, f.d7_eligible || 0)}).</div>`}</div>
+   <div class="card"><h4>This week's growth fix</h4>${PRIV.fix ? `<div style="font-size:14px">${esc(PRIV.fix.replace(/^GROWTH FIX OF THE WEEK:?\s*/i, ""))}</div>` : `<div class="none">None assigned yet. The analyst picks one fix a week from these numbers and grades last week's.</div>`}</div>
+   ${g.visits7 ? `<div class="card"><h4>Website visits <i>last 7 days · page loads, bots filtered</i></h4>${bars(Object.fromEntries(Object.entries(g.visits7).map(([k, v]) => [k === "/" ? "Home page" : k === "app:/" ? "App front door" : k.replace(/^\//, ""), v])), "No visits counted yet.")}
+     ${G.n7 !== null ? `<div class="note">${sum(Object.fromEntries(Object.entries(g.visits7).filter(([k]) => k !== "app:/")))} site visits → <b style="color:var(--ink)">${G.n7}</b> sign-up${G.n7 === 1 ? "" : "s"} in the same 7 days.</div>` : ""}</div>` : ""}
+   <div class="card"><h4>Not measured yet</h4><div class="note" style="margin:0">${g.visits7 ? "" : "Website visits (counter is being added) · "}Instagram reach · search rankings · revenue (the app is free for founding members). These show here once they are tracked; nothing is estimated.</div></div>
+  </div>`;
+}
+function renderMoney(){
+  const el = document.getElementById("money"); if (!el) return;
+  if (!PRIV){ el.innerHTML = LOCKED; return; }
+  const o = PRIV.o || {}, M = PRIV.money, sp = o.spend;
+  const tone = r => r >= 1 ? "" : r >= .75 ? "a" : "g", w = r => Math.min(100, Math.max(2, r * 100));
+  const rowsOf = (obj, n) => Object.entries(obj || {}).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, v]) => `<div class="row"><span>${esc(k)}</span><small>${usd(v)}</small></div>`).join("");
+  const plan = (PRIV.d || []).filter(d => !d.drill && d.min).sort((a, b) => b.min - a.min);
+  el.innerHTML = `<div class="cards">
+   <div class="card hero"><h4>Extra money: Anthropic API <i>Vesper's server only</i></h4>
+     ${M ? `<div class="big">${usd(M.month)}<small>of ${usd(M.month_cap)} this month</small></div><div class="meter ${tone(M.month / M.month_cap)}"><i style="width:${w(M.month / M.month_cap)}%"></i></div>
+       <div class="note">Counted from ${esc(dstr(M.from))}. Today: <b style="color:var(--ink)">${usd(M.today)}</b> of ${usd(M.today_cap)} allowed.</div>` :
+       sp ? `<div class="big">${usd(sp.spent)}<small>of ${usd(sp.cap)} today</small></div><div class="note">Month total arrives with the next server update.</div>` : `<div class="none">Not reported yet.</div>`}
+     <div class="note">Vesper stops itself at the cap. Reminders and alerts keep working after that.</div></div>
+   <div class="card"><h4>Today's API spend, by model</h4>${sp && sum(sp.by_model) ? `<div class="list" style="border:0">${rowsOf(sp.by_model, 5)}</div>` : `<div class="none">Nothing spent today.</div>`}
+     <h4 style="margin-top:14px">By job</h4>${sp && sum(sp.by_job) ? `<div class="list" style="border:0">${rowsOf(sp.by_job, 5)}</div>` : `<div class="none">Nothing spent today.</div>`}
+     ${sp && sp.cached_share != null ? `<div class="note">Input served from cache: ${Math.round(sp.cached_share * 100)}% (cached input costs far less).</div>` : ""}</div>
+   <div class="card"><h4>Claude plan <i>no extra money</i></h4><div style="font-size:15px"><b>${o.plan_min_today ?? 0} min</b> of employee work today · ${o.runs_today ?? 0} runs</div>
+     <div class="note">All employees run on your Claude subscription. This uses its usage limits, not dollars, and is never added to the API number above.</div>
+     ${plan.length ? `<div class="list" style="border:0;margin-top:6px">${plan.slice(0, 6).map(d => `<div class="row"><span>${esc(TEAM[d.id] ? TEAM[d.id].n : d.id)}</span><small>${d.min} min · ${d.runs} run${d.runs === 1 ? "" : "s"}</small></div>`).join("")}</div>` : ""}</div>
+   <div class="card"><h4>Not shown here</h4><div class="note" style="margin:0">The Mileset app's own AI (food logging, coach) is billed to the same $20 Anthropic limit and isn't in Vesper's count. Server, domain and subscription fees aren't tracked yet. Revenue: none yet (founding members are free).</div></div>
+  </div>`;
+}
+function renderMe(){
+  const el = document.getElementById("me"); if (!el) return;
+  if (!PRIV){ el.innerHTML = LOCKED; return; }
+  const me = PRIV.me;
+  if (!me){ el.innerHTML = `<div class="cards"><div class="card wide"><h4>My week</h4><div class="none">Not available yet. It arrives with Vesper's next update.</div></div></div>`; return; }
+  const t12 = h => { if (!h) return ""; const [a, b] = h.split(":").map(Number); return ((a + 11) % 12 + 1) + (b ? ":" + String(b).padStart(2, "0") : "") + (a < 12 ? "am" : "pm"); };
+  const cal = {}; (me.cal || []).forEach(e => { const k = String(e[0]).slice(0, 10); (cal[k] = cal[k] || []).push(e); });
+  const today = new Date(); const iso0 = new Date(today - today.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const days = (me.days || []).map(([iso, items]) => { const d = new Date(iso + "T12:00:00"), evs = cal[iso] || [];
+    const lines = items.map(x => `<div><span class="k ${esc(x[0])}">${esc(x[0])}</span>${esc(x[1])}${x[2] ? ` <small>${t12(x[2])}${x[3] ? "–" + t12(x[3]) : ""}</small>` : ""}</div>`)
+      .concat(evs.map(e => `<div><span class="k">calendar</span>${esc(e[1])}${e[2] ? "" : ` <small>${t12(String(e[0]).slice(11, 16))}</small>`}</div>`));
+    return `<div class="day${iso === iso0 ? " now" : ""}"><div class="d">${iso === iso0 ? "Today" : d.toLocaleDateString([], {weekday:"short"})}<br>${d.getDate()}</div><div class="e">${lines.length ? lines.join("") : `<span class="none">Nothing scheduled</span>`}</div></div>`; }).join("");
+  el.innerHTML = `<div class="cards">
+   ${(me.overdue || []).length ? `<div class="card wide" style="border-color:#5a2a30"><h4 style="color:#ff9aa0">Overdue</h4>${me.overdue.map(x => `<div style="font-size:14px;margin:3px 0">${esc(x[1])} <small style="color:var(--mut)">was due ${esc(dstr(x[0]))}</small></div>`).join("")}</div>` : ""}
+   <div class="card wide"><h4>Next 7 days <i>from what you've told Vesper${me.cal ? " + your calendar" : ""}</i></h4>${days || `<div class="none">Nothing yet.</div>`}
+     ${me.cal ? "" : `<div class="note">Calendar: not connected to HQ yet.</div>`}</div>
+   <div class="card"><h4>Reminders</h4>${(me.rem || []).length ? me.rem.map(r => `<div style="font-size:14px;margin:4px 0">${esc(r[1])} <small style="color:var(--mut)">${esc(fmtT(r[0]))}${r[2] ? " · repeats" : ""}</small></div>`).join("") : `<div class="none">No reminders set. Tell Vesper "remind me…".</div>`}</div>
+   <div class="card"><h4>To-dos</h4>${(me.todos || []).length ? me.todos.map(t => `<div style="font-size:14px;margin:4px 0">• ${esc(t)}</div>`).join("") : `<div class="none">Nothing on the list.</div>`}</div>
+   <div class="card wide"><div class="note" style="margin:0">School deadlines and work shifts show here once Vesper knows them. Tell Vesper in Telegram or by voice, for example: "pharm exam Thursday at 9" or "I work Mondays and Thursdays 4:30 to 12:30".</div></div>
+  </div>`;
+}
 loadPriv(); setInterval(loadPriv, 120000);
 resize(); requestAnimationFrame(frame); load(); tick();
 setInterval(load, 120000); setInterval(tick, 20000);
