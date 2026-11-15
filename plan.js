@@ -845,7 +845,7 @@ function garminWorkout(plan, s, offs, extra, date){
       else out.push(step({intensity, description: L, durationType: "OPEN"}));
     });
     const tm = s.venue === "treadmill";
-    return {workoutName: ((tm ? "Treadmill · " : "") + s.title).slice(0, 80), description: ((tm ? "Treadmill: 1% incline. " : "") + "Mileset · " + (s.why || "")).slice(0, 1024), sport: "RUNNING", workoutProvider: "HYBRD", workoutSourceId: "HYBRD",
+    return {workoutName: ((tm ? "Treadmill · " : "") + s.title).slice(0, 80), description: ((tm ? "Treadmill: 1% incline. " : "") + "Mileset · " + (s.why || "")).slice(0, 1024), sport: "RUNNING", workoutProvider: "Mileset", workoutSourceId: "HYBRD",
       isSessionTransitionEnabled: false, poolLength: null, poolLengthUnit: null, segments: [{segmentOrder: 1, sport: "RUNNING", poolLength: null, poolLengthUnit: null, steps: out}]};
   }
   // time-based sessions (rides, swims, cardio, walk-runs): one step with the plan's instructions
@@ -856,7 +856,7 @@ function garminWorkout(plan, s, offs, extra, date){
     ? (s.yd ? step({intensity: "ACTIVE", description: text, durationType: "DISTANCE", durationValue: Math.round(s.yd * 0.9144), durationValueType: "METER", targetType: null})
             : step({intensity: "ACTIVE", description: text, durationType: "TIME", durationValue: Math.min(59, s.min) * 60, targetType: null}))
     : step({intensity: "ACTIVE", description: text, durationType: "TIME", durationValue: s.min * 60});
-  return {workoutName: String(s.title).slice(0, 80), description: ("Mileset · " + (s.why || "")).slice(0, 1024), sport, workoutProvider: "HYBRD", workoutSourceId: "HYBRD",
+  return {workoutName: String(s.title).slice(0, 80), description: ("Mileset · " + (s.why || "")).slice(0, 1024), sport, workoutProvider: "Mileset", workoutSourceId: "HYBRD",
     isSessionTransitionEnabled: false, poolLength: null, poolLengthUnit: null, segments: [{segmentOrder: 1, sport, poolLength: null, poolLengthUnit: null, steps: [main]}]};
 }
 
