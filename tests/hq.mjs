@@ -58,8 +58,21 @@ for (const [name, opts] of [['desktop', { viewport: { width: 1280, height: 900 }
   if (name === 'iphone' && (await p.evaluate(() => location.hash)) !== '#k=' + KEY) errs.push('iphone: a stored key must come back into the address');
   await ctx.close();
 }
+// every open refreshes: reopening the home-screen app (it resumes from memory) fetches the office feed and the
+// live member counts again (Matthew, Nov 15: "accurate every time I open it")
+{ const p = await b.newPage(); const hits = {live: 0, feed: 0};
+  await p.route('**/api/founding*', r => { hits.live++; r.fulfill({status: 200, contentType: 'application/json', headers: {'Access-Control-Allow-Origin': '*'}, body: '{"left":77,"max":100,"ends":"2027-01-01","members":23}'}); });
+  await p.route(/hq\.json/, r => { hits.feed++; r.fulfill({status: 404, body: ''}); });
+  await p.goto(page); await p.waitForTimeout(800);
+  const first = {...hits};
+  if (first.live < 1) errs.push('open: HQ must fetch the live member counts');
+  await p.waitForTimeout(3200);
+  await p.evaluate(() => { Object.defineProperty(document, 'hidden', {configurable: true, get: () => false}); document.dispatchEvent(new Event('visibilitychange')); });
+  await p.waitForTimeout(800);
+  if (hits.live <= first.live || hits.feed <= first.feed) errs.push(`reopen: HQ must refresh the feed and live counts (live ${first.live}->${hits.live}, feed ${first.feed}->${hits.feed})`);
+  await p.close(); }
 // without a key, the plain manifest is untouched
 { const p = await b.newPage(); await p.goto(page); if ((await p.getAttribute('#mf', 'href')) !== 'manifest.webmanifest') errs.push('no key: manifest must stay plain'); await p.close(); }
 await b.close();
 if (errs.length) { console.error(errs.join('\n')); process.exit(1); }
-console.log('HQ OK: 5 rooms, phone + desktop, private rooms locked without the key, private link installs unlocked');
+console.log('HQ OK: 5 rooms, phone + desktop, private rooms locked without the key, private link installs unlocked, every open refreshes');

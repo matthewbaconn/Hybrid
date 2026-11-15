@@ -600,8 +600,22 @@ const VISITS_SINCE = "2026-11-14", VISITS_FULL = new Date(Date.parse(VISITS_SINC
 const visitsFull = () => DEMO || new Date().toLocaleDateString("en-CA") >= VISITS_FULL;
 function growthNow(){ const g = PRIV && PRIV.g; if (!g) return null;
   const f = g.funnel || {}, last = (g.trend || []).slice(-1)[0] || [];
-  return {g, f, members: typeof f.signed_up === "number" ? f.signed_up : null, accounts: typeof last[1] === "number" ? last[1] : null,
-    left: typeof last[3] === "number" ? last[3] : null, n7: g.src7 ? sum(g.src7) : null, asof: g.asof || last[0] || ""}; }
+  const G = {g, f, members: typeof f.signed_up === "number" ? f.signed_up : null, accounts: typeof last[1] === "number" ? last[1] : null,
+    left: typeof last[3] === "number" ? last[3] : null, n7: g.src7 ? sum(g.src7) : null, asof: g.asof || last[0] || ""};
+  // Live counts straight from the app's API, fetched every time HQ opens (Matthew, Nov 15: "accurate every time I open it").
+  if (LIVE){ if (typeof LIVE.members === "number") G.members = LIVE.members; if (typeof LIVE.left === "number") G.left = LIVE.left; G.live = LIVE.at; }
+  return G; }
+// ---------- live counts (real members and founding spots, counts only, no login needed) ----------
+const LIVE_API = "https://hybrid-api.hybridapp.workers.dev/api/founding";
+let LIVE = null;
+async function loadLive(){
+  if (DEMO) return;
+  try { const r = await fetch(LIVE_API + "?t=" + Date.now(), {cache:"no-store"}); if (!r.ok) throw new Error(r.status);
+    const j = await r.json(); if (typeof j.left !== "number") throw new Error("shape");
+    LIVE = {members: typeof j.members === "number" ? j.members : null, left: j.left, at: new Date().toISOString()};
+    if (feed) apply(); renderPriv();
+  } catch(e){}
+}
 function renderBrief(){
   const el = document.getElementById("brief"); if (!el) return;
   const nm = id => TEAM[id] ? TEAM[id].n : id, o = (PRIV && PRIV.o) || null, f = feed || null;
@@ -619,7 +633,7 @@ function renderBrief(){
   if (!PRIV) Q.push(["n", "Is the company growing?", "Private. Unlock HQ to see members.", "", "growth"]);
   else if (!G || G.n7 === null) Q.push(["n", "Is the company growing?", "Not measured yet.", "The first nightly member count hasn't arrived.", "growth"]);
   else Q.push([G.n7 > 0 ? "g" : "a", "Is the company growing?", G.n7 > 0 ? `Yes: +${G.n7} new member${G.n7 === 1 ? "" : "s"} in 7 days.` : "No new members in the last 7 days.",
-    (G.members !== null ? `${G.members} real members` : "") + (G.left !== null ? ` · ${G.left} founding spots left` : "") + (G.asof ? ` · as of ${dstr(G.asof)}` : ""), "growth"]);
+    (G.members !== null ? `${G.members} real members` : "") + (G.left !== null ? ` · ${G.left} founding spots left` : "") + (G.live ? " · live" : G.asof ? ` · as of ${dstr(G.asof)}` : ""), "growth"]);
   // 3. what is Vesper working on
   if (work.length) Q.push(["g", "Working right now", work.map(a => a.t.n).join(", "), work.map(a => nowText(a)).join(" · "), "team"]);
   else { const nx = o && PRIV.d ? PRIV.d.filter(d => d.next && !d.drill).sort((a, b) => a.next < b.next ? -1 : 1)[0] : null;
@@ -664,7 +678,7 @@ function renderGrowth(){
   const step = (name, n, of) => `<div class="bar"><span>${name}</span><div class="t"><i style="width:${of ? Math.max(3, n / of * 100) : 0}%"></i></div><em>${n}${of ? "" : ""}</em></div>`;
   const pct = (a, b) => b ? Math.round(a / b * 100) + "%" : "–";
   el.innerHTML = `<div class="cards">
-   <div class="card hero wide"><h4>Members <i>counted nightly${G.asof ? " · as of " + esc(dstr(G.asof)) : ""}</i></h4>
+   <div class="card hero wide"><h4>Members <i>${G.live ? "live · updated " + esc(fmtT(G.live)) : "counted nightly" + (G.asof ? " · as of " + esc(dstr(G.asof)) : "")}</i></h4>
      <div class="big">${G.members !== null ? G.members : G.accounts !== null ? G.accounts : "–"}<small>${G.members !== null ? "real members" : "accounts (includes test accounts)"}</small></div>
      ${G.n7 === null ? "" : `<span class="chip ${G.n7 > 0 ? "g" : "a"}">${G.n7 > 0 ? "+" + G.n7 + " in the last 7 days" : "No new members in 7 days"}</span>`}
      ${wk === null ? "" : ` <span class="chip">${wk >= 0 ? "+" : ""}${wk} vs a week ago</span>`}
@@ -726,8 +740,15 @@ function renderMe(){
    <div class="card wide"><div class="note" style="margin:0">School deadlines and work shifts show here once Vesper knows them. Tell Vesper in Telegram or by voice, for example: "pharm exam Thursday at 9" or "I work Mondays and Thursdays 4:30 to 12:30".</div></div>
   </div>`;
 }
-loadPriv(); setInterval(loadPriv, 120000);
+loadPriv(); loadLive(); setInterval(loadPriv, 120000); setInterval(loadLive, 120000);
 resize(); requestAnimationFrame(frame); load(); tick();
 setInterval(load, 120000); setInterval(tick, 20000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden){ last = performance.now(); load(); tick(); } });
+// Every open refreshes everything: the office feed, the private rooms and the live member counts. A home-screen app
+// resumes from memory (no reload), so opening it again fires visibilitychange / pageshow / focus instead.
+let lastRefresh = 0;
+function refreshAll(){ const t = Date.now(); if (t - lastRefresh < 3000) return; lastRefresh = t; last = performance.now(); load(); loadPriv(); loadLive(); tick(); }
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshAll(); });
+addEventListener("pageshow", e => { if (e.persisted) refreshAll(); });
+addEventListener("focus", refreshAll); addEventListener("online", refreshAll);
+document.getElementById("clock").addEventListener("click", refreshAll);   // tap the clock to refresh now
 </script></body></html>

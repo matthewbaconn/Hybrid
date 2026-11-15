@@ -63,7 +63,16 @@ async function auth(req, env){
 }
 const userOut = u => ({id: u.id, email: u.email, name: u.name});
 /* The app's owner sees problem reports. OWNER_EMAIL (a secret) wins; otherwise it's the oldest real account. */
+/* Real members = not the nightly robot's @example.com accounts and not the owner's own accounts (not_members, 0023).
+   The owner is added to not_members automatically, so Matthew is never counted, even under OWNER_EMAIL. */
+const REAL = (a = "") => `${a}email NOT LIKE '%@example.com' AND ${a}id NOT IN (SELECT user_id FROM not_members)`;
+let ownerMarked = false;
 async function ownerId(env){
+  const id = await ownerIdRaw(env);
+  if (id && !ownerMarked){ ownerMarked = true; try { await env.DB.prepare("INSERT OR IGNORE INTO not_members (user_id, why, created) VALUES (?, 'owner', ?)").bind(id, new Date().toISOString()).run(); } catch(e){ ownerMarked = false; } }
+  return id;
+}
+async function ownerIdRaw(env){
   const row = env.OWNER_EMAIL ? await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(String(env.OWNER_EMAIL).trim().toLowerCase()).first()
     : await env.DB.prepare("SELECT id FROM users WHERE email NOT LIKE '%@example.com' ORDER BY created LIMIT 1").first();
   return row ? row.id : null;
@@ -617,7 +626,7 @@ async function cron(env, ctx){
 /* ---------- routes ---------- */
 /* ---------- owner: new sign-up notice (push to the owner's phone + an email to the Mileset inbox) ---------- */
 async function tellOwnerSignup(env, name, email){
-  const own = await ownerId(env), total = (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE email NOT LIKE '%@example.com'").first()).n;
+  const own = await ownerId(env), total = (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE " + REAL()).first()).n;
   const who = (name ? name + " · " : "") + email;
   if (own) await pushTo(env, own, {title: "New Mileset sign-up", body: who + " · " + total + " members now", tag: "signup", url: (env.APP_URL || "") + "#members"}).catch(() => {});
   if (env.RESEND_API_KEY){
@@ -634,12 +643,14 @@ const FOUNDING_END = "2027-01-01T05:00:00.000Z", FOUNDING_MAX = 100;   // midnig
 async function foundingNo(env, userId){
   const u = await env.DB.prepare("SELECT created, email FROM users WHERE id = ?").bind(userId).first();
   if (!u || /@example\.com$/.test(u.email) || u.created >= FOUNDING_END) return null;
-  const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE email NOT LIKE '%@example.com' AND created <= ?").bind(u.created).first()).n;
+  if (await env.DB.prepare("SELECT 1 FROM not_members WHERE user_id = ?").bind(userId).first()) return null;   // the owner isn't a founding member
+  const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE " + REAL() + " AND created <= ?").bind(u.created).first()).n;
   return n <= FOUNDING_MAX ? n : null;
 }
 async function foundingLeft(env){
   if (new Date().toISOString() >= FOUNDING_END) return 0;
-  const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE email NOT LIKE '%@example.com' AND created < ?").bind(FOUNDING_END).first()).n;
+  await ownerId(env);
+  const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE " + REAL() + " AND created < ?").bind(FOUNDING_END).first()).n;
   return Math.max(0, FOUNDING_MAX - n);
 }
 /* email header: the Mileset profile picture + name (hosted with the app; alt text shows if images are off) */
@@ -962,7 +973,8 @@ async function route(req, env, path, ctx){
   }
 
   // forgot password: email a one-time link (always answers the same, so it can't be used to test which emails have accounts)
-  if (M === "GET" && path === "/api/founding") return {left: await foundingLeft(env), max: FOUNDING_MAX, ends: "2027-01-01"};
+  if (M === "GET" && path === "/api/founding") return {left: await foundingLeft(env), max: FOUNDING_MAX, ends: "2027-01-01",
+    members: (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE " + REAL()).first()).n};   // a count only, real members
   if (path === "/api/unsubscribe"){
     const q = new URL(req.url).searchParams, uid = String(q.get("u") || ""), sig = String(q.get("s") || "");
     const ok = /^[a-f0-9]{8,64}$/.test(uid) && env.RESEND_API_KEY && safeEqual(sig, await mailSig(env, uid));
@@ -1401,16 +1413,16 @@ async function route(req, env, path, ctx){
       "EXISTS(SELECT 1 FROM food x WHERE x.user_id = u.id AND x.date >= " + d7 + ") OR " +
       "EXISTS(SELECT 1 FROM checkins c WHERE c.user_id = u.id AND c.date >= " + d7 + ") OR " +
       "EXISTS(SELECT 1 FROM sessions s WHERE s.user_id = u.id AND substr(s.created, 1, 10) >= " + d7 + "))) AS active_d7 " +
-      "FROM users u WHERE u.email NOT LIKE '%@example.com'").bind(cut).first();
+      "FROM users u WHERE " + REAL("u.")).bind(cut).first();
     return {funnel: {signed_up: f.signed_up || 0, plan: f.plan || 0, workout: f.workout || 0, d7_eligible: f.d7_eligible || 0, active_d7: f.active_d7 || 0}};
   }
   if (M === "GET" && path === "/api/admin/members"){
     if (user.id !== (await ownerId(env))) throw new HttpError(403, "Not allowed.");
     const rows = (await env.DB.prepare(
       "SELECT u.name, u.email, u.created, u.no_mail, u.src, p.data AS profile, (SELECT 1 FROM strava_links s WHERE s.user_id = u.id) AS strava, (SELECT 1 FROM garmin_links g WHERE g.user_id = u.id) AS garmin, " +
-      "(SELECT name FROM users r WHERE r.id = u.ref) AS ref_name, (SELECT COUNT(*) FROM users c WHERE c.ref = u.id AND c.email NOT LIKE '%@example.com') AS invited, " +
+      "(SELECT name FROM users r WHERE r.id = u.ref) AS ref_name, (SELECT COUNT(*) FROM users c WHERE c.ref = u.id AND " + REAL("c.") + ") AS invited, " +
       "(SELECT MAX(created) FROM sessions x WHERE x.user_id = u.id) AS last_login, (SELECT MAX(date) FROM food f WHERE f.user_id = u.id) AS last_food, (SELECT MAX(date) FROM activities a WHERE a.user_id = u.id) AS last_act " +
-      "FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.email NOT LIKE '%@example.com' ORDER BY u.created DESC").all()).results;
+      "FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE " + REAL("u.") + " ORDER BY u.created DESC").all()).results;
     return {members: rows.map(r => { let pr = null; try { pr = r.profile ? JSON.parse(r.profile) : null; } catch(e){}
       return {name: r.name, email: r.email, created: r.created, founding: r.created < FOUNDING_END, no_mail: !!r.no_mail, strava: !!r.strava, garmin: !!r.garmin, ref_name: r.ref_name || null, src: r.src || null, invited: r.invited || 0, goal: pr ? HP.raceName(pr) : null, race_date: pr && pr.raceDate || null,
         last_seen: [r.last_login, r.last_food, r.last_act].filter(Boolean).sort().pop() || null}; })};
