@@ -756,6 +756,7 @@ a.scard{text-decoration:none;color:var(--ink)}
 .wnew .kick{margin:0;font:700 12px/1 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2)}.wnew h2{margin:-4px 0 4px}
 .wn{display:grid;grid-template-columns:22px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line)}.wn svg{width:20px;height:20px;color:var(--accent-2);margin-top:2px}.wn b{display:block}.wn p{margin:3px 0 0;font-size:14px;color:var(--muted);line-height:1.45}.wn .linkbtn{padding:6px 0 0;font-size:14px}
 #wnpill{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(104px + env(safe-area-inset-bottom,0px));z-index:45;padding:11px 18px;border-radius:999px;border:1px solid var(--accent-2);background:#1b1d26;color:var(--ink);font:700 14px/1 var(--f-body);box-shadow:0 10px 26px rgba(0,0,0,.55)}
+.chgl{margin:12px 0 6px;font:700 12px/1 var(--f-body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .venue{margin:10px 0}.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.seg button{padding:8px 14px;background:transparent;border:0;color:var(--muted);font:600 14px/1 inherit}.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
 .rpe{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:6px}
 .rpe button{min-height:38px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 14px/1 inherit;font-variant-numeric:tabular-nums}
@@ -2028,6 +2029,13 @@ function openChange(key){
 }
 const sessLine = x => x.type === "lift" ? x.steps.length + " exercises" : x.mi ? x.mi + " mi" + (x.min ? " · " + x.min + " min" : "") : x.min ? x.min + " min" : "";
 const chgItem = (x, i, src, sub) => '<button type="button" class="mvo t-' + x.type + '" data-act="chgpick" data-src="' + src + '" data-i="' + i + '"><div><span class="ty">' + esc(TYPE[x.type] || x.type) + '</span><b>' + esc(x.title) + '</b><span>' + esc(x.steps.map(z => z[0]).slice(0, 3).join(" · ")) + '</span>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div><i>›</i></button>';
+function chgList(){
+  const s = chgSess(); if (!s) return '';
+  if (chg.q.trim()) return '<p class="chgl">Results</p><div class="mvl">' + chgResults() + '</div>';
+  chg.alts = HP.alternatives(plan, s);
+  return chg.alts.length ? '<p class="chgl">Similar to ' + esc(s.title.split(" ·")[0].toLowerCase()) + '</p><div class="mvl">' + chg.alts.map((x, i) => chgItem(x, i, "alt", x.note)).join("") + '</div><p class="fine">Not what you want? Search above for anything else.</p>'
+    : '<p class="sub">No ready-made swaps for this one. Search above, or write your own.</p>';
+}
 function chgResults(){
   const s = chgSess(); if (!s) return '';
   const words = chg.q.toLowerCase().split(/\s+/).filter(Boolean), lib = HP.library(plan);
@@ -2036,13 +2044,11 @@ function chgResults(){
 }
 function chgRender(){
   const el = $(".sheet.chg"), s = chgSess(); if (!el) return; if (!s){ closeMenu(); return; }
-  const lift = s.type === "lift", tabs = [["similar", "Similar"], ["search", "Search"]].concat(lift ? [["ex", "Exercises"]] : []).concat([["own", "Your own"]]);
+  const lift = s.type === "lift", tabs = [["similar", "Pick one"]].concat(lift ? [["ex", "Exercises"]] : []).concat([["own", "Your own"]]);
   let body = '';
-  if (chg.tab === "similar"){
-    chg.alts = HP.alternatives(plan, s);
-    body = chg.alts.length ? '<div class="mvl">' + chg.alts.map((x, i) => chgItem(x, i, "alt", x.note)).join("") + '</div>' : '<p class="sub">No ready-made swaps for this one. Search, or write your own.</p>';
-  } else if (chg.tab === "search"){
-    body = '<input id="chg-q" type="search" enterkeyhint="search" placeholder="Tempo, hills, upper body, bike, 6 mi…" value="' + esc(chg.q) + '" aria-label="Search workouts"><div class="mvl" id="chg-res">' + chgResults() + '</div>';
+  if (chg.tab === "similar" || chg.tab === "search"){
+    // similar options first; the search box on top searches everything (Matthew, Nov 14)
+    body = '<input id="chg-q" type="search" enterkeyhint="search" placeholder="Search: tempo, hills, upper body, bike, 6 mi…" value="' + esc(chg.q) + '" aria-label="Search workouts"><div id="chg-res">' + chgList() + '</div>';
   } else if (chg.tab === "ex"){
     if (chg.ex == null) body = '<p class="sub">Tap an exercise to swap it for one that works the same muscles. Sets and reps stay the same.</p><div class="mvl">' + s.steps.map((st, i) => '<button type="button" class="mvo t-lift" data-act="chgexsel" data-i="' + i + '"><div><b>' + esc(exName(st[0])) + '</b><span>' + esc(exScheme(st[0])) + '</span></div><i>›</i></button>').join("") + '</div>';
     else { const nm = exName(s.steps[chg.ex][0]), al = HP.exAlts(nm);
@@ -2060,7 +2066,7 @@ function chgRender(){
     '<div class="chgtabs" role="group" aria-label="How to change it">' + tabs.map(([k, l]) => '<button type="button" data-act="chgtab" data-k="' + k + '" aria-pressed="' + (chg.tab === k) + '">' + l + '</button>').join("") + '</div>' +
     (chg.err ? '<p class="err" role="alert">' + esc(chg.err) + '</p>' : '') + body +
     (s.custom ? '<button class="btn block" type="button" data-act="chgreset">Back to the planned workout</button>' : '') + '<button class="btn block" type="button" data-act="close">Cancel</button>';
-  if (chg.tab === "search"){ const q = $("#chg-q"); if (q && !chg.q) q.focus(); }
+  if ((chg.tab === "similar" || chg.tab === "search") && chg.q){ const q = $("#chg-q"); if (q) q.focus(); }
 }
 function setCustom(sess, msg){
   const s = chgSess(); if (!s || !s.o) return;
@@ -2820,7 +2826,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "69";
+const APP_VERSION = "70";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2928,8 +2934,10 @@ async function pushOn(){
 }
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
-const NEW_ID = "2026-11-14";
+// each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
+const NEW_ID = "2026-11-14.2";
 const NEWS = [
+  ["swap", "Changing a workout is easier", "Tap Change workout: similar options show first, and the search box on top finds anything else.", null, null, "2026-11-14.2"],
   ["run", "No watch? Run with your phone", "Open today's run and tap Start with my phone. A voice calls every step, keeps time and can track distance by GPS. Then rate how hard it felt.", null],
   ["heart", "Run by pace, heart rate or feel", "Pick how your runs are set. Heart rate shows your zone and bpm on every step, and your Garmin gets heart rate targets.", "set-run"],
   ["swap", "Treadmill or outside", "Switch any run on its workout screen, or make treadmill your default. You get mph speeds, and your watch still gets one workout.", "set-run"],
@@ -2943,7 +2951,8 @@ function whatsNew(force){
   let seen = "", off = ""; try { seen = localStorage.getItem("hy-new") || ""; off = localStorage.getItem("hy-nonew") || ""; } catch(e){}
   if (!force && (seen === NEW_ID || off)) return;   // hy-nonew: automated tests
   wnPill(false);
-  const list = NEWS.filter(x => !x[4] || plan.profile.sex === x[4]);
+  const list = NEWS.filter(x => (!x[4] || plan.profile.sex === x[4]) && (force || !seen || (x[5] || "2026-11-14") > seen));
+  if (!list.length) return;
   const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
   b.innerHTML = '<div class="sheet wnew" role="dialog" aria-modal="true" aria-labelledby="wn-h"><p class="kick">New in Mileset</p><h2 id="wn-h">Here\'s what changed</h2>' +
     list.map(x => '<div class="wn">' + ic(x[0]) + '<div><b>' + x[1] + '</b><p>' + x[2] + '</p>' + (x[3] ? '<button class="linkbtn" type="button" data-act="wngo" data-to="' + x[3] + '">Show me</button>' : '') + '</div></div>').join("") +
@@ -3511,7 +3520,7 @@ document.addEventListener("click", ev => {
   if (act === "menu"){ openMenu(); return; }
   if (act === "close"){ closeMenu(); return; }
   if (act === "chgopen"){ openChange(a.dataset.key); return; }
-  if (act === "chgtab"){ if (chg){ chg.tab = a.dataset.k; chg.err = ""; chg.ex = null; chgRender(); } return; }
+  if (act === "chgtab"){ if (chg){ chg.tab = a.dataset.k === "search" ? "similar" : a.dataset.k; chg.err = ""; chg.ex = null; chgRender(); } return; }
   if (act === "chgpick"){ if (!chg) return; const x = a.dataset.src === "alt" ? (chg.alts || [])[+a.dataset.i] : ((chg.res || [])[+a.dataset.i] || {}).x; if (x) setCustom(x, "Workout changed to " + x.title + "."); return; }
   if (act === "chgexsel"){ if (chg){ chg.ex = a.dataset.i === "" ? null : +a.dataset.i; chg.err = ""; chgRender(); } return; }
   if (act === "chgex"){
@@ -3556,7 +3565,7 @@ document.addEventListener("click", ev => {
   if (act === "reset"){ closeMenu(); scr = null; plan = null; for (const k in done) delete done[k]; for (const k in food) delete food[k]; store.set(null); setup = {step: -1, p: blankProfile()}; render(); window.scrollTo(0, 0); return; }
 });
 document.addEventListener("input", ev => {
-  if (ev.target.id === "chg-q" && chg){ chg.q = ev.target.value; const r = $("#chg-res"); if (r) r.innerHTML = chgResults(); return; }
+  if (ev.target.id === "chg-q" && chg){ chg.q = ev.target.value; const r = $("#chg-res"); if (r) r.innerHTML = chgList(); return; }
   if (!["s-goal", "s-pr", "s-easy", "a-wp"].includes(ev.target.id)) return;
   const el = ev.target, f = fmtDigits(el.value);
   if (el.value !== f) el.value = f;

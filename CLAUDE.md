@@ -33,10 +33,11 @@ Plans adapt to sleep, HRV and workouts from Garmin, Strava and Apple Health.
 
 ## What's new pop-up (Matthew, Nov 14: "always do this when I add a feature")
 Every release that adds or changes something members can see must update the What's new pop-up in index.html
-(grep `NEW_ID`): set `NEW_ID` to the release date (YYYY-MM-DD) and replace `NEWS` with that release's features,
-one entry each: [icon, short title, one sentence on how to use it, the screen "Show me" opens (or null), optional
-sex filter]. Members see it once on their next open; "Show me" goes to the screen with a pill to come back; it's
-also under More > What's new. Bug fixes and invisible changes don't go in. The ship gate checks this before merging:
+(grep `NEW_ID`): add one entry per new feature at the top of `NEWS`: [icon, short title, one sentence on how to
+use it, the screen "Show me" opens (or null), optional sex filter, release id], and set `NEW_ID` to that release id
+(the date, YYYY-MM-DD, plus ".2", ".3" for a second release the same day). Members see only what's new since they
+last looked; "Show me" goes to the screen with a pill to come back; More > What's new shows the whole list. Drop
+entries older than about two weeks. Bug fixes and invisible changes don't go in. The ship gate checks this before merging:
 a member-facing PR without a NEWS/NEW_ID update gets one added (or is sent back) first.
 
 ## Hard rules
