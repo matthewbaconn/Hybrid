@@ -472,7 +472,7 @@ const DEMO_PRIV = () => { const t = Date.now(), iso = m => new Date(t - m * 6000
     f:[[iso(14),"worker","skipped","No jobs"],[iso(69),"ceo-shift","ok","Demo: sharpened the backlog"]], a:[{k:"backlog", n:"B4", title:"Demo decision: approve a partner outreach list", why:"needs you"}],
     dec:[["Nov 14","Demo decision","Implemented and verified","demo"]], done:[], jobs:[["B1","Demo: shorten onboarding to 3 steps","product lead","building"]],
     g:{trend:[[day(-2),10,0,92],[day(-1),11,1,91],[day(0),12,1,90]], asof:day(0), src7:{ig:2, reddit:1, unknown:1}, src_all:{unknown:6, ig:3, reddit:1},
-       funnel:{signed_up:10, plan:8, workout:5, d7_eligible:6, active_d7:3}, members:[[day(-6),6],[day(-5),6],[day(-4),7],[day(-3),7],[day(-2),8],[day(-1),9],[day(0),10]], week_ago:{date:day(-7), funnel:{signed_up:6}}},
+       funnel:{signed_up:10, plan:8, workout:5, d7_eligible:6, active_d7:3}, visits7:{"/":41, "/fueling-calculator":17, "app:/":22}, members:[[day(-6),6],[day(-5),6],[day(-4),7],[day(-3),7],[day(-2),8],[day(-1),9],[day(0),10]], week_ago:{date:day(-7), funnel:{signed_up:6}}},
     money:{today:.42, today_cap:1.06, month:3.1, month_cap:17, from:day(-3)}, fix:"GROWTH FIX OF THE WEEK: demo fix (product lead)",
     me:{days:[[day(0),[["shift","Demo shift","04:30","12:30"]]],[day(1),[]],[day(2),[["deadline","Demo exam","09:00",""]]],[day(3),[]],[day(4),[]],[day(5),[]],[day(6),[]]],
         overdue:[[day(-2),"Demo overdue paper"]], todos:["Demo to-do"], rem:[[iso(-300),"Demo reminder",""]], cal:null}}; };
@@ -641,7 +641,9 @@ function renderGrowth(){
      step("Signed up", f.signed_up, f.signed_up) + step("Built a plan", f.plan || 0, f.signed_up) + step("Did a workout", f.workout || 0, f.signed_up) +
      `<div class="note">${pct(f.plan || 0, f.signed_up)} build a plan · ${pct(f.workout || 0, f.signed_up)} check off a workout.<br>Still active after day 7: <b style="color:var(--ink)">${f.active_d7 || 0} of ${f.d7_eligible || 0}</b> who have been here a week (${pct(f.active_d7 || 0, f.d7_eligible || 0)}).</div>`}</div>
    <div class="card"><h4>This week's growth fix</h4>${PRIV.fix ? `<div style="font-size:14px">${esc(PRIV.fix.replace(/^GROWTH FIX OF THE WEEK:?\s*/i, ""))}</div>` : `<div class="none">None assigned yet. The analyst picks one fix a week from these numbers and grades last week's.</div>`}</div>
-   <div class="card"><h4>Not measured yet</h4><div class="note" style="margin:0">Website traffic and conversion · Instagram reach · search rankings · revenue (the app is free for founding members). These show here once they are tracked; nothing is estimated.</div></div>
+   ${g.visits7 ? `<div class="card"><h4>Website visits <i>last 7 days · page loads, bots filtered</i></h4>${bars(Object.fromEntries(Object.entries(g.visits7).map(([k, v]) => [k === "/" ? "Home page" : k === "app:/" ? "App front door" : k.replace(/^\//, ""), v])), "No visits counted yet.")}
+     ${G.n7 !== null ? `<div class="note">${sum(Object.fromEntries(Object.entries(g.visits7).filter(([k]) => k !== "app:/")))} site visits → <b style="color:var(--ink)">${G.n7}</b> sign-up${G.n7 === 1 ? "" : "s"} in the same 7 days.</div>` : ""}</div>` : ""}
+   <div class="card"><h4>Not measured yet</h4><div class="note" style="margin:0">${g.visits7 ? "" : "Website visits (counter is being added) · "}Instagram reach · search rankings · revenue (the app is free for founding members). These show here once they are tracked; nothing is estimated.</div></div>
   </div>`;
 }
 function renderMoney(){
