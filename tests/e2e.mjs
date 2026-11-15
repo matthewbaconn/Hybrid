@@ -202,6 +202,27 @@ await check("Morning check-in + AI coach note", async () => {
   await page.waitForSelector(".ci-done .coach", {timeout: 30000});
   return "readiness " + score + " · " + (await page.innerText(".ci-done .coach b"));
 });
+await check("Watch connected: readiness and sleep replace the morning survey", async () => {
+  // Pretend a watch sent last night's numbers and today's survey was never filled in (only the app's view changes).
+  const today = await page.evaluate(() => HP.isoLocal(new Date()));
+  const fake = async route => { const r = await route.fetch(); const j = await r.json();
+    j.checkins = (j.checkins || []).filter(c => c.date !== today);
+    j.health = [1, 2, 3, 4, 5].map(i => ({date: HPaddDays(today, -i), sleep_h: 7.4, sleep_score: 80, hrv: 60, rhr: 50, source: "garmin"})).concat([{date: today, sleep_h: 7.2, sleep_score: 82, hrv: 61, rhr: 49, source: "garmin"}]);
+    await route.fulfill({response: r, json: j}); };
+  const HPaddDays = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+  await page.route("**/api/me", fake);
+  try {
+    await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar"); await tab("today");
+    await page.waitForSelector(".ci-done.wr");
+    const t = (await page.textContent(".ci-done.wr")).replace(/\s+/g, " ");
+    if (!/From your watch/.test(t) || !/7\.2 h sleep/.test(t) || !/sleep score 82/.test(t) || !/HRV 61 ms/.test(t) || !/resting HR 49/.test(t)) throw new Error("watch card wrong: " + t.slice(0, 200));
+    if (await page.$(".card.ci .ciq")) throw new Error("the morning survey still shows with a watch connected");
+    await noOverflow();
+    await page.click('.ci-done.wr [data-act="ciopen"]'); await page.waitForSelector(".card.ci .ciq");     // the survey is still one tap away
+  } finally {
+    await page.unroute("**/api/me", fake); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
+  }
+}, {needs: "Morning check-in + AI coach note"});
 if (!FAST) await check("Weather + best time to run", async () => {
   await open("weather");
   try {
