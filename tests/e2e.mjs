@@ -41,7 +41,8 @@ async function check(name, fn, opts){
   try {
     if (process.env.E2E_BREAK === name){ await page.click('[data-scr="weather"]').catch(() => {}); throw new Error("induced failure (E2E_BREAK), page left on another screen"); }   // test of the test: see tests/README
     const d = await fn(); ok(name, d);
-  } catch(e){ fail(name, String(e && e.message || e).split("\n")[0].slice(0, 300)); failedChecks.add(name); await recover(name); }
+  } catch(e){ if (e && e.outside){ notRun.push(name); results.push("⏭ " + name + " — " + e.message); console.log("skip " + name + " — " + e.message); return; }
+    fail(name, String(e && e.message || e).split("\n")[0].slice(0, 300)); failedChecks.add(name); await recover(name); }
 }
 const ensure = async (sel, sc) => { if (!(await page.$(sel))) await open(sc); };   // open a screen only if the check isn't already on it
 
@@ -51,7 +52,22 @@ await ctx.addInitScript(() => { try { localStorage.setItem("hy-nask", String(Dat
 const page = await ctx.newPage();
 const consoleErrors = [];
 page.on("pageerror", e => consoleErrors.push("[" + step + "] " + e.message));
-page.on("console", m => { if (m.type() === "error" && !/fonts\.g|favicon|ERR_NAME|net::ERR_FAILED.*open-meteo/.test(m.text()) && !(step === "Delete account" && /401/.test(m.text()))) consoleErrors.push("[" + step + "] " + m.text()); });
+// Outside services we don't run (open-meteo weather/geocoding). A slow or unreachable one is the sandbox's/network's
+// problem, not the app's (Nov 15 nightly: open-meteo timed out -> 2 false failures on a commit that passed an hour before).
+const OUTSIDE = /open-meteo\.com/;
+const outsideTrouble = [];
+if (process.env.E2E_BLOCK_OUTSIDE) await page.route(OUTSIDE, r => r.abort("timedout"));   // test of the test: weather service "down" must give a not-run, never a failure
+const outsideInFlight = new Set();
+page.on("request", r => { if (OUTSIDE.test(r.url())) outsideInFlight.add(r.url()); });
+page.on("requestfinished", r => outsideInFlight.delete(r.url()));
+page.on("requestfailed", r => { outsideInFlight.delete(r.url()); if (OUTSIDE.test(r.url())) outsideTrouble.push(new URL(r.url()).host + " " + ((r.failure() && r.failure().errorText) || "failed")); });
+page.on("console", m => {
+  if (m.type() !== "error") return;
+  const t = m.text(), u = (m.location() && m.location().url) || "";
+  if (/fonts\.g|favicon|ERR_NAME/.test(t) || (step === "Delete account" && /401/.test(t))) return;
+  if (/net::ERR_/.test(t) && OUTSIDE.test(u)) return;                                       // outside service down/slow: not an app error
+  consoleErrors.push("[" + step + "] " + t + (u && /Failed to load resource/.test(t) ? " (" + u.split("?")[0] + ")" : ""));   // name the URL so the next failure is diagnosable
+});
 const shot = n => page.screenshot({path: SHOTS + "/" + n + ".png", fullPage: true});
 const tab = async t => { await page.click('#tabbar [data-tab="' + (t === "recovery" ? "training" : t) + '"]'); await page.waitForTimeout(400); if (t === "recovery"){ await page.click('.segsw [data-tab2="recovery"]'); await page.waitForTimeout(400); } };
 const open = async sc => { await page.click('[data-scr="' + sc + '"]'); await page.waitForSelector(".scrbar", {timeout: 5000}); await page.waitForTimeout(250); };
@@ -189,8 +205,14 @@ await check("Morning check-in + AI coach note", async () => {
 if (!FAST) await check("Weather + best time to run", async () => {
   await open("weather");
   try {
+    const before = outsideTrouble.length;
     await page.fill("#wx-city", "Vero Beach"); await page.click('[data-act="wxcity"]');
-    await page.waitForSelector(".wx-t", {timeout: 20000});
+    try { await page.waitForSelector(".wx-t", {timeout: 20000}); }
+    catch(e){   // excused only when the outside weather service itself failed or is still hanging; a broken screen still fails
+      const why = outsideTrouble.slice(before).concat([...outsideInFlight].map(u => new URL(u).host + " still waiting after 20s"));
+      if (why.length) throw Object.assign(new Error("not run: weather service didn't answer (" + why.join(", ") + ")"), {outside: true});
+      throw e;
+    }
     const best = await page.$(".wx-best"); return (await page.innerText(".wx-t")) + " in " + (await page.innerText(".wx-c span")) + (best ? " · " + (await best.innerText()).replace(/\n/g, " ") : "");
   } finally { if (await page.$('[data-act="back"]')) await back(); }   // the weather service being slow mustn't fail every check after this one
 });
