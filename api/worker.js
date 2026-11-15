@@ -113,7 +113,7 @@ function retFor(req){ const o = req.headers.get("Origin") || ""; return o === "h
    which then moves itself (and the person's login) to app.hybrdrunning.com. */
 const SITE_HOSTS = new Set(["hybrdrunning.com", "www.hybrdrunning.com", "app.hybrdrunning.com", "hybridrunnin.com", "www.hybridrunnin.com", "app.hybridrunnin.com"]);
 const PAGES = "https://matthewbaconn.github.io/Hybrid";
-async function site(req, host){
+async function site(req, host, env, ctx){
   const u = new URL(req.url);
   if (host === "www.hybrdrunning.com" || host === "hybridrunnin.com" || host === "www.hybridrunnin.com") return Response.redirect("https://hybrdrunning.com" + u.pathname + u.search, 301);
   if (req.method !== "GET" && req.method !== "HEAD") return new Response("Method not allowed", {status: 405});
@@ -125,7 +125,28 @@ async function site(req, host){
   const loc = h.get("Location");
   if (loc){ const l = new URL(loc, target); h.set("Location", "https://" + host + l.pathname.replace(/^\/Hybrid(\/home)?/, "") + l.search); }
   h.delete("x-github-request-id"); h.set("X-Content-Type-Options", "nosniff");
+  if (env && ctx) countView(env, ctx, req, host, u, r);
   return new Response(r.body, {status: r.status, headers: h});
+}
+/* Website visits: one counter per page per day. Counts only: no IP, no cookie, nothing about the person.
+   Real page loads only (GET, 200, HTML, not a known bot or link preview), on the public site and the app's front door. */
+const BOT_UA = /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|telegram|discord|slack|curl|wget|python|headless|lighthouse|monitor|uptime|pingdom|playwright/i;
+function viewPath(host, pathname){
+  if (host !== "hybrdrunning.com" && host !== "app.hybrdrunning.com") return null;
+  let p = String(pathname || "/").toLowerCase().replace(/index\.html$/, "").replace(/\.html$/, "").replace(/\/+$/, "") || "/";
+  if (!/^\/[a-z0-9\-\/]{0,60}$/.test(p)) return null;
+  if (host === "app.hybrdrunning.com") return p === "/" ? "app:/" : null;      // only the app's front door, never in-app paths
+  return p;
+}
+function countView(env, ctx, req, host, u, r){
+  try {
+    if (req.method !== "GET" || r.status !== 200 || !/text\/html/i.test(r.headers.get("Content-Type") || "")) return;
+    const ua = req.headers.get("User-Agent") || "";
+    if (!ua || BOT_UA.test(ua) || /prefetch|prerender/i.test(req.headers.get("Purpose") || req.headers.get("Sec-Purpose") || "")) return;
+    const p = viewPath(host, u.pathname); if (!p) return;
+    ctx.waitUntil(env.DB.prepare("INSERT INTO page_views (day, path, n) VALUES (?, ?, 1) ON CONFLICT(day, path) DO UPDATE SET n = n + 1")
+      .bind(new Date().toISOString().slice(0, 10), p).run().catch(() => {}));
+  } catch(e){}
 }
 async function stravaToken(env, link){
   if (link.expires_at > Date.now() / 1000 + 120) return link.access_token;
@@ -1412,7 +1433,7 @@ export default {
   async fetch(req, env, ctx){
     const host = new URL(req.url).hostname;
     if (SITE_HOSTS.has(host)){
-      try { return await site(req, host); } catch(e){ return new Response("Mileset is having a moment. Try again in a minute.", {status: 502}); }
+      try { return await site(req, host, env, ctx); } catch(e){ return new Response("Mileset is having a moment. Try again in a minute.", {status: 502}); }
     }
     const h = corsFor(req), path = new URL(req.url).pathname.replace(/\/+$/, "");
     if (path.startsWith("/mcp/food/")){ try { return await foodMcp(req, env, path.slice(10)); } catch(e){ return new Response(JSON.stringify({jsonrpc: "2.0", id: null, error: {code: -32603, message: "Server error"}}), {status: 500, headers: {"Content-Type": "application/json"}}); } }
