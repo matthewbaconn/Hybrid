@@ -18,7 +18,13 @@ for (const [name, w, h] of [['phone', 390, 844], ['desktop', 1280, 900]]) {
     if (!(await p.isVisible(`#v-${v}`))) errs.push(`${name} ${v}: room did not open`);
   }
   if (!(await p.textContent('#money')).includes('never added to the API number')) errs.push(`${name}: money pools must stay separate`);
+  // website visits: the demo shows the full-week line; the real page must not set a part-week of visits against 7 days of sign-ups
+  if (!/site visits/.test(await p.textContent('#growth'))) errs.push(`${name}: demo growth room must show the visits line`);
+  const vf = await p.evaluate(() => ({full: VISITS_FULL, since: VISITS_SINCE}));
+  if (vf.since !== '2026-11-14' || vf.full !== '2026-11-21') errs.push(`${name}: visit counter dates wrong (${vf.since} -> ${vf.full})`);
   await p.goto(page); await p.waitForTimeout(900);          // no key: private rooms stay locked, nothing invented
+  const today = await p.evaluate(() => new Date().toLocaleDateString('en-CA'));
+  if ((await p.evaluate(() => visitsFull())) !== (today >= '2026-11-21')) errs.push(`${name}: the visits card must say "since Nov 14" until a full week has been counted`);
   for (const v of ['growth', 'money', 'me']) { await p.click(`#nav [data-v="${v}"]`);
     if (!(await p.textContent(`#${v}`)).includes('private')) errs.push(`${name}: ${v} must be locked without the key`); }
   // the paste-to-unlock box: a wrong paste is refused, a well-formed key is stored (it can't open the real office here, and says so)

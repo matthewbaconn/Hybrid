@@ -574,6 +574,10 @@ function go(v){ view = v; document.querySelectorAll(".view").forEach(el => el.cl
   document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
   if (v === "hq") resize(); try { scrollTo(0, 0); } catch(e){} }
 document.getElementById("nav").addEventListener("click", e => { const b = e.target.closest("button"); if (b) go(b.dataset.v); });
+// The site's visit counter went live on this day (Hybrid #19). Until it has run a full week, the card says "since" and
+// does not set a few days of visits against 7 days of sign-ups.
+const VISITS_SINCE = "2026-11-14", VISITS_FULL = new Date(Date.parse(VISITS_SINCE + "T12:00:00Z") + 7 * 864e5).toISOString().slice(0, 10);
+const visitsFull = () => DEMO || new Date().toLocaleDateString("en-CA") >= VISITS_FULL;
 function growthNow(){ const g = PRIV && PRIV.g; if (!g) return null;
   const f = g.funnel || {}, last = (g.trend || []).slice(-1)[0] || [];
   return {g, f, members: typeof f.signed_up === "number" ? f.signed_up : null, accounts: typeof last[1] === "number" ? last[1] : null,
@@ -654,8 +658,8 @@ function renderGrowth(){
      step("Signed up", f.signed_up, f.signed_up) + step("Built a plan", f.plan || 0, f.signed_up) + step("Did a workout", f.workout || 0, f.signed_up) +
      `<div class="note">${pct(f.plan || 0, f.signed_up)} build a plan · ${pct(f.workout || 0, f.signed_up)} check off a workout.<br>Still active after day 7: <b style="color:var(--ink)">${f.active_d7 || 0} of ${f.d7_eligible || 0}</b> who have been here a week (${pct(f.active_d7 || 0, f.d7_eligible || 0)}).</div>`}</div>
    <div class="card"><h4>This week's growth fix</h4>${PRIV.fix ? `<div style="font-size:14px">${esc(PRIV.fix.replace(/^GROWTH FIX OF THE WEEK:?\s*/i, ""))}</div>` : `<div class="none">None assigned yet. The analyst picks one fix a week from these numbers and grades last week's.</div>`}</div>
-   ${g.visits7 ? `<div class="card"><h4>Website visits <i>last 7 days · page loads, bots filtered</i></h4>${bars(Object.fromEntries(Object.entries(g.visits7).map(([k, v]) => [k === "/" ? "Home page" : k === "app:/" ? "App front door" : k.replace(/^\//, ""), v])), "No visits counted yet.")}
-     ${G.n7 !== null ? `<div class="note">${sum(Object.fromEntries(Object.entries(g.visits7).filter(([k]) => k !== "app:/")))} site visits → <b style="color:var(--ink)">${G.n7}</b> sign-up${G.n7 === 1 ? "" : "s"} in the same 7 days.</div>` : ""}</div>` : ""}
+   ${g.visits7 ? `<div class="card"><h4>Website visits <i>${visitsFull() ? "last 7 days" : "since " + esc(dstr(VISITS_SINCE))} · page loads, bots filtered</i></h4>${bars(Object.fromEntries(Object.entries(g.visits7).map(([k, v]) => [k === "/" ? "Home page" : k === "app:/" ? "App front door" : k.replace(/^\//, ""), v])), "No visits counted yet.")}
+     ${!visitsFull() ? `<div class="note">Counting began ${esc(dstr(VISITS_SINCE))}, so this is not a full week yet. Visits against sign-ups shows from ${esc(dstr(VISITS_FULL))}, when both cover the same 7 days.</div>` : G.n7 !== null ? `<div class="note">${sum(Object.fromEntries(Object.entries(g.visits7).filter(([k]) => k !== "app:/")))} site visits → <b style="color:var(--ink)">${G.n7}</b> sign-up${G.n7 === 1 ? "" : "s"} in the same 7 days.</div>` : ""}</div>` : ""}
    <div class="card"><h4>Not measured yet</h4><div class="note" style="margin:0">${g.visits7 ? "" : "Website visits (counter is being added) · "}Instagram reach · search rankings · revenue (the app is free for founding members). These show here once they are tracked; nothing is estimated.</div></div>
   </div>`;
 }
