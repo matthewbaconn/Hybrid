@@ -2,7 +2,7 @@
 <html lang="en" style="background:#BE383E">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#800000">
 <title>Mileset</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -44,8 +44,8 @@
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html{background:var(--bg);-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:pan-x pan-y;overscroll-behavior-y:none}
-body{touch-action:pan-x pan-y}
+html{background:var(--bg);-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:pan-x pan-y pinch-zoom;overscroll-behavior-y:none}
+body{touch-action:pan-x pan-y pinch-zoom}
 @media (pointer:coarse){input,select,textarea{font-size:16px!important}}
 html,body{overflow-x:clip;max-width:100%}
 body{margin:0;color:var(--ink);font:15px/1.55 var(--f-body);font-variant-numeric:tabular-nums;
@@ -396,6 +396,7 @@ button{cursor:pointer}
 .hub-hero .hs span{display:block;font-size:12.5px;color:rgba(255,255,255,.75)} .hub-hero .hs b{font:700 22px/1.2 var(--f-display)}
 .hub-hero .hgo{display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,.15);padding-top:14px;font-weight:600}
 .hub-hero .hdone{color:#B8F5D9;font-weight:600}
+.hub-hero .hsee{border:0;background:none;padding:0;min-height:44px;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .hub-hero .hcheck{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border:0;border-radius:999px;background:#fff;color:#800000;font-family:inherit;font-weight:700;font-size:15px;cursor:pointer}
 .hub-hero .hcheck svg{width:16px;height:16px}
 .hub-hero .hfirst{margin:0;font-size:14px;line-height:1.45;color:rgba(255,255,255,.9);background:rgba(10,11,15,.3);border-radius:10px;padding:10px 12px}
@@ -424,7 +425,7 @@ button{cursor:pointer}
 .srow .ic{color:var(--muted);width:20px;height:20px}
 .srow div{flex:1;min-width:0} .srow b{display:block;font-weight:600;font-size:15.5px} .srow span{display:block;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
 .srow > i{font-style:normal;color:var(--muted);font-size:20px}
-.day-h .mvb + .chip{display:none} .day-h .mvb{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:13.5px;min-height:32px;padding:0 4px} .day-h .mvb + .chip{margin-left:6px} .mvb .ic{width:15px;height:15px}
+.day-h .mvb + .chip{display:none} .day-h .mvb{color:#EC8589;margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:13.5px;min-height:32px;padding:0 4px} .day-h .mvb + .chip{margin-left:6px} .mvb .ic{width:15px;height:15px}
 .mvl{display:grid;gap:8px} .mvo{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--sunk);border:0;border-left:4px solid var(--tc,var(--rest));border-radius:7px;padding:12px 14px;color:var(--ink);min-height:56px}
 .mvo div{flex:1;min-width:0} .mvo b{display:block;font-weight:600;font-size:15px} .mvo span{display:block;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
 .mvo em{display:block;font-style:normal;font-size:12.5px;color:var(--warn,#E8A33D);margin-top:4px} .mvo .okm{display:block;font-style:normal;font-size:12.5px;color:var(--good,#4CAF7A);margin-top:4px} .mvo > i{font-style:normal;color:var(--muted);font-size:20px}
@@ -745,7 +746,7 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .logo,.getapp,.steps-bar i.on{background:var(--accent)} .getapp{box-shadow:none}
 .hero-h{background:color-mix(in srgb,var(--tc) 34%,#111318)}
 .hub-hero{background:color-mix(in srgb,var(--tc) 30%,#111318)}
-.day-h{background:color-mix(in srgb,var(--tc) 13%,#15171D)}
+.day-h{background:color-mix(in srgb,var(--tc) 13%,#15171D)} .day.t-rest .day-h b{color:var(--muted)}   /* the rest-day grey was 4.1:1 on its own header */
 .verdict{background:color-mix(in srgb,var(--good) 10%,#14161C)} .verdict.v1{background:color-mix(in srgb,var(--work) 10%,#14161C)} .verdict.v2{background:color-mix(in srgb,var(--race) 10%,#14161C)}
 .inst{background:color-mix(in srgb,var(--accent) 12%,#14161C)}
 .scard{background:var(--surface)} .scard.hi{background:color-mix(in srgb,var(--accent) 14%,var(--surface))} .icard{background:var(--surface)}
@@ -1984,13 +1985,14 @@ function heroSummary(day){
     const stats = s.type === "lift" ? [["Exercises", s.steps.length], ["Time", s.min ? s.min + ' min' : "~50 min"]]
       : minOnly(s) ? [].concat(s.yd ? [["Distance", comma(s.yd) + ' yd']] : s.bmi ? [["About", s.bmi + ' mi']] : []).concat(tt ? [["Time", fmtTime(tt).replace(/:\d\d$/, "") + (tt >= 3600 ? '' : ' min')]] : [])
       : [["Distance", s.mi + ' mi']].concat(tt ? [["Time", fmtTime(tt).replace(/:\d\d$/, "") + (tt >= 3600 ? '' : ' min')]] : []).concat([[s.type === "race" ? "Goal pace" : "Pace", kp + '/mi']]);
-    return '<article class="hub-hero t-' + s.type + '" data-act="go" data-scr="session" role="button" tabindex="0" aria-label="Open today\'s session">' +
+    const inner = !isDone && s.type !== "race";   // the card holds its own "I did it" button: then the card isn't a button itself, "See the workout" is
+    return '<article class="hub-hero t-' + s.type + '" data-act="go" data-scr="session"' + (inner ? '' : ' role="button" tabindex="0" aria-label="Open today\'s session"') + '>' +
       '<div class="hh"><span>' + (i ? 'Also today' : 'Today · ' + fmtD(TODAY)) + '</span><span class="chip">' + TYPE[s.type] + '</span></div><h3>' + esc(s.title) + '</h3>' +
       '<div class="hs">' + stats.map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
       (adj ? '<p class="hadj">' + (r.level === 1 ? 'Go easier today: trimmed for how you feel.' : 'Recovery day: keep it easy or rest.') + '</p>' : '') +
       (!isDone && first1 && !i ? '<p class="hfirst">Your first workout. When it\'s done, tap I did it. Runs from Strava or Garmin check off on their own.</p>' : '') +
-      '<div class="hgo">' + (isDone ? '<span class="hdone">✓ Done' + (m[i] ? ' · ' + esc(m[i].name) : '') + '</span>' : '<span>See the workout</span>') +
-      (!isDone && s.type !== "race" ? '<button class="hcheck" type="button" data-act="done" data-key="' + key + '" aria-label="I did it: check off ' + esc(s.title) + '">' + ic("check") + 'I did it</button>' : '<span>›</span>') + '</div></article>';
+      '<div class="hgo">' + (isDone ? '<span class="hdone">✓ Done' + (m[i] ? ' · ' + esc(m[i].name) : '') + '</span>' : inner ? '<button class="hsee" type="button" data-act="go" data-scr="session">See the workout</button>' : '<span>See the workout</span>') +
+      (inner ? '<button class="hcheck" type="button" data-act="done" data-key="' + key + '" aria-label="I did it: check off ' + esc(s.title) + '">' + ic("check") + 'I did it</button>' : '<span>›</span>') + '</div></article>';
   }).join("");
 }
 function renderToday(){
@@ -2009,7 +2011,7 @@ function renderToday(){
   if (TODAY < first){ h += '<section class="card"><h2 class="sec-t">Your plan starts ' + fmtD(first) + '</h2><p class="sub">Keep running easy until then. Open the Plan tab to see week 1.</p></section>'; return h; }
   if (TODAY > last){ h += '<section class="card"><h2 class="sec-t">Plan complete</h2><p class="sub">Nice work. Open settings to build your next plan.</p></section>'; return h; }
   const day = dayOf(TODAY), f = fuelFor(p, day, TODAY), e = eaten(TODAY), left = f.cal - e.cal;
-  const tile = (scrName, tone, title, big, sub, extra, wide) => '<div class="tl' + (wide ? ' wide' : '') + '" style="--tc:var(--' + tone + ')" data-act="go" data-scr="' + scrName + '" role="button" tabindex="0"><div class="tt"><i></i>' + title + '<em>›</em></div><b>' + big + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + (extra || '') + '</div>';
+  const tile = (scrName, tone, title, big, sub, extra, wide) => '<div class="tl' + (wide ? ' wide' : '') + '" style="--tc:var(--' + tone + ')" data-act="go" data-scr="' + scrName + '"' + (/<button/.test(extra || "") ? '' : ' role="button" tabindex="0"') + '><div class="tt"><i></i>' + title + '<em>›</em></div><b>' + big + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + (extra || '') + '</div>';
   const fuelTile = tile("fuel", "accent-2", "Fuel", comma(Math.abs(left)) + ' <small>' + (left < 0 ? 'cal over' : 'cal left') + '</small>', comma(e.cal) + ' eaten of ' + comma(f.cal),
     '<div class="bar"><i style="width:' + (f.cal ? Math.min(100, e.cal / f.cal * 100) : 0) + '%' + (left < 0 ? ';background:var(--crit)' : '') + '"></i></div><button class="btn primary tbtn" type="button" data-act="go" data-scr="fuel">' + ic("plus") + 'Log food</button>', true);
   const list = actsOn(TODAY), wt = weights[TODAY], aw7 = avgWeight(TODAY), L = wxLoc();
@@ -2858,7 +2860,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "77";
+const APP_VERSION = "78";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2967,8 +2969,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-16.2";
+const NEW_ID = "2026-11-16.3";
 const NEWS = [
+  ["spark", "Pinch to zoom anywhere", "Small text? Spread two fingers to zoom in on any screen, and pinch to zoom back out.", null, null, "2026-11-16.3"],
   ["check", "Check off a workout in one tap", "On Today, tap I did it on your workout when you're done. Runs from Strava or Garmin still check off on their own.", null, null, "2026-11-16.2"],
   ["share", "See who joins through your invite link", "Open More, then Your invite link: copy or share your personal link and see how many people joined through it.", "invites", null, "2026-11-16"],
   ["flag", "A cleaner Today screen", "Today's workout is now at the top, and your race countdown is one card with days to go and how far through your plan you are.", null, null, "2026-11-15.3"],

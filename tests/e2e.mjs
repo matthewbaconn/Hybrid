@@ -233,6 +233,23 @@ await check("Watch connected: readiness and sleep replace the morning survey", a
     await page.unroute("**/api/me", fake); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
   }
 }, {needs: "Morning check-in + AI coach note"});
+await check("Accessibility: zoom allowed, no button inside a button on Today, day headers readable on Plan", async () => {
+  await tab("today"); await page.waitForSelector(".hub-hero");
+  const vp = await page.getAttribute('meta[name="viewport"]', "content");
+  if (/user-scalable\s*=\s*no|maximum-scale\s*=\s*1(\D|$)/.test(vp)) throw new Error("the page still switches zoom off: " + vp);
+  const nested = await page.evaluate(() => [...document.querySelectorAll('#app [role="button"], #app button, body [role="button"], body button')].filter(el => el.querySelector('button, [role="button"], a[href]')).map(el => el.className).slice(0, 5));
+  if (nested.length) throw new Error("a button holds another button: " + nested.join(" | "));
+  if (await page.locator(".hub-hero .hcheck").count() && !(await page.locator(".hub-hero button.hsee").count())) throw new Error("the workout card lost its way to open the session by keyboard");
+  await tab("plan"); await page.waitForSelector(".day-h");
+  const low = await page.evaluate(() => {
+    const lum = c => { const [r, g, b] = c.match(/[\d.]+/g).slice(0, 3).map(v => { v = v / 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * r + .7152 * g + .0722 * b; };
+    const probe = document.createElement("canvas").getContext("2d");
+    const rgb = c => { probe.fillStyle = "#000"; probe.fillStyle = c; probe.fillRect(0, 0, 1, 1); const d = probe.getImageData(0, 0, 1, 1).data; return "rgb(" + d[0] + "," + d[1] + "," + d[2] + ")"; };
+    return [...document.querySelectorAll(".day-h .mvb, .day-h b")].map(b => { const fg = lum(rgb(getComputedStyle(b).color)), bg = lum(rgb(getComputedStyle(b.closest(".day-h")).backgroundColor)); return Math.round((Math.max(fg, bg) + .05) / (Math.min(fg, bg) + .05) * 100) / 100; }).filter(x => x < 4.5);
+  });
+  if (low.length) throw new Error("a day title or Move button is hard to read in " + low.length + " place(s): " + low.join(", ") + ":1");
+  await tab("today");
+}, {needs: "Build a plan (4 steps)"});
 await check("A crafted #move link can't switch a signed-in member into another account", async () => {
   const mine = await page.evaluate(() => localStorage.getItem("hp-token"));
   if (!/^[a-f0-9]{64}$/.test(mine || "")) throw new Error("no login to protect");
