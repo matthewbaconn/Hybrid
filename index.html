@@ -681,6 +681,7 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .board.big li{padding:14px 0;font-size:16px}
 .crewc{cursor:pointer}
 .code{font:700 34px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;text-align:center;padding:14px;border-radius:8px;background:var(--sunk);user-select:all}
+.code.invurl{font-size:15px;letter-spacing:0;overflow-wrap:anywhere;margin:10px 0}.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.invbig{font:800 44px/1.1 var(--f-display);margin:4px 0 12px}.invbig+.wkstats{grid-template-columns:repeat(2,minmax(0,1fr))}
 .stbtn{border:0;padding:0;background:none;display:block;justify-self:center;line-height:0;border-radius:6px;transition:transform .08s ease,opacity .12s}.stbtn img{display:block;height:48px;width:auto}.stbtn:active{transform:scale(.97);opacity:.9}.stwrap{padding:0 0 16px;display:grid;border-bottom:1px solid var(--line)}.stbtn:disabled{opacity:.6}
 .cws{display:flex;width:fit-content;align-items:center;background:#fff;border-radius:4px;padding:5px 8px;margin-top:8px;font-style:normal;line-height:0}.cws img{height:10px;width:auto;display:block}
 
@@ -2840,7 +2841,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "73";
+const APP_VERSION = "74";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2949,8 +2950,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-15.2";
+const NEW_ID = "2026-11-16";
 const NEWS = [
+  ["share", "See who joins through your invite link", "Open More, then Your invite link: copy or share your personal link and see how many people joined through it.", "invites", null, "2026-11-16"],
   ["run", "Gentler first weeks at low mileage", "Running under about 3 miles a day? Your plan now uses fewer of your run days early on, so week one is close to what you run now. Rest days fill the rest.", null, null, "2026-11-15.2"],
   ["watch", "Watch connected? No more morning survey", "Today now shows your readiness, sleep, HRV and resting heart rate straight from your watch. Tap Add how you feel if you want to adjust it.", null, null, "2026-11-15"],
   ["swap", "Changing a workout is easier", "Tap Change workout: similar options show first, and the search box on top finds anything else.", null, null, "2026-11-14.2"],
@@ -2997,7 +2999,7 @@ function askNotif(){
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 const SCR_T = {fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
   settings: "Settings", "set-notif": "Notifications", "set-watch": "Devices and apps", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
-  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Mileset works", "set-email": "Email", "set-password": "Password",  "p-load": "Training load", "p-fit": "Fitness and form", "p-focus": "Training focus and zones", "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", members: "Members", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew"};
+  "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Mileset works", "set-email": "Email", "set-password": "Password",  "p-load": "Training load", "p-fit": "Fitness and form", "p-focus": "Training focus and zones", "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", members: "Members", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew", invites: "Your invite link"};
 const SCR_UP = {"set-acct": "settings", "set-train": "settings", "set-help": "settings", "set-health-info": "set-help", "set-terms": "set-help", "set-about": "set-help", "set-report": "set-help", "set-reports": "set-help", "set-profile": "set-acct", "set-email": "set-acct", "set-password": "set-acct", "set-account": "set-acct", "set-hr": "set-train", "set-run": "set-train", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", meals: "fuel", crew: "crews"};
 let navDir = null;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -3013,6 +3015,7 @@ function nav(dir, fn){
 function go(s){
   const dir = s === null || SCR_UP[scr] === s || (scr && !s) ? "back" : "fwd";
   if (s === "members" && mem) mem.stale = true;
+  if (s === "invites" && inv) inv.stale = true;
   if (s === "set-notif" && mode === "account" && pushOK() && !pushState.checked) checkPush().then(() => { if (scr === "set-notif") render(); });
   nav(dir, () => { scr = s; render(); window.scrollTo(0, 0); });
 }
@@ -3028,6 +3031,7 @@ function renderScreen(){
   else if (s === "fuelplan") h = plan ? fuelPlanHtml() : '';
   else if (s === "meals") h = plan ? mealsHtml() : '';
   else if (s === "crews") h = crewsHtml();
+  else if (s === "invites") h = invitesHtml();
   else if (s === "crew") h = crewHtml();
   else if (s === "workouts") h = workoutCard();
   else if (s === "weather") h = weatherCard();
@@ -3055,6 +3059,7 @@ function renderMore(){
   if (mode === "account" && isOwner) h += card("go", "Members", "Only you see this · who signed up and what they've linked", "user", "members", "hi");
   h += card("go", "FAQ", "How plans, calories, recovery and syncing work", "spark", "faq");
   if (API) h += card("invite", "Invite a friend", "Send them Mileset. It's free to try", "share");
+  if (API && mode === "account") h += card("go", "Your invite link", "See how many people joined through your link", "bars", "invites");
   h += '<a class="scard" href="https://www.instagram.com/hybrdrunning/" target="_blank" rel="noopener"><i class="mi">' + ic("camera") + '</i><div><b>Follow @hybrdrunning</b><span>Tips, new features and early access news on Instagram</span></div><i>›</i></a>';
   h += card("go", "Settings", "Account, devices and apps, notifications", "gear", "settings");
   h += card("go", "Help and support", "Report a problem, health and safety, terms and privacy", "heart", "set-help");
@@ -3081,7 +3086,25 @@ function inviteCard(){
   if (fspots <= 0) return '';
   return '<section class="card invc" style="--tone:var(--accent-2)"><div class="card-h">' + ic("share") + '<span class="lbl">Bring a training partner</span><button class="linkbtn r" type="button" data-act="invskip">Not now</button></div>' +
     '<p class="sub">' + fspots + ' Founding 100 spot' + (fspots === 1 ? '' : 's') + ' left. Anyone who joins before Jan 1 gets Mileset free for life, like you.</p>' +
-    '<button class="btn primary block" type="button" data-act="invite">' + ic("share") + 'Send an invite</button></section>';
+    '<button class="btn primary block" type="button" data-act="invite">' + ic("share") + 'Send an invite</button>' +
+    '<button class="linkbtn" type="button" data-act="go" data-scr="invites" style="justify-self:center">See who joined through your link</button></section>';
+}
+/* Your invite link: the member's own link and how many joined through it (counts only, never names) */
+let inv = null;
+function inviteUrl(){ return location.origin + location.pathname + (me && me.id ? "?ref=" + me.id.slice(0, 8) : ""); }
+function invitesHtml(){
+  if (!inv || inv.stale){ if (!inv || !inv.busy){ inv = {busy: true, d: inv && inv.d}; api("GET", "/api/invites").then(j => { inv = {d: j}; if (scr === "invites") render(); }).catch(e => { inv = {err: e.message}; if (scr === "invites") render(); }); } }
+  const d = inv && inv.d;
+  let h = '<section class="card" style="--tone:var(--accent-2)"><div class="card-h">' + ic("share") + '<span class="lbl">Your link</span></div>' +
+    '<p class="sub">Anyone who signs up from this link counts as joined through you.</p><div class="code invurl">' + esc(inviteUrl()) + '</div>' +
+    '<div class="row2"><button class="btn primary" type="button" data-act="invite">' + ic("share") + 'Share</button><button class="btn" type="button" data-act="invcopy">Copy link</button></div></section>';
+  if (inv && inv.err && !d) return h + '<section class="card"><p class="sub">Couldn\'t load your stats: ' + esc(inv.err) + '</p></section>';
+  if (!d) return h + '<section class="card"><p class="sub">Loading…</p></section>';
+  h += '<section class="card"><div class="card-h"><span class="lbl">Joined through your link</span></div><div class="invbig" data-n="' + d.joined + '">' + d.joined + '</div>' +
+    '<div class="wkstats"><div><span>Last 7 days</span><b>' + d.week + '</b></div><div><span>Built a plan</span><b>' + d.plan + '</b></div></div>' +
+    (d.weeks.length ? '<ul class="fl">' + d.weeks.map(w => '<li><div class="fi"><b>Week of ' + fmtD(w.start) + '</b></div><span class="r">' + w.n + ' joined</span></li>').join("") + '</ul>' : '<p class="sub">No one yet. Share your link to get started.</p>') +
+    '<p class="sub">To keep everyone\'s account private, you see counts only, never names or emails.</p></section>';
+  return h;
 }
 /* Activation funnel (owner only): sign-up → plan → first workout → still active after day 7; flags the biggest drop */
 function funnelHtml(f){
@@ -3204,6 +3227,7 @@ document.addEventListener("click", ev => {
       .catch(e => { feelBusy = null; render(); toast(e.message); });
     return;
   }
+  if (act === "invcopy"){ const u = inviteUrl(); if (navigator.clipboard) navigator.clipboard.writeText(u).then(() => toast("Link copied."), () => toast(u)); else toast(u); return; }
   if (act === "invskip"){ try { localStorage.setItem("hy-invskip", TODAY); } catch(e){} render(); return; }
   if (act === "invite"){
     const url = location.origin + location.pathname + (me && me.id ? "?ref=" + me.id.slice(0, 8) : ""), msg = "I've been training with Mileset. It builds a plan for your race, sets your food targets and adjusts when you're tired. Try it free: " + url;
