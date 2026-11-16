@@ -396,6 +396,9 @@ button{cursor:pointer}
 .hub-hero .hs span{display:block;font-size:12.5px;color:rgba(255,255,255,.75)} .hub-hero .hs b{font:700 22px/1.2 var(--f-display)}
 .hub-hero .hgo{display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,.15);padding-top:14px;font-weight:600}
 .hub-hero .hdone{color:#B8F5D9;font-weight:600}
+.hub-hero .hcheck{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border:0;border-radius:999px;background:#fff;color:#800000;font-family:inherit;font-weight:700;font-size:15px;cursor:pointer}
+.hub-hero .hcheck svg{width:16px;height:16px}
+.hub-hero .hfirst{margin:0;font-size:14px;line-height:1.45;color:rgba(255,255,255,.9);background:rgba(10,11,15,.3);border-radius:10px;padding:10px 12px}
 .hub-hero .hadj{font-size:13.5px;color:#FFE9A8}
 .hub-hero + .hub-hero{margin-top:-26px;border-top:1px solid rgba(255,255,255,.08)}
 .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -1972,6 +1975,7 @@ function greeting(p, w){
 }
 function heroSummary(day){
   const t = dayType(day), m = dayMatches(TODAY), F = fb(), r = readiness(checkins[TODAY], sigOn(TODAY));
+  const first1 = !Object.keys(done).length && !acts.length;   // never checked off or synced a workout: coach the first one (B7)
   if (!day.sessions.length) return '<section class="hub-hero t-rest" style="cursor:default"><div class="hh"><span>Today</span><span class="chip">Rest</span></div><h3>Rest day</h3><p style="color:rgba(255,255,255,.8)">An easy walk or mobility is plenty. Sleep and food do the work today.</p></section>';
   return day.sessions.map((s, i) => {
     const key = TODAY + "-" + i, isDone = !!m[i] || !!done[key], tt = estTime(s), adj = r && r.level && ADJ[r.level][s.type];
@@ -1983,7 +1987,9 @@ function heroSummary(day){
       '<div class="hh"><span>' + (i ? 'Also today' : 'Today · ' + fmtD(TODAY)) + '</span><span class="chip">' + TYPE[s.type] + '</span></div><h3>' + esc(s.title) + '</h3>' +
       '<div class="hs">' + stats.map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
       (adj ? '<p class="hadj">' + (r.level === 1 ? 'Go easier today: trimmed for how you feel.' : 'Recovery day: keep it easy or rest.') + '</p>' : '') +
-      '<div class="hgo">' + (isDone ? '<span class="hdone">✓ Done' + (m[i] ? ' · ' + esc(m[i].name) : '') + '</span>' : '<span>See the workout</span>') + '<span>›</span></div></article>';
+      (!isDone && first1 && !i ? '<p class="hfirst">Your first workout. When it\'s done, tap I did it. Runs from Strava or Garmin check off on their own.</p>' : '') +
+      '<div class="hgo">' + (isDone ? '<span class="hdone">✓ Done' + (m[i] ? ' · ' + esc(m[i].name) : '') + '</span>' : '<span>See the workout</span>') +
+      (!isDone && s.type !== "race" ? '<button class="hcheck" type="button" data-act="done" data-key="' + key + '" aria-label="I did it: check off ' + esc(s.title) + '">' + ic("check") + 'I did it</button>' : '<span>›</span>') + '</div></article>';
   }).join("");
 }
 function renderToday(){
@@ -2851,7 +2857,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "75";
+const APP_VERSION = "76";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2960,8 +2966,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-16";
+const NEW_ID = "2026-11-16.2";
 const NEWS = [
+  ["check", "Check off a workout in one tap", "On Today, tap I did it on your workout when you're done. Runs from Strava or Garmin still check off on their own.", null, null, "2026-11-16.2"],
   ["share", "See who joins through your invite link", "Open More, then Your invite link: copy or share your personal link and see how many people joined through it.", "invites", null, "2026-11-16"],
   ["flag", "A cleaner Today screen", "Today's workout is now at the top, and your race countdown is one card with days to go and how far through your plan you are.", null, null, "2026-11-15.3"],
   ["run", "Gentler first weeks at low mileage", "Running under about 3 miles a day? Your plan now uses fewer of your run days early on, so week one is close to what you run now. Rest days fill the rest.", null, null, "2026-11-15.2"],
@@ -3209,8 +3216,9 @@ document.addEventListener("click", ev => {
   if (act === "prev"){ setup.err = ""; if (setup.step === 0 && plan){ setup = null; render(); return; } setup.step = Math.max(-1, setup.step - 1); render(); window.scrollTo(0, 0); return; }
   if (act === "sample"){ if (API) mode = "sample"; plan = buildPlan({...SAMPLE}); setup = null; save(); setTab("today", true); toast("Showing a sample runner. Tap the gear to build your own plan."); return; }
   if (act === "done"){
-    const k = a.dataset.key, on = !done[k];
+    const k = a.dataset.key, on = !done[k], firstEver = on && !Object.keys(done).length && !acts.length;
     if (on) done[k] = 1; else delete done[k]; save(); render();
+    if (firstEver) toast("First workout checked off. The first one is the hardest. Nice work.");
     if (mode === "account") api("PUT", "/api/done", {key: k, done: on}).catch(e => { if (on) delete done[k]; else done[k] = 1; render(); toast(e.message); });
     return;
   }
