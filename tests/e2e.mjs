@@ -277,10 +277,10 @@ await check("Activities tab (feed + detail)", async () => {
 }, {needs: "Log a workout (with rep pace)"});
 await check("Today overview", async () => {
   await tab("today"); const order = await page.$$eval("#app .view > *", els => els.map(e => e.classList.contains("ci-done") ? "readiness" : e.dataset.scr || e.className));
-  const ci = order.indexOf("readiness"), fu = order.indexOf("fuel");
-  if (ci < 0 || fu !== ci + 1) throw new Error(order.join(" > "));
+  const ci = order.indexOf("readiness"), fu = order.indexOf("fuel"), wo = order.findIndex(x => /\bsession\b/.test(x));
+  if (ci < 0 || fu < 0 || (wo >= 0 && !(ci < wo && wo < fu))) throw new Error(order.join(" > "));   // today's workout comes before food (Nov 15)
   for (const sc of ["workouts", "weight", "weather"]) if (!(await page.locator('.tl[data-scr="' + sc + '"]').count())) throw new Error("missing " + sc + " tile");
-  await noOverflow(); await shot("08-today-overview"); return "check-in → fuel → workout → tiles";
+  await noOverflow(); await shot("08-today-overview"); return "check-in → workout → fuel → tiles";
 });
 await check("Settings: Watch", async () => {
   await settings(); await shot("07-settings"); await open("set-watch"); const t = await page.innerText(".apps");
