@@ -402,7 +402,8 @@ button{cursor:pointer}
 .tl{background:var(--surface);border:1px solid rgba(255,255,255,.05);border-radius:8px;padding:18px;display:grid;gap:6px;align-content:start;min-height:132px;cursor:pointer;text-align:left;color:var(--ink);min-width:0}
 .tl.wide{grid-column:1/-1;min-height:0}
 .tl .tt{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-weight:600}
-.tl .tt i{width:8px;height:8px;border-radius:2px;background:var(--tc,var(--muted))}
+.tl .tt i{display:none}
+.tl b .tl-add{font:700 20px/1.6 var(--f-body);font-style:normal;letter-spacing:0;color:var(--tc,var(--accent-2))}
 .tl .tt em{margin-left:auto;font-style:normal;color:var(--muted)}
 .tl b{font:800 30px/1.1 var(--f-display);letter-spacing:-.03em;overflow-wrap:anywhere}
 .tl b small{font:600 14px var(--f-body);color:var(--muted);letter-spacing:0}
@@ -2008,15 +2009,15 @@ function renderToday(){
   const quickW = !wt && wskip !== TODAY && wAsk() ? '<section class="card qw" style="--tone:var(--lift)"><div class="card-h">' + ic("scale") + '<span class="lbl">Morning weigh-in</span><button class="linkbtn r" type="button" data-act="wskip">Not today</button></div>' +
     '<div class="wform"><input id="w-lb" inputmode="decimal" placeholder="' + (aw7 ? aw7.toFixed(1) : "Weight") + '" aria-label="Weight in pounds"><span>lb</span><button class="btn primary" type="button" data-act="wsave">Save</button></div>' + (wf && wf.err ? '<p class="err" role="alert">' + esc(wf.err) + '</p>' : '') + '</section>' : '';
   const mvT = day.sessions.length && canMove(TODAY) && moveTargets(TODAY).length && !day.sessions.some((s, i) => sessDone(TODAY, i, dayMatches(TODAY)));
-  h += checkinCard() + cycleCard(day) + fuelTile + heroSummary(day) + (mvT ? '<button class="linkbtn hmove" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t do it today? Move it</button>' : '') + missedCard() + quickW;
+  h += checkinCard() + cycleCard(day) + heroSummary(day) + (mvT ? '<button class="linkbtn hmove" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t do it today? Move it</button>' : '') + missedCard() + fuelTile + quickW;   // today's workout first, then food
   if (L && wxState === "idle") setTimeout(() => loadWeather(), 0);
   const nowKey = TODAY + "T" + String(new Date().getHours()).padStart(2, "0") + ":00", bw = wx && wxState === "ok" ? HP.bestWindow(wx.hours, nowKey, addDays(TODAY, 1)) : null;
   let wmi = 0, wdone = 0;
   if (w) w.days.forEach(d => { const m = dayMatches(d.date); d.sessions.forEach((s, i) => { if (sessDone(d.date, i, m)) wdone += plan.multi ? (m[i] && m[i].minutes ? m[i].minutes : s.min || 0) / 60 : m[i] && m[i].mi ? m[i].mi : s.mi || 0; }); });
   h += '<div class="tgrid">' +
-    tile("workouts", "easy", "Workouts", list.length ? list.length + ' <small>today</small>' : '–', list.length ? esc(list[list.length - 1].name) : 'Log one, or sync Strava') +
-    tile("weight", "lift", "Weight", wt ? wt + ' <small>lb</small>' : aw7 ? aw7.toFixed(1) + ' <small>lb avg</small>' : '–', wt ? 'Weighed in today' : 'Tap to weigh in') +
-    tile("weather", "work", "Weather", wx && wxState === "ok" ? wx.now.temp_f + '°' : '–', !L ? 'Set your city' : bw ? 'Best ' + (bw.day === TODAY ? 'today ' : 'tomorrow ') + hr12(bw.h0) : wxState === "error" ? 'Couldn\'t load' : 'Loading…') +
+    tile("workouts", "easy", "Workouts", list.length ? list.length + ' <small>today</small>' : '<i class="tl-add">+ Log</i>', list.length ? esc(list[list.length - 1].name) : 'Log one, or sync Strava') +
+    tile("weight", "lift", "Weight", wt ? wt + ' <small>lb</small>' : aw7 ? aw7.toFixed(1) + ' <small>lb avg</small>' : '<i class="tl-add">+ Add</i>', wt ? 'Weighed in today' : 'Tap to weigh in') +
+    tile("weather", "work", "Weather", wx && wxState === "ok" ? wx.now.temp_f + '°' : !L ? '<i class="tl-add">+ City</i>' : '…', !L ? 'Set your city' : bw ? 'Best ' + (bw.day === TODAY ? 'today ' : 'tomorrow ') + hr12(bw.h0) : wxState === "error" ? 'Couldn\'t load' : 'Loading…') +
     (w ? tile("t-miles", "long", "This week", plan.multi ? Math.round(wdone * 10) / 10 + ' <small>of ' + w.hours + ' h</small>' : half(wdone) + ' <small>of ' + w.miles + ' mi</small>', 'Week ' + w.n + ' · ' + esc(w.phase)) : '') + '</div>';
   h += inviteCard();
   const tm = dayOf(addDays(TODAY, 1));
@@ -2960,7 +2961,7 @@ async function pushOn(){
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
 const NEW_ID = "2026-11-15.3";
 const NEWS = [
-  ["flag", "A cleaner race countdown", "Today shows days to go, your race date and how far through your plan you are, all in one card.", null, null, "2026-11-15.3"],
+  ["flag", "A cleaner Today screen", "Today's workout is now at the top, and your race countdown is one card with days to go and how far through your plan you are.", null, null, "2026-11-15.3"],
   ["run", "Gentler first weeks at low mileage", "Running under about 3 miles a day? Your plan now uses fewer of your run days early on, so week one is close to what you run now. Rest days fill the rest.", null, null, "2026-11-15.2"],
   ["watch", "Watch connected? No more morning survey", "Today now shows your readiness, sleep, HRV and resting heart rate straight from your watch. Tap Add how you feel if you want to adjust it.", null, null, "2026-11-15"],
   ["swap", "Changing a workout is easier", "Tap Change workout: similar options show first, and the search box on top finds anything else.", null, null, "2026-11-14.2"],
