@@ -102,6 +102,16 @@ await check("Build a plan (4 steps)", async () => {
   if (await page.locator('.hub-hero[data-scr="session"]').count()){ await open("session"); await page.waitForSelector(".hero .sess-t"); await noOverflow(); await shot("02b-session"); await back(); }
   return t;
 });
+await check("First workout: one tap on Today checks it off (then undone)", async () => {
+  await tab("today"); const btn = page.locator(".hub-hero .hcheck").first();
+  if (!(await btn.count())){ if (await page.locator(".hfirst").count()) throw new Error("first-workout tip shown without a check-off button"); return "rest day today: no button (correct)"; }
+  if (!(await page.locator(".hub-hero .hfirst").count())) throw new Error("new member: first-workout tip missing");
+  await shot("02c-first-workout"); await btn.click(); await page.waitForSelector(".hub-hero .hdone", {timeout: 5000});
+  const msg = await page.innerText(".toast"); if (!/First workout checked off/.test(msg)) throw new Error("toast: " + msg);
+  if (await page.locator(".hub-hero .hfirst").count()) throw new Error("tip still shown after the check-off"); await shot("02d-first-done");
+  await open("session"); await page.click('.hero [data-act="done"] >> nth=0'); await back();   // undo: later checks expect today's workout open
+  await page.waitForSelector(".hub-hero .hcheck", {timeout: 5000}); return "tip + one tap + toast, undone";
+}, {needs: "Build a plan (4 steps)"});
 await check("Move a day (calendar picker, preview, saved, put back)", async () => {
   await tab("plan"); await page.waitForSelector(".day-h");
   const btn = page.locator(".day-h .mvb").last(); if (!(await btn.count())) throw new Error("no Move button on the plan");

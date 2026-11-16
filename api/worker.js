@@ -632,6 +632,7 @@ async function cron(env, ctx){
   await logEvent(env, "cron", true);
   await outbox(env).catch(e => logEvent(env, "bulk_mail", false, "outbox: " + String(e && e.message).slice(0, 100)));
   await day7Nudges(env).catch(e => logEvent(env, "nudge_mail", false, "cron: " + String(e && e.message).slice(0, 100)));
+  await firstWorkoutNudges(env).catch(e => logEvent(env, "first_workout", false, "cron: " + String(e && e.message).slice(0, 100)));
   // once a day (after 4 am local) refresh the next 7 days of workouts on each athlete's Garmin
   for (const {user_id} of (await env.DB.prepare("SELECT user_id FROM garmin_links WHERE permissions LIKE '%WORKOUT_IMPORT%'").all()).results){
     try { const L = localNow((await settingsOf(env, user_id)).tz); if (L.hm >= "04:00" && await once(env, user_id, "gwork", L.date)) await garminWorkouts(env, user_id); }
@@ -743,6 +744,60 @@ async function day7Nudges(env){
     const ok = await nudgeMail(env, u.id, u.name, u.email);
     await env.DB.prepare("UPDATE lifecycle_mail SET ok = ? WHERE user_id = ? AND kind = 'nudge7'").bind(ok ? 1 : 0, u.id).run();
   }
+}
+/* first-workout reminder (B7, Matthew approved Nov 15: "Let's do 1"; member contact policy): once per member ever,
+   3+ days after they built (or last changed) a plan that has had sessions since, when they have never checked off a
+   workout and nothing has synced. One push if they turned notifications on, otherwise one email (never to unsubscribed,
+   test or owner accounts, never within 48 h of another email). 9 am-7 pm their time. Uses the plan only, never Strava data. */
+async function firstWorkoutNudges(env){
+  const t = Date.now(), iso = d => new Date(t - d * 864e5).toISOString();
+  const rows = (await env.DB.prepare(
+    "SELECT u.id, u.name, u.email, u.no_mail FROM users u JOIN profiles p ON p.user_id = u.id WHERE " + REAL("u.") + " AND p.updated <= ? " +
+    "AND NOT EXISTS (SELECT 1 FROM done d WHERE d.user_id = u.id) AND NOT EXISTS (SELECT 1 FROM activities a WHERE a.user_id = u.id) " +
+    "AND NOT EXISTS (SELECT 1 FROM lifecycle_mail l WHERE l.user_id = u.id AND l.kind = 'first_workout') LIMIT 20"
+  ).bind(iso(3)).all()).results;
+  if (!rows.length) return;
+  const bulk = await env.DB.prepare("SELECT 1 FROM mail_sent WHERE sent_at > ? AND sent > 0").bind(iso(2)).first();
+  for (const u of rows){
+    const L = localNow((await settingsOf(env, u.id)).tz);
+    if (L.hm < "09:00" || L.hm >= "19:00") continue;
+    const U = await loadUser(env, u.id, L.date); if (!U) continue;
+    let had = false; for (let k = 1; k <= 3; k++){ const d = HP.dayOf(U.plan, HP.addDays(L.date, -k)); if (d && d.sessions.length) had = true; }
+    if (!had) continue;                                            // plan not started yet, or only rest days so far
+    let next = null; for (let k = 0; k < 7 && !next; k++){ const dt = HP.addDays(L.date, k), d = HP.dayOf(U.plan, dt); if (d && d.sessions.length) next = {k, dt, title: d.sessions[0].title}; }
+    if (!next) continue;
+    const when = next.k === 0 ? "Today" : next.k === 1 ? "Tomorrow" : HP.DAYF[HP.dow(next.dt)];
+    const push = await env.DB.prepare("SELECT 1 FROM push_subs WHERE user_id = ?").bind(u.id).first();
+    if (!push){
+      if (u.no_mail || bulk || !env.RESEND_API_KEY) continue;
+      const near = await env.DB.prepare("SELECT 1 FROM lifecycle_mail WHERE user_id = ? AND sent_at > ?").bind(u.id, iso(2)).first();
+      if (near) continue;
+    }
+    const claim = await env.DB.prepare("INSERT OR IGNORE INTO lifecycle_mail (user_id, kind, sent_at) VALUES (?, 'first_workout', ?)").bind(u.id, now()).run();
+    if (!claim.meta.changes) continue;   // already sent once
+    const ok = push ? (await pushTo(env, u.id, {title: "Your first workout is waiting", body: when + ": " + next.title + ". When it's done, tap I did it on Today.", tag: "first-workout"})) > 0
+      : await firstWorkoutMail(env, u.id, u.name, u.email, when, next.title);
+    await env.DB.prepare("UPDATE lifecycle_mail SET ok = ? WHERE user_id = ? AND kind = 'first_workout'").bind(ok ? 1 : 0, u.id).run();
+    await logEvent(env, "first_workout", ok, push ? "push" : "mail");
+  }
+}
+async function firstWorkoutMail(env, id, name, email, when, title){
+  const first = String(name || "").trim().split(/\s+/)[0] || "there", esc2 = x => String(x).replace(/[<>&"]/g, "");
+  const unsub = API_BASE(env) + "/api/unsubscribe?u=" + id + "&s=" + (await mailSig(env, id));
+  const paras = ["Hey " + first + ",",
+    "Your Mileset plan has been ready for a few days, and no workout is checked off yet. That's normal. The first one is the hardest to start.",
+    when + ": " + title + ". Open it for the steps and paces. Can't do it that day? Tap Move it and pick a day that works.",
+    "When it's done, tap I did it on Today. If your runs sync from Strava or Garmin, they check off on their own.",
+    "Is something getting in the way? Reply and tell me. I read every reply."];
+  const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;font-size:16px;line-height:1.55">' + MAIL_HEAD +
+    paras.map(t => '<p style="margin:0 0 14px">' + esc2(t) + '</p>').join("") +
+    '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/#today" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Open today\'s workout</a></p>' +
+    '<p style="margin:0">Matthew<br><span style="color:#666">Mileset</span></p>' +
+    '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this once, because you built a Mileset plan.' + (env.MAIL_ADDRESS ? ' ' + esc2(env.MAIL_ADDRESS) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe from updates</a></p></div>';
+  const text = paras.join("\n\n") + "\n\nOpen today's workout: https://app.hybrdrunning.com/#today\n\nMatthew\nMileset\n\nUnsubscribe from updates: " + unsub;
+  const r = await fetch(env.RESEND_URL || "https://api.resend.com/emails", {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"},
+    body: JSON.stringify({from: env.MAIL_FROM || "Mileset <no-reply@hybrdrunning.com>", to: [email], reply_to: "milesetapp@gmail.com", subject: "Your first workout, " + first, html, text, headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}})}).catch(() => null);
+  return !!(r && r.ok);
 }
 async function nudgeMail(env, id, name, email){
   const first = String(name || "").trim().split(/\s+/)[0] || "there", esc2 = x => String(x).replace(/[<>&"]/g, "");
