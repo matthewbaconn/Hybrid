@@ -1,0 +1,48 @@
+name: PR checks
+
+# Nov 16 security directive: every pull request is tested BEFORE it can reach production (the ship gate still
+# tests again after merging main). Runs the plan logic tests and the full phone-browser test against a LOCAL copy of
+# the app and API (local D1, no secrets, no live data). Known gaps without secrets are tolerated by name only.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: "22"}
+      - name: Syntax
+        run: node --check api/worker.js && node --check plan.js && node --check sw.js
+      - name: Plan logic tests
+        run: node tests/plan_features.mjs
+      - name: Install tools
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.56.1 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+          cd api && npm install --no-audit --no-fund >/dev/null && npm install --no-save --no-audit --no-fund wrangler@4 >/dev/null
+      - name: Start the local API and app
+        run: |
+          rm -rf /tmp/site && mkdir /tmp/site && tar --exclude=./api --exclude=./.git --exclude=./node_modules -cf - . | tar -xf - -C /tmp/site
+          sed -i 's|const API = "https://hybrid-api.hybridapp.workers.dev";|const API = "http://localhost:8787";|' /tmp/site/index.html
+          grep -q 'const API = "http://localhost:8787";' /tmp/site/index.html
+          cd api && npx wrangler d1 migrations apply hybrid --local >/dev/null
+          (nohup npx wrangler dev --port 8787 --local-upstream localhost:8787 > /tmp/wrangler.log 2>&1 &)
+          (cd /tmp/site && nohup python3 -m http.server 8000 > /tmp/http.log 2>&1 &)
+          for i in $(seq 1 40); do curl -sf localhost:8787/api/founding >/dev/null && curl -sf localhost:8000/ >/dev/null && break; sleep 3; done
+          curl -sf localhost:8787/api/founding
+      - name: Phone browser test against the local copy
+        run: |
+          set +e
+          LOCAL=1 SITE=http://localhost:8000/ node tests/e2e.mjs | tee /tmp/e2e.log
+          # without secrets, these can't pass in CI; everything else must
+          bad=$(grep '^::error::' /tmp/e2e.log | grep -v -E 'Connect Strava button missing|server has no notification key|Failed to load resource' || true)
+          if [ -n "$bad" ]; then echo "$bad"; exit 1; fi
+          grep -q '^ok ' /tmp/e2e.log || { echo "e2e didn't run"; exit 1; }
+          echo "e2e: all checks pass apart from the secret-only ones"

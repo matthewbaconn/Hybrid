@@ -12,7 +12,7 @@ name: Ship gate guard
 on:
   push:
     branches: [main]
-    paths: ["index.html", "plan.js", "sw.js", "api/**"]
+    paths: ["index.html", "plan.js", "sw.js", "api/**", ".github/**", "mail/outbox.json"]   # workflows and the member email are gated too (Nov 16)
   workflow_dispatch:        # test the guard against any past commit without making a new one
     inputs:
       sha:

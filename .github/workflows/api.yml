@@ -9,7 +9,7 @@ name: Deploy API
 on:
   push:
     branches: [main]
-    paths: ["api/**", ".github/workflows/api.yml"]
+    paths: ["api/**", "plan.js", ".github/workflows/api.yml"]   # the Worker bundles ../plan.js (Nov 16 fix)
   workflow_dispatch:
 
 permissions:
