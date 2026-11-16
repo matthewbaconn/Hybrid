@@ -27,6 +27,8 @@ jobs:
           npm install --no-save --no-audit --no-fund playwright@1.56.1 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
           cd api && npm install --no-audit --no-fund >/dev/null && npm install --no-save --no-audit --no-fund wrangler@4 >/dev/null
+      - name: Forged webhook test (own local API + fake Strava/Garmin; a post alone must never delete member data)
+        run: cd api && node ../tests/webhooks.mjs
       - name: Start the local API and app
         run: |
           rm -rf /tmp/site && mkdir /tmp/site && tar --exclude=./api --exclude=./.git --exclude=./node_modules -cf - . | tar -xf - -C /tmp/site
