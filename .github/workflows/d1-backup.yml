@@ -42,18 +42,18 @@ jobs:
         run: |
           # wrangler's own tables (_cf_*) are recreated by D1 itself; leave them out of the restore
           grep -v -E "^(CREATE TABLE|INSERT INTO) [\"']?_cf_" "$RUNNER_TEMP/d1.sql" > "$RUNNER_TEMP/restore.sql"
-          if ! npx wrangler d1 execute hybrid --local --file "$RUNNER_TEMP/restore.sql" > "$RUNNER_TEMP/restore.log" 2>&1; then
+          if ! npx wrangler d1 execute hybrid --local --persist-to "$RUNNER_TEMP/restore-db" --file "$RUNNER_TEMP/restore.sql" > "$RUNNER_TEMP/restore.log" 2>&1; then
             # show only the error lines, with anything that looks like an email or long value masked (public repo)
             tail -n 6 "$RUNNER_TEMP/restore.log" | sed -E 's/[^ ,()]+@[^ ,()]+/<email>/g; s/'"'"'[^'"'"']{12,}'"'"'/<value>/g' | cut -c1-200 | head -8
             exit 1
           fi
-          tables=$(npx wrangler d1 execute hybrid --local --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '\_cf%' ESCAPE '\' AND name NOT LIKE 'sqlite%' ORDER BY name" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s)[0].results.map(r=>r.name).join(" ")))')
+          tables=$(npx wrangler d1 execute hybrid --local --persist-to "$RUNNER_TEMP/restore-db" --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '\_cf%' ESCAPE '\' AND name NOT LIKE 'sqlite%' ORDER BY name" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s)[0].results.map(r=>r.name).join(" ")))')
           test -n "$tables"
-          q=$(for t in $tables; do printf "SELECT '%s' AS t, COUNT(*) AS n FROM \"%s\" UNION ALL " "$t" "$t"; done | sed 's/ UNION ALL $//')
-          npx wrangler d1 execute hybrid --local --json --command "$q" > "$RUNNER_TEMP/local.json"
+          q="SELECT "$(for t in $tables; do printf '(SELECT COUNT(*) FROM "%s") AS "%s", ' "$t" "$t"; done | sed 's/, $//')
+          npx wrangler d1 execute hybrid --local --persist-to "$RUNNER_TEMP/restore-db" --json --command "$q" > "$RUNNER_TEMP/local.json"
           npx wrangler d1 execute hybrid --remote --json --command "$q" > "$RUNNER_TEMP/remote.json"
           node -e '
-            const rd = f => Object.fromEntries(JSON.parse(require("fs").readFileSync(f))[0].results.map(r => [r.t, r.n]));
+            const rd = f => JSON.parse(require("fs").readFileSync(f))[0].results[0];
             const L = rd(process.env.RUNNER_TEMP + "/local.json"), R = rd(process.env.RUNNER_TEMP + "/remote.json");
             let bad = 0;
             for (const t of Object.keys(R)) { const ok = L[t] === R[t]; if (!ok) bad++; console.log((ok ? "ok  " : "DIFF") + " " + t + ": live " + R[t] + ", restored " + L[t]); }
