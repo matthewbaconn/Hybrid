@@ -40,7 +40,13 @@ jobs:
       - name: Restore into a throwaway local database and compare every table
         working-directory: api
         run: |
-          npx wrangler d1 execute hybrid --local --file "$RUNNER_TEMP/d1.sql" > /dev/null
+          # wrangler's own tables (_cf_*) are recreated by D1 itself; leave them out of the restore
+          grep -v -E "^(CREATE TABLE|INSERT INTO) [\"']?_cf_" "$RUNNER_TEMP/d1.sql" > "$RUNNER_TEMP/restore.sql"
+          if ! npx wrangler d1 execute hybrid --local --file "$RUNNER_TEMP/restore.sql" > "$RUNNER_TEMP/restore.log" 2>&1; then
+            # show only the error lines, with anything that looks like an email or long value masked (public repo)
+            grep -i -E "error|fail|no such|constraint|syntax" "$RUNNER_TEMP/restore.log" | sed -E 's/[^ ,()]+@[^ ,()]+/<email>/g; s/'"'"'[^'"'"']{12,}'"'"'/<value>/g' | cut -c1-200 | head -8
+            exit 1
+          fi
           tables=$(npx wrangler d1 execute hybrid --local --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '\_cf%' ESCAPE '\' AND name NOT LIKE 'sqlite%' ORDER BY name" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s)[0].results.map(r=>r.name).join(" ")))')
           test -n "$tables"
           q=$(for t in $tables; do printf "SELECT '%s' AS t, COUNT(*) AS n FROM \"%s\" UNION ALL " "$t" "$t"; done | sed 's/ UNION ALL $//')
@@ -57,7 +63,7 @@ jobs:
         run: |
           stamp=$(date -u +%Y%m%dT%H%MZ)
           age -r "$BACKUP_RECIPIENT" -o "$RUNNER_TEMP/mileset-d1-$stamp.sql.age" "$RUNNER_TEMP/d1.sql"
-          shred -u "$RUNNER_TEMP/d1.sql"
+          shred -u "$RUNNER_TEMP/d1.sql" "$RUNNER_TEMP/restore.sql"
           echo "STAMP=$stamp" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
