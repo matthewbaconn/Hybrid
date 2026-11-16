@@ -402,6 +402,8 @@ button{cursor:pointer}
 .hub-hero .hfirst{margin:0;font-size:14px;line-height:1.45;color:rgba(255,255,255,.9);background:rgba(10,11,15,.3);border-radius:10px;padding:10px 12px}
 .hub-hero .hadj{font-size:13.5px;color:#FFE9A8}
 .hub-hero + .hub-hero{margin-top:-26px;border-top:1px solid rgba(255,255,255,.08)}
+.wxs{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;margin-top:14px;padding:9px 14px;background:var(--surface);border:1px solid rgba(255,255,255,.05);border-radius:8px;color:var(--ink);font-family:inherit;text-align:left;cursor:pointer}
+.wxs .ic{width:20px;height:20px;flex:none;color:var(--work)} .wxs-t{font:700 24px/1 var(--f-display);flex:none} .wxs-c{display:grid;gap:2px;flex:1;min-width:0} .wxs-c b{font-size:14.5px;font-weight:600} .wxs-c span{font-size:13px;color:var(--muted)} .wxs > i{font-style:normal;color:var(--muted);flex:none}
 .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .tl{background:var(--surface);border:1px solid rgba(255,255,255,.05);border-radius:8px;padding:18px;display:grid;gap:6px;align-content:start;min-height:132px;cursor:pointer;text-align:left;color:var(--ink);min-width:0}
 .tl.wide{grid-column:1/-1;min-height:0}
@@ -1386,7 +1388,7 @@ const wxLoc = () => { if (uset.lat != null) return {lat: uset.lat, lon: uset.lon
 async function loadWeather(force){
   const L = wxLoc(); if (!L || wxState === "loading") return;
   const key = "hp-wx-" + L.lat + "," + L.lon;
-  if (!force){ try { const c = JSON.parse(localStorage.getItem(key) || "null"); if (c && Date.now() - c.at < 45 * 60e3){ wx = c.data; wxState = "ok"; return; } } catch(e){} }
+  if (!force){ try { const c = JSON.parse(localStorage.getItem(key) || "null"); if (c && Date.now() - c.at < 45 * 60e3){ wx = c.data; wxState = "ok"; safeRender(); return; }   /* a saved forecast still has to be drawn: Today used to stay on "Loading…" */ } catch(e){} }
   wxState = "loading";
   try {
     const u = "https://api.open-meteo.com/v1/forecast?latitude=" + L.lat + "&longitude=" + L.lon + "&hourly=temperature_2m,apparent_temperature,dew_point_2m,precipitation_probability,weather_code&current=temperature_2m,apparent_temperature,dew_point_2m,weather_code&daily=temperature_2m_min,temperature_2m_max&temperature_unit=fahrenheit&timezone=auto&forecast_days=3";
@@ -1430,6 +1432,19 @@ function weatherCard(){
   h += '<label class="tm" style="margin:0">I usually run at<input type="time" data-set="run_time" value="' + esc(uset.run_time || "07:00") + '"></label>';
   if (ht && ht.pct >= .01) h += '<p class="fbnote">' + ic("sun") + '<span>Around ' + hr12(ht.hour) + ' it\'ll be ' + ht.temp + '°F with a ' + ht.dew + '° dew point, so today\'s outdoor workout paces are ' + Math.round(ht.pct * 100 * 10) / 10 + '% slower. On a treadmill, run the normal paces.</span></p>';
   return h + '</section>';
+}
+/* Today: one slim line under the greeting with the weather now and the best 3 hours to run (today or tomorrow). Opens the Weather screen. */
+function wxStrip(){
+  const L = wxLoc(), open = (label, big, top, sub) => '<button class="wxs" type="button" data-act="go" data-scr="weather" aria-label="' + esc(label) + '">' + ic("sun") + (big ? '<span class="wxs-t">' + big + '</span>' : '') +
+    '<span class="wxs-c"><b>' + top + '</b><span>' + sub + '</span></span><i aria-hidden="true">›</i></button>';
+  if (!L) return open("Add your city for the weather", "", "Weather and best time to run", "Add your city");
+  if (wxState === "error") return open("Weather didn't load. Open to try again", "", "Weather didn't load", "Tap to try again");
+  if (wxState !== "ok" || !wx) return open("Weather is loading", "", "Weather", "Loading the forecast…");
+  const n = wx.now, nowKey = TODAY + "T" + String(new Date().getHours()).padStart(2, "0") + ":00", b = HP.bestWindow(wx.hours, nowKey, addDays(TODAY, 1));
+  const now = esc(n.cond) + (n.feels_f != null && Math.abs(n.feels_f - n.temp_f) >= 3 ? ' · feels ' + n.feels_f + '°' : '');
+  const span = (a, z) => (a < 12) === (z < 12) ? (a % 12 || 12) + '–' + hr12(z) : hr12(a) + '–' + hr12(z);   // 6–9 AM, 11 AM–2 PM
+  const best = b ? 'Best time to run: ' + (b.day === TODAY ? 'today ' : 'tomorrow ') + span(b.h0, b.h0 + 3) : 'High ' + wx.today.hi_f + '° · low ' + wx.today.lo_f + '°';
+  return open("Weather: " + n.temp_f + " degrees, " + n.cond + ". " + best, n.temp_f + '°', now, best);
 }
 function fuelTipHtml(s){
   const t = HP.fuelTip(plan, s);
@@ -1998,7 +2013,7 @@ function heroSummary(day){
 function renderToday(){
   const p = plan.profile, first = plan.weeks[0].start, last = addDays(plan.weeks[plan.weeks.length - 1].start, 6);
   const wi = weekOf(TODAY), w = plan.weeks[wi], g = greeting(p, w);
-  let h = '<section class="hello"><p class="kick">' + DAYF[dow(TODAY)] + ' · ' + fmtD(TODAY) + '</p><h1>' + g.h + '</h1>' + (g.sub ? '<p class="sub">' + g.sub + '</p>' : '');
+  let h = '<section class="hello"><p class="kick">' + DAYF[dow(TODAY)] + ' · ' + fmtD(TODAY) + '</p><h1>' + g.h + '</h1>' + (g.sub ? '<p class="sub">' + g.sub + '</p>' : '') + wxStrip();   // weather + best time to run sits right under the greeting (Matthew, Nov 16)
   const rn = plan.raceDate ? daysBetween(TODAY, plan.raceDate) : -1;
   if (rn >= 0){                     // one race card: name, date, days to go, how far through the plan
     const span = Math.max(1, daysBetween(first, plan.raceDate)), pct = Math.max(2, Math.min(100, Math.round(daysBetween(first, TODAY) / span * 100)));
@@ -2021,14 +2036,12 @@ function renderToday(){
   const mvT = day.sessions.length && canMove(TODAY) && moveTargets(TODAY).length && !day.sessions.some((s, i) => sessDone(TODAY, i, dayMatches(TODAY)));
   h += checkinCard() + cycleCard(day) + heroSummary(day) + (mvT ? '<button class="linkbtn hmove" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t do it today? Move it</button>' : '') + missedCard() + fuelTile + quickW;   // today's workout first, then food
   if (L && wxState === "idle") setTimeout(() => loadWeather(), 0);
-  const nowKey = TODAY + "T" + String(new Date().getHours()).padStart(2, "0") + ":00", bw = wx && wxState === "ok" ? HP.bestWindow(wx.hours, nowKey, addDays(TODAY, 1)) : null;
   let wmi = 0, wdone = 0;
   if (w) w.days.forEach(d => { const m = dayMatches(d.date); d.sessions.forEach((s, i) => { if (sessDone(d.date, i, m)) wdone += plan.multi ? (m[i] && m[i].minutes ? m[i].minutes : s.min || 0) / 60 : m[i] && m[i].mi ? m[i].mi : s.mi || 0; }); });
   h += '<div class="tgrid">' +
     tile("workouts", "easy", "Workouts", list.length ? list.length + ' <small>today</small>' : '<i class="tl-add">+ Log</i>', list.length ? esc(list[list.length - 1].name) : 'Log one, or sync Strava') +
     tile("weight", "lift", "Weight", wt ? wt + ' <small>lb</small>' : aw7 ? aw7.toFixed(1) + ' <small>lb avg</small>' : '<i class="tl-add">+ Add</i>', wt ? 'Weighed in today' : 'Tap to weigh in') +
-    tile("weather", "work", "Weather", wx && wxState === "ok" ? wx.now.temp_f + '°' : !L ? '<i class="tl-add">+ City</i>' : '…', !L ? 'Set your city' : bw ? 'Best ' + (bw.day === TODAY ? 'today ' : 'tomorrow ') + hr12(bw.h0) : wxState === "error" ? 'Couldn\'t load' : 'Loading…') +
-    (w ? tile("t-miles", "long", "This week", plan.multi ? Math.round(wdone * 10) / 10 + ' <small>of ' + w.hours + ' h</small>' : half(wdone) + ' <small>of ' + w.miles + ' mi</small>', 'Week ' + w.n + ' · ' + esc(w.phase)) : '') + '</div>';
+    (w ? tile("t-miles", "long", "This week", plan.multi ? Math.round(wdone * 10) / 10 + ' <small>of ' + w.hours + ' h</small>' : half(wdone) + ' <small>of ' + w.miles + ' mi</small>', 'Week ' + w.n + ' · ' + esc(w.phase), '', true) : '') + '</div>';
   h += inviteCard();
   const tm = dayOf(addDays(TODAY, 1));
   if (tm){ const tt = dayType(tm); h += '<section class="card"><div class="card-h" style="--tone:var(--muted)">' + ic("cal") + '<span class="lbl">Tomorrow</span></div><div class="mini t-' + tt + '"><div><b>' + esc(tm.sessions.length ? tm.sessions.map(s => s.title).join(" + ") : "Rest day") + '</b><span>' + DAYF[dow(addDays(TODAY, 1))] + '</span></div></div></section>'; }
@@ -2860,7 +2873,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "78";
+const APP_VERSION = "79";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2969,8 +2982,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-16.3";
+const NEW_ID = "2026-11-16.4";
 const NEWS = [
+  ["sun", "Weather and best time to run, on Today", "Right under the greeting you now see the weather and the best three hours to run. No city yet? Tap it to add yours.", null, null, "2026-11-16.4"],
   ["spark", "Pinch to zoom anywhere", "Small text? Spread two fingers to zoom in on any screen, and pinch to zoom back out.", null, null, "2026-11-16.3"],
   ["check", "Check off a workout in one tap", "On Today, tap I did it on your workout when you're done. Runs from Strava or Garmin still check off on their own.", null, null, "2026-11-16.2"],
   ["share", "See who joins through your invite link", "Open More, then Your invite link: copy or share your personal link and see how many people joined through it.", "invites", null, "2026-11-16"],
