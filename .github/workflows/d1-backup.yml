@@ -44,7 +44,7 @@ jobs:
           grep -v -E "^(CREATE TABLE|INSERT INTO) [\"']?_cf_" "$RUNNER_TEMP/d1.sql" > "$RUNNER_TEMP/restore.sql"
           if ! npx wrangler d1 execute hybrid --local --file "$RUNNER_TEMP/restore.sql" > "$RUNNER_TEMP/restore.log" 2>&1; then
             # show only the error lines, with anything that looks like an email or long value masked (public repo)
-            grep -i -E "error|fail|no such|constraint|syntax" "$RUNNER_TEMP/restore.log" | sed -E 's/[^ ,()]+@[^ ,()]+/<email>/g; s/'"'"'[^'"'"']{12,}'"'"'/<value>/g' | cut -c1-200 | head -8
+            tail -n 6 "$RUNNER_TEMP/restore.log" | sed -E 's/[^ ,()]+@[^ ,()]+/<email>/g; s/'"'"'[^'"'"']{12,}'"'"'/<value>/g' | cut -c1-200 | head -8
             exit 1
           fi
           tables=$(npx wrangler d1 execute hybrid --local --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '\_cf%' ESCAPE '\' AND name NOT LIKE 'sqlite%' ORDER BY name" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s)[0].results.map(r=>r.name).join(" ")))')
