@@ -1,0 +1,81 @@
+name: Member database backup (encrypted, off-server, restore-tested)
+# Nov 16 security directive: an off-server copy of the live D1 database that is proven restorable.
+# 1. Exports the live database (read-only). 2. Restores it into a throwaway local D1 on this runner and checks every
+# table's row count matches the live database. 3. Encrypts the dump to Matthew's backup key (age; only the private key
+# he holds can open it) and keeps it as a 30-day artifact. Nothing readable is printed or uploaded: the repo is public.
+on:
+  schedule: [{cron: "23 8 * * *"}]   # 3:23am ET
+  workflow_dispatch:
+  pull_request:
+    paths: [".github/workflows/d1-backup.yml"]
+permissions:
+  contents: read
+concurrency: {group: d1-backup, cancel-in-progress: false}
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BACKUP_RECIPIENT: age12kr8m8ya6td3qaqkhz7gm542z67zt5gd283h2yxd2uhuytex4alq7kynh5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: cd api && npm install --no-save --no-audit --no-fund wrangler@4 >/dev/null && sudo apt-get install -y -qq age >/dev/null
+      - name: Point wrangler at the live database
+        working-directory: api
+        run: |
+          id=$(npx wrangler d1 list --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s).find(d=>d.name==="hybrid");process.stdout.write(x?x.uuid:"")})')
+          test -n "$id"
+          sed -i "s/REPLACED_BY_DEPLOY_WORKFLOW/$id/" wrangler.toml
+      - name: Export the live database (read-only)
+        working-directory: api
+        run: |
+          umask 077
+          npx wrangler d1 export hybrid --remote --output "$RUNNER_TEMP/d1.sql" > /dev/null
+          test -s "$RUNNER_TEMP/d1.sql"
+          echo "dump bytes: $(wc -c < "$RUNNER_TEMP/d1.sql")"
+      - name: Restore into a throwaway local database and compare every table
+        working-directory: api
+        run: |
+          # wrangler's own tables (_cf_*) are recreated by D1 itself; leave them out of the restore
+          grep -v -E "^(CREATE TABLE|INSERT INTO) [\"']?_cf_" "$RUNNER_TEMP/d1.sql" > "$RUNNER_TEMP/restore.sql"
+          if ! npx wrangler d1 execute hybrid --local --persist-to "$RUNNER_TEMP/restore-db" --file "$RUNNER_TEMP/restore.sql" > "$RUNNER_TEMP/restore.log" 2>&1; then
+            # show only the error lines, with anything that looks like an email or long value masked (public repo)
+            tail -n 6 "$RUNNER_TEMP/restore.log" | sed -E 's/[^ ,()]+@[^ ,()]+/<email>/g; s/'"'"'[^'"'"']{12,}'"'"'/<value>/g' | cut -c1-200 | head -8
+            exit 1
+          fi
+          tables=$(npx wrangler d1 execute hybrid --local --persist-to "$RUNNER_TEMP/restore-db" --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '\_cf%' ESCAPE '\' AND name NOT LIKE 'sqlite%' ORDER BY name" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s)[0].results.map(r=>r.name).join(" ")))')
+          test -n "$tables"
+          q="SELECT "$(for t in $tables; do printf '(SELECT COUNT(*) FROM "%s") AS "%s", ' "$t" "$t"; done | sed 's/, $//')
+          npx wrangler d1 execute hybrid --local --persist-to "$RUNNER_TEMP/restore-db" --json --command "$q" > "$RUNNER_TEMP/local.json"
+          npx wrangler d1 execute hybrid --remote --json --command "$q" > "$RUNNER_TEMP/remote.json"
+          node -e '
+            const rd = f => JSON.parse(require("fs").readFileSync(f))[0].results[0];
+            const L = rd(process.env.RUNNER_TEMP + "/local.json"), R = rd(process.env.RUNNER_TEMP + "/remote.json");
+            let bad = 0;
+            for (const t of Object.keys(R)) { const ok = L[t] === R[t]; if (!ok) bad++; console.log((ok ? "ok  " : "DIFF") + " " + t + ": live " + R[t] + ", restored " + L[t]); }
+            console.log(bad ? "::error::restore check: " + bad + " table(s) differ" : "restore check: all " + Object.keys(R).length + " tables match");
+            process.exit(bad ? 1 : 0);'
+      - name: Encrypt to Matthew's backup key and remove the plain copy
+        run: |
+          stamp=$(date -u +%Y%m%dT%H%MZ)
+          # Prove the encrypted file opens to the exact dump: also encrypt to a one-time key made here, decrypt with it,
+          # compare checksums, then destroy that key. Matthew's key opens the same file (age: any recipient decrypts).
+          age-keygen -o "$RUNNER_TEMP/once.key" 2> /dev/null
+          once=$(age-keygen -y "$RUNNER_TEMP/once.key")
+          age -r "$BACKUP_RECIPIENT" -r "$once" -o "$RUNNER_TEMP/mileset-d1-$stamp.sql.age" "$RUNNER_TEMP/d1.sql"
+          a=$(sha256sum < "$RUNNER_TEMP/d1.sql" | cut -c1-64)
+          b=$(age -d -i "$RUNNER_TEMP/once.key" "$RUNNER_TEMP/mileset-d1-$stamp.sql.age" | sha256sum | cut -c1-64)
+          shred -u "$RUNNER_TEMP/once.key"
+          test "$a" = "$b" && echo "encrypted backup verified: decrypts to the exact dump (sha256 match)"
+          shred -u "$RUNNER_TEMP/d1.sql" "$RUNNER_TEMP/restore.sql"
+          echo "STAMP=$stamp" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mileset-d1-${{ env.STAMP }}
+          path: ${{ runner.temp }}/mileset-d1-*.sql.age
+          retention-days: 30
+          if-no-files-found: error
