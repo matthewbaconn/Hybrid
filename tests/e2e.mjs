@@ -68,7 +68,7 @@ page.on("console", m => {
   if (/net::ERR_/.test(t) && OUTSIDE.test(u)) return;                                       // outside service down/slow: not an app error
   consoleErrors.push("[" + step + "] " + t + (u && /Failed to load resource/.test(t) ? " (" + u.split("?")[0] + ")" : ""));   // name the URL so the next failure is diagnosable
 });
-const shot = n => page.screenshot({path: SHOTS + "/" + n + ".png", fullPage: true});
+const shot = (n, screen) => page.screenshot({path: SHOTS + "/" + n + ".png", fullPage: !screen});   // screen = just what the phone shows (for things pinned to the bottom)
 const tab = async t => { await page.click('#tabbar [data-tab="' + (t === "recovery" ? "training" : t) + '"]'); await page.waitForTimeout(400); if (t === "recovery"){ await page.click('.segsw [data-tab2="recovery"]'); await page.waitForTimeout(400); } };
 const open = async sc => { await page.click('[data-scr="' + sc + '"]'); await page.waitForSelector(".scrbar", {timeout: 5000}); await page.waitForTimeout(250); };
 const back = async () => { await page.click('[data-act="back"]'); await page.waitForTimeout(250); };
@@ -302,6 +302,50 @@ await check("Today shows the weather and the best time to run", async () => {
     await page.reload({waitUntil: "networkidle"}); await page.waitForSelector(".wxs .wxs-t", {timeout: 8000});   // a saved forecast shows straight away after reopening
     return t;
   } finally { await page.unroute("**/geocoding-api.open-meteo.com/**", geo); await page.unroute("**/api.open-meteo.com/**", fc); if (await page.$('[data-act="back"]')) await back(); }
+}, {needs: "Build a plan (4 steps)"});
+await check("Ask bar (preview): hidden for members; with the preview on, ask, confirm a move, put it back", async () => {
+  await tab("today"); await page.waitForSelector(".hub-hero");
+  if (await page.locator("#askbar").isVisible()) throw new Error("the ask bar shows on an account that is not in the preview");
+  // Switch the preview on for this account in the app's view only, with a stand-in coach (no AI call, nothing leaves the test).
+  await tab("plan"); await page.waitForSelector(".day-h .mvb");
+  const from = await page.evaluate(() => { const today = HP.isoLocal(new Date()); return [...document.querySelectorAll(".day-h .mvb")].map(b => b.dataset.date).filter(d => d > today)[0] || null; });
+  if (!from) throw new Error("no future day to move in the test plan");
+  const to = await page.evaluate(d => HP.addDays(d, 1), from), asked = [];
+  const me = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {ask: true}; await route.fulfill({response: r, json: j}); };
+  const coach = async route => { const b = route.request().postDataJSON(); asked.push(b);
+    await route.fulfill({json: {answer: "Done thinking: moving it a day keeps your long run fresh.", actions: [{type: "move", from, to}, {type: "open", screen: "fuel"}]}}); };
+  await page.route("**/api/me", me); await page.route("**/api/ask", coach);
+  try {
+    await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar"); await tab("today");
+    await page.waitForSelector("#askbar:visible");
+    const gap = await page.evaluate(() => { const a = document.querySelector("#askbar").getBoundingClientRect(), t = document.querySelector("#tabbar .tb-today").getBoundingClientRect(); return Math.round(t.top - a.bottom); });
+    if (gap < 2) throw new Error("the ask bar overlaps the Today button (gap " + gap + "px)");
+    await noOverflow(); await shot("03-ask-bar", true);
+    await page.click("#askbar"); await page.waitForSelector(".sheet.asks #ask-q");
+    await page.fill("#ask-q", "Can you move that workout a day later?"); await page.press("#ask-q", "Enter");
+    await page.waitForSelector(".ask-acts .btn");
+    if (asked[0].q !== "Can you move that workout a day later?") throw new Error("the question sent was: " + JSON.stringify(asked[0]));
+    const labels = await page.locator(".ask-acts .btn").allInnerTexts();
+    if (labels.length !== 2 || !/^Move /.test(labels[0]) || !/^Open Fuel and food$/.test(labels[1])) throw new Error("action buttons: " + labels.join(" | "));
+    await shot("03-ask-sheet", true);
+    await page.click(".ask-acts .btn >> nth=0"); await page.waitForSelector(".toast");
+    const t1 = await page.innerText(".toast"); if (!/swapped|moved/i.test(t1)) throw new Error("after the move button: " + t1);
+    if (await page.$(".sheet.asks")) throw new Error("the coach sheet stayed open after the move");
+    // ask again: the thread is still there, and the same move now puts the days back
+    await page.click("#askbar"); await page.waitForSelector(".sheet.asks .ask-m.u");
+    if (!/✓/.test(await page.innerText(".ask-acts"))) throw new Error("the finished change is not marked as done");
+    await page.fill("#ask-q", "Put it back please"); await page.press("#ask-q", "Enter");
+    await page.waitForFunction(() => document.querySelectorAll(".ask-acts").length === 2);
+    if (!asked[1].history || asked[1].history.length < 2) throw new Error("the follow-up went without the earlier messages");
+    await page.click(".ask-acts >> nth=1 >> .btn >> nth=0"); await page.waitForFunction(() => /Put back/.test((document.querySelector(".toast") || {}).textContent || ""));
+    // a screen button opens that screen
+    await page.click("#askbar"); await page.waitForSelector(".sheet.asks"); await page.click('.ask-acts >> nth=1 >> .btn >> text=Open Fuel and food'); await page.waitForSelector(".scrbar");
+    if (await page.locator("#askbar").isVisible()) throw new Error("the ask bar shows on top of a detail screen");
+    await back();
+    return labels[0];
+  } finally {
+    await page.unroute("**/api/me", me); await page.unroute("**/api/ask", coach); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
+  }
 }, {needs: "Build a plan (4 steps)"});
 await check("Weigh-in", async () => { await open("weight"); await page.fill("#w-lb", "182.4"); await page.click('[data-act="wsave"]'); await page.waitForSelector(".wrow"); const t = (await page.innerText(".wrow")).replace(/\n/g, " "); await back(); return t; });
 await check("Log a workout (with rep pace)", async () => {
