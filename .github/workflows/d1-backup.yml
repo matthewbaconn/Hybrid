@@ -1,0 +1,67 @@
+name: Member database backup (encrypted, off-server, restore-tested)
+# Nov 16 security directive: an off-server copy of the live D1 database that is proven restorable.
+# 1. Exports the live database (read-only). 2. Restores it into a throwaway local D1 on this runner and checks every
+# table's row count matches the live database. 3. Encrypts the dump to Matthew's backup key (age; only the private key
+# he holds can open it) and keeps it as a 30-day artifact. Nothing readable is printed or uploaded: the repo is public.
+on:
+  schedule: [{cron: "23 8 * * *"}]   # 3:23am ET
+  workflow_dispatch:
+  pull_request:
+    paths: [".github/workflows/d1-backup.yml"]
+permissions:
+  contents: read
+concurrency: {group: d1-backup, cancel-in-progress: false}
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BACKUP_RECIPIENT: age12kr8m8ya6td3qaqkhz7gm542z67zt5gd283h2yxd2uhuytex4alq7kynh5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: cd api && npm install --no-save --no-audit --no-fund wrangler@4 >/dev/null && sudo apt-get install -y -qq age >/dev/null
+      - name: Point wrangler at the live database
+        working-directory: api
+        run: |
+          id=$(npx wrangler d1 list --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s).find(d=>d.name==="hybrid");process.stdout.write(x?x.uuid:"")})')
+          test -n "$id"
+          sed -i "s/REPLACED_BY_DEPLOY_WORKFLOW/$id/" wrangler.toml
+      - name: Export the live database (read-only)
+        working-directory: api
+        run: |
+          umask 077
+          npx wrangler d1 export hybrid --remote --output "$RUNNER_TEMP/d1.sql" > /dev/null
+          test -s "$RUNNER_TEMP/d1.sql"
+          echo "dump bytes: $(wc -c < "$RUNNER_TEMP/d1.sql")"
+      - name: Restore into a throwaway local database and compare every table
+        working-directory: api
+        run: |
+          npx wrangler d1 execute hybrid --local --file "$RUNNER_TEMP/d1.sql" > /dev/null
+          tables=$(npx wrangler d1 execute hybrid --local --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '\_cf%' ESCAPE '\' AND name NOT LIKE 'sqlite%' ORDER BY name" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s)[0].results.map(r=>r.name).join(" ")))')
+          test -n "$tables"
+          q=$(for t in $tables; do printf "SELECT '%s' AS t, COUNT(*) AS n FROM \"%s\" UNION ALL " "$t" "$t"; done | sed 's/ UNION ALL $//')
+          npx wrangler d1 execute hybrid --local --json --command "$q" > "$RUNNER_TEMP/local.json"
+          npx wrangler d1 execute hybrid --remote --json --command "$q" > "$RUNNER_TEMP/remote.json"
+          node -e '
+            const rd = f => Object.fromEntries(JSON.parse(require("fs").readFileSync(f))[0].results.map(r => [r.t, r.n]));
+            const L = rd(process.env.RUNNER_TEMP + "/local.json"), R = rd(process.env.RUNNER_TEMP + "/remote.json");
+            let bad = 0;
+            for (const t of Object.keys(R)) { const ok = L[t] === R[t]; if (!ok) bad++; console.log((ok ? "ok  " : "DIFF") + " " + t + ": live " + R[t] + ", restored " + L[t]); }
+            console.log(bad ? "::error::restore check: " + bad + " table(s) differ" : "restore check: all " + Object.keys(R).length + " tables match");
+            process.exit(bad ? 1 : 0);'
+      - name: Encrypt to Matthew's backup key and remove the plain copy
+        run: |
+          stamp=$(date -u +%Y%m%dT%H%MZ)
+          age -r "$BACKUP_RECIPIENT" -o "$RUNNER_TEMP/mileset-d1-$stamp.sql.age" "$RUNNER_TEMP/d1.sql"
+          shred -u "$RUNNER_TEMP/d1.sql"
+          echo "STAMP=$stamp" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mileset-d1-${{ env.STAMP }}
+          path: ${{ runner.temp }}/mileset-d1-*.sql.age
+          retention-days: 30
+          if-no-files-found: error
