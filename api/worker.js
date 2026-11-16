@@ -1358,6 +1358,13 @@ async function route(req, env, path, ctx){
   /* ---------- crews: private groups that only see nicknames + weekly totals ---------- */
   const CREW_METRICS = ["minutes", "workouts", "run_miles", "days"];
   const nick = x => String(x || "").trim().replace(/\s+/g, " ").slice(0, 20);
+  if (M === "GET" && path === "/api/invites"){   // the member's own invite link stats: counts and join weeks only, never who
+    const rows = (await env.DB.prepare("SELECT substr(u.created, 1, 10) AS day, EXISTS(SELECT 1 FROM profiles p WHERE p.user_id = u.id) AS plan FROM users u WHERE u.ref = ? AND u.id != ? AND " + REAL("u.") + " ORDER BY u.created").bind(user.id, user.id).all()).results;
+    const wk = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10), weeks = {};
+    for (const r of rows){ const d = new Date(r.day + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); const k = d.toISOString().slice(0, 10); weeks[k] = (weeks[k] || 0) + 1; }
+    return {code: user.id.slice(0, 8), joined: rows.length, plan: rows.filter(r => r.plan).length, week: rows.filter(r => r.day >= wk).length,
+      weeks: Object.entries(weeks).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 8).map(([start, n]) => ({start, n}))};
+  }
   if (M === "GET" && path === "/api/crews") return {crews: await crewsFor(env, user.id, String(new URL(req.url).searchParams.get("week") || ""))};
   if (M === "POST" && path === "/api/crews"){
     const b = await body(req), name = String(b.name || "").trim().slice(0, 30), nn = nick(b.nickname);

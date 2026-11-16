@@ -298,6 +298,10 @@ await check("More tab and FAQ", async () => {
   await tab("more"); await noOverflow(); const t = await page.innerText("#app"); if (!/Find a race/.test(t) || !/Change goal/.test(t)) throw new Error(t.slice(0, 160));
   await open("faq"); const n = await page.locator(".faq details").count(); await back(); await tab("today"); if (n < 5) throw new Error("FAQ has " + n + " questions"); return n + " FAQ questions";
 });
+await check("Your invite link (link + joined count, no names)", async () => {
+  await tab("more"); await open("invites"); await page.waitForSelector(".invbig", {timeout: 10000}); const t = await page.innerText("#app");
+  if (!/\?ref=[a-f0-9]{8}/.test(t) || !/Joined through your link/.test(t)) throw new Error(t.slice(0, 160)); const n = await page.innerText(".invbig"); await back(); await tab("today"); return n + " joined";
+});
 await check("Edit profile", async () => {
   await settings(); await open("set-acct"); await open("set-profile"); await page.fill("#pf-name", "Nightly Two"); await page.fill("#pf-gw", "174"); await page.click('[data-act="pfsave"]');
   await page.waitForSelector(".scrbar >> text=Account and profile", {timeout: 10000}); await back(); await page.waitForSelector(".me-card >> text=Nightly Two", {timeout: 10000}); await back(); await tab("today"); const h = await page.innerText(".hello h1"); if (!/Nightly Two/.test(h)) throw new Error(h); return h;
