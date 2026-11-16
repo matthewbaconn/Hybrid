@@ -264,6 +264,29 @@ if (!FAST) await check("Weather + best time to run", async () => {
     const best = await page.$(".wx-best"); return (await page.innerText(".wx-t")) + " in " + (await page.innerText(".wx-c span")) + (best ? " · " + (await best.innerText()).replace(/\n/g, " ") : "");
   } finally { if (await page.$('[data-act="back"]')) await back(); }   // the weather service being slow mustn't fail every check after this one
 });
+await check("Today shows the weather and the best time to run", async () => {
+  // A made-up forecast stands in for the weather service: 64° and clear now, coolest tomorrow 6 to 9 AM.
+  const today = await page.evaluate(() => HP.isoLocal(new Date())), tomorrow = await page.evaluate(d => HP.addDays(d, 1), today);
+  const time = [], temp = [];
+  for (const d of [today, tomorrow]) for (let h = 0; h < 24; h++){ time.push(d + "T" + String(h).padStart(2, "0") + ":00"); temp.push(d === tomorrow && h >= 6 && h <= 8 ? 55 : 75); }
+  const geo = route => route.fulfill({json: {results: [{latitude: 27.64, longitude: -80.4, name: "Testville", admin1: "Florida"}]}});
+  const fc = route => route.fulfill({json: {current: {temperature_2m: 64, apparent_temperature: 64, dew_point_2m: 50, weather_code: 0}, daily: {temperature_2m_min: [55], temperature_2m_max: [75]},
+    hourly: {time, temperature_2m: temp, apparent_temperature: temp, dew_point_2m: time.map(() => 50), precipitation_probability: time.map(() => 0), weather_code: time.map(() => 0)}}});
+  await page.route("**/geocoding-api.open-meteo.com/**", geo); await page.route("**/api.open-meteo.com/**", fc);
+  try {
+    await tab("today"); await page.waitForSelector(".wxs");
+    if (await page.locator('.tl[data-scr="weather"]').count()) throw new Error("the old Weather tile is still on Today too");
+    await page.click(".wxs"); await page.waitForSelector(".scrbar");
+    if (!(await page.$("#wx-city"))) await page.click('[data-act="wxchange"]');
+    await page.fill("#wx-city", "Testville"); await page.click('[data-act="wxcity"]'); await page.waitForSelector(".wx-t", {timeout: 10000});
+    await back(); await tab("today"); await page.waitForSelector(".wxs .wxs-t");
+    const t = (await page.innerText(".wxs")).replace(/\s+/g, " ");
+    if (!/64°/.test(t) || !/Clear/.test(t) || !/Best time to run: tomorrow 6–9 AM/.test(t)) throw new Error("weather line wrong: " + t);
+    await noOverflow(); await shot("03-today-weather");
+    await page.reload({waitUntil: "networkidle"}); await page.waitForSelector(".wxs .wxs-t", {timeout: 8000});   // a saved forecast shows straight away after reopening
+    return t;
+  } finally { await page.unroute("**/geocoding-api.open-meteo.com/**", geo); await page.unroute("**/api.open-meteo.com/**", fc); if (await page.$('[data-act="back"]')) await back(); }
+}, {needs: "Build a plan (4 steps)"});
 await check("Weigh-in", async () => { await open("weight"); await page.fill("#w-lb", "182.4"); await page.click('[data-act="wsave"]'); await page.waitForSelector(".wrow"); const t = (await page.innerText(".wrow")).replace(/\n/g, " "); await back(); return t; });
 await check("Log a workout (with rep pace)", async () => {
   await open("workouts"); await page.click('[data-act="atoggle"]'); await page.selectOption("#a-type", "run"); await page.fill("#a-mi", "5"); await page.fill("#a-min", "44"); await page.click("#a-wp"); await page.keyboard.type("750"); await page.fill("#a-hr", "152");
@@ -306,8 +329,9 @@ await check("Today overview", async () => {
   await tab("today"); const order = await page.$$eval("#app .view > *", els => els.map(e => e.classList.contains("ci-done") ? "readiness" : e.dataset.scr || e.className));
   const ci = order.indexOf("readiness"), fu = order.indexOf("fuel"), wo = order.findIndex(x => /\bsession\b/.test(x));
   if (ci < 0 || fu < 0 || (wo >= 0 && !(ci < wo && wo < fu))) throw new Error(order.join(" > "));   // today's workout comes before food (Nov 15)
-  for (const sc of ["workouts", "weight", "weather"]) if (!(await page.locator('.tl[data-scr="' + sc + '"]').count())) throw new Error("missing " + sc + " tile");
-  await noOverflow(); await shot("08-today-overview"); return "check-in → workout → fuel → tiles";
+  for (const sc of ["workouts", "weight"]) if (!(await page.locator('.tl[data-scr="' + sc + '"]').count())) throw new Error("missing " + sc + " tile");
+  if (!(await page.locator('.hello .wxs[data-scr="weather"]').count())) throw new Error("the weather line under the greeting is missing");   // Nov 16
+  await noOverflow(); await shot("08-today-overview"); return "greeting + weather → check-in → workout → fuel → tiles";
 });
 await check("Settings: Watch", async () => {
   await settings(); await shot("07-settings"); await open("set-watch"); const t = await page.innerText(".apps");
