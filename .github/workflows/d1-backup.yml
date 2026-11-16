@@ -62,7 +62,15 @@ jobs:
       - name: Encrypt to Matthew's backup key and remove the plain copy
         run: |
           stamp=$(date -u +%Y%m%dT%H%MZ)
-          age -r "$BACKUP_RECIPIENT" -o "$RUNNER_TEMP/mileset-d1-$stamp.sql.age" "$RUNNER_TEMP/d1.sql"
+          # Prove the encrypted file opens to the exact dump: also encrypt to a one-time key made here, decrypt with it,
+          # compare checksums, then destroy that key. Matthew's key opens the same file (age: any recipient decrypts).
+          age-keygen -o "$RUNNER_TEMP/once.key" 2> /dev/null
+          once=$(age-keygen -y "$RUNNER_TEMP/once.key")
+          age -r "$BACKUP_RECIPIENT" -r "$once" -o "$RUNNER_TEMP/mileset-d1-$stamp.sql.age" "$RUNNER_TEMP/d1.sql"
+          a=$(sha256sum < "$RUNNER_TEMP/d1.sql" | cut -c1-64)
+          b=$(age -d -i "$RUNNER_TEMP/once.key" "$RUNNER_TEMP/mileset-d1-$stamp.sql.age" | sha256sum | cut -c1-64)
+          shred -u "$RUNNER_TEMP/once.key"
+          test "$a" = "$b" && echo "encrypted backup verified: decrypts to the exact dump (sha256 match)"
           shred -u "$RUNNER_TEMP/d1.sql" "$RUNNER_TEMP/restore.sql"
           echo "STAMP=$stamp" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
