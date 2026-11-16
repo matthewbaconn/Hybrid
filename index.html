@@ -939,7 +939,8 @@ function checkinCard(){
   return '<section class="card ci" style="--tone:var(--long)"><div class="ci-top"><b>Morning check-in</b><span>' + (d.fromWatch && ws ? 'sleep from your watch' : 'adjusts today') + '</span></div>' + hs +
     CIQ.map(([k, label, opts]) => '<div class="ciq"><span>' + label + '</span><div class="cio" role="group" aria-label="' + label + '">' +
       opts.map(([v, l]) => '<button type="button" class="' + (d[k] === v ? 'on' : '') + '" data-act="ciset" data-k="' + k + '" data-v="' + v + '" aria-pressed="' + (d[k] === v) + '">' + l + '</button>').join("") + '</div></div>').join("") +
-    (d.err ? '<p class="err" role="alert">' + esc(d.err) + '</p>' : '') + '<button class="btn primary block" type="button" data-act="cisave"' + (d.busy ? ' disabled aria-busy="true"' : '') + '>' + (d.busy ? 'Saving…' : 'Save') + '</button></section>';
+    (d.err ? '<p class="err" role="alert">' + esc(d.err) + '</p>' : '') + '<button class="btn primary block" type="button" data-act="cisave"' + (d.busy ? ' disabled aria-busy="true"' : '') + '>' + (d.busy ? 'Saving…' : 'Save') + '</button>' +
+    (!c && watchLinked() ? '<button class="linkbtn" type="button" data-act="ciclose" style="justify-self:center;margin-top:4px">Not now · back to my watch numbers</button>' : '') + '</section>';
 }
 
 /* ---------- weigh-in ---------- */
@@ -1210,6 +1211,15 @@ function reloadIfIdle(){
   else location.reload();
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkVersion(); });
+/* A new day: the app can sit open in the background overnight, and TODAY is set when it starts. Start it fresh when the
+   date has changed, so "today" is really today (yesterday's workout and an opened check-in used to stay on screen). */
+function newDay(){ if (isoLocal(new Date()) === TODAY || typing() || loading || setup || (fs && fs.busy) || (ci && ci.busy)) return; location.reload(); }
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") newDay(); });
+addEventListener("focus", newDay); setInterval(newDay, 5 * 60e3);
+/* Watch connected and the survey was only opened, not answered: leaving the app puts the watch's numbers back. */
+const ciUntouched = () => !ci || (!ci.busy && !CIQ.slice(1).some(([k]) => ci[k] != null));
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && (ci || ciForce) && !checkins[TODAY] && watchLinked() && ciUntouched()){ ci = null; ciForce = false; pendingRender = true; }
+  else if (document.visibilityState === "visible" && pendingRender && !typing()) safeRender(); });
 addEventListener("focus", checkVersion);
 setInterval(checkVersion, 4 * 60e3);
 document.addEventListener("focusout", () => setTimeout(reloadIfIdle, 400));
@@ -2873,7 +2883,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "79";
+const APP_VERSION = "80";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -3465,6 +3475,7 @@ document.addEventListener("click", ev => {
   if (act === "ciset"){ ci = ci || {}; ci[a.dataset.k] = +a.dataset.v; if (a.dataset.k === "sleep_h") ci.fromWatch = false; ci.err = ""; render(); return; }
   if (act === "ciedit"){ ci = {...checkins[TODAY]}; render(); return; }
   if (act === "ciopen"){ ciForce = true; render(); return; }
+  if (act === "ciclose"){ ci = null; ciForce = false; render(); return; }
   if (act === "cisave"){
     const d = ci || {}; if (CIQ.some(([k]) => d[k] == null)){ ci = {...d, err: "Answer all five so the plan can adjust."}; render(); return; }
     const c = {date: TODAY, sleep_h: d.sleep_h, sleep_q: d.sleep_q, soreness: d.soreness, energy: d.energy, stress: d.stress};
