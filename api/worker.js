@@ -166,6 +166,33 @@ async function stravaToken(env, link){
   await env.DB.prepare("UPDATE strava_links SET access_token = ?, refresh_token = ?, expires_at = ? WHERE user_id = ?").bind(j.access_token, j.refresh_token, j.expires_at, link.user_id).run();
   return j.access_token;
 }
+// Webhook helpers (Nov 16): act on a Strava notice only after Strava confirms it with this member's own token.
+async function stravaGet(env, userId, path){
+  const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(userId).first();
+  if (!link) return {status: 0};
+  try {
+    const tok = await stravaToken(env, link);
+    const r = await fetch((env.STRAVA_BASE || STRAVA) + path, {headers: {Authorization: "Bearer " + tok}, signal: AbortSignal.timeout(10000)});
+    return {status: r.status};
+  } catch(e){ return {status: /40[13]|invalid|unauthor/i.test(String(e && e.message || e)) ? 401 : 0}; }
+}
+async function stravaConfirmDelete(env, userId, extId){
+  const {status} = await stravaGet(env, userId, "/api/v3/activities/" + encodeURIComponent(extId));
+  if (status === 404){ await env.DB.prepare("DELETE FROM activities WHERE user_id = ? AND source = 'strava' AND ext_id = ?").bind(userId, extId).run(); }
+  await logEvent(env, "strava_delete", status === 404, status === 404 ? "confirmed" : "ignored: Strava says " + status);
+}
+async function stravaConfirmDeauth(env, athleteId){
+  const link = await env.DB.prepare("SELECT user_id FROM strava_links WHERE athlete_id = ?").bind(athleteId).first();
+  if (!link) return;
+  const {status} = await stravaGet(env, link.user_id, "/api/v3/athlete");
+  if (status === 401 || status === 403) await env.DB.prepare("DELETE FROM strava_links WHERE athlete_id = ?").bind(athleteId).run();
+  await logEvent(env, "strava_deauth", true, (status === 401 || status === 403) ? "confirmed" : "ignored: Strava says " + status);
+}
+async function stravaWebhookSync(env, userId, ctx){
+  const link = await env.DB.prepare("SELECT last_sync FROM strava_links WHERE user_id = ?").bind(userId).first();
+  if (link && link.last_sync && Date.now() - Date.parse(link.last_sync) < 120000) return;   // at most one sync per 2 min per member
+  return stravaSync(env, {id: userId}, ctx);
+}
 async function stravaSync(env, user, ctx){
   const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
   if (!link) throw new HttpError(400, "Strava isn't connected.");
@@ -250,7 +277,9 @@ async function garminPush(env, data, ctx){
   const links = (await env.DB.prepare("SELECT user_id, garmin_user_id FROM garmin_links WHERE garmin_user_id IN (" + [...ids].map(() => "?").join(",") + ")").bind(...ids).all()).results;
   const who = Object.fromEntries(links.map(l => [l.garmin_user_id, l.user_id])), seen = {}, fresh = {};
   const uid = x => who[String(x.userId)];
-  for (const d of data.deregistrations || []){ const u = uid(d); if (u) await garminForget(env, u, false); }
+  // Nov 16: the push endpoint can't prove a post came from Garmin, so a "deregistration" only deletes data once Garmin
+  // itself confirms the link is gone (our stored token is refused). Anything else is logged and ignored.
+  for (const d of data.deregistrations || []){ const u = uid(d); if (u && await garminRevoked(env, u)) await garminForget(env, u, false); }
   for (const p of data.userPermissionsChange || []){ const u = uid(p); if (u) await env.DB.prepare("UPDATE garmin_links SET permissions = ? WHERE user_id = ?").bind(JSON.stringify(p.permissions || []).slice(0, 500), u).run(); }
   const actList = [...(data.activities || []), ...(data.manuallyUpdatedActivities || []), ...(data.activityDetails || []).filter(d => d.summary).map(d => ({...d.summary, userId: d.userId, summaryId: String(d.summaryId || d.summary.summaryId || "").replace(/-detail$/, ""), _fromDetail: true}))];
   for (const a of actList){
@@ -306,6 +335,20 @@ async function garminPush(env, data, ctx){
   await logEvent(env, "garmin_push", true, Object.keys(data).filter(k => Array.isArray(data[k])).map(k => k + ":" + data[k].length).join(",").slice(0, 120));
   for (const [u, list] of Object.entries(fresh)) ctx.waitUntil(afterNewActivities(env, u, list, "garmin").catch(e => console.log("garmin review", e && e.stack || e)));
   for (const [u, d] of Object.entries(woke)) ctx.waitUntil(wakeUp(env, u, d).catch(e => console.log("wake", e && e.stack || e)));
+}
+// true only when Garmin refuses our stored token for this member (the person really disconnected)
+async function garminRevoked(env, userId){
+  const link = await env.DB.prepare("SELECT * FROM garmin_links WHERE user_id = ?").bind(userId).first();
+  if (!link) return false;
+  let status = 0;
+  try {
+    const tok = await garminToken(env, link);
+    const r = await fetch((env.GARMIN_API || GARMIN_API) + "/wellness-api/rest/user/id", {headers: {Authorization: "Bearer " + tok}, signal: AbortSignal.timeout(10000)});
+    status = r.status;
+  } catch(e){ status = /40[13]|invalid_grant|unauthor/i.test(String(e && e.message || e)) ? 401 : 0; }
+  const revoked = status === 401 || status === 403;
+  await logEvent(env, "garmin_dereg", true, revoked ? "confirmed by Garmin" : "ignored: Garmin still accepts the link (" + status + ")");
+  return revoked;
 }
 // stop Garmin access and delete stored Garmin data (privacy policy: disconnect deletes Garmin data)
 async function garminForget(env, userId, tellGarmin){
@@ -450,7 +493,7 @@ async function askCoach(env, system, data){
     body: JSON.stringify({model: env.COACH_MODEL || "claude-haiku-5-5", max_tokens: 1500, system, messages: [{role: "user", content: JSON.stringify(data)}]})});
   if (!r.ok){ const t = (await r.text()).slice(0, 300); console.log("coach error", r.status, t); lastCoachError = "api " + r.status + " " + t; await logEvent(env, "ai_coach", false, lastCoachError); return null; }
   const out = await r.json(), raw = (out.content || []).filter(c => c.type === "text").map(c => c.text).join("");
-  try { const j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); await logEvent(env, "ai_coach", true); return j; } catch(e){ lastCoachError = "unreadable reply (" + out.stop_reason + "): " + raw.slice(0, 200); await logEvent(env, "ai_coach", false, lastCoachError); return null; }
+  try { const j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); await logEvent(env, "ai_coach", true); return j; } catch(e){ lastCoachError = "unreadable reply (" + out.stop_reason + ", " + raw.length + " chars)"; await logEvent(env, "ai_coach", false, lastCoachError); return null; }
 }
 const COACH_STYLE = "You are a friendly, plain-spoken running and strength coach writing inside a training app. No jargon (no 'Z2', 'ACWR', 'EF'), no emoji, no medical advice, never shame. " +
   "Safety rules: you are not a doctor, dietitian or nutritionist and never call yourself one. Don't diagnose, don't recommend supplements, medications or specific diets, and never suggest eating less than the app's calorie target, skipping meals or making up for food with extra exercise. " +
@@ -954,12 +997,15 @@ async function route(req, env, path, ctx){
       ctx.waitUntil(logEvent(env, "strava_notice", true, ev.object_type + " " + ev.aspect_type));
       if (ev.object_type === "activity" && ev.owner_id){
         const link = await env.DB.prepare("SELECT user_id FROM strava_links WHERE athlete_id = ?").bind(String(ev.owner_id)).first();
+        // Nov 16: Strava doesn't sign webhook posts, so nothing here trusts the post alone. A delete happens only when
+        // Strava itself says the activity is gone, and syncs triggered by posts are throttled per member.
+        if (env.STRAVA_SUB_ID && String(ev.subscription_id || "") !== String(env.STRAVA_SUB_ID)) return {ok: true};
         if (link){
-          if (ev.aspect_type === "delete") ctx.waitUntil(env.DB.prepare("DELETE FROM activities WHERE user_id = ? AND source = 'strava' AND ext_id = ?").bind(link.user_id, String(ev.object_id)).run());
-          else ctx.waitUntil(stravaSync(env, {id: link.user_id}, ctx).catch(e => console.log("webhook sync", e.message)));
+          if (ev.aspect_type === "delete") ctx.waitUntil(stravaConfirmDelete(env, link.user_id, String(ev.object_id)).catch(e => console.log("webhook delete", e.message)));
+          else ctx.waitUntil(stravaWebhookSync(env, link.user_id, ctx).catch(e => console.log("webhook sync", e.message)));
         }
       } else if (ev.object_type === "athlete" && ev.updates && ev.updates.authorized === "false"){
-        ctx.waitUntil(env.DB.prepare("DELETE FROM strava_links WHERE athlete_id = ?").bind(String(ev.owner_id)).run());
+        ctx.waitUntil(stravaConfirmDeauth(env, String(ev.owner_id)).catch(e => console.log("webhook deauth", e.message)));
       }
       return {ok: true};
     }
@@ -1161,7 +1207,9 @@ async function route(req, env, path, ctx){
     if (!isDate(b.date) || !(h >= 0 && h <= 16) || [b.sleep_q, b.soreness, b.energy, b.stress].some(x => k(x) == null)) throw new HttpError(400, "Answer every question.");
     await env.DB.prepare("INSERT INTO checkins (user_id, date, sleep_h, sleep_q, soreness, energy, stress) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, date) DO UPDATE SET sleep_h = excluded.sleep_h, sleep_q = excluded.sleep_q, soreness = excluded.soreness, energy = excluded.energy, stress = excluded.stress")
       .bind(user.id, b.date, Math.round(h * 4) / 4, k(b.sleep_q), k(b.soreness), k(b.energy), k(b.stress)).run();
-    if (await coachUsage(env, user.id)){ lastCoachError = ""; const note = await morningNote(env, user.id, b.date).catch(e => { lastCoachError = String(e && e.message || e); return null; }); return note ? {ok: true, note} : {ok: true, note: null, note_issue: lastCoachError.slice(0, 300) || "no plan"}; }
+    // Nov 16: lastCoachError is shared by every request in this isolate, so it is never sent to a member (it could be
+    // someone else's). The member gets a fixed reason; the detail stays in the server's own event log.
+    if (await coachUsage(env, user.id)){ let failed = false; const note = await morningNote(env, user.id, b.date).catch(e => { failed = true; console.log("morning note", e && e.message || e); return null; }); return note ? {ok: true, note} : {ok: true, note: null, note_issue: failed ? "coach note unavailable right now" : "no plan"}; }
     return {ok: true};
   }
   if (M === "POST" && path === "/api/import-key"){
