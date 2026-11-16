@@ -2873,7 +2873,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "78";
+const APP_VERSION = "79";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -2982,9 +2982,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-16.3";
+const NEW_ID = "2026-11-16.4";
 const NEWS = [
-  ["sun", "Weather and best time to run, on Today", "Right under the greeting you now see the weather and the best three hours to run. No city yet? Tap it to add yours.", null, null, "2026-11-16.3"],
+  ["sun", "Weather and best time to run, on Today", "Right under the greeting you now see the weather and the best three hours to run. No city yet? Tap it to add yours.", null, null, "2026-11-16.4"],
   ["spark", "Pinch to zoom anywhere", "Small text? Spread two fingers to zoom in on any screen, and pinch to zoom back out.", null, null, "2026-11-16.3"],
   ["check", "Check off a workout in one tap", "On Today, tap I did it on your workout when you're done. Runs from Strava or Garmin still check off on their own.", null, null, "2026-11-16.2"],
   ["share", "See who joins through your invite link", "Open More, then Your invite link: copy or share your personal link and see how many people joined through it.", "invites", null, "2026-11-16"],
