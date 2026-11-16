@@ -134,6 +134,9 @@ async function site(req, host, env, ctx){
   const loc = h.get("Location");
   if (loc){ const l = new URL(loc, target); h.set("Location", "https://" + host + l.pathname.replace(/^\/Hybrid(\/home)?/, "") + l.search); }
   h.delete("x-github-request-id"); h.set("X-Content-Type-Options", "nosniff");
+  // Nov 16: no other website may show Mileset inside a frame (a hidden frame could trick a signed-in member into tapping
+  // things), and links out of the app or site only tell the next site which domain they came from, never the page.
+  h.set("X-Frame-Options", "DENY"); h.set("Content-Security-Policy", "frame-ancestors 'none'"); h.set("Referrer-Policy", "strict-origin-when-cross-origin");
   if (env && ctx) countView(env, ctx, req, host, u, r);
   return new Response(r.body, {status: r.status, headers: h});
 }
@@ -482,8 +485,10 @@ async function coachUsage(env, userId){
 let lastCoachError = "";
 /* health log for the nightly check: cron runs, Strava notices and syncs, notifications, AI calls */
 async function logEvent(env, kind, ok, detail){
-  try { await env.DB.prepare("INSERT INTO events (ts, kind, ok, detail) VALUES (?, ?, ?, ?)").bind(now(), kind, ok ? 1 : 0, detail ? String(detail).slice(0, 300) : null).run(); } catch(e){}
+  try { await env.DB.prepare("INSERT INTO events (ts, kind, ok, detail) VALUES (?, ?, ?, ?)").bind(now(), kind, ok ? 1 : 0, detail ? scrub(detail).slice(0, 300) : null).run(); } catch(e){}
 }
+// the event log is read in public build logs (the repo is public): an email address never goes into it, whatever an outside service echoes back
+const scrub = t => String(t).replace(/[^\s@<>"'(),;:]+@[^\s@<>"'(),;:]+\.[a-z]{2,}/gi, "[email]");
 // trim to the last full sentence that fits
 const clip = (t, n) => { if (t.length <= n) return t; const c = t.slice(0, n), i = Math.max(c.lastIndexOf(". "), c.lastIndexOf("! "), c.lastIndexOf("? ")); return i > 40 ? c.slice(0, i + 1) : c.replace(/\s+\S*$/, "") + "…"; };
 async function askCoach(env, system, data){

@@ -250,6 +250,14 @@ await check("Accessibility: zoom allowed, no button inside a button on Today, da
   if (low.length) throw new Error("a day title or Move button is hard to read in " + low.length + " place(s): " + low.join(", ") + ":1");
   await tab("today");
 }, {needs: "Build a plan (4 steps)"});
+await check("A crafted #move link can't switch a signed-in member into another account", async () => {
+  const mine = await page.evaluate(() => localStorage.getItem("hp-token"));
+  if (!/^[a-f0-9]{64}$/.test(mine || "")) throw new Error("no login to protect");
+  await page.goto(SITE + "#move=" + "ab".repeat(32)); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
+  const after = await page.evaluate(() => localStorage.getItem("hp-token"));
+  if (after !== mine) throw new Error("the link replaced the member's login");
+  if (/move=/.test(page.url())) throw new Error("the token stayed in the address bar");
+}, {needs: "Sign up"});
 if (!FAST) await check("Weather + best time to run", async () => {
   await open("weather");
   try {
