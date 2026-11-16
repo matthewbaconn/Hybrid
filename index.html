@@ -817,9 +817,10 @@ const tokenStore = { get(){ try { return localStorage.getItem("hp-token"); } cat
 let movedHere = false;
 try { const rf = new URLSearchParams(location.search).get("ref"); if (/^[a-f0-9]{8}$/.test(rf || "")) localStorage.setItem("hp-ref", rf); } catch(e){}
 try { const sp = new URLSearchParams(location.search), sv = String(sp.get("src") || sp.get("utm_source") || "").toLowerCase(); if (/^[a-z0-9_-]{1,24}$/.test(sv) && !localStorage.getItem("hp-src")) localStorage.setItem("hp-src", sv); } catch(e){}   // first source wins
-if (/^#move=[a-f0-9]{20,}$/.test(location.hash)){ tokenStore.set(location.hash.slice(6)); movedHere = true; try { history.replaceState(null, "", location.pathname + location.search + "#today"); } catch(e){} }
+if (/^#move=[a-f0-9]{64}$/.test(location.hash)){ if (!tokenStore.get()) tokenStore.set(location.hash.slice(6)); movedHere = true;   // never replaces a login that is already here: a crafted link can't switch someone into another account
+  try { history.replaceState(null, "", location.pathname + location.search + "#today"); } catch(e){} }
 else if (location.hash === "#moved"){ movedHere = true; try { history.replaceState(null, "", location.pathname + location.search + "#today"); } catch(e){} }
-if (location.hostname === "matthewbaconn.github.io" || location.hostname === "app.hybridrunnin.com"){ const t0 = tokenStore.get(); location.replace("https://app.hybrdrunning.com/" + location.search + (t0 && /^[a-f0-9]{20,}$/.test(t0) ? "#move=" + t0 : "#moved")); }
+if (location.hostname === "matthewbaconn.github.io" || location.hostname === "app.hybridrunnin.com"){ const t0 = tokenStore.get(); location.replace("https://app.hybrdrunning.com/" + location.search + (t0 && /^[a-f0-9]{64}$/.test(t0) ? "#move=" + t0 : "#moved")); }
 // "forgot password" email link: #reset=<code> opens the new-password form
 let resetCode = null;
 if (/^#reset=[a-f0-9]{64}$/.test(location.hash)){ resetCode = location.hash.slice(7); try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} }
@@ -2857,7 +2858,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "76";
+const APP_VERSION = "77";
 let reportView = null, isOwner = false, reports = [];
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
