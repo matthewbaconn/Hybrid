@@ -348,6 +348,11 @@ await check("Ask bar: shows only when the server says so; ask, confirm a move, p
     const labels = await page.locator(".ask-acts .btn").allInnerTexts();
     if (labels.length !== 2 || !/^Move /.test(labels[0]) || !/^Open Fuel and food$/.test(labels[1])) throw new Error("action buttons: " + labels.join(" | "));
     await shot("03-ask-sheet", true);
+    // the sheet follows the visible area: on a phone the keyboard shrinks it, and the input must stay above it
+    { const vp = page.viewportSize(); await page.setViewportSize({width: vp.width, height: Math.round(vp.height * 0.55)}); await page.waitForTimeout(500);
+      const fit = await page.evaluate(() => { const b = document.querySelector(".back"), f = document.querySelector("#askform"), vv = window.visualViewport; return {bh: Math.round(b.getBoundingClientRect().height), vh: Math.round(vv.height), fb: Math.round(f.getBoundingClientRect().bottom)}; });
+      await page.setViewportSize(vp); await page.waitForTimeout(200);
+      if (Math.abs(fit.bh - fit.vh) > 2 || fit.fb > fit.vh) throw new Error("the coach sheet does not fit above the keyboard: " + JSON.stringify(fit)); }
     await page.click(".ask-acts .btn >> nth=0"); await page.waitForSelector(".toast");
     const t1 = await page.innerText(".toast"); if (!/swapped|moved/i.test(t1)) throw new Error("after the move button: " + t1);
     if (await page.$(".sheet.asks")) throw new Error("the coach sheet stayed open after the move");
