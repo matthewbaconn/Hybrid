@@ -4,7 +4,7 @@
 //   - the AI misbehaves: garbage, giant replies, markup, script tags, dozens of actions, wrong types, errors, dropped calls
 //   - the member misbehaves: giant questions, wrong types, a flood of history, control characters, bursts, the daily cap
 // Pass = never a server error, never an action outside the allowed list, never more than two, replies always bounded,
-// what is sent to the AI always bounded, bursts are slowed down, the daily cap holds, non-owners always get 404.
+// what is sent to the AI always bounded, bursts are slowed down, the daily cap holds for each account on its own.
 //   cd api && node ../tests/ask_stress.mjs
 import http from "node:http";
 import {spawn, execFileSync} from "node:child_process";
@@ -116,8 +116,11 @@ try {
   const okN = burst.filter(s => s === 200).length, slowed = burst.filter(s => s === 429).length;
   ok(okN + slowed === 25 && okN <= 10 && slowed >= 15, "25 questions at the same instant: " + okN + " answered, " + slowed + " told to slow down, none crashed (" + [...new Set(burst)].join(",") + ")");
   ok(sql("SELECT count FROM ai_usage WHERE user_id = '" + uid + "' AND day LIKE 'ask:%'")[0].count === before + okN, "the daily counter went up by exactly the " + okN + " that were answered");
-  const memberBurst = await Promise.all(Array.from({length: 8}, () => call(member, "POST", "/api/ask", {q: "let me in"}).then(r => r.status)));
-  ok(memberBurst.every(s => s === 404), "a non-owner hammering the endpoint always gets 404 while it is in preview");
+  // released Nov 17: every member has the coach, each with their own limiter and their own daily count
+  const memberBurst = await Promise.all(Array.from({length: 14}, () => call(member, "POST", "/api/ask", {q: "me too"}).then(r => r.status)));
+  const mOk = memberBurst.filter(s => s === 200).length, mid = sql("SELECT id FROM users WHERE email LIKE 'member-%'")[0].id;
+  ok(mOk >= 1 && mOk <= 10 && memberBurst.every(s => s === 200 || s === 429), "a member (not the owner) gets answers too, and their own burst is slowed the same way: " + mOk + " of 14 answered");
+  ok(sql("SELECT count FROM ai_usage WHERE user_id = '" + mid + "' AND day LIKE 'ask:%'")[0].count === mOk && sql("SELECT count FROM ai_usage WHERE user_id = '" + uid + "' AND day LIKE 'ask:%'")[0].count === before + okN, "each account has its own daily count; one member's questions never use up another's");
   await sleep(62000);
   sql("UPDATE ai_usage SET count = 39 WHERE user_id = '" + uid + "' AND day LIKE 'ask:%'");
   const calls = seen.length, c40 = await call(owner, "POST", "/api/ask", {q: "question forty"}), c41 = await call(owner, "POST", "/api/ask", {q: "question forty-one"}), j41 = await c41.json();

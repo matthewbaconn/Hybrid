@@ -78,9 +78,12 @@ async function ownerIdRaw(env){
   return row ? row.id : null;
 }
 /* Preview (Matthew, Nov 16: "treat my account as the test account so I can try things out before you put them live").
-   A feature named here works only on the owner's account. To release it to every member, delete its name. */
-const PREVIEW = new Set(["ask"]);
-const previewOk = async (env, user, k) => !PREVIEW.has(k) || user.id === await ownerId(env);
+   A feature named here works only on the owner's account. To release it to every member, delete its name.
+   "ask" (the coach bar) was released Nov 17 after its stress test passed, so the list is empty for now.
+   PREVIEW_ADD is for tests only (tests/ask.mjs sets it to "ask" so the owner-only switch stays tested); it can only
+   narrow who sees a feature, never widen it. */
+const PREVIEW = new Set([]);
+const previewOk = async (env, user, k) => !(PREVIEW.has(k) || String(env.PREVIEW_ADD || "").split(",").includes(k)) || user.id === await ownerId(env);
 
 /* ---------- AI food reading ---------- */
 async function analyze(env, user, b){

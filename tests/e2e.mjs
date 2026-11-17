@@ -215,7 +215,8 @@ await check("Morning check-in + AI coach note", async () => {
 await check("Watch connected: readiness and sleep replace the morning survey", async () => {
   // Pretend a watch sent last night's numbers and today's survey was never filled in (only the app's view changes).
   const today = await page.evaluate(() => HP.isoLocal(new Date()));
-  const fake = async route => { const r = await route.fetch(); const j = await r.json();
+  let coachOn = false;   // first the app without the coach (the survey is one tap away), then with it (type how you feel instead)
+  const fake = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {ask: coachOn};
     j.checkins = (j.checkins || []).filter(c => c.date !== today);
     j.health = [1, 2, 3, 4, 5].map(i => ({date: HPaddDays(today, -i), sleep_h: 7.4, sleep_score: 80, hrv: 60, rhr: 50, source: "garmin"})).concat([{date: today, sleep_h: 7.2, sleep_score: 82, hrv: 61, rhr: 49, source: "garmin"}]);
     await route.fulfill({response: r, json: j}); };
@@ -237,6 +238,12 @@ await check("Watch connected: readiness and sleep replace the morning survey", a
       Object.defineProperty(document, "visibilityState", {configurable: true, get: () => "visible"}); document.dispatchEvent(new Event("visibilitychange")); });
     await page.waitForSelector(".ci-done.wr", {timeout: 5000});
     if (await page.$(".card.ci .ciq")) throw new Error("the survey came back after leaving the app");
+    // with the coach on (Matthew, Nov 16: "I only want the option to type how u feel if you have a watch connected"): no survey, one tap opens the coach
+    coachOn = true; await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar"); await tab("today"); await page.waitForSelector(".ci-done.wr");
+    if (await page.$('.ci-done.wr [data-act="ciopen"]')) throw new Error("the survey link still shows on the watch card when the coach is on");
+    await page.click('.ci-done.wr [data-act="askfeel"]'); await page.waitForSelector(".sheet.asks #ask-q");
+    const ph = await page.getAttribute("#ask-q", "placeholder"); if (!/how do you feel/i.test(ph || "")) throw new Error("the coach did not open asking how you feel: " + ph);
+    await page.click('.sheet.asks [data-act="askclose"]'); await page.waitForSelector(".sheet.asks", {state: "detached"});
   } finally {
     await page.unroute("**/api/me", fake); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
   }
@@ -303,9 +310,14 @@ await check("Today shows the weather and the best time to run", async () => {
     return t;
   } finally { await page.unroute("**/geocoding-api.open-meteo.com/**", geo); await page.unroute("**/api.open-meteo.com/**", fc); if (await page.$('[data-act="back"]')) await back(); }
 }, {needs: "Build a plan (4 steps)"});
-await check("Ask bar (preview): hidden for members; with the preview on, ask, confirm a move, put it back", async () => {
+await check("Ask bar: shows only when the server says so; ask, confirm a move, put it back", async () => {
   await tab("today"); await page.waitForSelector(".hub-hero");
-  if (await page.locator("#askbar").isVisible()) throw new Error("the ask bar shows on an account that is not in the preview");
+  // released Nov 17: the bar shows exactly when /api/me says features.ask (coach set up, feature not held in preview)
+  const [meResp] = await Promise.all([page.waitForResponse(r => /\/api\/me$/.test(r.url()) && r.request().method() === "GET" && r.ok(), {timeout: 20000}).catch(() => null), page.reload({waitUntil: "networkidle"})]);
+  await page.waitForSelector("#tabbar:not([hidden])", {timeout: 15000}); await tab("today"); await page.waitForSelector(".hub-hero");
+  const meJson = meResp ? await meResp.json().catch(() => null) : null, says = meJson ? !!(meJson.features && meJson.features.ask) : null;
+  const shown = await page.locator("#askbar").isVisible();
+  if (says !== null && shown !== says) throw new Error("the server says the ask bar is " + (says ? "on" : "off") + " for this account but the app " + (shown ? "shows" : "hides") + " it");
   // Switch the preview on for this account in the app's view only, with a stand-in coach (no AI call, nothing leaves the test).
   await tab("plan"); await page.waitForSelector(".day-h .mvb");
   const from = await page.evaluate(() => { const today = HP.isoLocal(new Date()); return [...document.querySelectorAll(".day-h .mvb")].map(b => b.dataset.date).filter(d => d > today)[0] || null; });

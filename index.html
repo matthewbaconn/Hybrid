@@ -404,7 +404,8 @@ button{cursor:pointer}
 .hub-hero + .hub-hero{margin-top:-26px;border-top:1px solid rgba(255,255,255,.08)}
 .wxs{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;margin-top:14px;padding:9px 14px;background:var(--surface);border:1px solid rgba(255,255,255,.05);border-radius:8px;color:var(--ink);font-family:inherit;text-align:left;cursor:pointer}
 .wxs .ic{width:20px;height:20px;flex:none;color:var(--work)} .wxs-t{font:700 24px/1 var(--f-display);flex:none} .wxs-c{display:grid;gap:2px;flex:1;min-width:0} .wxs-c b{font-size:14.5px;font-weight:600} .wxs-c span{font-size:13px;color:var(--muted)} .wxs > i{font-style:normal;color:var(--muted);flex:none}
-/* ask bar (preview): one line above the tab bar that opens the coach */
+/* ask bar: one line above the tab bar that opens the coach; the toast and the What's new pill sit above it */
+body.has-ask .toast{bottom:calc(150px + env(safe-area-inset-bottom,0px))} body.has-ask #wnpill{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
 .askbar{position:fixed;left:12px;right:12px;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:29;max-width:616px;margin:0 auto;display:flex;align-items:center;gap:10px;min-height:46px;padding:0 16px;border-radius:999px;background:#1C1F27;border:1px solid var(--line);box-shadow:0 8px 22px rgba(0,0,0,.5);color:var(--muted);font:500 15px/1 var(--f-body);text-align:left;cursor:pointer}
 .askbar .ic{width:18px;height:18px;flex:none;color:var(--accent-2)} .askbar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.has-ask .wrap{padding-bottom:calc(176px + env(safe-area-inset-bottom,0px))}
@@ -2172,7 +2173,7 @@ function moveBtn(date){ return canMoveFrom(date) && moveTargets(date).length ? '
 function lastSwap(date){ const sw = plan.profile.swaps || []; for (let i = sw.length - 1; i >= 0; i--) if (sw[i][0] === date || sw[i][1] === date) return {i, a: sw[i][0], b: sw[i][1]}; return null; }
 function movedNote(date){ const l = lastSwap(date); if (!l) return ''; const o = l.a === date ? l.b : l.a; if (date < TODAY && o >= TODAY) return ''; return 'Moved from ' + DAYF[dow(o)] + (weekOf(o) !== weekOf(date) ? ' ' + fmtD(o) : ''); }
 function isLastSwap(a, b){ const sw = plan.profile.swaps || [], x = sw[sw.length - 1]; return !!x && ((x[0] === a && x[1] === b) || (x[0] === b && x[1] === a)); }
-/* ---------- Ask bar (preview: only accounts whose /api/me says features.ask) ----------
+/* ---------- Ask bar (shown when /api/me says features.ask: the coach is set up, and the feature is not held in preview) ----------
    One line above the tab bar opens the coach. Questions go to /api/ask. The coach never changes anything: a change
    comes back as a button, worded here from the plan itself, and runs the app's own Move / Change workout code
    only when the member taps it. */
@@ -2981,7 +2982,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "82";
+const APP_VERSION = "83";
 let reportView = null, isOwner = false, reports = [], feat = {};
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -3090,15 +3091,16 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-16.4";
+const NEW_ID = "2026-11-17";
 const NEWS = [
+  ["spark", "Ask your coach anything", "Tap Ask your coach above the tabs and type: ask about your plan, why a number is what it is, or to move a workout. Any change shows as a button, and nothing moves until you tap it.", null, null, "2026-11-17"],
   ["sun", "Weather and best time to run, on Today", "Right under the greeting you now see the weather and the best three hours to run. No city yet? Tap it to add yours.", null, null, "2026-11-16.4"],
   ["spark", "Pinch to zoom anywhere", "Small text? Spread two fingers to zoom in on any screen, and pinch to zoom back out.", null, null, "2026-11-16.3"],
   ["check", "Check off a workout in one tap", "On Today, tap I did it on your workout when you're done. Runs from Strava or Garmin still check off on their own.", null, null, "2026-11-16.2"],
   ["share", "See who joins through your invite link", "Open More, then Your invite link: copy or share your personal link and see how many people joined through it.", "invites", null, "2026-11-16"],
   ["flag", "A cleaner Today screen", "Today's workout is now at the top, and your race countdown is one card with days to go and how far through your plan you are.", null, null, "2026-11-15.3"],
   ["run", "Gentler first weeks at low mileage", "Running under about 3 miles a day? Your plan now uses fewer of your run days early on, so week one is close to what you run now. Rest days fill the rest.", null, null, "2026-11-15.2"],
-  ["watch", "Watch connected? No more morning survey", "Today now shows your readiness, sleep, HRV and resting heart rate straight from your watch. Tap Add how you feel if you want to adjust it.", null, null, "2026-11-15"],
+  ["watch", "Watch connected? No more morning survey", "Today now shows your readiness, sleep, HRV and resting heart rate straight from your watch. Want to add how you feel? Tap Tell your coach how you feel and type it.", null, null, "2026-11-15"],
   ["swap", "Changing a workout is easier", "Tap Change workout: similar options show first, and the search box on top finds anything else.", null, null, "2026-11-14.2"],
   ["run", "No watch? Run with your phone", "Open today's run and tap Start with my phone. A voice calls every step, keeps time and can track distance by GPS. Then rate how hard it felt.", null],
   ["heart", "Run by pace, heart rate or feel", "Pick how your runs are set. Heart rate shows your zone and bpm on every step, and your Garmin gets heart rate targets.", "set-run"],

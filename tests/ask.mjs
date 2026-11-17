@@ -1,4 +1,4 @@
-// Ask-bar test (preview feature, Nov 16). Runs its own local API against a stand-in AI and a throwaway local
+// Ask-bar test (Nov 16; released to members Nov 17, so this test puts it back in preview with PREVIEW_ADD). Runs its own local API against a stand-in AI and a throwaway local
 // database, so it never touches live data or spends anything. Checks that:
 //   - only the owner's account can use /api/ask while "ask" is in PREVIEW (everyone else gets 404, features.ask false)
 //   - the question reaches the AI with the member's plan, and Strava data never does
@@ -26,7 +26,7 @@ const dir = mkdtempSync(join(tmpdir(), "ask-"));
 const sql = q => JSON.parse(execFileSync("npx", ["wrangler", "d1", "execute", "hybrid", "--local", "--persist-to", dir, "--json", "--command", q], {encoding: "utf8", stdio: ["ignore", "pipe", "ignore"]}))[0].results;
 execFileSync("npx", ["wrangler", "d1", "migrations", "apply", "hybrid", "--local", "--persist-to", dir], {stdio: "ignore", env: {...process.env, CI: "1"}});
 const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--local-upstream", "127.0.0.1:" + PORT, "--persist-to", dir,
-  "--var", "ANTHROPIC_URL:http://127.0.0.1:" + MOCK, "--var", "ANTHROPIC_API_KEY:test-key", "--var", "OWNER_EMAIL:" + OWNER], {stdio: "ignore", detached: true});
+  "--var", "ANTHROPIC_URL:http://127.0.0.1:" + MOCK, "--var", "ANTHROPIC_API_KEY:test-key", "--var", "OWNER_EMAIL:" + OWNER, "--var", "PREVIEW_ADD:ask"], {stdio: "ignore", detached: true});
 const stop = () => { try { process.kill(-dev.pid); } catch(e){} mock.close(); rmSync(dir, {recursive: true, force: true}); };
 const iso = d => d.toISOString().slice(0, 10), addDays = (s, n) => { const d = new Date(s + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return iso(d); };
 
