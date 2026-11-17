@@ -414,7 +414,7 @@ body.has-ask .toast{bottom:calc(150px + env(safe-area-inset-bottom,0px))} body.h
 .askbar .ic{width:18px;height:18px;flex:none;color:var(--accent-2)} .askbar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.has-ask .wrap{padding-bottom:calc(176px + env(safe-area-inset-bottom,0px))}
 .sheet.asks{gap:12px;align-content:start} .ask-h{display:flex;align-items:baseline;gap:10px} .ask-h b{font:700 18px/1.1 var(--f-display)} .ask-h .ai{font-size:12px;color:var(--muted)} .ask-h .r{margin-left:auto}
-.ask-log{display:grid;gap:10px;max-height:52dvh;overflow-y:auto;overscroll-behavior:contain;align-content:start}
+.ask-log{display:grid;gap:10px;max-height:min(52dvh,max(90px,calc(var(--vvh,100dvh) - 270px)));overflow-y:auto;overscroll-behavior:contain;align-content:start}
 .ask-m{max-width:88%;padding:10px 13px;border-radius:14px;font-size:15px;line-height:1.45;overflow-wrap:anywhere} .ask-m.u{justify-self:end;background:color-mix(in srgb,var(--accent) 34%,#15171D);color:#fff} .ask-m.a{justify-self:start;background:#1F222B;color:var(--ink)} .ask-m.busy{color:var(--muted)}
 .ask-acts{display:grid;gap:8px;justify-self:start;max-width:100%} .ask-acts .btn{justify-content:flex-start;text-align:left;min-height:44px;white-space:normal;height:auto;padding:10px 14px} .ask-acts small{color:var(--muted);font-size:13px}
 .ask-about{font-size:13.5px;line-height:1.4;color:var(--muted);border-left:3px solid var(--accent-2);padding:2px 0 2px 10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden} .coach .askab{margin-top:8px}
@@ -2246,6 +2246,17 @@ function askOpen(hint, kind, about){
   b.innerHTML = '<div class="sheet asks" role="dialog" aria-modal="true" aria-label="Ask your coach"></div>';
   document.body.appendChild(b); askRender(true);
 }
+/* On-screen keyboard (Nov 17, Matthew: "the keyboard covers it"). iOS doesn't shrink the page when the keyboard opens,
+   so a sheet pinned to the bottom ends up behind it. While a sheet is open, its backdrop follows the visible area
+   (visualViewport) and --vvh tells the coach's message list how much room is left. */
+function fitSheets(){
+  const vv = window.visualViewport, b = $(".back"); if (!vv) return;
+  document.documentElement.style.setProperty("--vvh", Math.round(vv.height) + "px");
+  if (!b) return;
+  b.style.top = Math.round(vv.offsetTop) + "px"; b.style.height = Math.round(vv.height) + "px"; b.style.bottom = "auto";
+  const log = b.querySelector(".ask-log"); if (log) log.scrollTop = log.scrollHeight;
+}
+if (window.visualViewport){ visualViewport.addEventListener("resize", fitSheets); visualViewport.addEventListener("scroll", fitSheets); }
 function askRender(focus, keep){
   const el = $(".sheet.asks"); if (!el) return;
   const chips = ask.kind === "feel" ? ["Legs feel heavy today", "Slept badly, but I feel fine", "I feel great"]
@@ -2259,6 +2270,7 @@ function askRender(focus, keep){
     '<form id="askform" class="ask-f"><input id="ask-q" type="text" maxlength="600" autocomplete="off" enterkeyhint="send" placeholder="' + esc(ask.hint || "Ask, or say what to change") + '" aria-label="Message your coach" value="' + esc(keep || "") + '">' +
     '<button class="btn primary" type="submit"' + (ask.busy ? ' disabled' : '') + '>Send</button></form>';
   const log = el.querySelector(".ask-log"); if (log) log.scrollTop = log.scrollHeight;
+  fitSheets(); setTimeout(fitSheets, 350);   // again once the keyboard has finished opening
   if (focus){ const i = $("#ask-q"); if (i) i.focus({preventScroll: true}); }
 }
 async function askSend(q){
@@ -3017,7 +3029,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "85";
+const APP_VERSION = "87";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3209,12 +3221,18 @@ function nav(dir, fn){
   }
   navDir = dir; fn(); navDir = null;
 }
+/* Going back lands where you were (Nov 17, Matthew: tapping Aerobic or Fitness on Recovery/Progress and swiping back
+   jumped to the top). Forward saves the scroll position of the screen you leave; back restores it. */
+const scrollMem = {};
+const viewKey = () => scr ? "scr:" + scr : "tab:" + tab + (tab === "activities" && actSel ? ":" + actSel : "");
+function restoreScroll(key){ const y = scrollMem[key] || 0; delete scrollMem[key]; window.scrollTo(0, y); if (y) requestAnimationFrame(() => window.scrollTo(0, y)); }
 function go(s){
   const dir = s === null || SCR_UP[scr] === s || (scr && !s) ? "back" : "fwd";
+  if (dir === "fwd") scrollMem[viewKey()] = window.scrollY;
   if (s === "members" && mem) mem.stale = true;
   if (s === "invites" && inv) inv.stale = true;
   if (s === "set-notif" && mode === "account" && pushOK() && !pushState.checked) checkPush().then(() => { if (scr === "set-notif") render(); });
-  nav(dir, () => { scr = s; render(); window.scrollTo(0, 0); });
+  nav(dir, () => { scr = s; render(); if (dir === "back") restoreScroll(viewKey()); else window.scrollTo(0, 0); });
 }
 function renderScreen(){
   const s = scr, back = '<header class="scrbar"><button class="iconbtn" type="button" data-act="back" aria-label="Back">‹</button><h1>' + esc(SCR_T[s] || "") + '</h1></header>';
@@ -3402,8 +3420,8 @@ document.addEventListener("click", ev => {
     return;
   }
   if (act === "actgo"){ const id = a.dataset.id; nav("fwd", () => { scr = null; tab = "activities"; actSel = id; render(); window.scrollTo(0, 0); }); return; }
-  if (act === "actopen"){ const id = a.dataset.id; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
-  if (act === "actback"){ nav("back", () => { actSel = null; actName = null; render(); }); return; }
+  if (act === "actopen"){ const id = a.dataset.id; scrollMem[viewKey()] = window.scrollY; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
+  if (act === "actback"){ nav("back", () => { actSel = null; actName = null; render(); restoreScroll(viewKey()); }); return; }
   if (act === "anedit"){ const x = acts.find(y => y.id === actSel); if (x && canRename(x)){ actName = {id: x.id, v: x.name, err: "", busy: false}; render(); const q = $("#an-q"); if (q){ q.focus(); q.select(); } } return; }
   if (act === "ancancel"){ actName = null; render(); return; }
   if (act === "anreset"){ if (actName) saveActName(actName.id, ""); return; }

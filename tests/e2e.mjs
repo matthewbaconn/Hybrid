@@ -61,9 +61,16 @@ const outsideInFlight = new Set();
 page.on("request", r => { if (OUTSIDE.test(r.url())) outsideInFlight.add(r.url()); });
 page.on("requestfinished", r => outsideInFlight.delete(r.url()));
 page.on("requestfailed", r => { outsideInFlight.delete(r.url()); if (OUTSIDE.test(r.url())) outsideTrouble.push(new URL(r.url()).host + " " + ((r.failure() && r.failure().errorText) || "failed")); });
+// Requests a check cuts off on purpose (route.abort): Chrome logs one "Failed to load resource" line for each. Each
+// deliberate abort excuses exactly ONE such line for that exact URL; anything beyond that is still an error
+// (Nov 17: the ask-bar dead-network step tripped the live nightly this way while the app behaved correctly).
+const selfAborted = new Map();
+const abortOnPurpose = route => { const k = route.request().url().split("?")[0]; selfAborted.set(k, (selfAborted.get(k) || 0) + 1); return route.abort(); };
 page.on("console", m => {
   if (m.type() !== "error") return;
   const t = m.text(), u = (m.location() && m.location().url) || "";
+  const k = u.split("?")[0];
+  if (/^Failed to load resource: net::ERR_FAILED$/.test(t) && selfAborted.get(k) > 0){ selfAborted.set(k, selfAborted.get(k) - 1); return; }
   if (/fonts\.g|favicon|ERR_NAME/.test(t) || (step === "Delete account" && /401/.test(t))) return;
   if (/net::ERR_/.test(t) && OUTSIDE.test(u)) return;                                       // outside service down/slow: not an app error
   consoleErrors.push("[" + step + "] " + t + (u && /Failed to load resource/.test(t) ? " (" + u.split("?")[0] + ")" : ""));   // name the URL so the next failure is diagnosable
@@ -343,6 +350,11 @@ await check("Ask bar: shows only when the server says so; ask, confirm a move, p
     const labels = await page.locator(".ask-acts .btn").allInnerTexts();
     if (labels.length !== 2 || !/^Move /.test(labels[0]) || !/^Open Fuel and food$/.test(labels[1])) throw new Error("action buttons: " + labels.join(" | "));
     await shot("03-ask-sheet", true);
+    // the sheet follows the visible area: on a phone the keyboard shrinks it, and the input must stay above it
+    { const vp = page.viewportSize(); await page.setViewportSize({width: vp.width, height: Math.round(vp.height * 0.55)}); await page.waitForTimeout(500);
+      const fit = await page.evaluate(() => { const b = document.querySelector(".back"), f = document.querySelector("#askform"), vv = window.visualViewport; return {bh: Math.round(b.getBoundingClientRect().height), vh: Math.round(vv.height), fb: Math.round(f.getBoundingClientRect().bottom)}; });
+      await page.setViewportSize(vp); await page.waitForTimeout(200);
+      if (Math.abs(fit.bh - fit.vh) > 2 || fit.fb > fit.vh) throw new Error("the coach sheet does not fit above the keyboard: " + JSON.stringify(fit)); }
     await page.click(".ask-acts .btn >> nth=0"); await page.waitForSelector(".toast");
     const t1 = await page.innerText(".toast"); if (!/swapped|moved/i.test(t1)) throw new Error("after the move button: " + t1);
     if (await page.$(".sheet.asks")) throw new Error("the coach sheet stayed open after the move");
@@ -396,7 +408,7 @@ await check("Ask bar stress: hostile replies, bad buttons, a burst of taps, 14 r
   // The coach is a stand-in that this check controls, so it can send things a real reply never should.
   let reply = {answer: "ok", actions: []}, calls = 0, dead = false, step = "start";
   const me = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {ask: true}; await route.fulfill({response: r, json: j}); };
-  const coach = async route => { calls++; if (dead) return route.abort(); await route.fulfill({json: typeof reply === "function" ? reply(route.request().postDataJSON()) : reply}); };
+  const coach = async route => { calls++; if (dead) return abortOnPurpose(route); await route.fulfill({json: typeof reply === "function" ? reply(route.request().postDataJSON()) : reply}); };
   // send a question and wait for its answer (counting bubbles would stall once the conversation reaches its 40-message limit)
   const say = async q => { const c = calls; await page.fill("#ask-q", q); await page.press("#ask-q", "Enter"); for (let i = 0; i < 100 && calls === c; i++) await page.waitForTimeout(50);
     await page.waitForFunction(() => !document.querySelector(".ask-m.busy") && document.querySelector("#ask-q") && !document.querySelector('.ask-f button[disabled]')); };
@@ -511,6 +523,17 @@ await check("Activities tab (feed + detail)", async () => {
   await page.click('[data-act="actback"]'); await page.waitForSelector(".afilt");
   return n + " activit" + (n === 1 ? "y" : "ies") + " · opened " + t;
 }, {needs: "Log a workout (with rep pace)"});
+await check("Back lands where you were (Progress card -> back, Activities detail -> back)", async () => {
+  await tab("training"); await page.waitForSelector('.pc[data-scr="p-fit"]');
+  await page.evaluate(() => { const c = document.querySelector('.pc[data-scr="p-fit"]'); window.scrollTo(0, Math.max(0, c.getBoundingClientRect().top + window.scrollY - 200)); });
+  await page.waitForTimeout(150); const y0 = await page.evaluate(() => Math.round(window.scrollY));
+  if (y0 < 50) throw new Error("the test page is too short to scroll (" + y0 + ")");
+  await page.click('.pc[data-scr="p-fit"]'); await page.waitForSelector(".scrbar"); await page.waitForTimeout(250);
+  await page.click('[data-act="back"]'); await page.waitForSelector('.pc[data-scr="p-fit"]'); await page.waitForTimeout(350);
+  const y1 = await page.evaluate(() => Math.round(window.scrollY));
+  if (Math.abs(y1 - y0) > 4) throw new Error("back from Your fitness went to " + y1 + ", was " + y0);
+  return "Progress: back to " + y1 + "px (was " + y0 + ")";
+});
 await check("Rename a workout: the pencil shows when the server says so; type, save, see it in the list, original back", async () => {
   // released Nov 17: the pencil shows exactly when /api/me says features.rename
   const [meResp] = await Promise.all([page.waitForResponse(r => /\/api\/me$/.test(r.url()) && r.request().method() === "GET" && r.ok(), {timeout: 20000}).catch(() => null), page.reload({waitUntil: "networkidle"})]);
