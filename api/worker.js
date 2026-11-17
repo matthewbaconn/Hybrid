@@ -82,7 +82,7 @@ async function ownerIdRaw(env){
    "ask" (the coach bar) was released Nov 17 after its stress test passed, so the list is empty for now.
    PREVIEW_ADD is for tests only (tests/ask.mjs sets it to "ask" so the owner-only switch stays tested); it can only
    narrow who sees a feature, never widen it. */
-const PREVIEW = new Set(["rough"]);   // rough = "Rough night: adjust today" in the coach bar (Nov 17), Matthew's account first   // "rename" (your own name for a workout) was released Nov 17 on Matthew's word ("Release rename")
+const PREVIEW = new Set(["rough", "ready2"]);   // ready2 = new readiness card on Today (Nov 17)   // rough = "Rough night: adjust today" in the coach bar (Nov 17), Matthew's account first   // "rename" (your own name for a workout) was released Nov 17 on Matthew's word ("Release rename")
 const previewOk = async (env, user, k) => !(PREVIEW.has(k) || String(env.PREVIEW_ADD || "").split(",").includes(k)) || user.id === await ownerId(env);
 
 /* ---------- AI food reading ---------- */
@@ -1351,7 +1351,7 @@ async function route(req, env, path, ctx){
         workouts: gl.results[0] ? (/WORKOUT_IMPORT/.test(gl.results[0].permissions || "") ? gl.results[0].wk : (gl.results[0].permissions ? -1 : null)) : null},
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
       settings: meSet, ai: {...meAi, available: !!env.ANTHROPIC_API_KEY}, push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY && meAi.on,
-      owner, features: {ask: !!env.ANTHROPIC_API_KEY && (await previewOk(env, user, "ask")), rename: await previewOk(env, user, "rename"), rough: await previewOk(env, user, "rough")}, founding, reports, health: hd.results, lifts: ll.results, mealplan: mp.results[0] ? JSON.parse(mp.results[0].data) : null, crews: await crewsFor(env, user.id), health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
+      owner, features: {ask: !!env.ANTHROPIC_API_KEY && (await previewOk(env, user, "ask")), rename: await previewOk(env, user, "rename"), rough: await previewOk(env, user, "rough"), ready2: await previewOk(env, user, "ready2")}, founding, reports, health: hd.results, lifts: ll.results, mealplan: mp.results[0] ? JSON.parse(mp.results[0].data) : null, crews: await crewsFor(env, user.id), health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
   }
   if (M === "PUT" && path === "/api/account"){
     const b = await body(req), name = String(b.name ?? "").trim().slice(0, 30);
