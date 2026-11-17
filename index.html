@@ -2178,20 +2178,25 @@ function isLastSwap(a, b){ const sw = plan.profile.swaps || [], x = sw[sw.length
    only when the member taps it. */
 let ask = {msgs: [], busy: false, err: "", hint: "", kind: "", about: ""};
 const askOn = () => mode === "account" && !!(feat && feat.ask) && !!plan;
+const ASK_SCREENS = ["fuel", "weather", "weight", "workouts", "meals", "fuelplan", "set-train", "set-run", "set-profile", "set-watch", "set-notif", "set-hr", "t-paces", "t-races", "set-report", "faq"];   // the same list the server allows (ASK_SCREENS in api/worker.js)
+const isDay = d => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d);
 function askBarShow(on){ const b = $("#askbar"), show = !!on && askOn(); if (b) b.hidden = !show; document.body.classList.toggle("has-ask", show); }
 const lc1 = t => /^(Today|Tomorrow|Yesterday)/.test(t) ? t.replace(/^[A-Z]/, c => c.toLowerCase()) : t;   // "tomorrow", but "Wednesday"
 function askLabel(a){   // what a proposed change would do, in the app's own words; null = not possible on this plan right now
+  if (!a || typeof a !== "object") return null;
   if (a.type === "move"){
+    if (!isDay(a.from) || !isDay(a.to) || a.from === a.to) return null;
     if (isLastSwap(a.from, a.to) && untouched(a.from) && untouched(a.to)) return 'Put ' + lc1(dayName(a.from < a.to ? a.from : a.to)) + ' and ' + lc1(dayName(a.from < a.to ? a.to : a.from)) + ' back the way they were';   // undoing the last move works either way round, even onto a now-empty day (doMove treats it as Put back)
     const dA = dayOf(a.from), dB = dayOf(a.to); if (!dA || !dB || !dA.sessions.length || !canMoveFrom(a.from) || !moveTargets(a.from).some(d => d.date === a.to)) return null;
     return 'Move ' + lc1(dayName(a.from)) + "'s " + sessShort(dA.sessions) + ' to ' + lc1(dayName(a.to)) + (dB.sessions.length ? ' (' + sessShort(dB.sessions) + ' goes to ' + lc1(dayName(a.from)) + ')' : '');
   }
   if (a.type === "change"){
+    if (!isDay(a.date)) return null;
     const d = dayOf(a.date), x = d && d.sessions[0], m = d ? dayMatches(a.date) : {};
     if (!x || !x.o || a.date < TODAY || x.type === "race" || sessDone(a.date, 0, m)) return null;
     return 'Pick a different workout for ' + lc1(dayName(a.date)) + ' (' + x.title + ')';
   }
-  if (a.type === "open") return SCR_T[a.screen] ? 'Open ' + SCR_T[a.screen] : null;
+  if (a.type === "open") return typeof a.screen === "string" && ASK_SCREENS.includes(a.screen) && SCR_T[a.screen] ? 'Open ' + SCR_T[a.screen] : null;
   return null;
 }
 function askMsgHtml(m, mi){
@@ -2227,7 +2232,7 @@ async function askSend(q){
   const history = ask.msgs.slice(-6).map(m => ({role: m.role, text: m.text})), kind = ask.kind, about = ask.about;
   ask.msgs.push({role: "user", text: q}); ask.busy = true; ask.err = ""; ask.hint = ""; askRender();
   let keep = "";
-  try { const j = await api("POST", "/api/ask", {q, history, ...(kind ? {kind} : {}), ...(about ? {about} : {})}); ask.msgs.push({role: "assistant", text: String(j.answer || ""), actions: Array.isArray(j.actions) ? j.actions.slice(0, 2) : []}); ask.kind = ""; }   // ask.about stays for follow-ups until the sheet is opened for something else
+  try { const j = await api("POST", "/api/ask", {q, history, ...(kind ? {kind} : {}), ...(about ? {about} : {})}); ask.msgs.push({role: "assistant", text: String(j.answer || "").slice(0, 1200), actions: Array.isArray(j.actions) ? j.actions.filter(x => x && typeof x === "object").slice(0, 2) : []}); ask.kind = ""; }   // ask.about stays for follow-ups until the sheet is opened for something else
   catch(e){ ask.err = e.message; ask.msgs.pop(); keep = q; }
   ask.busy = false; if (ask.msgs.length > 40) ask.msgs = ask.msgs.slice(-40);
   askRender(true, keep);

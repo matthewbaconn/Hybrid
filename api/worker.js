@@ -548,7 +548,7 @@ function askContext(U, L){
     fuel_target_today: fuel, run_days_per_week: Array.isArray(p.days) ? p.days.length : null, lifts_per_week: p.lifts || 0, calendar: cal};
 }
 async function askAnything(env, user, b){
-  const q = String(b.q || "").replace(/\s+/g, " ").trim().slice(0, 600);
+  const q = (typeof b.q === "string" ? b.q : "").replace(/[\u0000-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, " ").replace(/\s+/g, " ").trim().slice(0, 600);
   if (q.length < 2) throw new HttpError(400, "Type a question first.");
   const st = await settingsOf(env, user.id), L = localNow(st.tz), day = "ask:" + L.date;
   const used = await env.DB.prepare("SELECT count FROM ai_usage WHERE user_id = ? AND day = ?").bind(user.id, day).first("count");
@@ -561,7 +561,7 @@ async function askAnything(env, user, b){
   while (hist.length && hist[0].role !== "user") hist.shift();
   const msgs = []; for (const m of hist){ if (msgs.length && msgs[msgs.length - 1].role === m.role) msgs[msgs.length - 1].content += "\n" + m.content; else msgs.push(m); }
   if (msgs.length && msgs[msgs.length - 1].role === "user") msgs.pop();
-  const about = String(b.about || "").replace(/\s+/g, " ").trim().slice(0, 500);
+  const about = (typeof b.about === "string" ? b.about : "").replace(/\s+/g, " ").trim().slice(0, 500);
   const system = COACH_STYLE + " You are the coach inside the Mileset training app, talking with one member. They can ask you anything: their training and plan, racing, fueling, recovery, gear, how the app works, or how you reached something you said. Answer every question as well as you can; the only things you turn down are the ones the safety rules above forbid. " +
     "For their own numbers use the context JSON (calendar, readiness and its points, paces, fuel target and how it was built); for everything else use general knowledge and say when you are giving a general answer. Never invent a number about them. " +
     "When they ask why or how you decided something, show your working: name the rule and the exact numbers of theirs that went into it, so they can check you and disagree. If they tell you the rule doesn't fit them, say honestly what they can change (a setting, a move, a different workout) and what is fixed. " + ASK_HOW +
@@ -577,9 +577,11 @@ async function askAnything(env, user, b){
     headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
     body: JSON.stringify({model: env.COACH_MODEL || "claude-haiku-5-5", max_tokens: 700, system, messages: msgs}), signal: AbortSignal.timeout(30000)}).catch(() => null);
   if (!r || !r.ok){ await logEvent(env, "ai_ask", false, r ? "api " + r.status : "net"); throw new HttpError(502, "The coach didn't answer. Try again in a moment."); }
-  const out = await r.json(), raw = (out.content || []).filter(c => c.type === "text").map(c => c.text).join("");
+  const out = await r.json().catch(() => null), raw = out && Array.isArray(out.content) ? out.content.filter(c => c && c.type === "text" && typeof c.text === "string").map(c => c.text).join("") : "";
   let j = null; try { j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch(e){}
-  const answer = clip(String(j && j.answer ? j.answer : j ? "" : raw).replace(/[*_#`]/g, "").replace(/\s+/g, " ").trim(), 700);
+  if (j && (typeof j !== "object" || Array.isArray(j))) j = null;
+  // the reply is shown as plain text: markup, tags and code fences are stripped here as well as escaped in the app
+  const answer = clip(String(j ? (typeof j.answer === "string" ? j.answer : "") : raw).replace(/```[a-z]*|<[^>]{0,300}>/gi, " ").replace(/[*_#`<>]/g, "").replace(/\s+/g, " ").trim(), 700);
   if (!answer){ await logEvent(env, "ai_ask", false, "unreadable reply"); throw new HttpError(502, "The coach didn't answer. Try again in a moment."); }
   const last = plan => HP.addDays(plan.start, plan.weeks.length * 7 - 1), inPlan = d => ISO_DAY.test(d) && d >= U0.plan.start && d <= last(U0.plan);
   const actions = (j && Array.isArray(j.actions) ? j.actions : []).map(a => {

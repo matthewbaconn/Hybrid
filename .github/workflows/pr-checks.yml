@@ -31,6 +31,8 @@ jobs:
         run: cd api && node ../tests/webhooks.mjs
       - name: Ask-bar test (own local API + stand-in AI; preview is owner-only, Strava data never reaches the AI, only allowed actions come back)
         run: cd api && node ../tests/ask.mjs
+      - name: Ask-bar stress test (hostile stand-in AI, junk input, bursts, the daily cap; never a crash, never a button outside the list)
+        run: cd api && node ../tests/ask_stress.mjs
       - name: Start the local API and app
         run: |
           rm -rf /tmp/site && mkdir /tmp/site && tar --exclude=./api --exclude=./.git --exclude=./node_modules -cf - . | tar -xf - -C /tmp/site

@@ -348,6 +348,87 @@ await check("Ask bar (preview): hidden for members; with the preview on, ask, co
     await page.unroute("**/api/me", me); await page.unroute("**/api/ask", coach); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
   }
 }, {needs: "Build a plan (4 steps)"});
+await check("Ask bar stress: hostile replies, bad buttons, a burst of taps, 14 random moves, a dead network, a tiny screen", async () => {
+  // The coach is a stand-in that this check controls, so it can send things a real reply never should.
+  let reply = {answer: "ok", actions: []}, calls = 0, dead = false, step = "start";
+  const me = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {ask: true}; await route.fulfill({response: r, json: j}); };
+  const coach = async route => { calls++; if (dead) return route.abort(); await route.fulfill({json: typeof reply === "function" ? reply(route.request().postDataJSON()) : reply}); };
+  // send a question and wait for its answer (counting bubbles would stall once the conversation reaches its 40-message limit)
+  const say = async q => { const c = calls; await page.fill("#ask-q", q); await page.press("#ask-q", "Enter"); for (let i = 0; i < 100 && calls === c; i++) await page.waitForTimeout(50);
+    await page.waitForFunction(() => !document.querySelector(".ask-m.busy") && document.querySelector("#ask-q") && !document.querySelector('.ask-f button[disabled]')); };
+  const openSheet = async () => { if (!(await page.$(".sheet.asks"))){ await page.click("#askbar"); await page.waitForSelector(".sheet.asks #ask-q"); } };
+  const closeSheet = async () => { if (await page.$(".sheet.asks")){ await page.keyboard.press("Escape"); await page.waitForFunction(() => !document.querySelector(".sheet.asks")); } };
+  const planText = async () => { await closeSheet(); await tab("plan"); await page.waitForSelector(".day-h"); const t = await page.evaluate(() => [...document.querySelectorAll(".card.day")].slice(0, 21).map(d => d.id + ":" + [...d.querySelectorAll(".sess-t, h3, .s-title")].map(x => x.textContent.trim()).join("+")).join("|")); await tab("today"); return t; };
+  await page.route("**/api/me", me); await page.route("**/api/ask", coach);
+  try {
+    await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#askbar:visible");
+    const before = await planText();
+    await openSheet();
+    step = "part 1";
+    // 1. markup and script in a reply are shown as text, never run
+    reply = {answer: '<img src=x onerror="window.__pwn=1"><script>window.__pwn=2</scr' + 'ipt><b>bold</b> ' + "x".repeat(320) + " " + "Long answer. ".repeat(400), actions: []};
+    await say("show me markup");
+    const inj = await page.evaluate(() => ({pwn: window.__pwn || 0, tags: document.querySelectorAll(".ask-log img, .ask-log script, .ask-log b").length, text: document.querySelector(".ask-m.a").textContent.slice(0, 20)}));
+    if (inj.pwn || inj.tags || !inj.text.startsWith("<img")) throw new Error("markup from a reply was not shown as plain text: " + JSON.stringify(inj));
+    await noOverflow();
+    if (!(await page.locator("#ask-q").isVisible()) || !(await page.locator('.ask-f button[type="submit"]').isVisible())) throw new Error("a very long answer pushed the message box off the screen");
+    step = "part 2";
+    // 2. buttons the app should never offer
+    const today = await page.evaluate(() => HP.isoLocal(new Date()));
+    reply = {answer: "Bad buttons.", actions: [{type: "open", screen: "members"}, {type: "move", from: "2020-01-01", to: "2020-01-02"}]}; await say("bad buttons 1");
+    reply = {answer: "More bad buttons.", actions: [{type: "delete_account"}, {type: "change", date: "1999-01-01"}, {type: "open", screen: "set-account"}, {type: "open", screen: "fuel"}]}; await say("bad buttons 2");
+    reply = {answer: "Junk.", actions: [null, 7, "move", {type: "move", from: {a: 1}, to: ["x"]}]}; await say("bad buttons 3");
+    reply = {answer: "Not a list.", actions: {type: "open", screen: "fuel"}}; await say("bad buttons 4");
+    const offered = await page.locator(".ask-acts .btn").allInnerTexts();
+    if (offered.length) throw new Error("a button was offered for something that is not allowed: " + offered.join(" | "));
+    step = "part 3";
+    // 3. five taps on Send in a row: one question goes out
+    reply = {answer: "Once.", actions: []}; const c0 = calls;
+    await page.fill("#ask-q", "tap tap tap"); for (let i = 0; i < 5; i++) await page.press("#ask-q", "Enter").catch(() => {});
+    await page.waitForFunction(() => !document.querySelector(".ask-m.busy")); await page.waitForTimeout(300);
+    if (calls - c0 !== 1) throw new Error("5 quick taps sent " + (calls - c0) + " questions");
+    step = "part 4";
+    // 4. 14 random moves: any button that is offered must work, and putting it back must work, every time
+    let tried = 0, done = 0;
+    for (let k = 0; k < 14; k++){
+      const from = await page.evaluate(([d, n]) => HP.addDays(d, n), [today, 1 + (k * 5) % 9]), to = await page.evaluate(([d, n]) => HP.addDays(d, n), [from, [1, -1, 2, 3, -2, 6, 7][k % 7]]);
+      step = "part 4, move " + k + " (" + from + " to " + to + ")"; reply = {answer: "Move " + k + ".", actions: [{type: "move", from, to}]};
+      await openSheet();
+      await say("move " + k); tried++;
+      const btn = page.locator(".ask-acts").last().locator(".btn");
+      if (!(await btn.count())) continue;                                   // not allowed on this plan: correctly not offered
+      step += " tap the move"; await btn.first().click(); await page.waitForFunction(() => !document.querySelector(".sheet.asks"));
+      const t1 = (await page.innerText(".toast")).trim(); if (/can't move|Too many/i.test(t1)) throw new Error("an offered move (" + from + " to " + to + ") was refused when tapped: " + t1);
+      step += ", reopen"; await openSheet(); step += ", ask to undo"; await say("undo " + k);
+      const undo = page.locator(".ask-acts").last().locator(".btn"); if (!(await undo.count())) throw new Error("no way offered to put " + from + " and " + to + " back");
+      step += ", tap undo"; await undo.first().click(); await page.waitForFunction(() => /Put back/.test((document.querySelector(".toast") || {}).textContent || "")); done++;
+    }
+    if (done < 3) throw new Error("only " + done + " of " + tried + " random moves were possible: the check proved too little");
+    const after = await planText();
+    if (after !== before) throw new Error("after " + done + " moves each put back, the plan is not the same as before");
+    step = "part 5";
+    // 5. the network dies mid-question: a plain message, and the typed words are kept
+    await openSheet();
+    dead = true; await page.fill("#ask-q", "are you still there"); await page.press("#ask-q", "Enter"); await page.waitForSelector(".sheet.asks .err");
+    if ((await page.inputValue("#ask-q")) !== "are you still there") throw new Error("the typed question was lost when the network failed");
+    dead = false;
+    step = "part 6";
+    // 6. a long conversation stays bounded, and Escape closes the sheet without losing it
+    reply = {answer: "Short.", actions: []}; for (let i = 0; i < 12; i++) await say("more " + i);
+    const bubbles = await page.locator(".ask-m:not(.busy)").count(); if (bubbles > 40) throw new Error("the conversation grew to " + bubbles + " messages (40 is the limit)");
+    await closeSheet(); await openSheet(); await page.waitForSelector(".sheet.asks .ask-m");
+    step = "part 7";
+    // 7. a 320px phone: nothing runs off the side, the box and Send are on screen
+    const vp = page.viewportSize(); await page.setViewportSize({width: 320, height: 568});
+    try { await noOverflow(); const box = await page.locator('.ask-f button[type="submit"]').boundingBox(); if (!box || box.x + box.width > 321 || box.y + box.height > 569) throw new Error("Send is off the screen on a small phone: " + JSON.stringify(box)); }
+    finally { await page.setViewportSize(vp); }
+    return done + " of " + tried + " random moves made and put back; plan unchanged";
+  } catch(e){ if (process.env.ASK_DEBUG){ await page.screenshot({path: process.env.ASK_DEBUG}).catch(() => {}); console.log("ASK_DEBUG step=" + step + " | " + await page.evaluate(() => { const b = document.querySelector(".back"), t = document.querySelector(".toast"), a = document.querySelector("#askbar"); return (b ? "sheet " + b.firstElementChild.className : "no sheet") + ", askbar " + (a && !a.hidden ? "shown" : "hidden") + ", toast: " + (t ? t.textContent : "none") + ", " + (document.querySelector(".scrbar") ? "detail screen" : "tab") + ", bubbles " + document.querySelectorAll(".ask-m").length + ", last acts: " + ([...document.querySelectorAll(".ask-acts")].pop() || {textContent: "-"}).textContent.slice(0, 160); }).catch(x => "eval failed " + x.message)); }
+    e.message = step + ": " + e.message; throw e;
+  } finally {
+    await page.unroute("**/api/me", me); await page.unroute("**/api/ask", coach); await page.keyboard.press("Escape").catch(() => {}); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
+  }
+}, {needs: "Build a plan (4 steps)"});
 await check("Weigh-in", async () => { await open("weight"); await page.fill("#w-lb", "182.4"); await page.click('[data-act="wsave"]'); await page.waitForSelector(".wrow"); const t = (await page.innerText(".wrow")).replace(/\n/g, " "); await back(); return t; });
 await check("Log a workout (with rep pace)", async () => {
   await open("workouts"); await page.click('[data-act="atoggle"]'); await page.selectOption("#a-type", "run"); await page.fill("#a-mi", "5"); await page.fill("#a-min", "44"); await page.click("#a-wp"); await page.keyboard.type("750"); await page.fill("#a-hr", "152");

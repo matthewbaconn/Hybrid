@@ -1,0 +1,35 @@
+name: Coach bar, real AI stress test
+# Asks the real coach model about 28 questions a member might type (facts, "why", plan changes, safety, tricks, Strava)
+# and checks the answers. Uses a local copy of the API and a throwaway database with a made-up member: no live data.
+# This is the only test that spends money: a few cents of Anthropic API per run. So it runs only when someone starts it
+# by hand, or when this test or the coach's rules text changes in a pull request from this repo.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ["tests/ask_real.mjs", ".github/workflows/coach-real.yml"]
+permissions:
+  contents: read
+concurrency:
+  group: coach-real-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  real:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: "22"}
+      - name: Install tools
+        run: cd api && npm install --no-audit --no-fund >/dev/null && npm install --no-save --no-audit --no-fund wrangler@4 >/dev/null
+      - name: Real coach answers (local API, throwaway database, the real model)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          [ -n "$ANTHROPIC_API_KEY" ] || { echo "::error::the ANTHROPIC_API_KEY secret is missing"; exit 1; }
+          printf 'ANTHROPIC_API_KEY=%s\n' "$ANTHROPIC_API_KEY" > api/.dev.vars
+          cd api && node ../tests/ask_real.mjs
+      - name: Remove the key file
+        if: always()
+        run: rm -f api/.dev.vars
