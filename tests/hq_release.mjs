@@ -39,7 +39,7 @@ const enc = async (obj, key) => { const iv = crypto.getRandomValues(new Uint8Arr
   const ct = new Uint8Array(await crypto.subtle.encrypt({name: 'AES-GCM', iv, additionalData: new TextEncoder().encode('mileset-hq-v1')}, k, new TextEncoder().encode(JSON.stringify(obj))));
   const u = b => Buffer.from(b).toString('base64url'); return JSON.stringify({v: 1, alg: 'A256GCM', iv: u(iv), ct: u(ct)}); };
 const KEYB = crypto.getRandomValues(new Uint8Array(32)), KEY = Buffer.from(KEYB).toString('base64url');
-const iso = m => new Date(Date.now() - m * 60000).toISOString().slice(0, 19) + 'Z';
+const T0 = Date.now(), iso = m => new Date(T0 - m * 60000).toISOString().slice(0, 19) + 'Z';   // fixed timestamps, like a real feed
 const FIX = {v: 1, t: iso(1), o: {streak: [1, 7], working: [], attention: ['audit'], runs_today: 4, ok_today: 2, failed_today: 1, approvals: 1, plan_min_today: 30, spend: null},
   d: [{id: 'audit', s: 'f', last: iso(30), next: iso(-600), sum: 'TEST FIXTURE audit run', art: '', hist: [], jobs: [], runs: 1, min: 12, model: 'claude-opus-5-5', ok7: 0, fail7: 1}],
   f: [[iso(30), 'audit', 'failed', 'TEST FIXTURE failure'], [iso(90), 'worker', 'ok', 'TEST FIXTURE shipped a change']],
@@ -47,26 +47,37 @@ const FIX = {v: 1, t: iso(1), o: {streak: [1, 7], working: [], attention: ['audi
   dec: [['Nov 16', 'TEST FIXTURE verified item', 'Implemented and verified', 'evidence']], done: [['Nov 16', 'TEST FIXTURE verified item', 'Implemented and verified', 'evidence']],
   jobs: [['0', 'PLAN OF RECORD (TEST)', '', ''], ['B1', 'TEST FIXTURE top job', 'product lead', 'building']],
   g: {asof: '2026-11-16', src7: {unknown: 2, ig: 1}, src_all: {unknown: 3, ig: 1}, funnel: {signed_up: 4, plan: 3, workout: 0, d7_eligible: 0, active_d7: 0}, members: [['2026-11-15', 3], ['2026-11-16', 4]]},
-  me: null, money: null, fix: ''};
-const PRIVJ = await enc(FIX, KEYB);
+  me: null, money: null, fix: '',
+  x: {roles: {audit: {name: 'TEST audit schedule', cron: '43 2 * * *', model: 'claude-opus-5-5'}}, work7: {audit: {ok: 1, failed: 1, skipped: 0, min: 20}}, results_say: '', results_at: '',
+    health: {at: '2026-11-16 23:00', status: 'TEST FIXTURE health line', services: 'bot=active', code: 'drift=in sync', server: '', connections: '', spend: '', errors_24h: 0},
+    verify: [['V9', '2026-11-16', 'audit', 'TEST FIXTURE verified item', 'pass', '2026-11-17 audit: pass']], exps: [['E1', 'running', 'TEST experiment', '>=1 sign-up', 'Nov 30', 'running']],
+    partners: [['P1', 'TEST partner', 'awaiting Matthew']], outreach: {total: 1, by_status: {held: 1}, sent_total: 0, paused: false, pause_reason: ''}, overnight: ['2026-11-16 · TEST overnight'], sevenday: null, merged: [], runs: []}};
+const PRIVJ = await enc(FIX, KEYB), PRIVJ0 = await enc({...FIX, x: undefined}, KEYB);   // before and after Vesper's feed update
 const feedAt = m => JSON.stringify({v: 1, t: iso(m), ok: true, sk: [1, 7], r: [['audit', 'f', iso(30), iso(-600), 1], ['worker', 'i', iso(90), iso(-30), 3]], tl: [[iso(90), 'worker', 'ok']]});
+import http from 'node:http';
+const ROOT = here('../'), TYPES = {html: 'text/html', json: 'application/json', png: 'image/png', webmanifest: 'application/manifest+json'};
+const srv = http.createServer((q, r) => { const f = ROOT + decodeURIComponent(new URL(q.url, 'http://x').pathname).replace(/^\/+/, '').replace(/\/$/, '/index.html');
+  if (f.includes('..') || !fs.existsSync(f)) { r.writeHead(404); return r.end(); }
+  r.writeHead(200, {'Content-Type': TYPES[f.split('.').pop()] || 'application/octet-stream'}); fs.createReadStream(f).pipe(r); });
+await new Promise(ok => srv.listen(0, '127.0.0.1', ok));
+const BASE = `http://127.0.0.1:${srv.address().port}/`;
 const b = await chromium.launch();
 async function open(opts){
-  const ctx = await b.newContext({viewport: {width: 390, height: 844}}), p = await ctx.newPage(), reqs = [], bad = [];
+  const ctx = await b.newContext({viewport: opts.vp || {width: 390, height: 844}}), p = await ctx.newPage(), reqs = [], bad = [];
   p.on('pageerror', e => bad.push('script error: ' + e.message)); p.on('console', m => { if (/Content Security Policy|Refused to/i.test(m.text())) bad.push('CSP: ' + m.text()); });
   p.on('request', r => reqs.push(r));
   await p.route(/hq\.json/, r => opts.feed === null ? r.fulfill({status: 404, body: ''}) : r.fulfill({status: 200, contentType: 'application/json', headers: {'Access-Control-Allow-Origin': '*'}, body: feedAt(opts.feed ?? 2)}));
-  await p.route(/hq-full\.json/, r => r.fulfill({status: 200, contentType: 'application/json', headers: {'Access-Control-Allow-Origin': '*'}, body: PRIVJ}));
+  await p.route(/hq-full\.json/, r => r.fulfill({status: 200, contentType: 'application/json', headers: {'Access-Control-Allow-Origin': '*'}, body: opts.oldFeed ? PRIVJ0 : PRIVJ}));
   await p.route(/api\/founding/, r => r.fulfill({status: 200, contentType: 'application/json', headers: {'Access-Control-Allow-Origin': '*'}, body: '{"left":96,"max":100,"members":4}'}));
   if (opts.key) await p.addInitScript(k => localStorage.setItem('hq-k', k), KEY);
-  await p.goto('file://' + here('../' + NEW)); await p.waitForTimeout(1500);
+  await p.goto(BASE + NEW); await p.waitForTimeout(1500);
   return {ctx, p, reqs, bad};
 }
 { // unlocked, fresh feed
   const {ctx, p, reqs, bad} = await open({key: true, feed: 2});
   errs.push(...bad.map(x => 'unlocked: ' + x));
   for (const r of reqs) { const u = new URL(r.url());
-    if (u.protocol === 'file:') continue;
+    if (u.protocol === 'file:' || u.host === new URL(BASE).host) continue;   // the page's own files
     if (r.method() !== 'GET') errs.push(`network: ${r.method()} ${u.host} (only GET is allowed)`);
     if (!ALLOWED.includes(u.host)) errs.push('network: request to ' + u.host);
     if (r.url().includes(KEY) || JSON.stringify(r.headers()).includes(KEY)) errs.push('network: the HQ key left the device in a request'); }
@@ -85,17 +96,66 @@ async function open(opts){
   if (!/^Live/.test(await p.textContent('#fresh'))) errs.push('freshness: a 2-minute-old feed must read Live');
   await p.click('#nav [data-v="growth"]');
   if (!/aren't counted here yet/.test(await p.textContent('#growth'))) errs.push('growth: the funnel must say synced workouts are not counted yet');
+  // ---- release 2 views ----
   await p.click('#nav [data-v="team"]');
-  if ((await p.locator('#roster .dept').count()) !== 4) errs.push('departments: 4 departments expected');
-  if ((await p.locator('#roster .p').count()) !== 12) errs.push('departments: every employee (12) must appear exactly once');
+  if ((await p.locator('#roster .emp').count()) !== 12) errs.push('employees: every employee (12) must appear exactly once');
+  if (/\bscore\b/i.test(await p.textContent('#roster'))) errs.push('employees: no scores, only verified results');
+  await p.click('#roster [data-id="audit"]'); await p.waitForTimeout(200);
+  const ws = await p.textContent('#panel');
+  for (const w of ['Responsibilities', 'Latest report', 'Time and cost', 'independently verified', 'Current assignments', 'Activity history']) if (!ws.includes(w)) errs.push('workspace: missing ' + w);
+  if (!/TEST FIXTURE verified item/.test(ws)) errs.push('workspace: the role\'s verified work must show');
+  await p.click('#close');
+  await p.click('#nav [data-v="depts"]');
+  if ((await p.locator('#depts .dcard').count()) !== 9) errs.push('departments: 9 departments expected');
   if (!(await p.locator('#rooms .room').count())) errs.push('departments: rooms being built must be listed');
-  if (!/min of plan time/.test(await p.textContent('#roster')) || /productivity score|\bscore\b/i.test(await p.textContent('#roster'))) errs.push('departments: minutes are cost, never a score');
+  await p.click('.dcard[data-d="security"]'); await p.waitForTimeout(150);
+  if (!/Step 5/.test(await p.textContent('#depts'))) errs.push('security workspace: must state the Step 5 status');
+  await p.click('#nav [data-v="approvals"]');
+  const apv = await p.textContent('#approvals');
+  if (!/What approving authorizes/.test(apv) || !/How to approve/.test(apv) || !/TEST FIXTURE approval/.test(apv)) errs.push('approvals: each approval must explain what it authorizes and how to approve');
+  if (await p.locator('#approvals button').count()) errs.push('approvals: HQ must not have approve buttons');
+  await p.click('#nav [data-v="ops"]');
+  const ops = await p.textContent('#ops');
+  for (const w of ['Active jobs', 'Scheduled work', 'System health', 'Completed in 24 h', 'Failed in 24 h', 'Reliability', 'Deployment history']) if (!ops.includes(w)) errs.push('operations: missing ' + w);
+  if (!/TEST FIXTURE health line/.test(ops)) errs.push('operations: Vesper\'s health report must show when the feed has it');
+  await p.click('#nav [data-v="growth"]');
+  if (!/aren't counted here yet/.test(await p.textContent('#growth'))) errs.push('growth: the funnel must say synced workouts are not counted yet');
+  const g2 = await p.textContent('#growth2'); for (const w of ['Customer funnel', 'Partnerships', 'Ambassadors', 'Campaigns and experiments']) if (!g2.includes(w)) errs.push('growth: missing ' + w);
+  if (/someone-private/.test(g2)) errs.push('growth: ambassador names must never reach HQ');
+  await p.click('#nav [data-v="money"]');
+  if (!/Infrastructure costs/.test(await p.textContent('#money2'))) errs.push('finance: infrastructure costs must be listed (as not tracked)');
+  // command bar answers from the data and hands the question to Vesper
+  await p.keyboard.press('Control+k'); await p.fill('#cmdIn', 'What needs my approval?'); await p.press('#cmdIn', 'Enter');
+  const an = await p.textContent('#cmdOut'); if (!/TEST FIXTURE approval/.test(an) || !/ask Vesper in Telegram/i.test(an)) errs.push('command: approval question must list approvals and offer Vesper');
+  await p.fill('#cmdIn', 'How many actual active customers do we have?'); await p.press('#cmdIn', 'Enter');
+  if (!/Strava or Garmin/.test(await p.textContent('#cmdOut'))) errs.push('command: active-customer answer must say synced workouts are unknown');
+  await p.keyboard.press('Escape');
+  // alerts: unseen count, mark all seen sticks on this device
+  const bn = +(await p.textContent('#belln') || 0); if (bn < 2) errs.push('alerts: the failed run and the approval must raise alerts');
+  await p.click('#bell'); await p.click('#seenAll'); await p.waitForTimeout(100);
+  if ((await p.textContent('#belln')) !== '0') errs.push('alerts: mark all seen must clear the count');
+  // the last view is remembered on this device
+  await p.click('#nav [data-v="ops"]'); await p.waitForTimeout(1000);   // let the browser save this device's settings before reloading
+  await p.reload(); await p.waitForTimeout(1300);
+  if (!(await p.isVisible('#v-ops'))) errs.push('views: HQ must reopen on the last view on this device');
+  let bl = ''; for (let i = 0; i < 20 && bl !== '0'; i++) { await p.waitForTimeout(150); bl = await p.textContent('#belln'); }   // feeds load in any order
+  if (bl !== '0') errs.push('alerts: seen alerts must stay seen after a reload (unseen: ' + (await p.$$eval('#alerts .al.new b', x => x.map(e => e.textContent).join(' | '))) + ')');
   await ctx.close();
 }
 for (const [m, want] of [[20, /^Delayed/], [90, /^Stale/], [null, /offline/i]]) { // freshness labels
   const {ctx, p, bad} = await open({key: false, feed: m}); errs.push(...bad.map(x => `feed ${m}: ` + x));
   const t = await p.textContent('#fresh'); if (!want.test(t)) errs.push(`freshness: a ${m === null ? 'missing' : m + '-minute-old'} feed must read ${want} (got "${t}")`);
   if (m === 90 && !/old/.test(await p.textContent('#panels [data-p="unknown"]'))) errs.push('freshness: an old feed must be listed under What we don\'t know');
+  await ctx.close(); }
+{ // today's feed (before Vesper's feed update is installed): every new room still works and says what's missing
+  const {ctx, p, bad} = await open({key: true, feed: 2, oldFeed: true}); errs.push(...bad.map(x => 'old feed: ' + x));
+  await p.click('#nav [data-v="ops"]'); if (!/feed update/.test(await p.textContent('#ops'))) errs.push('old feed: operations must say what arrives with the feed update');
+  await p.click('#nav [data-v="growth"]'); if (!/feed update/.test(await p.textContent('#growth2'))) errs.push('old feed: growth must say what arrives with the feed update');
+  await ctx.close(); }
+for (const vp of [{width: 390, height: 844}, {width: 820, height: 1180}, {width: 1366, height: 768}, {width: 1920, height: 1080}]) {   // no sideways scrolling anywhere
+  const {ctx, p, bad} = await open({key: true, feed: 2, vp}); errs.push(...bad.map(x => `${vp.width}px: ` + x));
+  for (const v of ['hq', 'approvals', 'ops', 'team', 'depts', 'growth', 'money', 'me']) { await p.click(`#nav [data-v="${v}"]`); await p.waitForTimeout(120);
+    const over = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth); if (over > 1) errs.push(`${vp.width}px ${v}: scrolls sideways by ${over}px`); }
   await ctx.close(); }
 { // locked: no private words anywhere
   const {ctx, p} = await open({key: false, feed: 2}); const body = await p.textContent('body');
@@ -107,6 +167,6 @@ for (const [m, want] of [[20, /^Delayed/], [90, /^Stale/], [null, /offline/i]]) 
   if (fs.existsSync(here('../hq/classic/index.html'))) { await p.goto('file://' + here('../hq/classic/index.html') + '?demo'); if (!(await p.isVisible('#classicNote'))) errs.push('classic: the rollback copy must say it is the rollback'); }
   await p.goto('file://' + here('../hq/index.html') + '?demo'); if (await p.isVisible('#classicNote').catch(() => false)) errs.push('classic note must not show on /hq/');
   await p.close(); }
-await b.close();
+await b.close(); srv.close();
 if (errs.length) { console.error(errs.join('\n')); process.exit(1); }
-console.log(`HQ release OK: ${copies.length} copies pass the HQ regression test; new HQ read-only (GET only, allowed hosts only, key never sent, CSP), 5 labelled panels, honest freshness, private stays private, rollback copy labelled`);
+console.log(`HQ release OK (release 2 views: employees, workspaces, 9 departments, approvals, operations, growth, finance, command bar, alerts, remembered view); ${copies.length} copies pass the HQ regression test; new HQ read-only (GET only, allowed hosts only, key never sent, CSP), 5 labelled panels, honest freshness, private stays private, rollback copy labelled`);
