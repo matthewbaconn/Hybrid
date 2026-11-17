@@ -1,6 +1,7 @@
 import "../plan.js";
 import { buildPushPayload } from "@block65/webcrypto-web-push";
 import { safeDetail, errName, apiErrType, routeOf, GARMIN_TYPES } from "./events_safe.mjs";
+import { visitKind } from "./visits.mjs";
 const HP = globalThis.HP;
 // Hybrid API: accounts, saved plans, workout check-offs, food log and AI food reading.
 // Runs on Cloudflare Workers with a D1 database (binding DB). Secrets: ANTHROPIC_API_KEY.
@@ -161,11 +162,15 @@ function viewPath(host, pathname){
 function countView(env, ctx, req, host, u, r){
   try {
     if (req.method !== "GET" || r.status !== 200 || !/text\/html/i.test(r.headers.get("Content-Type") || "")) return;
-    const ua = req.headers.get("User-Agent") || "";
-    if (!ua || BOT_UA.test(ua) || /prefetch|prerender/i.test(req.headers.get("Purpose") || req.headers.get("Sec-Purpose") || "")) return;
+    const ua = req.headers.get("User-Agent") || "", purpose = req.headers.get("Purpose") || req.headers.get("Sec-Purpose") || "";
     const p = viewPath(host, u.pathname); if (!p) return;
+    const day = new Date().toISOString().slice(0, 10);
+    // Nov 17 diagnostic: every page load (robots and tests too) as one broad label; only the label is stored (api/visits.mjs)
+    ctx.waitUntil(env.DB.prepare("INSERT INTO page_view_kinds (day, path, kind, n) VALUES (?, ?, ?, 1) ON CONFLICT(day, path, kind) DO UPDATE SET n = n + 1")
+      .bind(day, p, visitKind(ua, purpose)).run().catch(() => {}));
+    if (!ua || BOT_UA.test(ua) || /prefetch|prerender/i.test(purpose)) return;
     ctx.waitUntil(env.DB.prepare("INSERT INTO page_views (day, path, n) VALUES (?, ?, 1) ON CONFLICT(day, path) DO UPDATE SET n = n + 1")
-      .bind(new Date().toISOString().slice(0, 10), p).run().catch(() => {}));
+      .bind(day, p).run().catch(() => {}));
   } catch(e){}
 }
 async function stravaToken(env, link){
@@ -763,6 +768,7 @@ async function cron(env, ctx){
     catch(e){ await logEvent(env, "garmin_workout", false, "cron " + errName(e)); }
   }
   await env.DB.prepare("DELETE FROM events WHERE ts < ?").bind(new Date(Date.now() - 21 * 864e5).toISOString()).run();
+  await env.DB.prepare("DELETE FROM page_view_kinds WHERE day < ?").bind(new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)).run().catch(() => {});   // diagnostic counts: 30 days
   await env.DB.prepare("DELETE FROM notif_log WHERE day < ?").bind(new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)).run();
   const users = (await env.DB.prepare("SELECT DISTINCT u.id FROM users u LEFT JOIN push_subs p ON p.user_id = u.id LEFT JOIN strava_links s ON s.user_id = u.id WHERE p.user_id IS NOT NULL OR s.user_id IS NOT NULL").all()).results;
   for (const {id} of users){

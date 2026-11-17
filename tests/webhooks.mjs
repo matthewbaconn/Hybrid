@@ -66,4 +66,7 @@ console.log(failed ? failed + " webhook check(s) failed" : "webhooks: all checks
 // The event-log privacy test (Nov 17) runs here: pr-checks.yml is a protected file, so it has no step of its own yet.
 try { execFileSync("node", [new URL("./events_privacy.mjs", import.meta.url).pathname], {stdio: "inherit"}); }
 catch(e){ failed++; console.log("::error::event-log privacy test failed"); }
+// The visitor-kind diagnostic test (Nov 17) rides along for the same reason.
+try { execFileSync("node", [new URL("./visits.mjs", import.meta.url).pathname], {stdio: "inherit"}); }
+catch(e){ failed++; console.log("::error::visitor-kind test failed"); }
 process.exit(failed ? 1 : 0);
