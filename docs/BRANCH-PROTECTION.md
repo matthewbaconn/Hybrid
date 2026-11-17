@@ -39,3 +39,5 @@ revert is stuck, or a guard file itself needs changing).
 The previous settings are backed up in vesper-relay `ceo/backups/2026-11-17-branch-protection/`. To undo step 5
 entirely, Matthew deletes the `main` rule in the same Settings page (and restores the role instructions from that
 backup so the roles push directly again).
+
+Live verification of this rule (Nov 17, 2026): see vesper-relay ceo/backups/2026-11-17-branch-protection/VERIFICATION.md.
