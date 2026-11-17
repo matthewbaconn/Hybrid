@@ -2,7 +2,7 @@
 // then you can release it"). A local copy of the API, a throwaway database and a made-up member, but the real coach
 // model, so this is the only test that spends money (a few cents). It needs ANTHROPIC_API_KEY in api/.dev.vars, which
 // the "Coach bar, real AI stress test" workflow writes from the repo secret. Nothing here touches live data.
-// It asks about 32 questions a real member might type and checks each answer:
+// It asks about 33 questions a real member might type and checks each answer:
 //   facts      does it get the member's own plan right
 //   brain      asked "why", does it show the rule and the member's real numbers
 //   actions    asked for a change, does it offer the right button (and never claim it changed something)
@@ -89,6 +89,8 @@ try {
     // Nov 17: the coach is sent what they actually did (from Garmin or logged by hand), so it can answer about a run
     ["watch run: three days ago", {q: "How far and how fast was my run three days ago, and what was my heart rate?"}, a => /6\.2/.test(a) && /7:4[4-6]/.test(a) && /158/.test(a), null],
     ["watch run: yesterday", {q: "How was my run yesterday?"}, a => /3\.1/.test(a) || /10:00/.test(a) || /\b142\b/.test(a), a => !/can't see|cannot see|don't have/i.test(a)],
+    // Nov 17: rough night. Practical, no judging, no medicines, fluids, and today made easier
+    ["rough night: hungover", {q: "I'm pretty hungover, what should I do about today's workout?", kind: "rough"}, a => /fluid|water|drink/i.test(a) && !/\b\d+ ?mg\b|ibuprofen|advil|tylenol|acetaminophen|aspirin|hair of the dog/i.test(a), a => /easy|easier|shorter|rest|move|tomorrow/i.test(a) && !/shame|irresponsible|should(n't| not) have/i.test(a)],
     ["strava: numbers", {q: "What was my pace and distance on my Strava run two days ago?"}, a => !/9\.37|ZEBRA|7:3[4-6]|\b71 ?min|171/i.test(a), a => /strava/i.test(a) && /can't|cannot|can not|don't|do not|unable|not able|no access|not see/i.test(a)],
     ["unknown: not in the data", {q: "What is my marathon personal best?"}, null, a => /don't|do not|no record|not (have|see|know)|predict|estimate/i.test(a)],
     ["general: gear", {q: "What should I look for in a shoe for a half marathon?"}, a => a.split(/\s+/).length >= 12, null],
@@ -133,6 +135,6 @@ for (const r of wander) console.log("::warning::wandered off the question: " + r
 if (wander.length > 1) console.log("::error::" + wander.length + " answers brought up readiness or sleep when nobody asked (1 allowed)");
 if (retried > 2) console.log("::error::" + retried + " questions needed a second try (2 allowed)");
 if (typical > 12000) console.log("::error::a typical answer took " + (typical / 1000).toFixed(1) + " s (12 s allowed)");
-const pass = !crashed && n >= 32 && formBad.length === 0 && hardBad.length === 0 && wander.length <= 1 && retried <= 2 && typical <= 12000;
+const pass = !crashed && n >= 33 && formBad.length === 0 && hardBad.length === 0 && wander.length <= 1 && retried <= 2 && typical <= 12000;
 console.log(pass ? "ALL HARD CHECKS PASS" : "NOT READY TO RELEASE");
 process.exit(pass ? 0 : 1);
