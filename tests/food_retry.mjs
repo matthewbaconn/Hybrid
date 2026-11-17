@@ -1,6 +1,7 @@
 // Food-read retry test (Nov 17, 2026: 6 failed AI food reads in 3 days). Own local API + a stand-in AI that answers
 // from a script. Checks: a busy/overloaded API or a reply without JSON gets exactly one more try; a bad request does
-// not; a read that still fails gives the member's daily read back; a good read counts once.
+// not; a read that fails on our side gives the member's daily read back (an unreadable photo still counts);
+// a good read counts once.
 // Runs in PR checks from tests/webhooks.mjs (pr-checks.yml is a protected file).  cd api && node ../tests/food_retry.mjs
 import http from "node:http";
 import {spawn, execFileSync} from "node:child_process";
@@ -62,6 +63,7 @@ try {
 
   r = await read([PROSE, PROSE]);
   ok(r.status === 502 && r.calls === 2 && /clearer photo/i.test(JSON.stringify(r.body)), "two unreadable replies: stop, ask for a clearer photo");
+  ok(used() === 4, "an unreadable photo still uses a read, so junk photos can't get around the daily cap (" + used() + ")");
 
   await sleep(500);
   const ev = sql("SELECT ok, detail FROM events WHERE kind = 'ai_food' ORDER BY rowid");

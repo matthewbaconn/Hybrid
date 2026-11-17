@@ -103,8 +103,8 @@ async function analyze(env, user, b){
   if (image) content.push({type: "image", source: {type: "base64", media_type: mediaType, data: image}});
   content.push({type: "text", text: text.trim() ? "What I ate: " + text : "Estimate the food in this photo."});
   // Nov 17: 6 failed food reads in 3 days. A busy or overloaded API (429/5xx/529), a dropped connection or a reply
-  // without JSON now gets one more try; a bad request (4xx) does not. A read that still fails gives the member's
-  // daily read back, so a hiccup on our side never costs them one of their 30.
+  // without JSON now gets one more try; a bad request (4xx) does not. A read that fails on our side gives the
+  // member's daily read back, so a hiccup never costs them one of their 30.
   const ask = nudge => fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
@@ -127,7 +127,9 @@ async function analyze(env, user, b){
     catch { fail = {kind: "unreadable", why: "unreadable reply " + raw.length + " chars"}; }
   }
   if (!parsed){
-    await refund();
+    // give the read back only when the failure was on our side (provider busy, network, a bad request we built);
+    // an unreadable reply can come from the photo itself, so it still counts: junk photos can't skip the daily cap
+    if (fail && fail.kind !== "unreadable") await refund();
     await logEvent(env, "ai_food", false, fail ? fail.why : "no reply");
     throw new HttpError(502, fail && fail.kind === "unreadable" ? "Couldn't read that. Try a clearer photo or add a few words." : "Couldn't read that right now. Try again in a minute.");
   }
