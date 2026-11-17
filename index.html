@@ -2182,6 +2182,7 @@ function askBarShow(on){ const b = $("#askbar"), show = !!on && askOn(); if (b) 
 const lc1 = t => /^(Today|Tomorrow|Yesterday)/.test(t) ? t.replace(/^[A-Z]/, c => c.toLowerCase()) : t;   // "tomorrow", but "Wednesday"
 function askLabel(a){   // what a proposed change would do, in the app's own words; null = not possible on this plan right now
   if (a.type === "move"){
+    if (isLastSwap(a.from, a.to) && untouched(a.from) && untouched(a.to)) return 'Put ' + lc1(dayName(a.from < a.to ? a.from : a.to)) + ' and ' + lc1(dayName(a.from < a.to ? a.to : a.from)) + ' back the way they were';   // undoing the last move works either way round, even onto a now-empty day (doMove treats it as Put back)
     const dA = dayOf(a.from), dB = dayOf(a.to); if (!dA || !dB || !dA.sessions.length || !canMoveFrom(a.from) || !moveTargets(a.from).some(d => d.date === a.to)) return null;
     return 'Move ' + lc1(dayName(a.from)) + "'s " + sessShort(dA.sessions) + ' to ' + lc1(dayName(a.to)) + (dB.sessions.length ? ' (' + sessShort(dB.sessions) + ' goes to ' + lc1(dayName(a.from)) + ')' : '');
   }
@@ -2975,7 +2976,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "81";
+const APP_VERSION = "82";
 let reportView = null, isOwner = false, reports = [], feat = {};
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
