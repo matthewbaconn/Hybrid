@@ -61,9 +61,11 @@ const outsideInFlight = new Set();
 page.on("request", r => { if (OUTSIDE.test(r.url())) outsideInFlight.add(r.url()); });
 page.on("requestfinished", r => outsideInFlight.delete(r.url()));
 page.on("requestfailed", r => { outsideInFlight.delete(r.url()); if (OUTSIDE.test(r.url())) outsideTrouble.push(new URL(r.url()).host + " " + ((r.failure() && r.failure().errorText) || "failed")); });
+let askAborts = 0;   // requests to /api/ask that a check aborts on purpose ("a dead network"): the browser logs each as a failed load, which is not an app error
 page.on("console", m => {
   if (m.type() !== "error") return;
   const t = m.text(), u = (m.location() && m.location().url) || "";
+  if (askAborts > 0 && /api\/ask/.test(u) && /Failed to load resource: net::ERR_FAILED/.test(t)){ askAborts--; return; }
   if (/fonts\.g|favicon|ERR_NAME/.test(t) || (step === "Delete account" && /401/.test(t))) return;
   if (/net::ERR_/.test(t) && OUTSIDE.test(u)) return;                                       // outside service down/slow: not an app error
   consoleErrors.push("[" + step + "] " + t + (u && /Failed to load resource/.test(t) ? " (" + u.split("?")[0] + ")" : ""));   // name the URL so the next failure is diagnosable
@@ -364,7 +366,7 @@ await check("Ask bar stress: hostile replies, bad buttons, a burst of taps, 14 r
   // The coach is a stand-in that this check controls, so it can send things a real reply never should.
   let reply = {answer: "ok", actions: []}, calls = 0, dead = false, step = "start";
   const me = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {ask: true}; await route.fulfill({response: r, json: j}); };
-  const coach = async route => { calls++; if (dead) return route.abort(); await route.fulfill({json: typeof reply === "function" ? reply(route.request().postDataJSON()) : reply}); };
+  const coach = async route => { calls++; if (dead){ askAborts++; return route.abort(); } await route.fulfill({json: typeof reply === "function" ? reply(route.request().postDataJSON()) : reply}); };
   // send a question and wait for its answer (counting bubbles would stall once the conversation reaches its 40-message limit)
   const say = async q => { const c = calls; await page.fill("#ask-q", q); await page.press("#ask-q", "Enter"); for (let i = 0; i < 100 && calls === c; i++) await page.waitForTimeout(50);
     await page.waitForFunction(() => !document.querySelector(".ask-m.busy") && document.querySelector("#ask-q") && !document.querySelector('.ask-f button[disabled]')); };
