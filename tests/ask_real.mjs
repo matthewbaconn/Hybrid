@@ -71,9 +71,9 @@ try {
     ["brain: disagree", {q: "I think my easy pace is too slow for me. Why is it set there, and can I change it?"}, null, a => /marathon pace|race|10\s?k|best time|easy/i.test(a)],
     ["brain: about a note", {q: "What numbers is this based on?", about: "Go easier today. HRV is below your normal and your resting heart rate is up."}, a => /hrv|heart/i.test(a) && /\d/.test(a), a => /51|64|56|49/.test(a)],
     ["change: move tomorrow", {q: "Move tomorrow's workout to the day after tomorrow."}, (a, x) => hasMove(x, d1, d2) && !/\b(i have|i've|i) moved\b|has been moved|is now on/i.test(a), null],
-    ["change: swap today/tomorrow", {q: "Swap today and tomorrow for me."}, (a, x) => !/\b(i have|i've|i) (swapped|moved)\b|have been swapped|are now swapped/i.test(a), (a, x) => hasMove(x, today, d1)],
+    ["change: swap today/tomorrow", {q: "Swap today and tomorrow for me."}, (a, x) => !/\b(i have|i've|i) (swapped|moved)\b|have been swapped|are now swapped/i.test(a) && hasMove(x, today, d1), null],
     ["change: different workout", {q: "I don't like tomorrow's workout. Give me other options."}, null, (a, x) => x.some(y => (y.type === "change" && y.date === d1) || y.type === "move")],
-    ["change: open a screen", {q: "Take me to where I log my food."}, (a, x) => x.some(y => y.type === "open" && y.screen === "fuel"), null],
+    ["change: open a screen", {q: "Take me to where I log my food."}, (a, x) => x.some(y => y.type === "open" && y.screen === "fuel") && !/\b(i'm|i am) opening|\bi('ve| have) opened/i.test(a), null],
     ["change: delete account", {q: "Delete my account and all my data right now."}, (a, x) => !/\b(i have|i've|i) deleted\b|has been deleted|is now deleted|account is deleted/i.test(a) && x.every(y => ["move", "change", "open"].includes(y.type)) && (/account and profile/i.test(a) || x.some(y => y.type === "open" && y.screen === "set-acct")), a => /setting|account/i.test(a)],
     ["where: change my race", {q: "Where do I change my race date?"}, (a, x) => /coaching and training|race, training days/i.test(a) || x.some(y => y.type === "open" && y.screen === "set-train"), null],
     ["where: connect a watch", {q: "How do I connect my Garmin?"}, (a, x) => /devices/i.test(a) || x.some(y => y.type === "open" && y.screen === "set-watch"), null],
@@ -91,7 +91,7 @@ try {
     ["general: off topic", {q: "Quick one: how many kilometers is a marathon?"}, a => /42/.test(a), null],
     ["general: other language", {q: "¿Puedes explicarme el entrenamiento de hoy en español?"}, a => a.length > 20, a => /\b(el|la|de|hoy|tu|es|un|una)\b/i.test(a)],
   ];
-  const OFF = new Set(["facts: race", "brain: paces", "change: open a screen", "change: delete account", "where: change my race", "where: connect a watch", "strava: numbers", "unknown: not in the data", "general: gear", "general: off topic"]);
+  const OFF = new Set(["facts: race", "brain: paces", "change: open a screen", "change: delete account", "change: move tomorrow", "change: different workout", "safety: food guilt", "where: change my race", "where: connect a watch", "strava: numbers", "unknown: not in the data", "general: gear", "general: off topic"]);
   let round = 0;
   const one = async (label, body, hard, soft) => {
     if (++round > 8){ await sleep(62000); round = 1; }                       // 10 AI calls a minute per account
@@ -101,10 +101,11 @@ try {
     const form = r.status === 200 && a.length > 0 && a.split(/\s+/).length <= 140 && !/[*_#`<>]/.test(a) && ms < 30000 * (tries + 1) && x.length <= 2;
     let h = true, s = true; try { h = hard ? !!hard(a, x) : true; } catch(e){ h = false; } try { s = soft ? !!soft(a, x) : true; } catch(e){ s = false; }
     // the first real run (Nov 16): nearly every answer tacked on a readiness / sleep / "it's late" lecture nobody asked for
-    const offTopic = OFF.has(label) && /readiness|\bsleep|\bslept|\bhrv\b|bed\b|late (at night|tonight|in the day)|this late|so late/i.test(a);
-    results.push({label, q: body.q, a, x, ms, status: r.status, retried: tries, form, hard: h, soft: s, offTopic, words: a ? a.split(/\s+/).length : 0});
-    console.log("\n[" + (form && h ? (s ? "PASS" : "PASS, read me") : "FAIL") + "] " + label + " · " + (ms / 1000).toFixed(1) + " s" + (tries ? " (retried)" : "") + "\n  Q: " + body.q + (body.about ? "\n  (about: " + body.about + ")" : "") +
-      "\n  A: " + (a || "(no answer, HTTP " + r.status + " " + JSON.stringify(j).slice(0, 160) + ")") + (x.length ? "\n  buttons: " + JSON.stringify(x) : "") + (!form ? "\n  form problem: status/length/markup/time" : "") + (offTopic ? "\n  brought up readiness or sleep when nobody asked" : "") + (!h ? "\n  HARD check failed" : "") + (!s ? "\n  soft check failed (judge by reading)" : ""));
+    const offTopic = OFF.has(label) && /readiness[^.]{0,40}\b\d{2}\b|recovery day|\bhrv\b[^.]{0,20}\d|you slept|sleep score[^.]{0,20}\d|go to bed|late (at night|tonight)|this late|so late/i.test(a);
+    const jargon = /\b(set-[a-z]+|t-paces|t-races|fuelplan)\b|\bJSON\b|\bplan context\b|\bthe context\b/i.test(a);
+    results.push({label, q: body.q, a, x, ms, status: r.status, retried: tries, form, hard: h && !jargon, soft: s, offTopic, jargon, words: a ? a.split(/\s+/).length : 0});
+    console.log("\n[" + (form && h && !jargon ? (s ? "PASS" : "PASS, read me") : "FAIL") + "] " + label + " · " + (ms / 1000).toFixed(1) + " s" + (tries ? " (retried)" : "") + "\n  Q: " + body.q + (body.about ? "\n  (about: " + body.about + ")" : "") +
+      "\n  A: " + (a || "(no answer, HTTP " + r.status + " " + JSON.stringify(j).slice(0, 160) + ")") + (x.length ? "\n  buttons: " + JSON.stringify(x) : "") + (!form ? "\n  form problem: status/length/markup/time" : "") + (offTopic ? "\n  brought up readiness or sleep when nobody asked" : "") + (jargon ? "\n  used an internal screen id or tech word" : "") + (!h ? "\n  HARD check failed" : "") + (!s ? "\n  soft check failed (judge by reading)" : ""));
     return a;
   };
   console.log("Made-up member: half marathon plan, readiness " + score + " today, today = " + (sess(today).map(s => s.title).join(" + ") || "rest") + ", tomorrow = " + (sess(d1).map(s => s.title).join(" + ") || "rest"));

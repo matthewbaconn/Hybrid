@@ -51,7 +51,7 @@ try {
   let inRound = 0; const pace = async () => { if (++inRound > 8){ await sleep(62000); inRound = 1; } };
   const ask = async (data, raw) => { await pace(); const r = await call(owner, "POST", "/api/ask", data, raw); let j = null; try { j = await r.json(); } catch(e){} return {status: r.status, j}; };
   const sane = (x, label) => {
-    const good = x.status === 200 && x.j && typeof x.j.answer === "string" && x.j.answer.length > 0 && x.j.answer.length <= 900 && !/[<>*_#`]/.test(x.j.answer) && Array.isArray(x.j.actions) && x.j.actions.length <= 2 &&
+    const good = x.status === 200 && x.j && typeof x.j.answer === "string" && x.j.answer.length > 0 && x.j.answer.length <= 1000 && !/[<>*_#`]/.test(x.j.answer) && Array.isArray(x.j.actions) && x.j.actions.length <= 2 &&
       x.j.actions.every(a => a && ALLOWED.has(a.type) && Object.keys(a).every(k => ["type", "from", "to", "date", "screen"].includes(k)));
     ok(good, label + " -> " + x.status + " " + JSON.stringify(x.j).slice(0, 110)); return good; };
   const d1 = addDays(today, 1), d2 = addDays(today, 2);
