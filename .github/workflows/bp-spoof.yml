@@ -1,0 +1,7 @@
+name: BP spoof test (do not merge)
+on: pull_request
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo "spoofed checks job"
