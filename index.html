@@ -2178,7 +2178,7 @@ function isLastSwap(a, b){ const sw = plan.profile.swaps || [], x = sw[sw.length
    only when the member taps it. */
 let ask = {msgs: [], busy: false, err: "", hint: "", kind: "", about: ""};
 const askOn = () => mode === "account" && !!(feat && feat.ask) && !!plan;
-const ASK_SCREENS = ["fuel", "weather", "weight", "workouts", "meals", "fuelplan", "set-train", "set-run", "set-profile", "set-watch", "set-notif", "set-hr", "t-paces", "t-races", "set-report", "faq"];   // the same list the server allows (ASK_SCREENS in api/worker.js)
+const ASK_SCREENS = ["fuel", "weather", "weight", "workouts", "meals", "fuelplan", "settings", "set-train", "set-run", "set-profile", "set-acct", "set-watch", "set-notif", "set-hr", "set-help", "t-paces", "t-races", "set-report", "faq"];   // the same list the server allows (ASK_SCREENS in api/worker.js)
 const isDay = d => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d);
 function askBarShow(on){ const b = $("#askbar"), show = !!on && askOn(); if (b) b.hidden = !show; document.body.classList.toggle("has-ask", show); }
 const lc1 = t => /^(Today|Tomorrow|Yesterday)/.test(t) ? t.replace(/^[A-Z]/, c => c.toLowerCase()) : t;   // "tomorrow", but "Wednesday"

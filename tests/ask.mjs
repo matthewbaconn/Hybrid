@@ -66,7 +66,7 @@ try {
   ok(!/STRAVASECRETRUN/.test(wire) && !/6\.2/.test(wire), "Strava data was NOT sent to the AI");
   ok(!wire.includes(OWNER) && !/owner-ask/.test(wire), "the member's email was NOT sent to the AI");
   ok(sent.messages.length === 3 && sent.messages[0].role === "user" && sent.messages[1].role === "assistant", "earlier messages travel with the question");
-  ok(sent.max_tokens <= 700 && /ONLY JSON/.test(sent.system) && /cannot change anything yourself/.test(sent.system), "the AI is told it can only propose, and to keep it short");
+  ok(sent.max_tokens >= 2000 && sent.output_config && sent.output_config.effort === "low" && /60 words at most/.test(sent.system) && /WHERE THINGS ARE/.test(sent.system) && /ONLY JSON/.test(sent.system) && /cannot change anything yourself/.test(sent.system), "the AI is told it can only propose, and to keep it short");
   // the coach's "brain": the app's real rules travel with every question, and so do the member's own numbers behind them
   ok(/HOW MILESET WORKS/.test(sent.system) && /minus 8/.test(sent.system) && /Riegel/.test(sent.system) && /never under 1,500/.test(sent.system) && /show your working/.test(sent.system), "the AI is given the app's real rules and told to show its working");
   const ctx = JSON.parse(sent.messages[2].content).context;

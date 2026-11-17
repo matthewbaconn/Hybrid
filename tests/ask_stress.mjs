@@ -21,9 +21,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const mock = http.createServer((req, res) => { let b = ""; req.on("data", c => b += c); req.on("end", () => {
   biggestSent = Math.max(biggestSent, b.length); try { seen.push(JSON.parse(b)); } catch(e){ seen.push(null); }
   if (mode.drop){ req.socket.destroy(); return; }
+  if (mode.noEffort && seen[seen.length - 1] && seen[seen.length - 1].output_config){ res.writeHead(400, {"Content-Type": "application/json"}); res.end('{"error":{"message":"output_config: not supported"}}'); return; }
   if (mode.status){ res.writeHead(mode.status, {"Content-Type": "application/json"}); res.end('{"error":{"message":"overloaded"}}'); return; }
   res.writeHead(200, {"Content-Type": "application/json"});
-  res.end(mode.raw !== undefined ? mode.raw : JSON.stringify({stop_reason: "end_turn", content: [{type: "text", text: mode.text}]}));
+  res.end(mode.raw !== undefined ? mode.raw : JSON.stringify({stop_reason: mode.stop || "end_turn", content: [{type: "text", text: mode.text}]}));
 }); }).listen(MOCK, "127.0.0.1");
 
 const dir = mkdtempSync(join(tmpdir(), "askst-"));
@@ -50,7 +51,7 @@ try {
   let inRound = 0; const pace = async () => { if (++inRound > 8){ await sleep(62000); inRound = 1; } };
   const ask = async (data, raw) => { await pace(); const r = await call(owner, "POST", "/api/ask", data, raw); let j = null; try { j = await r.json(); } catch(e){} return {status: r.status, j}; };
   const sane = (x, label) => {
-    const good = x.status === 200 && x.j && typeof x.j.answer === "string" && x.j.answer.length > 0 && x.j.answer.length <= 700 && !/[<>*_#`]/.test(x.j.answer) && Array.isArray(x.j.actions) && x.j.actions.length <= 2 &&
+    const good = x.status === 200 && x.j && typeof x.j.answer === "string" && x.j.answer.length > 0 && x.j.answer.length <= 900 && !/[<>*_#`]/.test(x.j.answer) && Array.isArray(x.j.actions) && x.j.actions.length <= 2 &&
       x.j.actions.every(a => a && ALLOWED.has(a.type) && Object.keys(a).every(k => ["type", "from", "to", "date", "screen"].includes(k)));
     ok(good, label + " -> " + x.status + " " + JSON.stringify(x.j).slice(0, 110)); return good; };
   const d1 = addDays(today, 1), d2 = addDays(today, 2);
@@ -76,6 +77,22 @@ try {
     mode = m; const x = await ask({q: "Are you there?"});
     ok(x.status === 502 && x.j && /didn't answer/.test(x.j.error || ""), "AI gives " + label + " -> a plain 'didn't answer' message, not a crash (" + x.status + ")");
   }
+  // what the first real-AI run showed (Nov 16): replies cut off mid-JSON must never reach the member as raw JSON
+  const usedBefore = (sql("SELECT count FROM ai_usage WHERE user_id = '" + uid + "' AND day LIKE 'ask:%'")[0] || {count: 0}).count;
+  mode = {text: '{"answer":"Your easy pace is 9:40 because your 10k best of', stop: "max_tokens"};
+  const cut = await ask({q: "Why is my easy pace what it is?"});
+  ok(cut.status === 502 && !/\{"answer/.test(JSON.stringify(cut.j.error)), "a reply cut off mid-sentence -> 'didn't answer', never half an answer or raw JSON (" + cut.status + ")");
+  mode = {text: '{"answer":"Easy day. Keep it \\"relaxed\\".","actions":[{"type":"mo'};
+  const tail = await ask({q: "What today?"});
+  ok(tail.status === 200 && tail.j.answer === 'Easy day. Keep it "relaxed".' && tail.j.actions.length === 0, "a whole answer with a broken tail -> the answer is kept, the broken buttons dropped: " + JSON.stringify(tail.j).slice(0, 90));
+  mode = {text: '```json\n{"answer":"Half an', stop: "max_tokens"};
+  const cut2 = await ask({q: "And?"});
+  ok(cut2.status === 502, "a cut-off reply inside a code fence -> 'didn't answer' (" + cut2.status + ")");
+  const n0 = seen.length; mode = {text: '{"answer":"Fine without it.","actions":[]}', noEffort: true};
+  const ne = await ask({q: "Does it still work?"});
+  ok(ne.status === 200 && ne.j.answer === "Fine without it." && seen.length === n0 + 2 && seen[n0].output_config && !seen[n0 + 1].output_config, "a model that refuses the low-effort setting is asked again without it, once");
+  ok(seen.every(b => !b || (b.max_tokens >= 2000 && b.max_tokens <= 4000)), "every call leaves room to think and answer (max_tokens 2000 to 4000)");
+  ok(sql("SELECT count FROM ai_usage WHERE user_id = '" + uid + "' AND day LIKE 'ask:%'")[0].count === usedBefore + 2, "only the 2 answered questions were counted; a failed answer never costs the member one of their 40");
   mode = {text: '{"answer":"ok","actions":[]}'};
 
   // ---- 2. the member misbehaves ----------------------------------------------------------------------------------
