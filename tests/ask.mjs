@@ -77,12 +77,17 @@ try {
   const said = JSON.parse(seen[seen.length - 1].messages.slice(-1)[0].content);
   ok(said.coach_note_they_are_asking_about === "Go easier today. HRV is below your normal." && said.member_says === "Why did you say this?", "a coach note the member asks about travels with the question");
 
+  // a screen id the model writes in its words (the real-AI test, Nov 17: "the t-paces screen") reaches the member as the screen's name
+  reply = {answer: "See them on the t-paces screen, or change your race in set-train. Your set-up is fine.", actions: []};
+  const jS = await (await call(owner, "POST", "/api/ask", {q: "Where do my paces come from?"})).json();
+  ok(jS.answer === "See them on the Training paces screen, or change your race in Coaching and training. Your set-up is fine.", "screen ids in the answer become the names members see: " + jS.answer);
+
   // 3. a reply that isn't JSON still comes back as plain text with no actions; an empty question is refused
   reply = "Just rest today.";
   const jP = await (await call(owner, "POST", "/api/ask", {q: "Should I rest?"})).json();
   ok(jP.answer === "Just rest today." && Array.isArray(jP.actions) && jP.actions.length === 0, "a plain-text reply is passed through with no actions");
   ok((await call(owner, "POST", "/api/ask", {q: " "})).status === 400, "an empty question is refused");
-  ok(sql("SELECT count FROM ai_usage WHERE user_id = '" + uid + "' AND day LIKE 'ask:%'")[0].count === 3, "each answered question is counted toward the daily cap");
+  ok(sql("SELECT count FROM ai_usage WHERE user_id = '" + uid + "' AND day LIKE 'ask:%'")[0].count === 4, "each answered question is counted toward the daily cap");
 } catch(e){ ok(false, "test crashed: " + (e && e.stack || e)); }
 finally { stop(); }
 console.log(failed ? failed + " problem(s)" : "ALL PASS");

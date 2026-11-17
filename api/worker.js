@@ -102,16 +102,36 @@ async function analyze(env, user, b){
   const content = [];
   if (image) content.push({type: "image", source: {type: "base64", media_type: mediaType, data: image}});
   content.push({type: "text", text: text.trim() ? "What I ate: " + text : "Estimate the food in this photo."});
-  const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {
+  // Nov 17: 6 failed food reads in 3 days. A busy or overloaded API (429/5xx/529), a dropped connection or a reply
+  // without JSON now gets one more try; a bad request (4xx) does not. A read that still fails gives the member's
+  // daily read back, so a hiccup on our side never costs them one of their 30.
+  const ask = nudge => fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-    body: JSON.stringify({model: env.MODEL || "claude-sonnet-5-5", max_tokens: 2000, system: PROMPT, messages: [{role: "user", content}]})
-  });
-  if (!r.ok){ const t = (await r.text()).slice(0, 300); console.log("anthropic error", r.status, t); await logEvent(env, "ai_food", false, r.status + " " + apiErrType(t)); throw new HttpError(502, "Couldn't read that right now. Try again in a minute."); }
-  const out = await r.json();
-  const raw = (out.content || []).filter(c => c.type === "text").map(c => c.text).join("");
-  let parsed;
-  try { parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); await logEvent(env, "ai_food", true); } catch { await logEvent(env, "ai_food", false, "unreadable reply " + raw.length + " chars"); throw new HttpError(502, "Couldn't read that. Try a clearer photo or add a few words."); }
+    body: JSON.stringify({model: env.MODEL || "claude-sonnet-5-5", max_tokens: 2000, system: PROMPT + (nudge ? " Reply with the JSON object only, no other text." : ""), messages: [{role: "user", content}]})
+  }).catch(() => null);
+  const refund = () => env.DB.prepare("UPDATE ai_usage SET count = MAX(count - 1, 0) WHERE user_id = ? AND day = ?").bind(user.id, day).run().catch(() => {});
+  let parsed = null, fail = null;
+  for (let tries = 0; tries < 2 && !parsed; tries++){
+    const r = await ask(tries > 0 && fail && fail.kind === "unreadable");
+    if (!r){ fail = {kind: "net", why: "network"}; continue; }
+    if (!r.ok){
+      const t = (await r.text()).slice(0, 300); console.log("anthropic error", r.status, t);
+      fail = {kind: "api", why: r.status + " " + apiErrType(t)};
+      if (r.status === 429 || r.status >= 500) continue;
+      break;                                   // a bad request won't get better on a second try
+    }
+    const out = await r.json().catch(() => ({}));
+    const raw = (out.content || []).filter(c => c.type === "text").map(c => c.text).join("");
+    try { parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); }
+    catch { fail = {kind: "unreadable", why: "unreadable reply " + raw.length + " chars"}; }
+  }
+  if (!parsed){
+    await refund();
+    await logEvent(env, "ai_food", false, fail ? fail.why : "no reply");
+    throw new HttpError(502, fail && fail.kind === "unreadable" ? "Couldn't read that. Try a clearer photo or add a few words." : "Couldn't read that right now. Try again in a minute.");
+  }
+  await logEvent(env, "ai_food", true);
   const items = (Array.isArray(parsed.items) ? parsed.items : []).slice(0, 12)
     .map(x => ({name: String(x.name || "").slice(0, 80), cal: n0(x.cal), protein: n0(x.protein), carbs: n0(x.carbs), fat: n0(x.fat)})).filter(x => x.name);
   return {items, note: typeof parsed.note === "string" ? parsed.note.slice(0, 200) : ""};
@@ -525,6 +545,13 @@ async function askCoach(env, system, data){
    runs the same code as its own Move / Change workout screens. Strava data stays out of the prompt (noStrava). */
 const ASK_SCREENS = ["fuel", "weather", "weight", "workouts", "meals", "fuelplan", "settings", "set-train", "set-run", "set-profile", "set-acct", "set-watch", "set-notif", "set-hr", "set-help", "t-paces", "t-races", "set-report", "faq"];
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+// The model sometimes writes a screen's id ("the t-paces screen") in its answer: members see the name the app shows
+// instead (same names as SCR_T in index.html). A fixed rule after the model, so it holds whatever the model writes.
+const ASK_SCREEN_NAMES = {"set-train": "Coaching and training", "set-run": "Running", "set-profile": "Body and goals", "set-acct": "Account and profile",
+  "set-watch": "Devices and apps", "set-notif": "Notifications", "set-hr": "Heart rate zones", "set-help": "Help and support", "set-report": "Report a problem",
+  "t-paces": "Training paces", "t-races": "Race predictions", fuelplan: "Race fueling"};
+const SCREEN_ID_RE = new RegExp("\\b(" + Object.keys(ASK_SCREEN_NAMES).join("|") + ")\\b", "gi");   // only real ids: "set-up" stays a word
+const screenWords = t => t.replace(SCREEN_ID_RE, w => ASK_SCREEN_NAMES[w.toLowerCase()]);
 /* How Mileset decides things, in plain words, kept next to the code it describes (plan.js: readiness, ADJ, fitnessFrom,
    assess, deficitFor, fuel). Members can ask the coach to explain any of it ("pick apart the coach's brain", Matthew,
    Nov 16), so this has to stay true: change it whenever those rules change. */
@@ -608,7 +635,7 @@ async function askAnything(env, user, b){
   let text = j ? (typeof j.answer === "string" ? j.answer : "") : raw;
   if (!j && /^\s*(```[a-z]*\s*)?\{/.test(raw)){ const m = raw.match(/"answer"\s*:\s*"((?:[^"\\]|\\.)*)"/); text = ""; if (m && out.stop_reason !== "max_tokens"){ try { text = JSON.parse('"' + m[1] + '"'); } catch(e){} } }
   // the reply is shown as plain text: markup, tags and code fences are stripped here as well as escaped in the app
-  const answer = clip(String(text).replace(/```[a-z]*|<[^>]{0,300}>/gi, " ").replace(/[*_#`<>]/g, "").replace(/\s+/g, " ").trim(), 1000);
+  const answer = clip(screenWords(String(text)).replace(/```[a-z]*|<[^>]{0,300}>/gi, " ").replace(/[*_#`<>]/g, "").replace(/\s+/g, " ").trim(), 1000);
   if (!answer){ await logEvent(env, "ai_ask", false, "unreadable reply (" + (out && out.stop_reason) + ", " + raw.length + " chars)"); throw new HttpError(502, "The coach didn't answer. Try again in a moment."); }
   await env.DB.prepare("INSERT INTO ai_usage (user_id, day, count) VALUES (?, ?, 1) ON CONFLICT (user_id, day) DO UPDATE SET count = count + 1").bind(user.id, day).run();   // only answered questions count toward the day's 40
   const last = plan => HP.addDays(plan.start, plan.weeks.length * 7 - 1), inPlan = d => ISO_DAY.test(d) && d >= U0.plan.start && d <= last(U0.plan);
