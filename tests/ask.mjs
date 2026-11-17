@@ -83,6 +83,28 @@ try {
   ok(jP.answer === "Just rest today." && Array.isArray(jP.actions) && jP.actions.length === 0, "a plain-text reply is passed through with no actions");
   ok((await call(owner, "POST", "/api/ask", {q: " "})).status === 400, "an empty question is refused");
   ok(sql("SELECT count FROM ai_usage WHERE user_id = '" + uid + "' AND day LIKE 'ask:%'")[0].count === 3, "each answered question is counted toward the daily cap");
+
+  // 4. the AI coach is the member's own choice (Nov 17). No Garmin link and never asked: on, as before.
+  const me = async () => (await (await call(owner, "GET", "/api/me")).json());
+  let m = await me();
+  ok(m.ai && m.ai.on === true && m.ai.needs === false && m.ai.asked === false && m.coach === true, "AI coach: no Garmin, never asked -> on, nothing to answer");
+  const sentBefore = seen.length;
+  const off = await (await call(owner, "PUT", "/api/settings", {ai: false})).json();
+  ok(off.ai && off.ai.on === false && off.ai.asked === true && typeof off.settings.ai_at === "string", "AI coach: switching it off is saved, with the time");
+  const refused = await call(owner, "POST", "/api/ask", {q: "What's my workout today?"}), rj = await refused.json();
+  ok(refused.status === 403 && /AI coach is off/.test(rj.error || "") && seen.length === sentBefore, "AI coach off: the coach bar is refused and nothing is sent to the AI (" + refused.status + ")");
+  ok((await call(owner, "POST", "/api/mealplan", {})).status === 403 && (await call(owner, "POST", "/api/review/feel", {feel: "hard", activity_id: "x"})).status === 403 && seen.length === sentBefore, "AI coach off: meal prep ideas and 'how did it feel' coaching are refused too");
+  m = await me();
+  ok(m.ai.on === false && m.coach === false && m.features.ask === true, "AI coach off: the app is told it is off");
+  // a Garmin link and never asked: paused until they answer
+  sql("UPDATE settings SET data = json_remove(data, '$.ai', '$.ai_at') WHERE user_id = '" + uid + "'; INSERT INTO garmin_links (user_id, garmin_user_id, access_token, refresh_token, expires_at, connected) VALUES ('" + uid + "', 'g-ask', 't', 'r', " + (Math.floor(Date.now() / 1000) + 86400) + ", '" + new Date().toISOString().slice(0, 10) + "')");
+  m = await me();
+  ok(m.ai.on === false && m.ai.needs === true && m.ai.asked === false, "AI coach: Garmin linked and never asked -> paused, and the app is told to ask");
+  ok((await call(owner, "POST", "/api/ask", {q: "Hello?"})).status === 403 && seen.length === sentBefore, "AI coach: until they answer, nothing of a Garmin member's goes to the AI");
+  const on = await (await call(owner, "PUT", "/api/settings", {ai: true})).json();
+  const back = await call(owner, "POST", "/api/ask", {q: "And now?"});
+  ok(on.ai.on === true && on.ai.needs === false && back.status === 200 && seen.length === sentBefore + 1, "AI coach: after they say yes it works again");
+  ok(sql("SELECT COUNT(*) AS n FROM events WHERE kind = 'ai_consent'")[0].n === 2, "AI coach: each yes or no is written to the event log");
 } catch(e){ ok(false, "test crashed: " + (e && e.stack || e)); }
 finally { stop(); }
 console.log(failed ? failed + " problem(s)" : "ALL PASS");

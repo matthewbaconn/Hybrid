@@ -360,6 +360,36 @@ await check("Ask bar: shows only when the server says so; ask, confirm a move, p
     await page.unroute("**/api/me", me); await page.unroute("**/api/ask", coach); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
   }
 }, {needs: "Build a plan (4 steps)"});
+await check("AI coach consent: a Garmin member is asked once; yes turns the coach on, the Settings switch turns it off", async () => {
+  // Only the app's view changes: /api/me says "Garmin linked, never asked", and the save goes to a stand-in that answers the way the API does.
+  let st = {on: false, asked: false, needs: true, available: true}; const puts = [];
+  const me = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {...(j.features || {}), ask: true}; j.ai = st; j.coach = st.on; await route.fulfill({response: r, json: j}); };
+  const put = async route => { if (route.request().method() !== "PUT") return route.continue(); const b = route.request().postDataJSON() || {};
+    if (typeof b.ai !== "boolean") return route.continue(); puts.push(b.ai); st = {on: b.ai, asked: true, needs: false, available: true}; await route.fulfill({json: {settings: {tz: "America/New_York", morning: "07:00", bedtime: "21:30", run_time: "07:00", n_morning: true, n_run: true, n_weekly: true, n_bed: true, ai: b.ai}, ai: st}}); };
+  await page.route("**/api/me", me); await page.route("**/api/settings", put);
+  try {
+    await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar"); await tab("today"); await page.waitForSelector(".card.aiask");
+    const t = (await page.textContent(".card.aiask")).replace(/\s+/g, " ");
+    if (!/AI/.test(t) || !/Garmin/.test(t) || !/Anthropic/.test(t) || !/never used to train/.test(t) || !/Settings/.test(t)) throw new Error("the consent card does not say what it should: " + t.slice(0, 240));
+    if (await page.locator("#askbar").isVisible()) throw new Error("the coach bar shows before the member has said yes");
+    await noOverflow(); await shot("03c-ai-consent", true);
+    await page.click('.card.aiask [data-act="aiset"][data-v="1"]'); await page.waitForSelector(".card.aiask", {state: "detached"});
+    await page.waitForFunction(() => { const b = document.getElementById("askbar"); return b && !b.hidden; }, null, {timeout: 5000});
+    if (puts.join() !== "true") throw new Error("yes was not saved once: " + puts.join());
+    // the switch in Settings turns it off again, and the coach bar goes away
+    await settings(); await open("set-train"); await page.waitForSelector('input[data-ai]');
+    if (!(await page.isChecked('input[data-ai]'))) throw new Error("the AI coach switch is not on after saying yes");
+    await noOverflow();
+    await page.click('label.tgl:has(input[data-ai])'); await page.waitForFunction(() => { const b = document.getElementById("askbar"); return b && b.hidden; }, null, {timeout: 5000});
+    if (puts.join() !== "true,false") throw new Error("off was not saved: " + puts.join());
+    if (await page.isChecked('input[data-ai]')) throw new Error("the AI coach switch still shows on");
+    await back(); await back(); await tab("today"); await page.waitForSelector(".hub-hero");
+    if (await page.locator(".card.aiask").count()) throw new Error("the member is asked again after answering");
+    return "asked once, yes -> coach on, Settings switch -> coach off";
+  } finally {
+    await page.unroute("**/api/me", me); await page.unroute("**/api/settings", put); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
+  }
+});
 await check("Ask bar stress: hostile replies, bad buttons, a burst of taps, 14 random moves, a dead network, a tiny screen", async () => {
   // The coach is a stand-in that this check controls, so it can send things a real reply never should.
   let reply = {answer: "ok", actions: []}, calls = 0, dead = false, step = "start";

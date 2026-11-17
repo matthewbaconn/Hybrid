@@ -55,6 +55,8 @@ try {
   sql(`INSERT INTO strava_links (user_id, athlete_id, access_token, refresh_token, expires_at) VALUES ('${uid}', 'ath-1', 't', 'r', ${far});
        INSERT INTO garmin_links (user_id, garmin_user_id, access_token, refresh_token, expires_at, connected) VALUES ('${uid}', 'g-1', 't', 'r', ${far}, '${today}')`);
   const n = q => sql(q)[0].n;
+  // Garmin linked: the AI coach waits for the member's own yes (tests/ask.mjs checks the refusal); this member says yes
+  ok((await (await call(token, "PUT", "/api/settings", {ai: true})).json()).ai.on === true, "the member said yes to the AI coach");
 
   // 1. the watch sends the run to Garmin first: stored, reviewed by the coach (one AI call)
   const start = Math.floor(Date.now() / 1000) - 600, startLocal = new Date(start * 1000).toISOString().slice(0, 19);
@@ -128,6 +130,18 @@ try {
   ok(n("SELECT COUNT(*) AS n FROM reviews WHERE user_id = '" + uid + "' AND activity_id NOT IN (SELECT id FROM activities)") === 0, "Garmin second: no review is left pointing at the removed Strava copy");
   await call(token, "POST", "/api/strava/sync"); await sleep(2000);
   ok(n("SELECT COUNT(*) AS n FROM activities WHERE ext_id = '880'") === 0 && n("SELECT COUNT(*) AS n FROM activities WHERE user_id = '" + uid + "'") === 3, "Garmin second: the next Strava sync does not bring the Strava copy back");
+
+  // 3d. AI coach switched off: a new Garmin run still gets the fixed-rule review, and nothing goes to the AI
+  await call(token, "PUT", "/api/settings", {ai: false});
+  const ai3 = aiCalls, start3 = start - 2 * 86400;
+  await fetch(API + "/api/garmin/push", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({activities: [{userId: "g-1", summaryId: "ga3", activityType: "RUNNING", activityName: "Morning Run",
+    startTimeInSeconds: start3, startTimeOffsetInSeconds: 0, durationInSeconds: 1800, distanceInMeters: 4828, averageHeartRateInBeatsPerMinute: 140}]})});
+  for (let i = 0; i < 12 && !n("SELECT COUNT(*) AS n FROM reviews r JOIN activities a ON a.id = r.activity_id WHERE a.ext_id = 'ga3'"); i++) await sleep(1000);
+  const rv3 = sql("SELECT r.data FROM reviews r JOIN activities a ON a.id = r.activity_id WHERE a.ext_id = 'ga3'");
+  ok(rv3.length === 1 && JSON.parse(rv3[0].data).headline !== "AI REVIEW" && !JSON.parse(rv3[0].data).askFeel && aiCalls === ai3, "AI coach off: a Garmin run gets the fixed-rule review and nothing is sent to the AI (" + (rv3[0] && JSON.parse(rv3[0].data).headline) + ")");
+  ok((await call(token, "POST", "/api/ask", {q: "How was that?"})).status === 403 && aiCalls === ai3, "AI coach off: the coach bar is refused");
+  await call(token, "PUT", "/api/settings", {ai: true});
+  sql("DELETE FROM reviews WHERE activity_id IN (SELECT id FROM activities WHERE ext_id = 'ga3'); DELETE FROM activities WHERE ext_id = 'ga3'");
 
   // 4. renaming: the edges
   const sid = m3.id;   // the Garmin copy

@@ -426,6 +426,19 @@ async function settingsOf(env, userId){
   let s = {}; try { s = row ? JSON.parse(row.data) : {}; } catch(e){}
   return {...DEFAULT_SETTINGS, ...s};
 }
+/* ---------- AI coach: the member's own OK (Nov 17) ----------
+   Garmin's developer terms ask for a member's explicit consent before their data is processed by AI, and an easy way to
+   take it back. settings.ai: true = they said yes, false = they said no or switched it off, missing = never asked.
+   Never asked WITH a Garmin link = off until they answer. Never asked without Garmin = on, as before.
+   Off means nothing of theirs is sent to the AI: no coach chat, no morning note, no AI workout review (the fixed-rule
+   review still runs and still notifies), no "how did it feel" coaching, no meal prep ideas. Food photo estimates and
+   race search stay: they only send what the member types or snaps at that moment. */
+const AI_OFF_MSG = "Your AI coach is off. Turn it on in Settings, Coaching and training.";
+async function aiState(env, userId, st){
+  const s = st || await settingsOf(env, userId), asked = typeof s.ai === "boolean";
+  const g = asked ? null : await env.DB.prepare("SELECT 1 FROM garmin_links WHERE user_id = ?").bind(userId).first();
+  return {on: asked ? s.ai : !g, asked, needs: !asked && !!g};
+}
 /* ---------- Garmin watch workouts (Training API) ----------
    Keeps the next 7 days of planned runs/rides/swims on the athlete's Garmin calendar. Each session is
    stored with a hash of what was sent; when the plan or its feedback changes the workout is replaced. */
@@ -647,7 +660,7 @@ const COACH_STYLE = "You are a friendly, plain-spoken running and strength coach
 //  - Strava workouts: a rule-based summary right away (no AI), then the AI coaches only from what the
 //    person tells us about the session ("how did it feel" + their own words) and the planned session.
 const noStrava = U => ({...U, acts: U.acts.filter(a => a.source !== "strava")});
-async function runReview(env, userId, U, act, today, feel){
+async function runReview(env, userId, U, act, today, feel, noAI){   // noAI: the member's AI coach is off, so the fixed-rule review only
   const strava = act.source === "strava", A = noStrava(U);
   const fbkAll = HP.feedback(U.plan, U.acts, HP.addDays(act.date, 1));
   const m = HP.dayMatches(U.plan, U.acts, act.date), idx = Object.keys(m).find(i => m[i].id === act.id);
@@ -658,7 +671,8 @@ async function runReview(env, userId, U, act, today, feel){
   const ruleBased = {headline: as ? ({ok: "On target", easy: "Came in fast", hard: "Too hard", unknown: "Done"})[as.verdict] : "Done", numbers: [act.mi ? act.mi + " mi" : "", pace || "", act.avg_hr ? act.avg_hr + " bpm" : ""].filter(Boolean).join(" · "),
     meaning: as ? as.why : "", next: nextKeys[0] || "Next sessions stay as planned.", verdict: as ? as.verdict : "extra", title: s ? s.title : act.name};
   let review;
-  if (strava && !feel) review = {...ruleBased, askFeel: true};
+  if (noAI) review = ruleBased;
+  else if (strava && !feel) review = {...ruleBased, askFeel: true};
   else {
     const data = strava
       ? {planned: s ? {title: s.title, steps: s.steps.map(x => x[0]), type: s.type} : {title: "Extra workout"}, athlete_says: {how_it_felt: feel.feel, notes: feel.note || ""}, tomorrow: sessionsText(U, HP.addDays(act.date, 1), next)}
@@ -681,9 +695,10 @@ async function afterNewActivities(env, userId, ids, source, quiet){   // quiet: 
   const st = await settingsOf(env, userId), L = localNow(st.tz), U = await loadUser(env, userId, L.date);
   if (!U) return;
   const fresh = U.acts.filter(a => (source === "manual" ? ids.includes(a.id) : ids.includes(a.ext_id)) && a.date >= HP.addDays(L.date, -2));
+  const ai = (await aiState(env, userId, st)).on;
   for (const a of fresh.slice(0, 3)){
-    if (a.source !== "strava" && !(await coachUsage(env, userId))) break;
-    const rv = await runReview(env, userId, U, a, L.date);
+    if (ai && a.source !== "strava" && !(await coachUsage(env, userId))) break;
+    const rv = await runReview(env, userId, U, a, L.date, undefined, !ai);
     if (st.n_run && !(quiet || []).includes(a.ext_id)) await pushTo(env, userId, {title: rv.title + ": " + rv.headline, body: rv.askFeel ? [rv.numbers, "How did it feel? Tap to tell your coach."].filter(Boolean).join("\n") : [rv.numbers, rv.next].filter(Boolean).join("\n"), tag: "run-" + a.id});
   }
 }
@@ -719,7 +734,7 @@ async function wakeUp(env, userId, date){
   const r = HP.readiness(U.checkins[L.date], HP.devSignals(U.dev, L.date)); if (!r) return;
   if (!(await once(env, userId, "wake", L.date))) return;
   await logEvent(env, "wake_read", true, String(r.score));
-  if (!U.checkins[L.date] && (await coachUsage(env, userId))) await morningNote(env, userId, L.date).catch(e => console.log("wake note", e && e.message));
+  if (!U.checkins[L.date] && (await aiState(env, userId, st)).on && (await coachUsage(env, userId))) await morningNote(env, userId, L.date).catch(e => console.log("wake note", e && e.message));
   if (st.n_morning){
     const fbk = HP.feedback(U.plan, U.acts, L.date), adj = ["Train as planned", "Today's session is trimmed", "Easy day or rest today"][r.level];
     await pushTo(env, userId, {title: "Readiness " + r.score + " · " + r.word, body: adj + ". Today: " + sessionsText(U, L.date, fbk) + ".", tag: "morning-" + L.date});   // the watch already sent the numbers: no "check in" ask
@@ -1325,12 +1340,13 @@ async function route(req, env, path, ctx){
     const prof = p.results[0] ? JSON.parse(p.results[0].data) : null;
     const owner = await ownerId(env) === user.id, founding = await foundingNo(env, user.id);
     const reports = owner ? (await env.DB.prepare("SELECT id, email, text, info, created FROM reports ORDER BY created DESC LIMIT 50").all()).results : undefined;
+    const meSet = await settingsOf(env, user.id), meAi = await aiState(env, user.id, meSet);
     return {user: {...userOut(user), terms_at: user.terms_at || null}, profile: prof, done: d.results.map(r => r.key), food: f.results, checkins: c.results, weights: w.results, activities: a.results,
       strava: {available: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!s.results[0], name: s.results[0] ? s.results[0].athlete_name : "", last_sync: s.results[0] ? s.results[0].last_sync : null},
       garmin: {available: !!(env.GARMIN_CLIENT_ID && env.GARMIN_CLIENT_SECRET), connected: !!gl.results[0], last_push: gl.results[0] ? gl.results[0].last_push : null,
         workouts: gl.results[0] ? (/WORKOUT_IMPORT/.test(gl.results[0].permissions || "") ? gl.results[0].wk : (gl.results[0].permissions ? -1 : null)) : null},
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
-      settings: await settingsOf(env, user.id), push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY,
+      settings: meSet, ai: {...meAi, available: !!env.ANTHROPIC_API_KEY}, push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY && meAi.on,
       owner, features: {ask: !!env.ANTHROPIC_API_KEY && (await previewOk(env, user, "ask")), rename: await previewOk(env, user, "rename")}, founding, reports, health: hd.results, lifts: ll.results, mealplan: mp.results[0] ? JSON.parse(mp.results[0].data) : null, crews: await crewsFor(env, user.id), health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
   }
   if (M === "PUT" && path === "/api/account"){
@@ -1408,7 +1424,7 @@ async function route(req, env, path, ctx){
       .bind(user.id, b.date, Math.round(h * 4) / 4, k(b.sleep_q), k(b.soreness), k(b.energy), k(b.stress)).run();
     // Nov 16: lastCoachError is shared by every request in this isolate, so it is never sent to a member (it could be
     // someone else's). The member gets a fixed reason; the detail stays in the server's own event log.
-    if (await coachUsage(env, user.id)){ let failed = false; const note = await morningNote(env, user.id, b.date).catch(e => { failed = true; console.log("morning note", e && e.message || e); return null; }); return note ? {ok: true, note} : {ok: true, note: null, note_issue: failed ? "coach note unavailable right now" : "no plan"}; }
+    if ((await aiState(env, user.id)).on && await coachUsage(env, user.id)){ let failed = false; const note = await morningNote(env, user.id, b.date).catch(e => { failed = true; console.log("morning note", e && e.message || e); return null; }); return note ? {ok: true, note} : {ok: true, note: null, note_issue: failed ? "coach note unavailable right now" : "no plan"}; }
     return {ok: true};
   }
   if (M === "POST" && path === "/api/import-key"){
@@ -1475,8 +1491,10 @@ async function route(req, env, path, ctx){
     if (b.hr_max === null) delete next.hr_max; else if (b.hr_max >= 120 && b.hr_max <= 230) next.hr_max = Math.round(b.hr_max);
     if (b.hr_lthr === null) delete next.hr_lthr; else if (b.hr_lthr >= 100 && b.hr_lthr <= 220) next.hr_lthr = Math.round(b.hr_lthr);
     for (const k of ["hr_pct_max", "hr_pct_lthr"]) if (Array.isArray(b[k]) && b[k].length === 4 && b[k].every((x, i) => Number.isFinite(x) && x >= 30 && x <= 120 && (!i || x > b[k][i - 1]))) next[k] = b[k].map(x => Math.round(x));
+    // the member's own yes or no to the AI coach, with when they gave it (see aiState)
+    if (typeof b.ai === "boolean" && b.ai !== cur.ai){ next.ai = b.ai; next.ai_at = now(); await logEvent(env, "ai_consent", true, b.ai ? "on" : "off"); }
     await env.DB.prepare("INSERT INTO settings (user_id, data) VALUES (?, ?) ON CONFLICT (user_id) DO UPDATE SET data = excluded.data").bind(user.id, JSON.stringify(next)).run();
-    return {settings: next};
+    return {settings: next, ai: await aiState(env, user.id, next)};
   }
   if (M === "POST" && path === "/api/push/subscribe"){
     const b = await body(req), sb = b.subscription || {};
@@ -1497,6 +1515,7 @@ async function route(req, env, path, ctx){
     return {sent: n};
   }
   if (M === "POST" && path === "/api/review/feel"){
+    if (!(await aiState(env, user.id)).on) throw new HttpError(403, AI_OFF_MSG);
     const b = await body(req), FEELS = ["easy", "just right", "hard", "very hard"];
     if (!FEELS.includes(b.feel)) throw new HttpError(400, "Pick how it felt.");
     const note = String(b.note || "").trim().slice(0, 300);
@@ -1583,12 +1602,14 @@ async function route(req, env, path, ctx){
   /* ---------- meal prep + grocery list (AI) ---------- */
   if (M === "POST" && path === "/api/ask"){
     if (!(await previewOk(env, user, "ask"))) throw new HttpError(404, "Not found.");
+    if (!(await aiState(env, user.id)).on) throw new HttpError(403, AI_OFF_MSG);
     await limit(env, "ai:" + user.id);
     if (!env.ANTHROPIC_API_KEY) throw new HttpError(503, "The coach isn't set up yet.");
     const b = await body(req);
     return await askAnything(env, user, b);
   }
   if (M === "POST" && path === "/api/mealplan"){
+    if (!(await aiState(env, user.id)).on) throw new HttpError(403, AI_OFF_MSG);
     await limit(env, "ai:" + user.id);
     if (!env.ANTHROPIC_API_KEY) throw new HttpError(503, "Meal prep isn't set up yet.");
     const b = await body(req), cal = Math.round(Number(b.cal)), pro = Math.round(Number(b.protein));
