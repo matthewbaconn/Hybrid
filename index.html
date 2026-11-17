@@ -1026,7 +1026,7 @@ function workoutCard(){
 }
 /* ---------- activities feed with route maps (like Strava) ---------- */
 let actSel = null, actFilter = "all";
-/* Rename a workout (preview: features.rename). Like Strava: open the workout, tap the pencil, type your own name.
+/* Rename a workout (shown when /api/me says features.rename). Like Strava: open the workout, tap the pencil, type your own name.
    The name from Strava/Garmin is kept underneath, so "Use the original name" always works and a sync never undoes a rename. */
 let actName = null;   // {id, v, err, busy} while the name of the open workout is being edited
 const canRename = a => mode === "account" && !!(feat && feat.rename) && a && a.source !== "sample";
@@ -3118,8 +3118,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-17";
+const NEW_ID = "2026-11-17.2";
 const NEWS = [
+  ["check", "Name your workouts", "Open a workout in Activities, tap the pencil next to its name and type your own. Use the original name puts the old one back.", "activities", null, "2026-11-17.2"],
   ["watch", "Watch connected: no survey at all", "Your readiness, sleep, HRV and resting heart rate come straight from your watch, on Today and on Recovery. To add how you feel, tap Tell your coach how you feel and type it.", null, null, "2026-11-17"],
   ["spark", "Ask your coach anything", "Tap Ask your coach above the tabs and type: ask about your plan, why a number is what it is, or to move a workout. Any change shows as a button, and nothing moves until you tap it.", null, null, "2026-11-17"],
   ["sun", "Weather and best time to run, on Today", "Right under the greeting you now see the weather and the best three hours to run. No city yet? Tap it to add yours.", null, null, "2026-11-16.4"],
@@ -3691,7 +3692,7 @@ document.addEventListener("click", ev => {
   if (act === "fday"){ captureFood(); fdate = addDays(fdate, +a.dataset.dir); if (fdate > TODAY) fdate = TODAY; fs.err = ""; fs.note = ""; render(); return; }
   if (act === "nasknot"){ closeMenu(); return; }
   if (act === "wndone"){ wnSeen(); wnPill(false); return; }
-  if (act === "wngo"){ const to = a.dataset.to; wnSeen(); if (to === "progress"){ scr = null; tab = "training"; render(); window.scrollTo(0, 0); } else go(to); wnPill(true); return; }
+  if (act === "wngo"){ const to = a.dataset.to; wnSeen(); if (to === "progress" || to === "activities"){ scr = null; actSel = null; tab = to === "progress" ? "training" : to; render(); window.scrollTo(0, 0); } else go(to); wnPill(true); return; }
   if (act === "wnback" || act === "wnopen"){ wnPill(false); whatsNew(true); return; }
   if (act === "naskyes"){ a.disabled = true; a.textContent = "One moment…"; pushOn().then(() => { closeMenu(); render(); toast("Notifications are on."); }).catch(e => { closeMenu(); toast(e.message || "Couldn't turn on notifications."); }); return; }
   if (act === "pushon"){ a.disabled = true; a.textContent = "One moment…"; pushOn().then(() => { render(); toast("Notifications are on."); }).catch(e => { a.disabled = false; a.textContent = "Turn on notifications"; toast(e.message || "Couldn't turn on notifications."); }); return; }

@@ -7,7 +7,7 @@
 // Also (Nov 16): giving a workout your own name (PUT /api/activity/:id/name, preview "rename"). Checks that the name
 //   - is saved only on your own workout, cleaned and cut to 60 characters; an empty name puts the original back
 //   - moves from the Garmin copy to the Strava copy that is kept, and is never undone by a later sync
-//   - is owner-only while "rename" is in PREVIEW
+//   - works for every member on their own workouts (released Nov 17)
 //   cd api && node ../tests/one_push.mjs
 import http from "node:http";
 import {spawn, execFileSync} from "node:child_process";
@@ -112,8 +112,8 @@ try {
   ok(theirs.status === 404 && sql("SELECT title FROM activities WHERE id = 'aaaaaaaaaaaaaaaaaaaa'")[0].title === null, "rename: someone else's workout cannot be renamed (" + theirs.status + ")");
   ok((await rename(null, sid, "x y")).status === 401, "rename: no login, no rename");
   const meOther = await (await call(otherTok, "GET", "/api/me")).json(), prev = await rename(otherTok, "aaaaaaaaaaaaaaaaaaaa", "My own run");
-  ok(meOther.features && meOther.features.rename === false && prev.status === 404, "rename (preview): a member who is not the owner is told it is off and gets 404 on their own workout");
-  ok((await (await call(token, "GET", "/api/me")).json()).features.rename === true, "rename (preview): on for the owner");
+  ok(meOther.features && meOther.features.rename === true && prev.status === 200 && prev.j.name === "My own run" && prev.j.src_name === "Their run", "rename (released): a member who is not the owner can rename their own workout");
+  ok((await rename(otherTok, sid, "Not yours")).status === 404 && (await mine("777")).name === "Evening Run", "rename: and cannot touch the owner's workout");
 } catch(e){ ok(false, "test crashed: " + (e && e.stack || e)); }
 finally { stop(); }
 console.log(failed ? failed + " problem(s)" : "ALL PASS");

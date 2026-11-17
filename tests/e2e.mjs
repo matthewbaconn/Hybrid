@@ -479,12 +479,15 @@ await check("Activities tab (feed + detail)", async () => {
   await page.click('[data-act="actback"]'); await page.waitForSelector(".afilt");
   return n + " activit" + (n === 1 ? "y" : "ies") + " · opened " + t;
 }, {needs: "Log a workout (with rep pace)"});
-await check("Rename a workout (preview): hidden for members; with it on, pencil, type, save, original back", async () => {
-  await tab("activities"); await page.waitForSelector(".actc", {timeout: 5000});
+await check("Rename a workout: the pencil shows when the server says so; type, save, see it in the list, original back", async () => {
+  // released Nov 17: the pencil shows exactly when /api/me says features.rename
+  const [meResp] = await Promise.all([page.waitForResponse(r => /\/api\/me$/.test(r.url()) && r.request().method() === "GET" && r.ok(), {timeout: 20000}).catch(() => null), page.reload({waitUntil: "networkidle"})]);
+  const meJson = meResp ? await meResp.json().catch(() => null) : null, says = meJson ? !!(meJson.features && meJson.features.rename) : null;
+  await page.waitForSelector("#tabbar"); await tab("activities"); await page.waitForSelector(".actc", {timeout: 5000});
   await page.click(".actc >> nth=0"); await page.waitForSelector(".adet-h h1");
-  // the test member is not the owner, so the preview is off for it
-  if (await page.locator('[data-act="anedit"]').count()) throw new Error("the rename pencil shows on an account that is not in the preview");
-  // Switch the preview on in the app's view only; the save goes to a stand-in that answers the way the API does.
+  const pencil = (await page.locator('[data-act="anedit"]').count()) > 0;
+  if (says !== null && pencil !== says) throw new Error("the server says rename is " + (says ? "on" : "off") + " for this account but the app " + (pencil ? "shows" : "hides") + " the pencil");
+  // From here the app is told rename is on, and the save goes to a stand-in that answers the way the API does (the real API is tested in tests/one_push.mjs).
   const sent = []; let orig = null;
   const me = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {...(j.features || {}), rename: true}; await route.fulfill({response: r, json: j}); };
   const put = async route => { const b = route.request().postDataJSON(); sent.push(b); const nm = String(b.name || "").trim();
