@@ -410,7 +410,7 @@ body.has-ask .toast{bottom:calc(150px + env(safe-area-inset-bottom,0px))} body.h
 .askbar .ic{width:18px;height:18px;flex:none;color:var(--accent-2)} .askbar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.has-ask .wrap{padding-bottom:calc(176px + env(safe-area-inset-bottom,0px))}
 .sheet.asks{gap:12px;align-content:start} .ask-h{display:flex;align-items:baseline;gap:10px} .ask-h b{font:700 18px/1.1 var(--f-display)} .ask-h .ai{font-size:12px;color:var(--muted)} .ask-h .r{margin-left:auto}
-.ask-log{display:grid;gap:10px;max-height:52dvh;overflow-y:auto;overscroll-behavior:contain;align-content:start}
+.ask-log{display:grid;gap:10px;max-height:min(52dvh,max(90px,calc(var(--vvh,100dvh) - 270px)));overflow-y:auto;overscroll-behavior:contain;align-content:start}
 .ask-m{max-width:88%;padding:10px 13px;border-radius:14px;font-size:15px;line-height:1.45;overflow-wrap:anywhere} .ask-m.u{justify-self:end;background:color-mix(in srgb,var(--accent) 34%,#15171D);color:#fff} .ask-m.a{justify-self:start;background:#1F222B;color:var(--ink)} .ask-m.busy{color:var(--muted)}
 .ask-acts{display:grid;gap:8px;justify-self:start;max-width:100%} .ask-acts .btn{justify-content:flex-start;text-align:left;min-height:44px;white-space:normal;height:auto;padding:10px 14px} .ask-acts small{color:var(--muted);font-size:13px}
 .ask-about{font-size:13.5px;line-height:1.4;color:var(--muted);border-left:3px solid var(--accent-2);padding:2px 0 2px 10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden} .coach .askab{margin-top:8px}
@@ -2219,6 +2219,17 @@ function askOpen(hint, kind, about){
   b.innerHTML = '<div class="sheet asks" role="dialog" aria-modal="true" aria-label="Ask your coach"></div>';
   document.body.appendChild(b); askRender(true);
 }
+/* On-screen keyboard (Nov 17, Matthew: "the keyboard covers it"). iOS doesn't shrink the page when the keyboard opens,
+   so a sheet pinned to the bottom ends up behind it. While a sheet is open, its backdrop follows the visible area
+   (visualViewport) and --vvh tells the coach's message list how much room is left. */
+function fitSheets(){
+  const vv = window.visualViewport, b = $(".back"); if (!vv) return;
+  document.documentElement.style.setProperty("--vvh", Math.round(vv.height) + "px");
+  if (!b) return;
+  b.style.top = Math.round(vv.offsetTop) + "px"; b.style.height = Math.round(vv.height) + "px"; b.style.bottom = "auto";
+  const log = b.querySelector(".ask-log"); if (log) log.scrollTop = log.scrollHeight;
+}
+if (window.visualViewport){ visualViewport.addEventListener("resize", fitSheets); visualViewport.addEventListener("scroll", fitSheets); }
 function askRender(focus, keep){
   const el = $(".sheet.asks"); if (!el) return;
   const chips = ask.kind === "feel" ? ["Legs feel heavy today", "Slept badly, but I feel fine", "I feel great"]
@@ -2232,6 +2243,7 @@ function askRender(focus, keep){
     '<form id="askform" class="ask-f"><input id="ask-q" type="text" maxlength="600" autocomplete="off" enterkeyhint="send" placeholder="' + esc(ask.hint || "Ask, or say what to change") + '" aria-label="Message your coach" value="' + esc(keep || "") + '">' +
     '<button class="btn primary" type="submit"' + (ask.busy ? ' disabled' : '') + '>Send</button></form>';
   const log = el.querySelector(".ask-log"); if (log) log.scrollTop = log.scrollHeight;
+  fitSheets(); setTimeout(fitSheets, 350);   // again once the keyboard has finished opening
   if (focus){ const i = $("#ask-q"); if (i) i.focus({preventScroll: true}); }
 }
 async function askSend(q){
@@ -2988,7 +3000,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "83";
+const APP_VERSION = "84";
 let reportView = null, isOwner = false, reports = [], feat = {};
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
