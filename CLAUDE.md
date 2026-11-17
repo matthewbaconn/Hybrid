@@ -26,7 +26,9 @@ Plans adapt to sleep, HRV and workouts from Garmin, Strava and Apple Health.
 - `brand/ig/`: Instagram images (public URLs Buffer can fetch). `home/`: website. `mail/outbox.json`: the weekly member email (the API cron sends it once per id).
 - `tests/e2e.mjs` (Playwright), `tests/health.sh`. GitHub Actions: `nightly.yml`, `api.yml` (deploys
   the Worker on push to main), `events.yml` (reads the live event log: use it, not raw DB queries).
-- Pushing to `main` deploys: Pages serves the app/site, `api.yml` deploys the Worker and runs migrations.
+- Merging to `main` deploys: Pages serves the app/site, `api.yml` deploys the Worker and runs migrations.
+  `main` is protected (Nov 17): every change goes through a pull request with the `checks` and `protected-files`
+  checks green; nobody can push to it directly. See docs/BRANCH-PROTECTION.md (incl. the owner emergency procedure).
 - After any app change, bump `APP_VERSION` in index.html and `CACHE` in sw.js.
 - Tools: `gh` (REST: `gh api`), `wrangler` (in `api/`), Resend, Buffer MCP, Meta Ads MCP.
 - The repo is **public**. Never commit secrets, member data, `.dev.vars` or `.claude/MEMORY.md`.
