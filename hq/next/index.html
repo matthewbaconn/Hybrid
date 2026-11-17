@@ -759,7 +759,7 @@ function renderPriv(){
     ${(() => { const G = growthNow(); return G && (G.members !== null || G.accounts !== null) ? "<br>Mileset: " + (G.members !== null ? G.members + " real members" : G.accounts + " accounts") + (G.n7 !== null ? " · +" + G.n7 + " in 7 days" : "") + (G.left !== null ? " · " + G.left + " founding spots left" : "") : "<br>Mileset numbers: not measured yet (first nightly count pending)."; })()}</div>
     ${spendLine(o)}`;
   const ap = PRIV.a || [];
-  document.getElementById("appr").innerHTML = capped("appr", ap.map(a => `<div class="item"><div class="h"><span>${a.k === "pr" ? `<span class="tag ${a.why === "SHIP IT" ? "ship" : "you"}">${esc(a.why === "SHIP IT" ? "SHIP IT " + a.n : a.repo + " #" + a.n)}</span>` + linkify(a.title, a.url) : `<span class="tag you">backlog ${esc(a.n)}</span>` + esc(a.title)}</span></div>
+  document.getElementById("appr").innerHTML = capped("appr", ap.map(a => `<div class="item"><div class="h"><span>${a.k === "pr" ? `<span class="tag ${a.why === "SHIP IT" ? "ship" : "you"}">${esc(a.why === "SHIP IT" ? "SHIP IT " + a.n : a.repo + " #" + a.n)}</span>` + linkify(a.title, a.url) : `<span class="tag you">${esc(a.tag || "backlog " + a.n)}</span>` + esc(a.title)}</span></div>
     ${a.k === "backlog" && a.why ? `<div class="why">${esc(a.why)}</div>` : a.k === "pr" && a.why !== "SHIP IT" ? `<div class="why">${esc(a.why)}</div>` : ""}</div>`), "Nothing waiting on you.");
   const tb = document.querySelector('#tabs [data-t="appr"]'); tb.innerHTML = "Approvals" + (ap.length ? `<span class="n">${ap.length}</span>` : "");
   
@@ -857,7 +857,7 @@ function renderPanels(){
     if (o.failed_today) A.push(`<span class="bad">${o.failed_today} failed run${o.failed_today === 1 ? "" : "s"} today.</span>${tag("rep")}${jump("cfeed", "activity")}`);
     const ap = P.a || [];
     if (ap.length){ A.push(`<b>${ap.length}</b> decision${ap.length === 1 ? "" : "s"} waiting for you. You approve only in Telegram: SHIP IT or the signed card.${tag("sys")}${jump("appr", "approvals")}`);
-      ap.slice(0, 3).forEach(a => A.push(a.k === "pr" ? `<span class="tag ${a.why === "SHIP IT" ? "ship" : "you"}">${esc(a.repo + " #" + a.n)}</span>${linkify(clip(a.title, 120), a.url)}` : `<span class="tag you">backlog ${esc(a.n)}</span>${esc(clip(a.title, 120))}`)); }
+      ap.slice(0, 3).forEach(a => A.push(a.k === "pr" ? `<span class="tag ${a.why === "SHIP IT" ? "ship" : "you"}">${esc(a.repo + " #" + a.n)}</span>${linkify(clip(a.title, 120), a.url)}` : `<span class="tag you">${esc(a.tag || "backlog " + a.n)}</span>${esc(clip(a.title, 120))}`)); }
     const M = P.money; if (M && M.month_cap && M.month / M.month_cap >= .75) A.push(`API budget ${Math.round(M.month / M.month_cap * 100)}% used this month.${tag("sys")}${jump("money", "money")}`);
     const od = P.me && P.me.overdue ? P.me.overdue.length : 0; if (od) A.push(`${od} overdue deadline${od === 1 ? "" : "s"}.${tag("rep")}${jump("me", "my week")}`);
   }
