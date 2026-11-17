@@ -27,6 +27,8 @@ jobs:
           npm install --no-save --no-audit --no-fund playwright@1.56.1 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
           cd api && npm install --no-audit --no-fund >/dev/null && npm install --no-save --no-audit --no-fund wrangler@4 >/dev/null
+      - name: One run, one notification (own local API + fake Strava and AI; Garmin and Strava copies of a run are reviewed once)
+        run: cd api && node ../tests/one_push.mjs
       - name: Forged webhook test (own local API + fake Strava/Garmin; a post alone must never delete member data)
         run: cd api && node ../tests/webhooks.mjs
       - name: Start the local API and app

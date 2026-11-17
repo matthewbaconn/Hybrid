@@ -217,9 +217,20 @@ async function stravaSync(env, user, ctx){
       Math.round((a.distance || 0) / 1609.34 * 100) / 100, Math.round((a.moving_time || 0) / 60), n0(a.calories || (a.kilojoules ? a.kilojoules * 1.1 : 0)), n0(a.average_heartrate),
       (a.map && a.map.summary_polyline || "").slice(0, 20000) || null, String(a.start_date_local || "").slice(0, 16), Math.round((a.total_elevation_gain || 0) * 3.281), String(a.sport_type || a.type || "").slice(0, 30), n0(a.max_heartrate), t));
   ops.push(env.DB.prepare("UPDATE strava_links SET last_sync = ? WHERE user_id = ?").bind(t, user.id));
-  // same workout from Garmin and from Strava: keep the Strava copy (it has the route map)
-  ops.push(env.DB.prepare("DELETE FROM activities WHERE user_id = ? AND source = 'garmin' AND EXISTS (SELECT 1 FROM activities s WHERE s.user_id = activities.user_id AND s.source = 'strava' AND s.date = activities.date AND s.type = activities.type AND ABS(s.minutes - activities.minutes) <= 3 AND ABS(s.mi - activities.mi) <= 0.2)").bind(user.id));
   await env.DB.batch(ops);
+  // Same workout from Garmin and from Strava (both linked): keep the Strava copy (it has the route map). If the Garmin copy
+  // arrived first, the coach has already reviewed it and sent the notification: that review moves to the copy we keep,
+  // and the Strava copy is not reviewed and announced a second time (one run, one notification).
+  const SAME = "s.user_id = g.user_id AND s.source = 'strava' AND s.date = g.date AND s.type = g.type AND ABS(s.minutes - g.minutes) <= 3 AND ABS(s.mi - g.mi) <= 0.2";
+  const twins = (await env.DB.prepare("SELECT g.id AS gid, s.id AS sid, s.ext_id AS ext FROM activities g JOIN activities s ON " + SAME + " WHERE g.user_id = ? AND g.source = 'garmin'").bind(user.id).all()).results;
+  const told = new Set();
+  for (const x of twins){
+    const had = await env.DB.prepare("SELECT 1 FROM reviews WHERE activity_id = ?").bind(x.gid).first();
+    if (!had) continue;
+    await env.DB.batch([env.DB.prepare("UPDATE OR IGNORE reviews SET activity_id = ? WHERE activity_id = ?").bind(x.sid, x.gid), env.DB.prepare("DELETE FROM reviews WHERE activity_id = ?").bind(x.gid)]);
+    told.add(x.ext);
+  }
+  await env.DB.prepare("DELETE FROM activities AS g WHERE g.user_id = ? AND g.source = 'garmin' AND EXISTS (SELECT 1 FROM activities s WHERE " + SAME + ")").bind(user.id).run();
   // lap splits for runs from the last 2 weeks that don't have them yet (needed to check workout reps)
   const need = (await env.DB.prepare("SELECT id, ext_id FROM activities WHERE user_id = ? AND source = 'strava' AND type = 'run' AND laps IS NULL AND date >= ? ORDER BY date DESC LIMIT 4")
     .bind(user.id, new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10)).all()).results;
@@ -234,9 +245,9 @@ async function stravaSync(env, user, ctx){
       await env.DB.prepare("UPDATE activities SET laps = ?, poly = COALESCE(?, poly) WHERE id = ?").bind(JSON.stringify(laps), full, x.id).run();
     } catch(e){ break; }
   }
-  const fresh = list.filter(a => !known.has(String(a.id))).map(a => String(a.id));
-  await logEvent(env, "strava_sync", true, list.length + " seen, " + fresh.length + " new");
-  if (fresh.length && ctx) ctx.waitUntil(afterNewActivities(env, user.id, fresh, "strava").catch(e => console.log("after-sync", e && e.stack || e)));
+  const fresh = list.filter(a => !known.has(String(a.id))).map(a => String(a.id)), toReview = fresh.filter(x => !told.has(x));
+  await logEvent(env, "strava_sync", true, list.length + " seen, " + fresh.length + " new" + (told.size ? ", " + told.size + " already reviewed from Garmin" : ""));
+  if (toReview.length && ctx) ctx.waitUntil(afterNewActivities(env, user.id, toReview, "strava").catch(e => console.log("after-sync", e && e.stack || e)));
   return {synced: list.length, fresh: fresh.length, last_sync: t};
 }
 
