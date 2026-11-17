@@ -82,7 +82,7 @@ async function ownerIdRaw(env){
    "ask" (the coach bar) was released Nov 17 after its stress test passed, so the list is empty for now.
    PREVIEW_ADD is for tests only (tests/ask.mjs sets it to "ask" so the owner-only switch stays tested); it can only
    narrow who sees a feature, never widen it. */
-const PREVIEW = new Set(["rough", "ready2"]);   // ready2 = new readiness card on Today (Nov 17)   // rough = "Rough night: adjust today" in the coach bar (Nov 17), Matthew's account first   // "rename" (your own name for a workout) was released Nov 17 on Matthew's word ("Release rename")
+const PREVIEW = new Set(["rough"]);   // ready2 (new readiness card) released Nov 17: Matthew, "release card"   // rough = "Rough night: adjust today" in the coach bar (Nov 17), Matthew's account first   // "rename" (your own name for a workout) was released Nov 17 on Matthew's word ("Release rename")
 const previewOk = async (env, user, k) => !(PREVIEW.has(k) || String(env.PREVIEW_ADD || "").split(",").includes(k)) || user.id === await ownerId(env);
 
 /* ---------- AI food reading ---------- */

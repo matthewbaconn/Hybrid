@@ -362,7 +362,7 @@ await check("Ask bar: shows only when the server says so; ask, confirm a move, p
     await page.unroute("**/api/me", me); await page.unroute("**/api/ask", coach); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
   }
 }, {needs: "Build a plan (4 steps)"});
-await check("Readiness card (preview ready2): ring, plain sentence, 3 numbers vs normal, small", async () => {
+await check("Readiness card: ring, plain sentence, 3 numbers vs normal, small", async () => {
   const today = await page.evaluate(() => HP.isoLocal(new Date()));
   const HPaddDays = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
   const me = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {...(j.features || {}), ask: true, ready2: true}; j.ai = {on: true, asked: true, needs: false, available: true}; j.coach = true;

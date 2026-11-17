@@ -953,7 +953,7 @@ const watchLinked = () => !!(garmin.connected || (healthLink && healthLink.on) |
    (A watch that is linked but has sent nothing for 3 days is not feeding the app, so checking in by hand stays possible.) */
 const watchFeeding = () => Object.keys(dev || {}).some(k => k >= addDays(TODAY, -3) && k <= TODAY);
 const feelBtn = () => askOn() ? '<button class="linkbtn" type="button" data-act="askfeel">Tell your coach how you feel</button>' : '';
-/* Readiness card, new look (preview "ready2", Nov 17: Matthew: "smaller and more next level and easy to understand").
+/* Readiness card, new look (released Nov 17; shown when /api/me says features.ready2: Matthew: "smaller and more next level and easy to understand").
    A score ring, one plain sentence of what it means, and the three numbers it comes from compared with your normal. */
 const READY_SAY = ["You're recovered. Train as planned.", "A bit run down. Keep the hard parts controlled.", "Your body needs a lighter day. Go easy or rest."];
 function readyRing(score, tone){
@@ -3189,8 +3189,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-17.3";
+const NEW_ID = "2026-11-17.4";
 const NEWS = [
+  ["heart", "A clearer readiness score", "Today's readiness now shows as a ring with one sentence on what it means, plus your sleep, HRV and resting heart rate with arrows against your own normal.", null, null, "2026-11-17.4"],
   ["check", "AI coach: your call", "The coach is AI, and you decide if it may read your data. The switch is in Settings, Coaching and training. Off means nothing of yours goes to AI and the app runs on its fixed rules. If you use Garmin, you are asked once on Today.", "set-train", null, "2026-11-17.3"],
   ["spark", "Your coach can see your runs", "Ask how a run went and it answers from the distance, pace and heart rate your Garmin sent, or that you logged by hand. Runs that only come through Strava can't be read by the coach (Strava's rules), so type those numbers in.", null, null, "2026-11-17.3"],
   ["check", "Name your workouts", "Open a workout in Activities, tap the pencil next to its name and type your own. Use the original name puts the old one back.", "activities", null, "2026-11-17.2"],
