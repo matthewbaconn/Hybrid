@@ -45,12 +45,16 @@ a member-facing PR without a NEWS/NEW_ID update gets one added (or is sent back)
 ## Preview: Matthew tries it first (Matthew, Nov 16, 2026: "treat my account as the test account so I can try things out before you put them live")
 - A NEW member-facing feature ships dark. It goes through the ship gate like any app change, but only the owner's
   account sees it. The switch is one list, `PREVIEW` in `api/worker.js`: `/api/me` tells the app (`features.<name>`),
-  and the feature's own endpoint refuses every other account. Test both sides (see `tests/ask.mjs`).
+  and the feature's own endpoint refuses every other account. Test both sides (see `tests/ask.mjs`, which uses the
+  test-only `PREVIEW_ADD` variable to put a released feature back in preview on its local API).
 - No What's new entry while a feature is in preview. Tell Matthew it is on his account and what to try.
 - It goes live for members only when Matthew says so: delete its name from `PREVIEW`, add the What's new entry,
   and ship that through the gate. If the feature costs money per use (AI calls), say what it will cost when you ask.
 - Bug fixes, security fixes and invisible changes do not wait in preview: they go live for everyone.
-- In preview now: `ask` (the coach bar above the tab bar: questions, and plan changes the member confirms with a tap).
+- In preview now: nothing. Released: `ask`, the coach bar (Nov 17, after its stress test passed: `tests/ask_stress.mjs`,
+  the e2e stress check, and the real-AI run `tests/ask_real.mjs` via the "Coach bar, real AI stress test" workflow.
+  Re-run that workflow after any change to the coach's prompt). Cost: one Haiku call per question on Mileset's key,
+  40 answered questions a day per account at most.
 
 ## Hard rules
 1. Real athletes use Mileset. Never change, reset or delete members' data; only fix code.
