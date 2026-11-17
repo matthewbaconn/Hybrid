@@ -1,0 +1,35 @@
+name: Protected files
+
+# Step 5 of the Nov 16 security plan (branch protection, Nov 17 2026). "protected-files" is a required check on
+# main. It runs from MAIN's copy of this file (pull_request_target), so a pull request can't rewrite the check that
+# judges it, and it never checks out or runs the pull request's code: it only reads the list of changed files.
+# It fails when a pull request edits one of the files that guard main; Matthew changes those with the owner
+# procedure in docs/BRANCH-PROTECTION.md.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  protected-files:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: The checks that guard main can't be changed by a pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
+          bad=$(printf '%s\n' "$files" | grep -E '^\.github/(workflows/(pr-checks|protect-guard|ship-gate-guard)\.yml|CODEOWNERS)$' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::This pull request changes a file that guards main: $(echo $bad)"
+            echo "Only Matthew changes these, with the owner procedure in docs/BRANCH-PROTECTION.md."
+            exit 1
+          fi
+          echo "No guard files changed ($(printf '%s\n' "$files" | wc -l) files checked)."
