@@ -54,3 +54,4 @@ jobs:
           if [ -n "$bad" ]; then echo "$bad"; exit 1; fi
           grep -q '^ok ' /tmp/e2e.log || { echo "e2e didn't run"; exit 1; }
           echo "e2e: all checks pass apart from the secret-only ones"
+# bp live test: guard-file edit (must be blocked)
