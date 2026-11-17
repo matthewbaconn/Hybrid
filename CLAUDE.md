@@ -26,7 +26,9 @@ Plans adapt to sleep, HRV and workouts from Garmin, Strava and Apple Health.
 - `brand/ig/`: Instagram images (public URLs Buffer can fetch). `home/`: website. `mail/outbox.json`: the weekly member email (the API cron sends it once per id).
 - `tests/e2e.mjs` (Playwright), `tests/health.sh`. GitHub Actions: `nightly.yml`, `api.yml` (deploys
   the Worker on push to main), `events.yml` (reads the live event log: use it, not raw DB queries).
-- Pushing to `main` deploys: Pages serves the app/site, `api.yml` deploys the Worker and runs migrations.
+- Merging to `main` deploys: Pages serves the app/site, `api.yml` deploys the Worker and runs migrations.
+  `main` is protected (Nov 17): every change goes through a pull request with the `checks` and `protected-files`
+  checks green; nobody can push to it directly. See docs/BRANCH-PROTECTION.md (incl. the owner emergency procedure).
 - After any app change, bump `APP_VERSION` in index.html and `CACHE` in sw.js.
 - Tools: `gh` (REST: `gh api`), `wrangler` (in `api/`), Resend, Buffer MCP, Meta Ads MCP.
 - The repo is **public**. Never commit secrets, member data, `.dev.vars` or `.claude/MEMORY.md`.
@@ -39,6 +41,20 @@ use it, the screen "Show me" opens (or null), optional sex filter, release id], 
 last looked; "Show me" goes to the screen with a pill to come back; More > What's new shows the whole list. Drop
 entries older than about two weeks. Bug fixes and invisible changes don't go in. The ship gate checks this before merging:
 a member-facing PR without a NEWS/NEW_ID update gets one added (or is sent back) first.
+
+## Preview: Matthew tries it first (Matthew, Nov 16, 2026: "treat my account as the test account so I can try things out before you put them live")
+- A NEW member-facing feature ships dark. It goes through the ship gate like any app change, but only the owner's
+  account sees it. The switch is one list, `PREVIEW` in `api/worker.js`: `/api/me` tells the app (`features.<name>`),
+  and the feature's own endpoint refuses every other account. Test both sides (see `tests/ask.mjs`, which uses the
+  test-only `PREVIEW_ADD` variable to put a released feature back in preview on its local API).
+- No What's new entry while a feature is in preview. Tell Matthew it is on his account and what to try.
+- It goes live for members only when Matthew says so: delete its name from `PREVIEW`, add the What's new entry,
+  and ship that through the gate. If the feature costs money per use (AI calls), say what it will cost when you ask.
+- Bug fixes, security fixes and invisible changes do not wait in preview: they go live for everyone.
+- In preview now: nothing. Released: `ask`, the coach bar (Nov 17, after its stress test passed: `tests/ask_stress.mjs`,
+  the e2e stress check, and the real-AI run `tests/ask_real.mjs` via the "Coach bar, real AI stress test" workflow.
+  Re-run that workflow after any change to the coach's prompt). Cost: one Haiku call per question on Mileset's key,
+  40 answered questions a day per account at most.
 
 ## Hard rules
 1. Real athletes use Mileset. Never change, reset or delete members' data; only fix code.
