@@ -926,18 +926,24 @@ const morningNow = () => { const h = new Date().getHours(); return h >= 3 && h <
 /* A connected watch (Garmin, or Apple Health sending data) replaces the morning survey: readiness, sleep and the
    night's numbers show instead (Matthew, Nov 15). The survey stays one tap away for anyone who wants to add how they feel. */
 const watchLinked = () => !!(garmin.connected || (healthLink && healthLink.on) || Object.keys(dev || {}).some(k => k >= addDays(TODAY, -3) && k <= TODAY));
+/* Matthew, Nov 16: "whoever has a watch connected, there should be no survey". A watch that has sent numbers in the last
+   3 days means NO survey anywhere: not on Today, not from Recovery, not behind a link. How you feel is typed to the coach.
+   (A watch that is linked but has sent nothing for 3 days is not feeding the app, so checking in by hand stays possible.) */
+const watchFeeding = () => Object.keys(dev || {}).some(k => k >= addDays(TODAY, -3) && k <= TODAY);
+const feelBtn = () => askOn() ? '<button class="linkbtn" type="button" data-act="askfeel">Tell your coach how you feel</button>' : '';
 function watchReadyCard(){
-  const sg = sigOn(TODAY), r = readiness(null, sg);
-  if (!r) return morningNow() ? '<section class="card ci-done wr" style="--tone:var(--long)"><div class="ci-row"><div><strong>Waiting for your watch</strong><span>Last night\'s sleep and today\'s readiness show here once your watch syncs.</span></div><button class="linkbtn" type="button" data-act="ciopen">Check in by hand</button></div></section>' : '';
-  const n1 = x => Math.round(x * 10) / 10;
+  const sg0 = sigOn(TODAY), sg = sg0 || {}, c = checkins[TODAY], r = readiness(c, sg0);   // a check-in already saved today still counts, so the score matches the rest of the app
+  if (!r) return morningNow() ? '<section class="card ci-done wr" style="--tone:var(--long)"><div class="ci-row"><div><strong>Waiting for your watch</strong><span>Last night\'s sleep and today\'s readiness show here once your watch syncs.</span></div>' + (watchFeeding() ? feelBtn() : '<button class="linkbtn" type="button" data-act="ciopen">Check in by hand</button>') + '</div></section>' : '';
+  const n1 = x => Math.round(x * 10) / 10, mn = morningNote();
   const bits = [sg.sleep_h ? n1(sg.sleep_h) + ' h sleep' : '', sg.sleep_score != null ? 'sleep score ' + sg.sleep_score : '',
     sg.hrv ? 'HRV ' + Math.round(sg.hrv) + ' ms' + (sg.hrvA ? ' (your normal ' + Math.round(sg.hrvA) + ')' : '') : '',
     sg.rhr ? 'resting HR ' + Math.round(sg.rhr) + (sg.rhrA ? ' (your normal ' + Math.round(sg.rhrA) + ')' : '') : ''].filter(Boolean);
-  return '<section class="card ci-done wr" style="--tone:var(--' + r.tone + ')"><div class="ci-row"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>From your watch · ' + esc(bits.join(' · ')) + '</span></div>' + (askOn() ? '<button class="linkbtn" type="button" data-act="askfeel">Tell your coach how you feel</button>' : '<button class="linkbtn" type="button" data-act="ciopen">Add how you feel</button>') + '</div>' +
-    (r.watch ? '<p class="sub">' + esc(r.watch.join(' · ')) + '.</p>' : '') + '</section>';
+  return '<section class="card ci-done wr" style="--tone:var(--' + r.tone + ')"><div class="ci-row"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>' + (bits.length ? 'From your watch · ' + esc(bits.join(' · ')) : 'Waiting for last night\'s watch numbers') + '</span></div>' + feelBtn() + '</div>' +
+    (r.watch ? '<p class="sub">' + esc(r.watch.join(' · ')) + '.</p>' : '') + (mn ? reviewHtml({headline: mn.headline, meaning: (mn.lines || []).join(" ")}) : '') + '</section>';
 }
 function checkinCard(){
   const c = checkins[TODAY], r = readiness(c, sigOn(TODAY));
+  if (watchFeeding()){ ci = null; ciForce = false; return watchReadyCard(); }   // watch sending numbers: never the survey
   if (c && !ci){
     const mn = morningNote();
     return '<section class="card ci-done" style="--tone:var(--' + r.tone + ')"><div class="ci-row"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>' +
@@ -1333,12 +1339,12 @@ function renderRecovery(){
     h += '<section class="card" style="--tone:var(--' + r.tone + ')"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span><span class="r">from your watch</span></div><div class="rings">' +
       ring(r.score, 100, "var(--" + r.tone + ")", "Readiness", String(r.score), r.word) + (sg.sleep_h ? ring(sg.sleep_h, 8, "var(--accent-2)", "Sleep", (Math.round(sg.sleep_h * 10) / 10) + " h", sg.sleep_score != null ? "score " + sg.sleep_score : "last night") : '') +
       (sg.hrv ? ring(sg.hrv, sg.hrvA ? sg.hrvA * 1.3 : 120, "var(--lift)", "HRV", sg.hrv + " ms", sg.hrvA ? "normal " + Math.round(sg.hrvA) : "last night") : '') + '</div>' +
-      '<div class="verdict v' + r.level + '"><b>' + r.word + '</b><span>' + ["Train as planned.", "Today's session is trimmed. See the note on the Today tab.", "Today is easy or rest. Your workout moves later in the week."][r.level] + '</span></div><button class="linkbtn" type="button" data-act="gotoday">Add how you feel (optional)</button></section>'; }
+      '<div class="verdict v' + r.level + '"><b>' + r.word + '</b><span>' + ["Train as planned.", "Today's session is trimmed. See the note on the Today tab.", "Today is easy or rest. Your workout moves later in the week."][r.level] + '</span></div>' + feelBtn() + '</section>'; }
   else if (r) h += '<section class="card" style="--tone:var(--' + r.tone + ')"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span></div><div class="rings">' +
     ring(r.score, 100, "var(--" + r.tone + ")", "Readiness", String(r.score), r.word) + ring(c.sleep_h, 8, "var(--accent-2)", "Sleep", (c.sleep_h >= 9 ? "9+" : c.sleep_h < 5 ? "<5" : c.sleep_h) + " h", ["", "awful", "poor", "OK", "good", "great"][c.sleep_q] + " quality") +
     ring(6 - c.soreness, 5, "var(--lift)", "Legs", ["", "fresh", "light", "some", "sore", "very sore"][c.soreness], "energy " + ["", "very low", "low", "OK", "good", "great"][c.energy]) + '</div>' +
     '<div class="verdict v' + r.level + '"><b>' + r.word + '</b><span>' + ["Train as planned.", "Today's session is trimmed. See the note on the Today tab.", "Today is easy or rest. Your workout moves later in the week."][r.level] + '</span></div></section>';
-  else h += '<section class="card" style="--tone:var(--long)"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span></div>' + (watchLinked() ? '<p class="sub">Your readiness shows here once your watch syncs last night\'s sleep.</p><button class="linkbtn" type="button" data-act="gotoday">Check in by hand</button>' : '<p class="sub">Do the 20-second morning check-in and your readiness shows here.</p><button class="btn primary" type="button" data-act="gotoday">Do today\'s check-in</button>') + '</section>';
+  else h += '<section class="card" style="--tone:var(--long)"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span></div>' + (watchLinked() ? '<p class="sub">Your readiness shows here once your watch syncs last night\'s sleep.</p>' + (watchFeeding() ? feelBtn() : '<button class="linkbtn" type="button" data-act="gotoday">Check in by hand</button>') : '<p class="sub">Do the 20-second morning check-in and your readiness shows here.</p><button class="btn primary" type="button" data-act="gotoday">Do today\'s check-in</button>') + '</section>';
   h += watchCard(days);
   const rs = days.map(d => { const x = readiness(checkins[d], sigOn(d)); return x ? x.score : null; }), sl = days.map(d => dev[d] && dev[d].sleep_h ? Math.round(dev[d].sleep_h * 10) / 10 : checkins[d] ? checkins[d].sleep_h : null);
   const lab = days.map((d, i) => i % 2 === 1 ? '' : String(parseD(d).getUTCDate()));
@@ -3073,7 +3079,7 @@ function notifHtml(){
   if (Notification.permission === "denied") return h + '<p class="sub">Notifications are blocked for Mileset. Turn them on in your phone\'s Settings → Notifications, then come back.</p></div>';
   if (!pushState.on) return h + '<p class="sub">Morning check-in reminder, a summary after every workout, a Monday recap and a bedtime reminder.</p><button class="btn primary block" type="button" data-act="pushon">Turn on notifications</button></div>';
   const tg = (k, label) => '<label class="tgl"><input type="checkbox" data-set="' + k + '"' + (uset[k] ? ' checked' : '') + '><span>' + label + '</span></label>';
-  return h + tg("n_morning", "Morning check-in reminder") + '<label class="tm">at<input type="time" data-set="morning" value="' + esc(uset.morning) + '"></label>' +
+  return h + tg("n_morning", watchFeeding() ? "Morning readiness and today's plan" : "Morning check-in reminder") + '<label class="tm">at<input type="time" data-set="morning" value="' + esc(uset.morning) + '"></label>' +
     tg("n_run", "Summary after each workout") + tg("n_weekly", "Monday weekly recap") + tg("n_bed", "Bedtime reminder") + '<label class="tm">at<input type="time" data-set="bedtime" value="' + esc(uset.bedtime) + '"></label>' +
     '<div class="fbtns"><button class="btn" type="button" data-act="pushtest">Send a test</button><button class="btn" type="button" data-act="pushoff">Turn off here</button></div></div>';
 }
@@ -3093,6 +3099,7 @@ async function pushOn(){
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
 const NEW_ID = "2026-11-17";
 const NEWS = [
+  ["watch", "Watch connected: no survey at all", "Your readiness, sleep, HRV and resting heart rate come straight from your watch, on Today and on Recovery. To add how you feel, tap Tell your coach how you feel and type it.", null, null, "2026-11-17"],
   ["spark", "Ask your coach anything", "Tap Ask your coach above the tabs and type: ask about your plan, why a number is what it is, or to move a workout. Any change shows as a button, and nothing moves until you tap it.", null, null, "2026-11-17"],
   ["sun", "Weather and best time to run, on Today", "Right under the greeting you now see the weather and the best three hours to run. No city yet? Tap it to add yours.", null, null, "2026-11-16.4"],
   ["spark", "Pinch to zoom anywhere", "Small text? Spread two fingers to zoom in on any screen, and pinch to zoom back out.", null, null, "2026-11-16.3"],
@@ -3100,7 +3107,6 @@ const NEWS = [
   ["share", "See who joins through your invite link", "Open More, then Your invite link: copy or share your personal link and see how many people joined through it.", "invites", null, "2026-11-16"],
   ["flag", "A cleaner Today screen", "Today's workout is now at the top, and your race countdown is one card with days to go and how far through your plan you are.", null, null, "2026-11-15.3"],
   ["run", "Gentler first weeks at low mileage", "Running under about 3 miles a day? Your plan now uses fewer of your run days early on, so week one is close to what you run now. Rest days fill the rest.", null, null, "2026-11-15.2"],
-  ["watch", "Watch connected? No more morning survey", "Today now shows your readiness, sleep, HRV and resting heart rate straight from your watch. Want to add how you feel? Tap Tell your coach how you feel and type it.", null, null, "2026-11-15"],
   ["swap", "Changing a workout is easier", "Tap Change workout: similar options show first, and the search box on top finds anything else.", null, null, "2026-11-14.2"],
   ["run", "No watch? Run with your phone", "Open today's run and tap Start with my phone. A voice calls every step, keeps time and can track distance by GPS. Then rate how hard it felt.", null],
   ["heart", "Run by pace, heart rate or feel", "Pick how your runs are set. Heart rate shows your zone and bpm on every step, and your Garmin gets heart rate targets.", "set-run"],
@@ -3573,8 +3579,8 @@ document.addEventListener("click", ev => {
     return;
   }
   if (act === "ciset"){ ci = ci || {}; ci[a.dataset.k] = +a.dataset.v; if (a.dataset.k === "sleep_h") ci.fromWatch = false; ci.err = ""; render(); return; }
-  if (act === "ciedit"){ ci = {...checkins[TODAY]}; render(); return; }
-  if (act === "ciopen"){ ciForce = true; render(); return; }
+  if (act === "ciedit"){ if (!watchFeeding()) ci = {...checkins[TODAY]}; render(); return; }
+  if (act === "ciopen"){ ciForce = !watchFeeding(); render(); return; }
   if (act === "ciclose"){ ci = null; ciForce = false; render(); return; }
   if (act === "cisave"){
     const d = ci || {}; if (CIQ.some(([k]) => d[k] == null)){ ci = {...d, err: "Answer all five so the plan can adjust."}; render(); return; }
@@ -3705,7 +3711,7 @@ document.addEventListener("click", ev => {
   }
   if (act === "wxchange"){ wxState = "pick"; wxErr = ""; render(); return; }
   if (act === "wxretry"){ wxState = "idle"; loadWeather(true); render(); return; }
-  if (act === "gotoday"){ ciForce = true; setTab("today", true); return; }
+  if (act === "gotoday"){ ciForce = !watchFeeding(); setTab("today", true); return; }
   if (act === "menu"){ openMenu(); return; }
   if (act === "close"){ closeMenu(); return; }
   if (act === "chgopen"){ openChange(a.dataset.key); return; }

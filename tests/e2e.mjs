@@ -212,38 +212,38 @@ await check("Morning check-in + AI coach note", async () => {
   await page.waitForSelector(".ci-done .coach", {timeout: 30000});
   return "readiness " + score + " · " + (await page.innerText(".ci-done .coach b"));
 });
-await check("Watch connected: readiness and sleep replace the morning survey", async () => {
-  // Pretend a watch sent last night's numbers and today's survey was never filled in (only the app's view changes).
+await check("Watch connected: readiness and sleep replace the morning survey, and there is no way into the survey", async () => {
+  // Pretend a watch sent last night's numbers (only the app's view changes). Matthew, Nov 16: "whoever has a watch connected, there should be no survey".
   const today = await page.evaluate(() => HP.isoLocal(new Date()));
-  let coachOn = false;   // first the app without the coach (the survey is one tap away), then with it (type how you feel instead)
+  let coachOn = false, saved = false;   // coach off / on; with and without a check-in already saved today
   const fake = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {ask: coachOn};
-    j.checkins = (j.checkins || []).filter(c => c.date !== today);
+    j.checkins = (j.checkins || []).filter(c => c.date !== today).concat(saved ? [{date: today, sleep_h: 6, sleep_q: 3, soreness: 3, energy: 3, stress: 3}] : []);
     j.health = [1, 2, 3, 4, 5].map(i => ({date: HPaddDays(today, -i), sleep_h: 7.4, sleep_score: 80, hrv: 60, rhr: 50, source: "garmin"})).concat([{date: today, sleep_h: 7.2, sleep_score: 82, hrv: 61, rhr: 49, source: "garmin"}]);
     await route.fulfill({response: r, json: j}); };
   const HPaddDays = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+  const SURVEY = '.card.ci .ciq, [data-act="ciopen"], [data-act="ciedit"], [data-act="gotoday"], [data-act="cisave"]';
+  const noSurvey = async where => { const n = await page.locator(SURVEY).count(); if (n) throw new Error("a way into the survey shows " + where + " with a watch connected (" + n + ")"); };
+  const load = async () => { await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar"); await tab("today"); await page.waitForSelector(".ci-done.wr"); };
   await page.route("**/api/me", fake);
   try {
-    await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar"); await tab("today");
-    await page.waitForSelector(".ci-done.wr");
+    await load();
     const t = (await page.textContent(".ci-done.wr")).replace(/\s+/g, " ");
     if (!/From your watch/.test(t) || !/7\.2 h sleep/.test(t) || !/sleep score 82/.test(t) || !/HRV 61 ms/.test(t) || !/resting HR 49/.test(t)) throw new Error("watch card wrong: " + t.slice(0, 200));
-    if (await page.$(".card.ci .ciq")) throw new Error("the morning survey still shows with a watch connected");
-    await noOverflow();
-    await page.click('.ci-done.wr [data-act="ciopen"]'); await page.waitForSelector(".card.ci .ciq");     // the survey is still one tap away
-    await page.click('.card.ci [data-act="ciclose"]'); await page.waitForSelector(".ci-done.wr");           // and one tap closes it again (it used to stay until the app was restarted)
-    if (await page.$(".card.ci .ciq")) throw new Error("the survey stayed open after Not now");
-    // opened but not answered, then the app goes to the background: the watch's numbers are back when it returns
-    await page.click('.ci-done.wr [data-act="ciopen"]'); await page.waitForSelector(".card.ci .ciq");
-    await page.evaluate(() => { Object.defineProperty(document, "visibilityState", {configurable: true, get: () => "hidden"}); document.dispatchEvent(new Event("visibilitychange"));
-      Object.defineProperty(document, "visibilityState", {configurable: true, get: () => "visible"}); document.dispatchEvent(new Event("visibilitychange")); });
-    await page.waitForSelector(".ci-done.wr", {timeout: 5000});
-    if (await page.$(".card.ci .ciq")) throw new Error("the survey came back after leaving the app");
-    // with the coach on (Matthew, Nov 16: "I only want the option to type how u feel if you have a watch connected"): no survey, one tap opens the coach
-    coachOn = true; await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar"); await tab("today"); await page.waitForSelector(".ci-done.wr");
-    if (await page.$('.ci-done.wr [data-act="ciopen"]')) throw new Error("the survey link still shows on the watch card when the coach is on");
+    await noSurvey("on Today"); await noOverflow();
+    await tab("recovery"); await page.waitForSelector(".rings"); await noSurvey("on Recovery");
+    // a check-in saved earlier today (before this change) must not bring the survey or its Edit link back
+    saved = true; await load();
+    const t2 = (await page.textContent(".ci-done.wr")).replace(/\s+/g, " ");
+    if (!/From your watch/.test(t2) || !/HRV 61 ms/.test(t2)) throw new Error("with a check-in saved today the watch card is gone: " + t2.slice(0, 200));
+    await noSurvey("on Today (check-in already saved)");
+    await tab("recovery"); await page.waitForSelector(".rings"); await noSurvey("on Recovery (check-in already saved)");
+    // with the coach on: how you feel is typed to the coach, from Today and from Recovery
+    saved = false; coachOn = true; await load(); await noSurvey("on Today (coach on)");
     await page.click('.ci-done.wr [data-act="askfeel"]'); await page.waitForSelector(".sheet.asks #ask-q");
     const ph = await page.getAttribute("#ask-q", "placeholder"); if (!/how do you feel/i.test(ph || "")) throw new Error("the coach did not open asking how you feel: " + ph);
     await page.click('.sheet.asks [data-act="askclose"]'); await page.waitForSelector(".sheet.asks", {state: "detached"});
+    await tab("recovery"); await page.waitForSelector(".rings"); await noSurvey("on Recovery (coach on)");
+    if (!(await page.locator('#app [data-act="askfeel"]').count())) throw new Error("Recovery has no 'Tell your coach how you feel' link with the coach on");
   } finally {
     await page.unroute("**/api/me", fake); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
   }
