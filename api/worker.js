@@ -1264,7 +1264,8 @@ async function route(req, env, path, ctx){
     if (day.n >= 200) throw new HttpError(429, "Too many reports today. Try again tomorrow.");
     const info = {screen: String(b.screen || "").slice(0, 30), version: String(b.version || "").slice(0, 20), device: (req.headers.get("User-Agent") || "").slice(0, 160), installed: !!b.installed};
     await env.DB.prepare("INSERT INTO reports (id, user_id, email, text, info, created) VALUES (?, ?, ?, ?, ?, ?)").bind(rand(10), who ? who.id : null, who ? who.email : null, text, JSON.stringify(info), now()).run();
-    await logEvent(env, "report", true, who ? "signed in" : "not signed in");
+    // the hourly smoke test files its own report: log it apart so member reports stand out (tools/signals.py, Nov 17)
+    await logEvent(env, text.startsWith("Nightly test report.") ? "report_test" : "report", true, who ? "signed in" : "not signed in");
     const own = await ownerId(env);
     if (own && ctx && !text.startsWith("Nightly test report.")) ctx.waitUntil(pushTo(env, own, {title: "Mileset: problem reported", body: clip(text, 120), tag: "report"}).catch(() => {}));
     return {ok: true};
