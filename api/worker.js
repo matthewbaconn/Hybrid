@@ -216,7 +216,14 @@ async function stravaSync(env, user, ctx){
   if (!r.ok){ await logEvent(env, "strava_sync", false, "HTTP " + r.status); throw new HttpError(502, "Couldn't reach Strava right now."); }
   const list = await r.json(), t = now();
   const known = new Set((await env.DB.prepare("SELECT ext_id FROM activities WHERE user_id = ? AND source = 'strava'").bind(user.id).all()).results.map(x => x.ext_id));
-  const ops = list.slice(0, 100).map(a => env.DB.prepare(
+  // Same workout from Garmin and from Strava (both linked): keep the GARMIN copy (Nov 17). Strava's rules keep its data
+  // away from the AI, so with the Strava copy the coach could not see the run at all; the Garmin copy has the same
+  // numbers, route and laps and the coach may read it. A Strava activity that is already here from Garmin is skipped.
+  const sAct = a => ({date: String(a.start_date_local || "").slice(0, 10), type: TYPE_MAP(a.sport_type || a.type || ""), mi: Math.round((a.distance || 0) / 1609.34 * 100) / 100, minutes: Math.round((a.moving_time || 0) / 60)});
+  const gRows = (await env.DB.prepare("SELECT date, type, mi, minutes FROM activities WHERE user_id = ? AND source = 'garmin' AND date >= ?").bind(user.id, new Date((since - 2 * 86400) * 1000).toISOString().slice(0, 10)).all()).results;
+  const fromGarmin = a => { const x = sAct(a); return gRows.some(g => g.date === x.date && g.type === x.type && Math.abs(g.minutes - x.minutes) <= 3 && Math.abs(g.mi - x.mi) <= 0.2); };
+  const all = Array.isArray(list) ? list : [], keep = all.filter(a => !fromGarmin(a)), skipped = all.length - keep.length;
+  const ops = keep.slice(0, 100).map(a => env.DB.prepare(
     "INSERT INTO activities (id, user_id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, poly, start_local, elev_ft, sport, max_hr, created) VALUES (?, ?, 'strava', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
     "ON CONFLICT (user_id, source, ext_id) DO UPDATE SET date = excluded.date, type = excluded.type, name = excluded.name, mi = excluded.mi, minutes = excluded.minutes, cal = CASE WHEN excluded.cal > 0 THEN excluded.cal ELSE activities.cal END, avg_hr = excluded.avg_hr, " +
     "poly = CASE WHEN COALESCE(length(activities.poly), 0) > COALESCE(length(excluded.poly), 0) THEN activities.poly ELSE excluded.poly END, start_local = excluded.start_local, elev_ft = excluded.elev_ft, sport = excluded.sport, max_hr = excluded.max_hr")
@@ -225,21 +232,14 @@ async function stravaSync(env, user, ctx){
       (a.map && a.map.summary_polyline || "").slice(0, 20000) || null, String(a.start_date_local || "").slice(0, 16), Math.round((a.total_elevation_gain || 0) * 3.281), String(a.sport_type || a.type || "").slice(0, 30), n0(a.max_heartrate), t));
   ops.push(env.DB.prepare("UPDATE strava_links SET last_sync = ? WHERE user_id = ?").bind(t, user.id));
   await env.DB.batch(ops);
-  // Same workout from Garmin and from Strava (both linked): keep the Strava copy (it has the route map). If the Garmin copy
-  // arrived first, the coach has already reviewed it and sent the notification: that review moves to the copy we keep,
-  // and the Strava copy is not reviewed and announced a second time (one run, one notification).
-  const SAME = "s.user_id = g.user_id AND s.source = 'strava' AND s.date = g.date AND s.type = g.type AND ABS(s.minutes - g.minutes) <= 3 AND ABS(s.mi - g.mi) <= 0.2";
-  const twins = (await env.DB.prepare("SELECT g.id AS gid, s.id AS sid, s.ext_id AS ext FROM activities g JOIN activities s ON " + SAME + " WHERE g.user_id = ? AND g.source = 'garmin'").bind(user.id).all()).results;
-  const told = new Set();
-  await env.DB.prepare("UPDATE activities AS s SET title = (SELECT g.title FROM activities g WHERE " + SAME + " AND g.source = 'garmin' AND g.title IS NOT NULL LIMIT 1) " +
-    "WHERE s.user_id = ? AND s.source = 'strava' AND s.title IS NULL AND EXISTS (SELECT 1 FROM activities g WHERE " + SAME + " AND g.source = 'garmin' AND g.title IS NOT NULL)").bind(user.id).run();   // a name the member gave the Garmin copy moves to the copy we keep
-  for (const x of twins){
-    const had = await env.DB.prepare("SELECT 1 FROM reviews WHERE activity_id = ?").bind(x.gid).first();
-    if (!had) continue;
-    await env.DB.batch([env.DB.prepare("UPDATE OR IGNORE reviews SET activity_id = ? WHERE activity_id = ?").bind(x.sid, x.gid), env.DB.prepare("DELETE FROM reviews WHERE activity_id = ?").bind(x.gid)]);
-    told.add(x.ext);
-  }
-  await env.DB.prepare("DELETE FROM activities AS g WHERE g.user_id = ? AND g.source = 'garmin' AND EXISTS (SELECT 1 FROM activities s WHERE " + SAME + ")").bind(user.id).run();
+  // a Strava copy stored before its Garmin twin was known (older data): what the member added to it moves to the
+  // Garmin copy, then the Strava copy and its review go (garminPush does the same when the Garmin copy arrives second)
+  const SAME = "s.user_id = g.user_id AND s.date = g.date AND s.type = g.type AND ABS(s.minutes - g.minutes) <= 3 AND ABS(s.mi - g.mi) <= 0.2";
+  const twins = (await env.DB.prepare("SELECT g.id AS gid, s.id AS sid, s.title AS title, s.rpe AS rpe, s.venue AS venue FROM activities g JOIN activities s ON " + SAME + " AND s.source = 'strava' WHERE g.user_id = ? AND g.source = 'garmin'").bind(user.id).all()).results;
+  for (const x of twins) await env.DB.batch([
+    env.DB.prepare("UPDATE activities SET title = COALESCE(title, ?), rpe = COALESCE(rpe, ?), venue = COALESCE(venue, ?) WHERE id = ?").bind(x.title, x.rpe, x.venue, x.gid),
+    env.DB.prepare("DELETE FROM reviews WHERE activity_id = ?").bind(x.sid),   // written from Strava's numbers: it does not move onto a copy the AI can read
+    env.DB.prepare("DELETE FROM activities WHERE id = ? AND user_id = ? AND source = 'strava'").bind(x.sid, user.id)]);
   // lap splits for runs from the last 2 weeks that don't have them yet (needed to check workout reps)
   const need = (await env.DB.prepare("SELECT id, ext_id FROM activities WHERE user_id = ? AND source = 'strava' AND type = 'run' AND laps IS NULL AND date >= ? ORDER BY date DESC LIMIT 4")
     .bind(user.id, new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10)).all()).results;
@@ -254,10 +254,10 @@ async function stravaSync(env, user, ctx){
       await env.DB.prepare("UPDATE activities SET laps = ?, poly = COALESCE(?, poly) WHERE id = ?").bind(JSON.stringify(laps), full, x.id).run();
     } catch(e){ break; }
   }
-  const fresh = list.filter(a => !known.has(String(a.id))).map(a => String(a.id)), toReview = fresh.filter(x => !told.has(x));
-  await logEvent(env, "strava_sync", true, list.length + " seen, " + fresh.length + " new" + (told.size ? ", " + told.size + " already reviewed from Garmin" : ""));
+  const fresh = keep.filter(a => !known.has(String(a.id))).map(a => String(a.id)), toReview = fresh;
+  await logEvent(env, "strava_sync", true, all.length + " seen, " + fresh.length + " new" + (skipped ? ", " + skipped + " already here from Garmin" : ""));
   if (toReview.length && ctx) ctx.waitUntil(afterNewActivities(env, user.id, toReview, "strava").catch(e => console.log("after-sync", e && e.stack || e)));
-  return {synced: list.length, fresh: fresh.length, last_sync: t};
+  return {synced: all.length, fresh: fresh.length, last_sync: t};
 }
 
 /* ---------- Garmin Connect (OAuth2 PKCE + push notifications) ----------
@@ -298,7 +298,7 @@ async function garminPush(env, data, ctx){
   for (const k of Object.keys(data || {})) if (Array.isArray(data[k])) data[k].forEach(x => x && x.userId && ids.add(String(x.userId)));
   if (!ids.size) return;
   const links = (await env.DB.prepare("SELECT user_id, garmin_user_id FROM garmin_links WHERE garmin_user_id IN (" + [...ids].map(() => "?").join(",") + ")").bind(...ids).all()).results;
-  const who = Object.fromEntries(links.map(l => [l.garmin_user_id, l.user_id])), seen = {}, fresh = {};
+  const who = Object.fromEntries(links.map(l => [l.garmin_user_id, l.user_id])), seen = {}, fresh = {}, quiet = {};
   const uid = x => who[String(x.userId)];
   // Nov 16: the push endpoint can't prove a post came from Garmin, so a "deregistration" only deletes data once Garmin
   // itself confirms the link is gone (our stored token is refused). Anything else is logged and ignored.
@@ -309,14 +309,26 @@ async function garminPush(env, data, ctx){
     const u = uid(a); if (!u) continue; seen[u] = 1;
     const ext = String(a.summaryId || a.activityId || ""); if (!ext) continue;
     const local = gDate(a.startTimeInSeconds, a.startTimeOffsetInSeconds), date = local.slice(0, 10), type = G_TYPE(a.activityType), mi = Math.round((a.distanceInMeters || 0) / 1609.34 * 100) / 100, min = Math.round((a.durationInSeconds || 0) / 60);
-    // same workout already came in from Strava (the person has both linked): keep the Strava one, it has the map
-    const dup = await env.DB.prepare("SELECT 1 FROM activities WHERE user_id = ? AND source = 'strava' AND date = ? AND type = ? AND ABS(minutes - ?) <= 3 AND ABS(mi - ?) <= 0.2 LIMIT 1").bind(u, date, type, min, mi).first();
-    if (dup) continue;
+    // same workout already came in from Strava (the person has both linked): the Garmin copy replaces it (Nov 17), so
+    // the coach can read the run. Strava data can never go to the AI; Garmin data may.
+    const twin = await env.DB.prepare("SELECT id, title, rpe, venue FROM activities WHERE user_id = ? AND source = 'strava' AND date = ? AND type = ? AND ABS(minutes - ?) <= 3 AND ABS(mi - ?) <= 0.2 LIMIT 1").bind(u, date, type, min, mi).first();
     const known = await env.DB.prepare("SELECT 1 FROM activities WHERE user_id = ? AND source = 'garmin' AND ext_id = ?").bind(u, ext).first();
     await env.DB.prepare("INSERT INTO activities (id, user_id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, start_local, elev_ft, sport, max_hr, created) VALUES (?, ?, 'garmin', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
       (a._fromDetail ? "ON CONFLICT (user_id, source, ext_id) DO NOTHING" : "ON CONFLICT (user_id, source, ext_id) DO UPDATE SET date = excluded.date, type = excluded.type, name = excluded.name, mi = excluded.mi, minutes = excluded.minutes, cal = excluded.cal, avg_hr = excluded.avg_hr, start_local = excluded.start_local, elev_ft = excluded.elev_ft, sport = excluded.sport, max_hr = excluded.max_hr"))
       .bind(rand(10), u, ext, date, type, String(a.activityName || G_NAME(a.activityType)).slice(0, 80), mi, min, n0(a.activeKilocalories), n0(a.averageHeartRateInBeatsPerMinute), local.slice(0, 16),
         Math.round((a.totalElevationGainInMeters || 0) * 3.281), String(a.activityType || "").slice(0, 30), n0(a.maxHeartRateInBeatsPerMinute), now()).run();
+    if (twin){
+      // what the member added to the Strava copy (their own name for it, how hard it felt, where) moves to the Garmin copy.
+      // Its review was written without the numbers (Strava), so it is dropped and the coach reviews the Garmin copy; if the
+      // Strava copy was already announced, this second review is silent (one run, one notification).
+      const had = await env.DB.prepare("SELECT 1 FROM reviews WHERE activity_id = ?").bind(twin.id).first();
+      await env.DB.batch([
+        env.DB.prepare("UPDATE activities SET title = COALESCE(title, ?), rpe = COALESCE(rpe, ?), venue = COALESCE(venue, ?) WHERE user_id = ? AND source = 'garmin' AND ext_id = ?").bind(twin.title, twin.rpe, twin.venue, u, ext),
+        env.DB.prepare("DELETE FROM reviews WHERE activity_id = ?").bind(twin.id),
+        env.DB.prepare("DELETE FROM activities WHERE id = ? AND user_id = ? AND source = 'strava'").bind(twin.id, u)]);
+      if (had) (quiet[u] = quiet[u] || []).push(ext);
+      if (known && !(fresh[u] || []).includes(ext)) (fresh[u] = fresh[u] || []).push(ext);
+    }
     if (!known) (fresh[u] = fresh[u] || []).push(ext);
   }
   // route map + lap splits from the detailed activity
@@ -356,7 +368,7 @@ async function garminPush(env, data, ctx){
   }
   for (const u of Object.keys(seen)) await env.DB.prepare("UPDATE garmin_links SET last_push = ? WHERE user_id = ?").bind(now(), u).run();
   await logEvent(env, "garmin_push", true, Object.keys(data).filter(k => Array.isArray(data[k])).map(k => k + ":" + data[k].length).join(",").slice(0, 120));
-  for (const [u, list] of Object.entries(fresh)) ctx.waitUntil(afterNewActivities(env, u, list, "garmin").catch(e => console.log("garmin review", e && e.stack || e)));
+  for (const [u, list] of Object.entries(fresh)) ctx.waitUntil(afterNewActivities(env, u, list, "garmin", quiet[u] || []).catch(e => console.log("garmin review", e && e.stack || e)));
   for (const [u, d] of Object.entries(woke)) ctx.waitUntil(wakeUp(env, u, d).catch(e => console.log("wake", e && e.stack || e)));
 }
 // true only when Garmin refuses our stored token for this member (the person really disconnected)
@@ -536,7 +548,8 @@ const ASK_HOW = "HOW MILESET WORKS (the app's real rules; explain them plainly w
   "CALORIES: maintenance = resting burn (Mifflin-St Jeor from weight, height, age, sex) times daily activity (1.2 mostly sitting, 1.35 some, 1.5 on their feet), or about 13 calories per pound if height or age is missing. Cutting to a goal weight starts at a 400 calorie deficit, moves by 150 a week between 250 and 750 depending on last week's weight change (losing more than about 1% of body weight makes it smaller, under 0.4 lb makes it bigger), is capped at 250 on hard training days, and every 8th week is a maintenance break. Training logged that day is added back (three quarters of it when cutting). The target never goes under resting burn, and a cutting target never under 1,500. Protein about 0.9 g per pound (1.0 when gaining), fat at least 55 g or 0.3 g per pound, the rest carbs. " +
   "WHO DECIDES WHAT: the plan, paces, readiness score, calorie targets, the on-target check and moving workouts are fixed rules in the app, the same for everyone. AI (you) writes only words: this chat, the morning note, reviews of Garmin or hand-logged workouts, meal prep ideas, food photo estimates and race search. " +
   "WHERE THINGS ARE (send people to the right place; never say you did something yourself): race, race date, training days, lifting days and the recent race or best time the paces come from = Settings, Coaching and training, 'Race, training days and lifting' (changing these rebuilds the plan; screen set-train). Run by pace, heart rate or feel, treadmill or outside, usual run time = Settings, Coaching and training, Running (set-run). Heart rate zones = set-hr. Weight, goal weight, height, age = Settings, Account and profile, Body and goals (set-profile). Email, password and Delete account = Settings, Account and profile (set-acct); only the member can delete their account, there. Garmin, Strava, Apple Health = Settings, Devices and apps (set-watch). Notifications = set-notif. Report a problem and help = set-help or set-report. Food log = fuel; meal prep = meals; weigh-in = weight; weather and best time to run = weather; training paces = t-paces; race predictions = t-races. Moving a day and picking a different workout are the two changes you can offer as buttons. " +
-  "WHAT YOU CANNOT SEE: workouts that came from Strava (Strava's rules don't allow sending them to an AI; the app's own on-target check still uses them), their email, their food log entries, and anything not in the context. Say so when it matters instead of guessing. ";
+  "WORKOUTS THEY DID: workouts_done_last_10_days lists what they actually did, with distance, time, pace and heart rate, from their Garmin or logged by hand. Use it for questions like how was my run or was that too fast, comparing it with what was planned that day and with their training paces. A planned session marked logged with no matching workout in that list was done but came from Strava. " +
+  "WHAT YOU CANNOT SEE: workouts that came only from Strava (Strava's rules don't allow sending them to an AI; the app's own on-target check still uses them; they can type the numbers to you instead), their email, their food log entries, and anything not in the context. Say so when it matters instead of guessing. ";
 function askContext(U, L){
   const plan = U.plan, p = U.profile || plan.profile || {}, today = L.date, cal = [];
   for (let k = -3; k <= 13; k++){
@@ -553,6 +566,11 @@ function askContext(U, L){
     : {based_on: "watch only, no check-in today", watch_penalty: sig && sig.pen ? -sig.pen : 0};
   let paces = null; try { const P = plan.P, f = HP.fmtPace; paces = {easy: f(P.E[0]) + " to " + f(P.E[1]), long_run: f(P.L[0]) + " to " + f(P.L[1]), marathon: f(P.M), half_marathon: f(P.H), tempo: f(P.T), intervals: f(P.I), fast_reps: f(P.R), unit: "per mile",
     from: p.prDist && p.prSec ? "their " + p.prDist + " best of " + HP.fmtTime(p.prSec) : "their usual easy pace"}; } catch(e){}
+  // what they actually did: from their watch (Garmin, Apple Health) or logged by hand. U arrives without Strava's
+  // workouts (noStrava), so nothing from Strava can be in here.
+  const done = U.acts.filter(a => a.source !== "strava" && a.date >= HP.addDays(today, -10) && a.date <= today).slice(-14).map(a => ({date: a.date, weekday: HP.DAYF[HP.dow(a.date)], name: clip(String(a.name || ""), 60), type: a.type,
+    ...(a.mi ? {miles: a.mi} : {}), minutes: a.minutes || 0, ...(a.mi > 0 && a.minutes > 0 ? {avg_pace_per_mile: HP.fmtPace(a.minutes * 60 / a.mi)} : {}), ...(a.avg_hr ? {avg_hr: a.avg_hr} : {}),
+    ...(a.work_pace ? {rep_pace_per_mile: HP.fmtPace(a.work_pace)} : {}), ...(a.rpe ? {effort_1_to_10: a.rpe} : {}), source: a.source === "garmin" ? "Garmin" : a.source === "manual" ? "logged by hand" : a.source}));
   let pred = null; try { pred = Object.fromEntries(Object.entries(plan.pred || {}).map(([k, v]) => [k, HP.fmtTime(v)])); } catch(e){}
   let fb = null; try { const x = HP.feedback(plan, U.acts, today); fb = {pace_changes_s_per_mi: Object.keys(x.offs || {}).length ? x.offs : undefined, notes: Object.values(x.notes || {}).slice(0, 4)}; if (!fb.pace_changes_s_per_mi && !fb.notes.length) fb = null; } catch(e){}
   return {today, weekday: HP.DAYF[HP.dow(today)], first_name: String(U.name || "").split(" ")[0].slice(0, 30) || null,
@@ -562,7 +580,7 @@ function askContext(U, L){
     training_paces: paces, predicted_race_times: pred, plan_feedback: fb,
     watch_today: sig ? {sleep_hours: sig.sleep_h, sleep_score: sig.sleep_score, hrv_ms: sig.hrv, usual_hrv_ms: sig.hrvA ? Math.round(sig.hrvA) : null, resting_hr: sig.rhr, usual_resting_hr: sig.rhrA ? Math.round(sig.rhrA) : null} : null,
     morning_checkin: c ? {sleep_hours: c.sleep_h, sleep_quality_1to5: c.sleep_q, leg_soreness_1to5: c.soreness, energy_1to5: c.energy, stress_1to5: c.stress} : null,
-    fuel_target_today: fuel, run_days_per_week: Array.isArray(p.days) ? p.days.length : null, lifts_per_week: p.lifts || 0, calendar: cal};
+    fuel_target_today: fuel, run_days_per_week: Array.isArray(p.days) ? p.days.length : null, lifts_per_week: p.lifts || 0, calendar: cal, workouts_done_last_10_days: done};
 }
 async function askAnything(env, user, b){
   const q = (typeof b.q === "string" ? b.q : "").replace(/[\u0000-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, " ").replace(/\s+/g, " ").trim().slice(0, 600);
@@ -659,14 +677,14 @@ async function runReview(env, userId, U, act, today, feel){
     .bind(act.id, userId, act.date, JSON.stringify(review), now()).run();
   return review;
 }
-async function afterNewActivities(env, userId, ids, source){
+async function afterNewActivities(env, userId, ids, source, quiet){   // quiet: ext ids to review without a second notification
   const st = await settingsOf(env, userId), L = localNow(st.tz), U = await loadUser(env, userId, L.date);
   if (!U) return;
   const fresh = U.acts.filter(a => (source === "manual" ? ids.includes(a.id) : ids.includes(a.ext_id)) && a.date >= HP.addDays(L.date, -2));
   for (const a of fresh.slice(0, 3)){
     if (a.source !== "strava" && !(await coachUsage(env, userId))) break;
     const rv = await runReview(env, userId, U, a, L.date);
-    if (st.n_run) await pushTo(env, userId, {title: rv.title + ": " + rv.headline, body: rv.askFeel ? [rv.numbers, "How did it feel? Tap to tell your coach."].filter(Boolean).join("\n") : [rv.numbers, rv.next].filter(Boolean).join("\n"), tag: "run-" + a.id});
+    if (st.n_run && !(quiet || []).includes(a.ext_id)) await pushTo(env, userId, {title: rv.title + ": " + rv.headline, body: rv.askFeel ? [rv.numbers, "How did it feel? Tap to tell your coach."].filter(Boolean).join("\n") : [rv.numbers, rv.next].filter(Boolean).join("\n"), tag: "run-" + a.id});
   }
 }
 async function morningNote(env, userId, today){

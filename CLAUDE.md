@@ -62,6 +62,8 @@ a member-facing PR without a NEWS/NEW_ID update gets one added (or is sent back)
    Schema changes go through new migrations that keep existing rows intact.
 2. Matthew's own "Strong at 180" plan and his separate `garmin-sync` repo are off limits.
 3. Strava data never goes into AI prompts and is shown only to the athlete it belongs to.
+   When Garmin and Strava both have a workout, the GARMIN copy is the one kept (Nov 17), so the coach can read it.
+   Never copy a field or a review from a Strava row onto a Garmin row; only what the member typed (name, effort) moves.
 4. Never fabricate features, numbers, testimonials or results in any copy.
 5. No cold DMs, bulk follows or engagement automation on Instagram. It gets the account banned.
 

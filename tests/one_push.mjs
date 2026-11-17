@@ -1,9 +1,12 @@
-// One run, one notification (Nov 16). A member with Garmin AND Strava linked got two notifications for one run: the
-// Garmin copy was reviewed and announced, then the Strava copy of the same run a minute later. Runs its own local API
-// against a fake Strava, a stand-in AI and a throwaway local database. Checks that when the Strava copy arrives:
-//   - only one activity is kept (the Strava copy), and the coach's review moves onto it
-//   - the run is not reviewed (and so not announced) a second time
-//   - a Strava run with no Garmin twin is still reviewed as before
+// One run, one copy, one notification (Nov 16-17). A member with Garmin AND Strava linked got two notifications for one
+// run (the Garmin copy was announced, then the Strava copy). Since Nov 17 the GARMIN copy is the one that is kept, because
+// Strava's rules keep its data away from the AI: with the Strava copy the coach could not see the run at all.
+// Runs its own local API against a fake Strava, a stand-in AI and a throwaway local database. Checks that
+//   - Garmin first, Strava second: the Strava copy is never stored, nothing is reviewed or announced twice
+//   - Strava first, Garmin second: the Garmin copy replaces it, the member's own name and effort move over, the coach
+//     reviews it from the real numbers, and no review is left pointing at a deleted workout
+//   - a Strava run with no Garmin twin is still stored and reviewed as before (without the AI)
+//   - the coach bar is sent the Garmin run and never the Strava-only run
 // Also (Nov 16): giving a workout your own name (PUT /api/activity/:id/name, preview "rename"). Checks that the name
 //   - is saved only on your own workout, cleaned and cut to 60 characters; an empty name puts the original back
 //   - moves from the Garmin copy to the Strava copy that is kept, and is never undone by a later sync
@@ -16,14 +19,14 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 
 const PORT = 8794, MOCK = 9914, API = "http://127.0.0.1:" + PORT, OWNER = "owner-onep@mileset-test.dev";
-let failed = 0, aiCalls = 0, list = [];
+let failed = 0, aiCalls = 0, list = [], lastAI = "";
 const ok = (cond, msg) => { console.log((cond ? "ok " : "::error::") + msg); if (!cond) failed++; };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // fake Strava (activity list + detail) and a stand-in AI on one port
 const mock = http.createServer((req, res) => { let b = ""; req.on("data", c => b += c); req.on("end", () => {
   const u = req.url; res.setHeader("Content-Type", "application/json");
-  if (u.startsWith("/v1/messages")){ aiCalls++; res.end(JSON.stringify({stop_reason: "end_turn", content: [{type: "text", text: JSON.stringify({headline: "AI REVIEW", numbers: "8.08 mi", meaning: "Steady and easy.", next: "Tomorrow as planned."})}]})); return; }
+  if (u.startsWith("/v1/messages")){ aiCalls++; lastAI = b; if (/WHERE THINGS ARE/.test(b)){ res.end(JSON.stringify({stop_reason: "end_turn", content: [{type: "text", text: '{"answer":"Steady run.","actions":[]}'}]})); return; } res.end(JSON.stringify({stop_reason: "end_turn", content: [{type: "text", text: JSON.stringify({headline: "AI REVIEW", numbers: "8.08 mi", meaning: "Steady and easy.", next: "Tomorrow as planned."})}]})); return; }
   if (u.startsWith("/api/v3/athlete/activities")){ res.end(JSON.stringify(list)); return; }
   if (/^\/api\/v3\/activities\//.test(u)){ res.end(JSON.stringify({laps: []})); return; }
   res.statusCode = 404; res.end("{}");
@@ -76,27 +79,58 @@ try {
   ok(s.ok, "Strava sync ran");
   for (let i = 0; i < 12 && n("SELECT COUNT(*) AS n FROM reviews WHERE user_id = '" + uid + "'") < 2; i++) await sleep(1000);
   await sleep(1500);
-  ok(n("SELECT COUNT(*) AS n FROM activities WHERE user_id = '" + uid + "' AND source = 'garmin'") === 0 && n("SELECT COUNT(*) AS n FROM activities WHERE user_id = '" + uid + "' AND ext_id = '777'") === 1, "only one copy of the run is kept (the Strava one)");
-  const rv = sql("SELECT r.data FROM reviews r JOIN activities a ON a.id = r.activity_id WHERE a.ext_id = '777'");
-  ok(rv.length === 1 && JSON.parse(rv[0].data).headline === "AI REVIEW" && !JSON.parse(rv[0].data).askFeel, "the coach's review moved onto the kept copy; the run was NOT reviewed and announced a second time");
-  ok(n("SELECT COUNT(*) AS n FROM reviews WHERE user_id = '" + uid + "' AND activity_id NOT IN (SELECT id FROM activities)") === 0, "no review is left pointing at the deleted Garmin copy");
+  ok(n("SELECT COUNT(*) AS n FROM activities WHERE user_id = '" + uid + "' AND source = 'garmin'") === 1 && n("SELECT COUNT(*) AS n FROM activities WHERE user_id = '" + uid + "' AND ext_id = '777'") === 0, "only one copy of the run is kept: the Garmin one; the Strava copy is never stored");
+  const rv = sql("SELECT r.data FROM reviews r JOIN activities a ON a.id = r.activity_id WHERE a.ext_id = 'ga1'");
+  ok(rv.length === 1 && JSON.parse(rv[0].data).headline === "AI REVIEW" && !JSON.parse(rv[0].data).askFeel, "the coach's review stays on the kept copy; the run was NOT reviewed and announced a second time");
+  ok(n("SELECT COUNT(*) AS n FROM reviews WHERE user_id = '" + uid + "' AND activity_id NOT IN (SELECT id FROM activities)") === 0, "no review points at a workout that is not there");
   const other = sql("SELECT r.data FROM reviews r JOIN activities a ON a.id = r.activity_id WHERE a.ext_id = '778'");
   ok(other.length === 1 && JSON.parse(other[0].data).askFeel === true, "a Strava run with no Garmin twin is still reviewed, with the how-did-it-feel ask");
   ok(aiCalls === 1, "no extra AI call (Strava data never goes to the AI): " + aiCalls);
-  ok(n("SELECT COUNT(*) AS n FROM events WHERE kind = 'strava_sync' AND detail LIKE '%1 already reviewed from Garmin%'") === 1, "the event log says one run was already reviewed from Garmin");
+  ok(n("SELECT COUNT(*) AS n FROM events WHERE kind = 'strava_sync' AND detail LIKE '%1 already here from Garmin%'") === 1, "the event log says one run was already here from Garmin");
 
-  const m2 = await mine("777");
-  ok(m2 && m2.name === "Sunday long run with Dad" && m2.src_name === "Evening Run", "rename: the name moved from the Garmin copy to the Strava copy that is kept (" + (m2 && m2.name) + ")");
+  const m2 = await mine("ga1");
+  ok(m2 && m2.name === "Sunday long run with Dad" && m2.src_name === "Evening Run" && m2.source === "garmin", "rename: the name is still on the copy that is kept (" + (m2 && m2.name) + ")");
 
   // 3. syncing again changes nothing
   await call(token, "POST", "/api/strava/sync"); await sleep(2500);
   ok(n("SELECT COUNT(*) AS n FROM reviews WHERE user_id = '" + uid + "'") === 2 && n("SELECT COUNT(*) AS n FROM activities WHERE user_id = '" + uid + "'") === 2, "a second sync adds nothing");
-  const m3 = await mine("777");
-  ok(m3 && m3.name === "Sunday long run with Dad", "rename: a later sync (which writes Strava's name again) does not undo it");
-  ok(sql("SELECT name, title FROM activities WHERE ext_id = '777'")[0].name === "Evening Run", "rename: the original name is still stored underneath");
+  const m3 = await mine("ga1");
+  ok(m3 && m3.name === "Sunday long run with Dad", "rename: a later sync does not undo it");
+  ok(sql("SELECT name, title FROM activities WHERE ext_id = 'ga1'")[0].name === "Evening Run", "rename: the original name is still stored underneath");
+  // a second Garmin push of the same run (Garmin re-sends activities) writes Garmin's name again: the member's name stays
+  await fetch(API + "/api/garmin/push", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({activities: [{userId: "g-1", summaryId: "ga1", activityType: "RUNNING", activityName: "Evening Run",
+    startTimeInSeconds: start, startTimeOffsetInSeconds: 0, durationInSeconds: 3840, distanceInMeters: 13003, averageHeartRateInBeatsPerMinute: 165}]})});
+  await sleep(1500);
+  ok((await mine("ga1")).name === "Sunday long run with Dad" && aiCalls === 1, "rename: Garmin sending the run again does not undo it, and does not review it again");
+
+  // 3b. the coach bar is sent the Garmin run and never the Strava-only one
+  const before = aiCalls, ar = await call(token, "POST", "/api/ask", {q: "How was my run today?"});
+  ok(ar.status === 200 && aiCalls === before + 1 && /Sunday long run with Dad/.test(lastAI) && /8\.08/.test(lastAI) && /avg_hr\\?":\s*165/.test(lastAI) && !/Shakeout/.test(lastAI), "the coach is sent the Garmin run (the member's name for it, 8.08 mi, 165 bpm) and nothing from the Strava-only run (" + ar.status + ")");
+
+  // 3c. the other order: Strava has the run first, the watch reaches Garmin later
+  const start2 = start - 86400, local2 = new Date(start2 * 1000).toISOString().slice(0, 19);
+  list = [{id: 880, start_date_local: local2 + "Z", sport_type: "Run", name: "Lunch Run", distance: 8047, moving_time: 2700, average_heartrate: 150, map: {summary_polyline: "abc"}}];
+  await call(token, "POST", "/api/strava/sync");
+  for (let i = 0; i < 12 && !n("SELECT COUNT(*) AS n FROM reviews r JOIN activities a ON a.id = r.activity_id WHERE a.ext_id = '880'"); i++) await sleep(1000);
+  const s880 = sql("SELECT id FROM activities WHERE ext_id = '880'")[0];
+  ok(!!s880 && JSON.parse(sql("SELECT data FROM reviews WHERE activity_id = '" + s880.id + "'")[0].data).askFeel === true, "Strava first: the run is stored and gets the no-AI review");
+  await rename(token, s880.id, "Lunch miles"); await call(token, "PUT", "/api/activity/" + s880.id + "/effort", {rpe: 7});
+  const ai2 = aiCalls;
+  await fetch(API + "/api/garmin/push", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({activities: [{userId: "g-1", summaryId: "ga2", activityType: "RUNNING", activityName: "Lunch Run",
+    startTimeInSeconds: start2, startTimeOffsetInSeconds: 0, durationInSeconds: 2702, distanceInMeters: 8047, averageHeartRateInBeatsPerMinute: 150}]})});
+  for (let i = 0; i < 12 && aiCalls === ai2; i++) await sleep(1000);
+  await sleep(1500);
+  const g2 = sql("SELECT id, title, rpe, name FROM activities WHERE user_id = '" + uid + "' AND ext_id = 'ga2'")[0];
+  ok(!!g2 && n("SELECT COUNT(*) AS n FROM activities WHERE ext_id = '880'") === 0, "Garmin second: the Garmin copy replaces the Strava copy (one copy kept)");
+  ok(!!g2 && g2.title === "Lunch miles" && g2.rpe === 7, "Garmin second: the member's own name and effort moved onto the Garmin copy (" + JSON.stringify(g2) + ")");
+  const rv2 = g2 ? sql("SELECT data FROM reviews WHERE activity_id = '" + g2.id + "'") : [];
+  ok(rv2.length === 1 && JSON.parse(rv2[0].data).headline === "AI REVIEW" && aiCalls === ai2 + 1, "Garmin second: the coach reviewed it from the real numbers, once");
+  ok(n("SELECT COUNT(*) AS n FROM reviews WHERE user_id = '" + uid + "' AND activity_id NOT IN (SELECT id FROM activities)") === 0, "Garmin second: no review is left pointing at the removed Strava copy");
+  await call(token, "POST", "/api/strava/sync"); await sleep(2000);
+  ok(n("SELECT COUNT(*) AS n FROM activities WHERE ext_id = '880'") === 0 && n("SELECT COUNT(*) AS n FROM activities WHERE user_id = '" + uid + "'") === 3, "Garmin second: the next Strava sync does not bring the Strava copy back");
 
   // 4. renaming: the edges
-  const sid = m3.id;
+  const sid = m3.id;   // the Garmin copy
   const junk = await rename(token, sid, "Tempo <script>alert(1)</script>\u0000\u202E day " + "x".repeat(80));
   ok(junk.status === 200 && junk.j.name.length <= 60 && !/[<>\u0000-\u001F\u202E]/.test(junk.j.name) && /^Tempo script/.test(junk.j.name), "rename: tags and control characters are stripped and the name is cut to 60 (" + JSON.stringify(junk.j.name) + ")");
   const same = await rename(token, sid, "Evening Run");
@@ -113,7 +147,7 @@ try {
   ok((await rename(null, sid, "x y")).status === 401, "rename: no login, no rename");
   const meOther = await (await call(otherTok, "GET", "/api/me")).json(), prev = await rename(otherTok, "aaaaaaaaaaaaaaaaaaaa", "My own run");
   ok(meOther.features && meOther.features.rename === true && prev.status === 200 && prev.j.name === "My own run" && prev.j.src_name === "Their run", "rename (released): a member who is not the owner can rename their own workout");
-  ok((await rename(otherTok, sid, "Not yours")).status === 404 && (await mine("777")).name === "Evening Run", "rename: and cannot touch the owner's workout");
+  ok((await rename(otherTok, sid, "Not yours")).status === 404 && (await mine("ga1")).name === "Evening Run", "rename: and cannot touch the owner's workout");
 } catch(e){ ok(false, "test crashed: " + (e && e.stack || e)); }
 finally { stop(); }
 console.log(failed ? failed + " problem(s)" : "ALL PASS");
