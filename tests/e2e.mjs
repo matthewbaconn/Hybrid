@@ -229,6 +229,14 @@ await check("Watch connected: readiness and sleep replace the morning survey", a
     if (await page.$(".card.ci .ciq")) throw new Error("the morning survey still shows with a watch connected");
     await noOverflow();
     await page.click('.ci-done.wr [data-act="ciopen"]'); await page.waitForSelector(".card.ci .ciq");     // the survey is still one tap away
+    await page.click('.card.ci [data-act="ciclose"]'); await page.waitForSelector(".ci-done.wr");           // and one tap closes it again (it used to stay until the app was restarted)
+    if (await page.$(".card.ci .ciq")) throw new Error("the survey stayed open after Not now");
+    // opened but not answered, then the app goes to the background: the watch's numbers are back when it returns
+    await page.click('.ci-done.wr [data-act="ciopen"]'); await page.waitForSelector(".card.ci .ciq");
+    await page.evaluate(() => { Object.defineProperty(document, "visibilityState", {configurable: true, get: () => "hidden"}); document.dispatchEvent(new Event("visibilitychange"));
+      Object.defineProperty(document, "visibilityState", {configurable: true, get: () => "visible"}); document.dispatchEvent(new Event("visibilitychange")); });
+    await page.waitForSelector(".ci-done.wr", {timeout: 5000});
+    if (await page.$(".card.ci .ciq")) throw new Error("the survey came back after leaving the app");
   } finally {
     await page.unroute("**/api/me", fake); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
   }

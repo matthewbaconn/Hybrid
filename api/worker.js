@@ -574,7 +574,7 @@ async function morningNote(env, userId, today){
 // Garmin sent last night's sleep: readiness is ready, so adjust today and tell the person right away (once a day)
 async function wakeUp(env, userId, date){
   const st = await settingsOf(env, userId), L = localNow(st.tz);
-  if (date !== L.date || L.hm < "04:00") return;
+  if (date !== L.date || L.hm < "03:00") return;   // 3 am, the same hour the app starts its morning (early shifts wake before 4)
   if (await env.DB.prepare("SELECT 1 FROM notif_log WHERE user_id = ? AND kind = 'wake' AND day = ?").bind(userId, L.date).first()) return;
   const U = await loadUser(env, userId, L.date); if (!U || !U.plan) return;
   const r = HP.readiness(U.checkins[L.date], HP.devSignals(U.dev, L.date)); if (!r) return;
@@ -583,7 +583,7 @@ async function wakeUp(env, userId, date){
   if (!U.checkins[L.date] && (await coachUsage(env, userId))) await morningNote(env, userId, L.date).catch(e => console.log("wake note", e && e.message));
   if (st.n_morning){
     const fbk = HP.feedback(U.plan, U.acts, L.date), adj = ["Train as planned", "Today's session is trimmed", "Easy day or rest today"][r.level];
-    await pushTo(env, userId, {title: "Readiness " + r.score + " · " + r.word, body: adj + ". Today: " + sessionsText(U, L.date, fbk) + ". Check in for a fuller read.", tag: "morning-" + L.date});
+    await pushTo(env, userId, {title: "Readiness " + r.score + " · " + r.word, body: adj + ". Today: " + sessionsText(U, L.date, fbk) + ".", tag: "morning-" + L.date});   // the watch already sent the numbers: no "check in" ask
     await once(env, userId, "morning", L.date);   // no second morning reminder
   }
 }
