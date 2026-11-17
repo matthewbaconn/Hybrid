@@ -2988,7 +2988,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "83";
+const APP_VERSION = "84";
 let reportView = null, isOwner = false, reports = [], feat = {};
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -3164,12 +3164,18 @@ function nav(dir, fn){
   }
   navDir = dir; fn(); navDir = null;
 }
+/* Going back lands where you were (Nov 17, Matthew: tapping Aerobic or Fitness on Recovery/Progress and swiping back
+   jumped to the top). Forward saves the scroll position of the screen you leave; back restores it. */
+const scrollMem = {};
+const viewKey = () => scr ? "scr:" + scr : "tab:" + tab + (tab === "activities" && actSel ? ":" + actSel : "");
+function restoreScroll(key){ const y = scrollMem[key] || 0; delete scrollMem[key]; window.scrollTo(0, y); if (y) requestAnimationFrame(() => window.scrollTo(0, y)); }
 function go(s){
   const dir = s === null || SCR_UP[scr] === s || (scr && !s) ? "back" : "fwd";
+  if (dir === "fwd") scrollMem[viewKey()] = window.scrollY;
   if (s === "members" && mem) mem.stale = true;
   if (s === "invites" && inv) inv.stale = true;
   if (s === "set-notif" && mode === "account" && pushOK() && !pushState.checked) checkPush().then(() => { if (scr === "set-notif") render(); });
-  nav(dir, () => { scr = s; render(); window.scrollTo(0, 0); });
+  nav(dir, () => { scr = s; render(); if (dir === "back") restoreScroll(viewKey()); else window.scrollTo(0, 0); });
 }
 function renderScreen(){
   const s = scr, back = '<header class="scrbar"><button class="iconbtn" type="button" data-act="back" aria-label="Back">‹</button><h1>' + esc(SCR_T[s] || "") + '</h1></header>';
@@ -3357,8 +3363,8 @@ document.addEventListener("click", ev => {
     return;
   }
   if (act === "actgo"){ const id = a.dataset.id; nav("fwd", () => { scr = null; tab = "activities"; actSel = id; render(); window.scrollTo(0, 0); }); return; }
-  if (act === "actopen"){ const id = a.dataset.id; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
-  if (act === "actback"){ nav("back", () => { actSel = null; render(); }); return; }
+  if (act === "actopen"){ const id = a.dataset.id; scrollMem[viewKey()] = window.scrollY; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
+  if (act === "actback"){ nav("back", () => { actSel = null; render(); restoreScroll(viewKey()); }); return; }
   if (act === "afilt"){ actFilter = a.dataset.k; render(); return; }
   if (act === "gwsync"){
     gwBusy = true; render();
