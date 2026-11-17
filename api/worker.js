@@ -1,5 +1,6 @@
 import "../plan.js";
 import { buildPushPayload } from "@block65/webcrypto-web-push";
+import { safeDetail, errName, apiErrType, routeOf, GARMIN_TYPES } from "./events_safe.mjs";
 const HP = globalThis.HP;
 // Hybrid API: accounts, saved plans, workout check-offs, food log and AI food reading.
 // Runs on Cloudflare Workers with a D1 database (binding DB). Secrets: ANTHROPIC_API_KEY.
@@ -106,11 +107,11 @@ async function analyze(env, user, b){
     headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
     body: JSON.stringify({model: env.MODEL || "claude-sonnet-5-5", max_tokens: 2000, system: PROMPT, messages: [{role: "user", content}]})
   });
-  if (!r.ok){ const t = (await r.text()).slice(0, 300); console.log("anthropic error", r.status, t); await logEvent(env, "ai_food", false, r.status + " " + t); throw new HttpError(502, "Couldn't read that right now. Try again in a minute."); }
+  if (!r.ok){ const t = (await r.text()).slice(0, 300); console.log("anthropic error", r.status, t); await logEvent(env, "ai_food", false, r.status + " " + apiErrType(t)); throw new HttpError(502, "Couldn't read that right now. Try again in a minute."); }
   const out = await r.json();
   const raw = (out.content || []).filter(c => c.type === "text").map(c => c.text).join("");
   let parsed;
-  try { parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); await logEvent(env, "ai_food", true); } catch { await logEvent(env, "ai_food", false, "unreadable: " + raw.slice(0, 150)); throw new HttpError(502, "Couldn't read that. Try a clearer photo or add a few words."); }
+  try { parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); await logEvent(env, "ai_food", true); } catch { await logEvent(env, "ai_food", false, "unreadable reply " + raw.length + " chars"); throw new HttpError(502, "Couldn't read that. Try a clearer photo or add a few words."); }
   const items = (Array.isArray(parsed.items) ? parsed.items : []).slice(0, 12)
     .map(x => ({name: String(x.name || "").slice(0, 80), cal: n0(x.cal), protein: n0(x.protein), carbs: n0(x.carbs), fat: n0(x.fat)})).filter(x => x.name);
   return {items, note: typeof parsed.note === "string" ? parsed.note.slice(0, 200) : ""};
@@ -355,7 +356,7 @@ async function garminPush(env, data, ctx){
     const x = v.lastNightAvg; await saveHealth(env, u, v.calendarDate, {hrv: x >= 5 && x <= 300 ? Math.round(x) : null}, "garmin");
   }
   for (const u of Object.keys(seen)) await env.DB.prepare("UPDATE garmin_links SET last_push = ? WHERE user_id = ?").bind(now(), u).run();
-  await logEvent(env, "garmin_push", true, Object.keys(data).filter(k => Array.isArray(data[k])).map(k => k + ":" + data[k].length).join(",").slice(0, 120));
+  await logEvent(env, "garmin_push", true, Object.keys(data).filter(k => Array.isArray(data[k])).map(k => (GARMIN_TYPES.has(k) ? k : "other") + ":" + data[k].length).join(",").slice(0, 120));
   for (const [u, list] of Object.entries(fresh)) ctx.waitUntil(afterNewActivities(env, u, list, "garmin").catch(e => console.log("garmin review", e && e.stack || e)));
   for (const [u, d] of Object.entries(woke)) ctx.waitUntil(wakeUp(env, u, d).catch(e => console.log("wake", e && e.stack || e)));
 }
@@ -457,7 +458,7 @@ async function garminWorkouts(env, userId, opts){
     if (have[k]) await drop(have[k]);
     calls++;
     const cr = await fetch(base + "/workoutportal/workout/v2", {method: "POST", headers: H, body: JSON.stringify(w)}).catch(() => null);
-    if (!cr || !cr.ok){ failed++; await logEvent(env, "garmin_workout", false, "create " + (cr ? cr.status + " " + (await cr.text()).slice(0, 140) : "net")); if (cr && (cr.status === 412 || cr.status === 403)) return {ok: false, why: "needs_permission"}; continue; }
+    if (!cr || !cr.ok){ failed++; await logEvent(env, "garmin_workout", false, "create " + (cr ? cr.status : "net")); if (cr && (cr.status === 412 || cr.status === 403)) return {ok: false, why: "needs_permission"}; continue; }
     const cw = await cr.json().catch(() => ({}));
     calls++;
     const sr = await fetch(base + "/training-api/schedule/", {method: "POST", headers: H, body: JSON.stringify({workoutId: cw.workoutId, date})}).catch(() => null);
@@ -505,10 +506,9 @@ async function coachUsage(env, userId){
 let lastCoachError = "";
 /* health log for the nightly check: cron runs, Strava notices and syncs, notifications, AI calls */
 async function logEvent(env, kind, ok, detail){
-  try { await env.DB.prepare("INSERT INTO events (ts, kind, ok, detail) VALUES (?, ?, ?, ?)").bind(now(), kind, ok ? 1 : 0, detail ? scrub(detail).slice(0, 300) : null).run(); } catch(e){}
+  try { await env.DB.prepare("INSERT INTO events (ts, kind, ok, detail) VALUES (?, ?, ?, ?)").bind(now(), kind, ok ? 1 : 0, safeDetail(detail)).run(); } catch(e){}
 }
-// the event log is read in public build logs (the repo is public): an email address never goes into it, whatever an outside service echoes back
-const scrub = t => String(t).replace(/[^\s@<>"'(),;:]+@[^\s@<>"'(),;:]+\.[a-z]{2,}/gi, "[email]");
+// events.detail: only codes and counts, see events_safe.mjs (the repo and its workflow logs are public)
 // trim to the last full sentence that fits
 const clip = (t, n) => { if (t.length <= n) return t; const c = t.slice(0, n), i = Math.max(c.lastIndexOf(". "), c.lastIndexOf("! "), c.lastIndexOf("? ")); return i > 40 ? c.slice(0, i + 1) : c.replace(/\s+\S*$/, "") + "…"; };
 async function askCoach(env, system, data){
@@ -516,7 +516,7 @@ async function askCoach(env, system, data){
   const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {method: "POST",
     headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
     body: JSON.stringify({model: env.COACH_MODEL || "claude-haiku-5-5", max_tokens: 1500, system, messages: [{role: "user", content: JSON.stringify(data)}]})});
-  if (!r.ok){ const t = (await r.text()).slice(0, 300); console.log("coach error", r.status, t); lastCoachError = "api " + r.status + " " + t; await logEvent(env, "ai_coach", false, lastCoachError); return null; }
+  if (!r.ok){ const t = (await r.text()).slice(0, 300); console.log("coach error", r.status, t); lastCoachError = "api " + r.status + " " + apiErrType(t); await logEvent(env, "ai_coach", false, lastCoachError); return null; }
   const out = await r.json(), raw = (out.content || []).filter(c => c.type === "text").map(c => c.text).join("");
   try { const j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); await logEvent(env, "ai_coach", true); return j; } catch(e){ lastCoachError = "unreadable reply (" + out.stop_reason + ", " + raw.length + " chars)"; await logEvent(env, "ai_coach", false, lastCoachError); return null; }
 }
@@ -600,7 +600,7 @@ async function askAnything(env, user, b){
     body: JSON.stringify({model: env.COACH_MODEL || "claude-haiku-5-5", max_tokens: 3000, system, messages: msgs, ...extra}), signal: AbortSignal.timeout(30000)}).catch(() => null);
   let r = await send({output_config: {effort: "low"}});
   if (r && r.status === 400) r = await send({});
-  if (!r || !r.ok){ await logEvent(env, "ai_ask", false, r ? "api " + r.status + " " + (await r.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 120) : "net"); throw new HttpError(502, "The coach didn't answer. Try again in a moment."); }
+  if (!r || !r.ok){ await logEvent(env, "ai_ask", false, r ? "api " + r.status + " " + apiErrType(await r.text().catch(() => "")) : "net"); throw new HttpError(502, "The coach didn't answer. Try again in a moment."); }
   const out = await r.json().catch(() => null), raw = out && Array.isArray(out.content) ? out.content.filter(c => c && c.type === "text" && typeof c.text === "string").map(c => c.text).join("") : "";
   let j = null; try { j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch(e){}
   if (j && (typeof j !== "object" || Array.isArray(j))) j = null;
@@ -723,8 +723,8 @@ async function pushTo(env, userId, msg){
       const r = await fetch(s.endpoint, payload);
       if (r.status === 404 || r.status === 410){ await env.DB.prepare("DELETE FROM push_subs WHERE endpoint = ?").bind(s.endpoint).run(); await logEvent(env, "push", false, "expired subscription removed (" + r.status + ")"); }
       else if (r.ok){ sent++; await logEvent(env, "push", true, msg.tag || ""); }
-      else { const t = (await r.text()).slice(0, 200); console.log("push failed", r.status, t); await logEvent(env, "push", false, r.status + " " + t); }
-    } catch(e){ console.log("push error", e && e.message); await logEvent(env, "push", false, "error " + (e && e.message)); }
+      else { const t = (await r.text()).slice(0, 200); console.log("push failed", r.status, t); await logEvent(env, "push", false, "HTTP " + r.status); }
+    } catch(e){ console.log("push error", e && e.message); await logEvent(env, "push", false, "error " + errName(e)); }
   }
   return sent;
 }
@@ -756,13 +756,13 @@ function weeklySummary(U, today){
 }
 async function cron(env, ctx){
   await logEvent(env, "cron", true);
-  await outbox(env).catch(e => logEvent(env, "bulk_mail", false, "outbox: " + String(e && e.message).slice(0, 100)));
-  await day7Nudges(env).catch(e => logEvent(env, "nudge_mail", false, "cron: " + String(e && e.message).slice(0, 100)));
-  await firstWorkoutNudges(env).catch(e => logEvent(env, "first_workout", false, "cron: " + String(e && e.message).slice(0, 100)));
+  await outbox(env).catch(e => logEvent(env, "bulk_mail", false, "outbox " + errName(e)));
+  await day7Nudges(env).catch(e => logEvent(env, "nudge_mail", false, "cron " + errName(e)));
+  await firstWorkoutNudges(env).catch(e => logEvent(env, "first_workout", false, "cron " + errName(e)));
   // once a day (after 4 am local) refresh the next 7 days of workouts on each athlete's Garmin
   for (const {user_id} of (await env.DB.prepare("SELECT user_id FROM garmin_links WHERE permissions LIKE '%WORKOUT_IMPORT%'").all()).results){
     try { const L = localNow((await settingsOf(env, user_id)).tz); if (L.hm >= "04:00" && await once(env, user_id, "gwork", L.date)) await garminWorkouts(env, user_id); }
-    catch(e){ await logEvent(env, "garmin_workout", false, "cron: " + String(e && e.message).slice(0, 100)); }
+    catch(e){ await logEvent(env, "garmin_workout", false, "cron " + errName(e)); }
   }
   await env.DB.prepare("DELETE FROM events WHERE ts < ?").bind(new Date(Date.now() - 21 * 864e5).toISOString()).run();
   await env.DB.prepare("DELETE FROM notif_log WHERE day < ?").bind(new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)).run();
@@ -791,7 +791,7 @@ async function cron(env, ctx){
       if (st.n_weekly && L.weekday === "Mon" && inWindow(L.hm, "12:00") && await once(env, id, "weekly", L.date)){
         const u = await U(); if (u) await pushTo(env, id, weeklySummary(u, L.date));
       }
-    } catch(e){ console.log("cron user", id, e && e.stack || e); await logEvent(env, "cron_user", false, String(e && e.message || e)); }
+    } catch(e){ console.log("cron user", id, e && e.stack || e); await logEvent(env, "cron_user", false, errName(e)); }
   }
 }
 
@@ -967,7 +967,7 @@ async function sendUpdate(env, owner, subject, message, test){
         headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}});
     }
     const r = await fetch((env.RESEND_URL || "https://api.resend.com/emails").replace(/\/emails$/, "/emails/batch"), {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"}, body: JSON.stringify(batch)}).catch(() => null);
-    if (r && r.ok) sent += batch.length; else { failed += batch.length; await logEvent(env, "bulk_mail", false, r ? "HTTP " + r.status + " " + (await r.text()).slice(0, 150) : "net"); }
+    if (r && r.ok) sent += batch.length; else { failed += batch.length; await logEvent(env, "bulk_mail", false, r ? "HTTP " + r.status : "net"); }
   }
   await logEvent(env, "bulk_mail", failed === 0, (test ? "test " : "") + sent + " sent, " + failed + " failed");
   return {sent, failed, total: list.length};
@@ -1012,7 +1012,7 @@ async function foodMcp(req, env, key){
       const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {method: "POST",
         headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
         body: JSON.stringify({model: env.MODEL || "claude-sonnet-5-5", max_tokens: 4000, system: "Reply with only the JSON object asked for. No other text.", messages: [{role: "user", content}]})});
-      if (!r.ok){ const t = (await r.text()).slice(0, 200); await logEvent(env, "s180_food", false, r.status + " " + t); return ok({isError: true, content: [{type: "text", text: "Estimating failed (" + r.status + "). Try again."}]}); }
+      if (!r.ok){ const t = (await r.text()).slice(0, 200); await logEvent(env, "s180_food", false, r.status + " " + apiErrType(t)); return ok({isError: true, content: [{type: "text", text: "Estimating failed (" + r.status + "). Try again."}]}); }
       const raw = ((await r.json()).content || []).filter(c => c.type === "text").map(c => c.text).join("");
       let parsed = null; try { parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch(e){}
       await logEvent(env, "s180_food", !!parsed, parsed ? (imgs.length ? "photo" : "text") : "bad json");
@@ -1063,7 +1063,7 @@ async function route(req, env, path, ctx){
     const r = await fetch(env.GARMIN_TOKEN_URL || GARMIN_TOKEN, {method: "POST", headers: {"Content-Type": "application/x-www-form-urlencoded"},
       body: new URLSearchParams({grant_type: "authorization_code", client_id: env.GARMIN_CLIENT_ID, client_secret: env.GARMIN_CLIENT_SECRET, code: q.get("code"), code_verifier: row.verifier, redirect_uri: cb})});
     const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j.access_token){ await logEvent(env, "garmin_connect", false, "token HTTP " + r.status + " " + JSON.stringify(j).slice(0, 100)); return go("failed"); }
+    if (!r.ok || !j.access_token){ await logEvent(env, "garmin_connect", false, "token HTTP " + r.status); return go("failed"); }
     const ur = await fetch((env.GARMIN_API || GARMIN_API) + "/wellness-api/rest/user/id", {headers: {Authorization: "Bearer " + j.access_token}});
     const uj = await ur.json().catch(() => ({}));
     if (!ur.ok || !uj.userId){ await logEvent(env, "garmin_connect", false, "user id HTTP " + ur.status); return go("failed"); }
@@ -1074,17 +1074,17 @@ async function route(req, env, path, ctx){
         "ON CONFLICT (user_id) DO UPDATE SET garmin_user_id = excluded.garmin_user_id, access_token = excluded.access_token, refresh_token = excluded.refresh_token, expires_at = excluded.expires_at")
         .bind(row.user_id, gid, j.access_token, j.refresh_token || "", Math.floor(Date.now() / 1000) + (j.expires_in || 86400), now())]);
     await logEvent(env, "garmin_connect", true, "");
-    ctx.waitUntil(garminWorkouts(env, row.user_id, {recheck: true}).catch(e => logEvent(env, "garmin_workout", false, "connect: " + String(e && e.message).slice(0, 100))));
+    ctx.waitUntil(garminWorkouts(env, row.user_id, {recheck: true}).catch(e => logEvent(env, "garmin_workout", false, "connect " + errName(e))));
     ctx.waitUntil((async () => {
       const end = Math.floor(Date.now() / 1000), start = end - 14 * 86400;
       for (const k of ["sleeps", "dailies", "hrv", "activities", "activityDetails"]){
         const br = await fetch((env.GARMIN_API || GARMIN_API) + "/wellness-api/rest/backfill/" + k + "?summaryStartTimeInSeconds=" + start + "&summaryEndTimeInSeconds=" + end, {headers: {Authorization: "Bearer " + j.access_token}}).catch(() => null);
         const good = !!(br && (br.ok || br.status === 409));
         // on failure keep Garmin's own reason (no personal data) so the cause shows in the event log
-        await logEvent(env, "garmin_backfill", good, k + " " + (br ? br.status : "net") + (br && !good ? " " + (await br.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 140) : ""));
+        await logEvent(env, "garmin_backfill", good, k + " " + (br ? br.status : "net") + "");
         if (br && br.status === 412){   // precondition failed applies to the whole account: note what Garmin allows and stop
           const lk = await env.DB.prepare("SELECT permissions FROM garmin_links WHERE user_id = ?").bind(row.user_id).first();
-          await logEvent(env, "garmin_backfill", false, "stopped after 412; permissions " + String(lk && lk.permissions || "unknown").slice(0, 140));
+          await logEvent(env, "garmin_backfill", false, "stopped after 412, permissions " + String(lk && lk.permissions || "").split(",").filter(Boolean).length);
           break;
         }
       }
@@ -1097,7 +1097,7 @@ async function route(req, env, path, ctx){
     if (raw.length > 8_000_000) throw new HttpError(413, "Too large.");
     let data; try { data = JSON.parse(raw); } catch(e){ throw new HttpError(400, "Bad JSON."); }
     // answer Garmin right away; store the data after
-    ctx.waitUntil(garminPush(env, data, ctx).catch(async e => { console.log("garmin push", e && e.stack || e); await logEvent(env, "garmin_push", false, String(e && e.message || e).slice(0, 120)); }));
+    ctx.waitUntil(garminPush(env, data, ctx).catch(async e => { console.log("garmin push", e && e.stack || e); await logEvent(env, "garmin_push", false, errName(e)); }));
     return {ok: true};
   }
   if (M === "GET" && path === "/api/strava/callback"){
@@ -1164,7 +1164,7 @@ async function route(req, env, path, ctx){
     if (!ops.length) throw new HttpError(400, "Nothing to save. Send weight=, sleep=, sleep_score=, rhr=, hrv=, bb=, stress=, steps= or active= with a number.");
     ops.push(src === "garmin" ? env.DB.prepare("UPDATE link_keys SET last_used = ? WHERE key_hash = ?").bind(now(), kh) : env.DB.prepare("UPDATE import_keys SET last_used = ? WHERE user_id = ?").bind(now(), row.user_id));
     await env.DB.batch(ops);
-    await logEvent(env, "health_import", true, src + ": " + Object.keys(saved).join(","));
+    await logEvent(env, "health_import", true, src + " " + Object.keys(saved).length + " types");
     return {ok: true, date, saved};
   }
   if (path === "/api/strava/webhook"){
@@ -1232,7 +1232,7 @@ async function route(req, env, path, ctx){
         const r = await fetch(env.RESEND_URL || "https://api.resend.com/emails", {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"},
           body: JSON.stringify({from: env.MAIL_FROM || "Mileset <no-reply@hybrdrunning.com>", to: [email], reply_to: "milesetapp@gmail.com", subject: "Reset your Mileset password", html,
             text: hi + "\n\nOpen this link to pick a new password (works once, expires in 1 hour):\n" + link + "\n\nIf you didn't ask for this, ignore this email."})}).catch(() => null);
-        await logEvent(env, "pw_reset_mail", !!(r && r.ok), r ? (r.ok ? "sent" : "HTTP " + r.status + " " + (await r.text()).slice(0, 120)) : "net");
+        await logEvent(env, "pw_reset_mail", !!(r && r.ok), r ? (r.ok ? "sent" : "HTTP " + r.status) : "net");
       }
     }
     return {ok: true};
@@ -1356,7 +1356,7 @@ async function route(req, env, path, ctx){
       env.DB.prepare("INSERT INTO profiles (user_id, data, updated) VALUES (?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET data = excluded.data, updated = excluded.updated").bind(user.id, s, now()),
       ...(isDate(b.resetFrom) ? [env.DB.prepare("DELETE FROM done WHERE user_id = ? AND key >= ?").bind(user.id, b.resetFrom)] : [])
     ]);
-    if (ctx) ctx.waitUntil(garminWorkouts(env, user.id).catch(e => logEvent(env, "garmin_workout", false, "profile: " + String(e && e.message).slice(0, 100))));
+    if (ctx) ctx.waitUntil(garminWorkouts(env, user.id).catch(e => logEvent(env, "garmin_workout", false, "profile " + errName(e))));
     return {ok: true};
   }
   if (M === "POST" && path === "/api/garmin/workouts"){
@@ -1535,7 +1535,7 @@ async function route(req, env, path, ctx){
     };
     let text;
     try { text = await callModel(env.SEARCH_MODEL || "claude-haiku-5-5"); }
-    catch(e){ try { text = await callModel(env.MODEL || "claude-sonnet-5-5"); } catch(e2){ await logEvent(env, "race_search", false, String(e2.message || e2).slice(0, 120)); throw new HttpError(502, "Race search didn't work just now. Try again, or type the date yourself."); } }
+    catch(e){ try { text = await callModel(env.MODEL || "claude-sonnet-5-5"); } catch(e2){ await logEvent(env, "race_search", false, errName(e2)); throw new HttpError(502, "Race search didn't work just now. Try again, or type the date yourself."); } }
     let out = [];
     try { const m = text.match(/\{[\s\S]*\}/); out = (JSON.parse(m ? m[0] : "{}").races || []); } catch(e){ out = []; }
     const clean = out.filter(x => x && isDate(String(x.date)) && String(x.date) > today && x.name).slice(0, 6).map(x => ({
@@ -1595,7 +1595,7 @@ async function route(req, env, path, ctx){
         body: JSON.stringify({model: env.MODEL || "claude-sonnet-5-5", max_tokens: 8000, system: system + " Keep it compact: short meal names, each 'how' under 10 words, at most 22 grocery items. Output the JSON object only, no other text.",
           messages: [{role: "user", content: "Daily target about " + cal + " calories and " + pro + " g protein. Diet: " + diet + ". Avoid: " + (avoid || "nothing") + ". Cooking time: " + time + "."}]})}) : r;
       const j = await rr.json().catch(() => ({}));
-      if (!rr.ok){ why = String((j.error && j.error.message) || rr.status).slice(0, 120); continue; }
+      if (!rr.ok){ why = "api " + rr.status + " " + apiErrType(JSON.stringify(j)); continue; }
       const t = (j.content || []).filter(c => c.type === "text").map(c => c.text).join("").replace(/```(json)?/g, "");
       try { const p = JSON.parse(t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1)); if (Array.isArray(p.preps) && p.preps.length && Array.isArray(p.grocery)) plan = p; else why = "missing parts"; } catch(e){ why = "bad json (" + j.stop_reason + ")"; }
     }
@@ -1714,7 +1714,7 @@ export default {
     catch (e){
       if (e instanceof HttpError) return reply(h, {error: e.message}, e.status);
       console.log("server error", e && e.stack || e);
-      ctx.waitUntil(logEvent(env, "server_error", false, req.method + " " + path + ": " + String(e && e.message || e)));
+      ctx.waitUntil(logEvent(env, "server_error", false, req.method + " " + routeOf(path) + " " + errName(e)));
       return reply(h, {error: "Something went wrong on our side. Try again."}, 500);
     }
   }
