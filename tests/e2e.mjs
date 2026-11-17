@@ -439,7 +439,11 @@ await check("Ask bar stress: hostile replies, bad buttons, a burst of taps, 14 r
     step = "part 7";
     // 7. a 320px phone: nothing runs off the side, the box and Send are on screen
     const vp = page.viewportSize(); await page.setViewportSize({width: 320, height: 568});
-    try { await noOverflow(); const box = await page.locator('.ask-f button[type="submit"]').boundingBox(); if (!box || box.x + box.width > 321 || box.y + box.height > 569) throw new Error("Send is off the screen on a small phone: " + JSON.stringify(box)); }
+    // the sheet follows the visible area through visualViewport "resize", which can land a frame or two after the
+    // screen changes on a slow CI runner (PR checks, Nov 17: Send measured at the old 844px height). Give it up to 2 s.
+    try { await noOverflow(); const send = page.locator('.ask-f button[type="submit"]'), onScreen = b => b && b.x + b.width <= 321 && b.y + b.height <= 569;
+      let box = await send.boundingBox(); for (let i = 0; i < 20 && !onScreen(box); i++){ await page.waitForTimeout(100); box = await send.boundingBox(); }
+      if (!onScreen(box)) throw new Error("Send is off the screen on a small phone: " + JSON.stringify(box)); }
     finally { await page.setViewportSize(vp); }
     return done + " of " + tried + " random moves made and put back; plan unchanged";
   } catch(e){ if (process.env.ASK_DEBUG){ await page.screenshot({path: process.env.ASK_DEBUG}).catch(() => {}); console.log("ASK_DEBUG step=" + step + " | " + await page.evaluate(() => { const b = document.querySelector(".back"), t = document.querySelector(".toast"), a = document.querySelector("#askbar"); return (b ? "sheet " + b.firstElementChild.className : "no sheet") + ", askbar " + (a && !a.hidden ? "shown" : "hidden") + ", toast: " + (t ? t.textContent : "none") + ", " + (document.querySelector(".scrbar") ? "detail screen" : "tab") + ", bubbles " + document.querySelectorAll(".ask-m").length + ", last acts: " + ([...document.querySelectorAll(".ask-acts")].pop() || {textContent: "-"}).textContent.slice(0, 160); }).catch(x => "eval failed " + x.message)); }
