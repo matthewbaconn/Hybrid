@@ -1387,6 +1387,8 @@ async function route(req, env, path, ctx){
     const b = await body(req), s = JSON.stringify(b.profile || null);
     if (!b.profile || typeof b.profile !== "object" || s.length > 60000) throw new HttpError(400, "Bad plan settings.");   // room for changed workouts
     await env.DB.batch([
+      // time to first plan (Nov 17): stamped once, only when this member had no plan before (older members stay NULL)
+      env.DB.prepare("UPDATE users SET first_plan_at = ? WHERE id = ? AND first_plan_at IS NULL AND NOT EXISTS (SELECT 1 FROM profiles WHERE user_id = ?)").bind(now(), user.id, user.id),
       env.DB.prepare("INSERT INTO profiles (user_id, data, updated) VALUES (?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET data = excluded.data, updated = excluded.updated").bind(user.id, s, now()),
       ...(isDate(b.resetFrom) ? [env.DB.prepare("DELETE FROM done WHERE user_id = ? AND key >= ?").bind(user.id, b.resetFrom)] : [])
     ]);

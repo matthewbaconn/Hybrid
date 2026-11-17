@@ -26,6 +26,11 @@ try {
   ok((await call(token, {step: 2})).ok && step() === 2, "step 2 is recorded");
   ok((await call(token, {step: 1})).ok && step() === 2, "going Back never lowers the furthest step");
   ok((await call(token, {step: 4})).ok && step() === 4, "building the plan records step 4");
+  const fp = () => sql(`SELECT first_plan_at AS f FROM users WHERE email = '${email}'`)[0].f;
+  const putProfile = () => fetch(API + "/api/profile", {method: "PUT", headers: {"Content-Type": "application/json", Origin: "http://localhost:8000", Authorization: "Bearer " + token}, body: JSON.stringify({profile: {goal: "5k", weekly: 4, days: [1, 3, 6]}})});
+  ok(fp() === null && (await putProfile()).ok && !!fp(), "the first saved plan records when it was built (time to first plan)");
+  const f1 = fp(); await sleep(1100); await putProfile();
+  ok(fp() === f1, "editing the plan later never moves the first-plan time");
   ok((await call(token, {step: 9})).status === 400 && (await call(token, {step: "x"})).status === 400 && step() === 4, "junk steps are refused");
   ok((await call(null, {step: 3})).status === 401, "only a signed-in member can record a step");
   const app = readFileSync(join(HERE, "..", "index.html"), "utf8");
