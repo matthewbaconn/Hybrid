@@ -228,13 +228,13 @@ await check("Watch connected: readiness and sleep replace the morning survey, an
   try {
     await load();
     const t = (await page.textContent(".ci-done.wr")).replace(/\s+/g, " ");
-    if (!/From your watch/.test(t) || !/7\.2 h sleep/.test(t) || !/sleep score 82/.test(t) || !/HRV 61 ms/.test(t) || !/resting HR 49/.test(t)) throw new Error("watch card wrong: " + t.slice(0, 200));
+    if (!/From your Garmin/.test(t) || !/Insights derived in part from Garmin device-sourced data\./.test(t) || !/7\.2 h sleep/.test(t) || !/sleep score 82/.test(t) || !/HRV 61 ms/.test(t) || !/resting HR 49/.test(t)) throw new Error("watch card wrong: " + t.slice(0, 200));
     await noSurvey("on Today"); await noOverflow();
     await tab("recovery"); await page.waitForSelector(".rings"); await noSurvey("on Recovery");
     // a check-in saved earlier today (before this change) must not bring the survey or its Edit link back
     saved = true; await load();
     const t2 = (await page.textContent(".ci-done.wr")).replace(/\s+/g, " ");
-    if (!/From your watch/.test(t2) || !/HRV 61 ms/.test(t2)) throw new Error("with a check-in saved today the watch card is gone: " + t2.slice(0, 200));
+    if (!/From your Garmin/.test(t2) || !/HRV 61 ms/.test(t2)) throw new Error("with a check-in saved today the watch card is gone: " + t2.slice(0, 200));
     await noSurvey("on Today (check-in already saved)");
     await tab("recovery"); await page.waitForSelector(".rings"); await noSurvey("on Recovery (check-in already saved)");
     // with the coach on: how you feel is typed to the coach, from Today and from Recovery
@@ -325,7 +325,7 @@ await check("Ask bar: shows only when the server says so; ask, confirm a move, p
   const to = await page.evaluate(d => HP.addDays(d, 1), from), asked = [];
   const me = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {ask: true}; await route.fulfill({response: r, json: j}); };
   const coach = async route => { const b = route.request().postDataJSON(); asked.push(b);
-    await route.fulfill({json: {answer: "Done thinking: moving it a day keeps your long run fresh.", actions: [{type: "move", from, to}, {type: "open", screen: "fuel"}]}}); };
+    await route.fulfill({json: {answer: "Done thinking: moving it a day keeps your long run fresh.", garmin: asked.length === 1, actions: [{type: "move", from, to}, {type: "open", screen: "fuel"}]}}); };
   await page.route("**/api/me", me); await page.route("**/api/ask", coach);
   try {
     await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar"); await tab("today");
@@ -338,6 +338,8 @@ await check("Ask bar: shows only when the server says so; ask, confirm a move, p
     await page.fill("#ask-q", "Can you move that workout a day later?"); await page.press("#ask-q", "Enter");
     await page.waitForSelector(".ask-acts .btn");
     if (asked[0].q !== "Can you move that workout a day later?") throw new Error("the question sent was: " + JSON.stringify(asked[0]));
+    // Garmin attribution: an answer the server marks as built with Garmin data shows Garmin's line right under it
+    if ((await page.locator(".sheet.asks .gattr").count()) !== 1 || (await page.innerText(".sheet.asks .gattr")).trim() !== "Insights derived in part from Garmin device-sourced data.") throw new Error("the Garmin attribution line is missing or worded differently under a Garmin-based answer");
     const labels = await page.locator(".ask-acts .btn").allInnerTexts();
     if (labels.length !== 2 || !/^Move /.test(labels[0]) || !/^Open Fuel and food$/.test(labels[1])) throw new Error("action buttons: " + labels.join(" | "));
     await shot("03-ask-sheet", true);

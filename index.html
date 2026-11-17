@@ -586,6 +586,7 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 .fdate .arrow{background:var(--surface)}
 .coach{display:flex;gap:12px;align-items:flex-start;background:color-mix(in srgb,var(--accent) 12%,var(--sunk));border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:6px;padding:12px 14px}
 .coach > .ic{color:var(--accent-2);margin-top:2px}
+.gattr{display:block;font-size:12px;line-height:1.35;color:var(--muted);margin:3px 0 0} .ask-m.a + .gattr{margin:-4px 0 0 4px}
 .coach b{display:block;font-weight:700} .coach .num{display:block;font-size:13px;color:var(--muted);margin:2px 0}
 .coach p{margin:4px 0 0;font-size:14px;line-height:1.5} .coach strong{color:var(--ink)}
 .assess{display:grid;gap:2px;border-radius:5px;padding:10px 12px;background:var(--sunk);border-left:4px solid var(--vc)}
@@ -885,7 +886,12 @@ let ci = null, wf = null, aw = {open: false, err: "", busy: false};
 let reviews = {}, notes = [], uset = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", n_morning: true, n_run: true, n_weekly: true, n_bed: true}, pushInfo = {key: null, devices: 0}, coachOn = false;
 const reviewFor = a => reviews[a.id] || null;
 const VCLS = {ok: "good", easy: "easy", hard: "warn", unknown: "muted", extra: "good"};
-function reviewHtml(rv, a){
+/* Garmin attribution (Garmin API brand guidelines, Nov 17): anything worked out with Garmin device data as an input says
+   so right under its heading, in Garmin's own sample wording. Shown only where Garmin data really was an input. */
+const GARMIN_ATTR = 'Insights derived in part from Garmin device-sourced data.';
+const gAttr = on => on ? '<small class="gattr">' + GARMIN_ATTR + '</small>' : '';
+function reviewHtml(rv, a, garminIn){
+  const gm = gAttr(garminIn || (a && a.source === "garmin"));
   if (rv.askFeel){
     // Strava workout: rule-based summary, then the coach needs the person's own take (Strava data isn't sent to AI)
     const id = a ? a.id : "";
@@ -894,7 +900,7 @@ function reviewHtml(rv, a){
         [["easy", "Easy"], ["just right", "Just right"], ["hard", "Hard"], ["very hard", "Very hard"]].map(([k, l]) => '<button type="button" data-act="feel" data-id="' + esc(id) + '" data-f="' + k + '"' + (feelBusy === id ? ' disabled' : '') + '>' + l + '</button>').join("") + '</div>' +
         '<input class="feelnote" id="fn-' + esc(id) + '" maxlength="300" placeholder="Anything else? Legs, pace, how you slept (optional)">' : '') + '</div></div>';
   }
-  return '<div class="coach">' + ic("spark") + '<div><small class="ai">AI coach · can be wrong</small><b>' + esc(rv.headline) + '</b>' + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + (rv.feel ? '<p class="fine">From how you said it felt: ' + esc(rv.feel) + '.</p>' : '') +
+  return '<div class="coach">' + ic("spark") + '<div><small class="ai">AI coach · can be wrong</small><b>' + esc(rv.headline) + '</b>' + gm + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + (rv.feel ? '<p class="fine">From how you said it felt: ' + esc(rv.feel) + '.</p>' : '') +
     (askOn() && (!a || a.source !== "strava") ? '<button class="linkbtn askab" type="button" data-act="askabout" data-t="' + esc([rv.headline, rv.meaning, rv.next ? "Next: " + rv.next : ""].filter(Boolean).join(" ").slice(0, 480)) + '">Ask about this</button>' : '') + '</div></div>';
 }
 let feelBusy = null;
@@ -938,12 +944,12 @@ const feelBtn = () => askOn() ? '<button class="linkbtn" type="button" data-act=
 function watchReadyCard(){
   const sg0 = sigOn(TODAY), sg = sg0 || {}, c = checkins[TODAY], r = readiness(c, sg0);   // a check-in already saved today still counts, so the score matches the rest of the app
   if (!r) return morningNow() ? '<section class="card ci-done wr" style="--tone:var(--long)"><div class="ci-row"><div><strong>Waiting for your watch</strong><span>Last night\'s sleep and today\'s readiness show here once your watch syncs.</span></div>' + (watchFeeding() ? feelBtn() : '<button class="linkbtn" type="button" data-act="ciopen">Check in by hand</button>') + '</div></section>' : '';
-  const n1 = x => Math.round(x * 10) / 10, mn = morningNote();
+  const n1 = x => Math.round(x * 10) / 10, mn = morningNote(), fromGarmin = !!(dev && dev[TODAY] && dev[TODAY].source === "garmin");
   const bits = [sg.sleep_h ? n1(sg.sleep_h) + ' h sleep' : '', sg.sleep_score != null ? 'sleep score ' + sg.sleep_score : '',
     sg.hrv ? 'HRV ' + Math.round(sg.hrv) + ' ms' + (sg.hrvA ? ' (your normal ' + Math.round(sg.hrvA) + ')' : '') : '',
     sg.rhr ? 'resting HR ' + Math.round(sg.rhr) + (sg.rhrA ? ' (your normal ' + Math.round(sg.rhrA) + ')' : '') : ''].filter(Boolean);
-  return '<section class="card ci-done wr" style="--tone:var(--' + r.tone + ')"><div class="ci-row"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>' + (bits.length ? 'From your watch · ' + esc(bits.join(' · ')) : 'Waiting for last night\'s watch numbers') + '</span></div>' + feelBtn() + '</div>' +
-    (r.watch ? '<p class="sub">' + esc(r.watch.join(' · ')) + '.</p>' : '') + (mn ? reviewHtml({headline: mn.headline, meaning: (mn.lines || []).join(" ")}) : '') + '</section>';
+  return '<section class="card ci-done wr" style="--tone:var(--' + r.tone + ')"><div class="ci-row"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>' + (bits.length ? (fromGarmin ? 'From your Garmin · ' : 'From your watch · ') + esc(bits.join(' · ')) : 'Waiting for last night\'s watch numbers') + '</span></div>' + feelBtn() + '</div>' +
+    (r.watch ? '<p class="sub">' + esc(r.watch.join(' · ')) + '.</p>' : '') + (mn ? reviewHtml({headline: mn.headline, meaning: (mn.lines || []).join(" ")}, null, fromGarmin) : gAttr(fromGarmin && bits.length)) + '</section>';
 }
 function checkinCard(){
   const c = checkins[TODAY], r = readiness(c, sigOn(TODAY));
@@ -2229,7 +2235,7 @@ function askLabel(a){   // what a proposed change would do, in the app's own wor
 }
 function askMsgHtml(m, mi){
   if (m.role === "user") return '<p class="ask-m u">' + esc(m.text) + '</p>';
-  let h = '<p class="ask-m a">' + esc(m.text) + '</p>';
+  let h = '<p class="ask-m a">' + esc(m.text) + '</p>' + gAttr(m.garmin);
   if (m.actions && m.actions.length) h += '<div class="ask-acts">' + m.actions.map((a, i) => { if (a.done) return '<small>✓ ' + esc(a.done) + '</small>'; const l = askLabel(a);
     return l ? '<button class="btn" type="button" data-act="askdo" data-m="' + mi + '" data-i="' + i + '">' + esc(l) + '</button>' : '<small>That change isn\'t possible on your plan right now.</small>'; }).join("") + '</div>';
   return h;
@@ -2260,7 +2266,7 @@ async function askSend(q){
   const history = ask.msgs.slice(-6).map(m => ({role: m.role, text: m.text})), kind = ask.kind, about = ask.about;
   ask.msgs.push({role: "user", text: q}); ask.busy = true; ask.err = ""; ask.hint = ""; askRender();
   let keep = "";
-  try { const j = await api("POST", "/api/ask", {q, history, ...(kind ? {kind} : {}), ...(about ? {about} : {})}); ask.msgs.push({role: "assistant", text: String(j.answer || "").slice(0, 1200), actions: Array.isArray(j.actions) ? j.actions.filter(x => x && typeof x === "object").slice(0, 2) : []}); ask.kind = ""; }   // ask.about stays for follow-ups until the sheet is opened for something else
+  try { const j = await api("POST", "/api/ask", {q, history, ...(kind ? {kind} : {}), ...(about ? {about} : {})}); ask.msgs.push({role: "assistant", text: String(j.answer || "").slice(0, 1200), garmin: j.garmin === true, actions: Array.isArray(j.actions) ? j.actions.filter(x => x && typeof x === "object").slice(0, 2) : []}); ask.kind = ""; }   // ask.about stays for follow-ups until the sheet is opened for something else
   catch(e){ ask.err = e.message; ask.msgs.pop(); keep = q; }
   ask.busy = false; if (ask.msgs.length > 40) ask.msgs = ask.msgs.slice(-40);
   askRender(true, keep);

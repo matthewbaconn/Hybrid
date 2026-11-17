@@ -81,6 +81,7 @@ try {
   reply = "Just rest today.";
   const jP = await (await call(owner, "POST", "/api/ask", {q: "Should I rest?"})).json();
   ok(jP.answer === "Just rest today." && Array.isArray(jP.actions) && jP.actions.length === 0, "a plain-text reply is passed through with no actions");
+  ok(!("garmin" in jP), "no Garmin data went in, so the answer carries no Garmin attribution mark");
   ok((await call(owner, "POST", "/api/ask", {q: " "})).status === 400, "an empty question is refused");
   ok(sql("SELECT count FROM ai_usage WHERE user_id = '" + uid + "' AND day LIKE 'ask:%'")[0].count === 3, "each answered question is counted toward the daily cap");
 

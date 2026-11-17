@@ -650,7 +650,9 @@ async function askAnything(env, user, b){
     if (a.type === "open") return ASK_SCREENS.includes(a.screen) ? {type: "open", screen: a.screen} : null;
     return null; }).filter(Boolean).slice(0, 2);
   await logEvent(env, "ai_ask", true, actions.length ? actions.map(a => a.type).join(",") : "");
-  return {answer, actions};
+  // Garmin attribution: the app shows Garmin's line under an answer when Garmin device data was part of what the coach was given
+  const d10 = HP.addDays(L.date, -10), garmin = U0.acts.some(a => a.source === "garmin" && a.date >= d10 && a.date <= L.date) || Object.values(U0.dev || {}).some(x => x && x.source === "garmin" && x.date >= HP.addDays(L.date, -21));
+  return {answer, actions, ...(garmin ? {garmin: true} : {})};
 }
 const COACH_STYLE = "You are a friendly, plain-spoken running and strength coach writing inside a training app. No jargon (no 'Z2', 'ACWR', 'EF'), no emoji, no medical advice, never shame. " +
   "Safety rules: you are not a doctor, dietitian or nutritionist and never call yourself one. Don't diagnose, don't recommend supplements, medications or specific diets, and never suggest eating less than the app's calorie target, skipping meals or making up for food with extra exercise. " +

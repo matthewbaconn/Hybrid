@@ -106,7 +106,8 @@ try {
   ok((await mine("ga1")).name === "Sunday long run with Dad" && aiCalls === 1, "rename: Garmin sending the run again does not undo it, and does not review it again");
 
   // 3b. the coach bar is sent the Garmin run and never the Strava-only one
-  const before = aiCalls, ar = await call(token, "POST", "/api/ask", {q: "How was my run today?"});
+  const before = aiCalls, ar = await call(token, "POST", "/api/ask", {q: "How was my run today?"}), arj = await ar.clone().json().catch(() => ({}));
+  ok(arj.garmin === true, "an answer that had Garmin data as an input is marked, so the app shows Garmin's attribution line under it");
   ok(ar.status === 200 && aiCalls === before + 1 && /Sunday long run with Dad/.test(lastAI) && /8\.08/.test(lastAI) && /avg_hr\\?":\s*165/.test(lastAI) && !/Shakeout/.test(lastAI), "the coach is sent the Garmin run (the member's name for it, 8.08 mi, 165 bpm) and nothing from the Strava-only run (" + ar.status + ")");
 
   // 3c. the other order: Strava has the run first, the watch reaches Garmin later
