@@ -83,7 +83,7 @@ async function ownerIdRaw(env){
    "ask" (the coach bar) was released Nov 17 after its stress test passed, so the list is empty for now.
    PREVIEW_ADD is for tests only (tests/ask.mjs sets it to "ask" so the owner-only switch stays tested); it can only
    narrow who sees a feature, never widen it. */
-const PREVIEW = new Set(["liftdays"]);   // liftdays: pin which days you lift (setup, "When can you train?"), Nov 17
+const PREVIEW = new Set(["liftdays"]);   // liftdays: pin which days you lift (setup, "When can you run?"), Nov 17. "rename" was released Nov 17 on Matthew's word ("Release rename")
 const previewOk = async (env, user, k) => !(PREVIEW.has(k) || String(env.PREVIEW_ADD || "").split(",").includes(k)) || user.id === await ownerId(env);
 
 /* ---------- AI food reading ---------- */
@@ -232,6 +232,8 @@ async function stravaSync(env, user, ctx){
   const SAME = "s.user_id = g.user_id AND s.source = 'strava' AND s.date = g.date AND s.type = g.type AND ABS(s.minutes - g.minutes) <= 3 AND ABS(s.mi - g.mi) <= 0.2";
   const twins = (await env.DB.prepare("SELECT g.id AS gid, s.id AS sid, s.ext_id AS ext FROM activities g JOIN activities s ON " + SAME + " WHERE g.user_id = ? AND g.source = 'garmin'").bind(user.id).all()).results;
   const told = new Set();
+  await env.DB.prepare("UPDATE activities AS s SET title = (SELECT g.title FROM activities g WHERE " + SAME + " AND g.source = 'garmin' AND g.title IS NOT NULL LIMIT 1) " +
+    "WHERE s.user_id = ? AND s.source = 'strava' AND s.title IS NULL AND EXISTS (SELECT 1 FROM activities g WHERE " + SAME + " AND g.source = 'garmin' AND g.title IS NOT NULL)").bind(user.id).run();   // a name the member gave the Garmin copy moves to the copy we keep
   for (const x of twins){
     const had = await env.DB.prepare("SELECT 1 FROM reviews WHERE activity_id = ?").bind(x.gid).first();
     if (!had) continue;
@@ -473,7 +475,7 @@ async function loadUser(env, userId, today){
   const since = HP.addDays(today, -70);
   const [p, a, w, c, f, u, hd] = await env.DB.batch([
     env.DB.prepare("SELECT data FROM profiles WHERE user_id = ?").bind(userId),
-    env.DB.prepare("SELECT id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, laps, work_pace, sport, rpe, venue FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(userId, since),
+    env.DB.prepare("SELECT id, source, ext_id, date, type, COALESCE(title, name) AS name, mi, minutes, cal, avg_hr, laps, work_pace, sport, rpe, venue FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(userId, since),
     env.DB.prepare("SELECT date, lb FROM weights WHERE user_id = ? AND date >= ?").bind(userId, HP.addDays(today, -200)),
     env.DB.prepare("SELECT date, sleep_h, sleep_q, soreness, energy, stress FROM checkins WHERE user_id = ? AND date >= ?").bind(userId, HP.addDays(today, -14)),
     env.DB.prepare("SELECT date, cal FROM food WHERE user_id = ? AND date >= ?").bind(userId, HP.addDays(today, -14)),
@@ -1289,7 +1291,7 @@ async function route(req, env, path, ctx){
     const [c, w, a, s] = await env.DB.batch([
       env.DB.prepare("SELECT date, sleep_h, sleep_q, soreness, energy, stress FROM checkins WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since),
       env.DB.prepare("SELECT date, lb FROM weights WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since120),
-      env.DB.prepare("SELECT id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, work_pace, CASE WHEN date >= ? THEN laps END AS laps, CASE WHEN date >= ? THEN poly END AS poly, start_local, elev_ft, sport, max_hr, rpe, venue FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(since, since, user.id, since120),
+      env.DB.prepare("SELECT id, source, ext_id, date, type, COALESCE(title, name) AS name, CASE WHEN title IS NOT NULL THEN name END AS src_name, mi, minutes, cal, avg_hr, work_pace, CASE WHEN date >= ? THEN laps END AS laps, CASE WHEN date >= ? THEN poly END AS poly, start_local, elev_ft, sport, max_hr, rpe, venue FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(since, since, user.id, since120),
       env.DB.prepare("SELECT athlete_name, last_sync FROM strava_links WHERE user_id = ?").bind(user.id)
     ]);
     const [rv, cn, ps, ik, hd, ll, mp, gl] = await env.DB.batch([
@@ -1311,7 +1313,7 @@ async function route(req, env, path, ctx){
         workouts: gl.results[0] ? (/WORKOUT_IMPORT/.test(gl.results[0].permissions || "") ? gl.results[0].wk : (gl.results[0].permissions ? -1 : null)) : null},
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
       settings: await settingsOf(env, user.id), push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY,
-      owner, features: {ask: !!env.ANTHROPIC_API_KEY && (await previewOk(env, user, "ask")), liftdays: await previewOk(env, user, "liftdays")}, founding, reports, health: hd.results, lifts: ll.results, mealplan: mp.results[0] ? JSON.parse(mp.results[0].data) : null, crews: await crewsFor(env, user.id), health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
+      owner, features: {ask: !!env.ANTHROPIC_API_KEY && (await previewOk(env, user, "ask")), rename: await previewOk(env, user, "rename"), liftdays: await previewOk(env, user, "liftdays")}, founding, reports, health: hd.results, lifts: ll.results, mealplan: mp.results[0] ? JSON.parse(mp.results[0].data) : null, crews: await crewsFor(env, user.id), health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
   }
   if (M === "PUT" && path === "/api/account"){
     const b = await body(req), name = String(b.name ?? "").trim().slice(0, 30);
@@ -1421,6 +1423,21 @@ async function route(req, env, path, ctx){
   }
   m = path.match(/^\/api\/activity\/([a-f0-9]{20})$/);
   if (M === "DELETE" && m){ await env.DB.prepare("DELETE FROM activities WHERE id = ? AND user_id = ?").bind(m[1], user.id).run(); return {ok: true}; }
+  // the member's own name for a workout (like renaming an activity in Strava). Only their own row; an empty name puts
+  // the original back. Sync never touches it (it lives in `title`, sync writes `name`).
+  m = path.match(/^\/api\/activity\/([a-f0-9]{20})\/name$/);
+  if (M === "PUT" && m){
+    if (!(await previewOk(env, user, "rename"))) throw new HttpError(404, "Not found.");
+    await limit(env, "name:" + user.id);
+    const b = await body(req);
+    if (b.name != null && typeof b.name !== "string") throw new HttpError(400, "Type a name.");
+    const title = (b.name || "").replace(/[\u0000-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2066-\u2069<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) || null;
+    const row = await env.DB.prepare("SELECT name FROM activities WHERE id = ? AND user_id = ?").bind(m[1], user.id).first();
+    if (!row) throw new HttpError(404, "That workout isn't here any more.");
+    const keep = title && title !== row.name ? title : null;                 // typing the original name back is the same as resetting
+    await env.DB.prepare("UPDATE activities SET title = ? WHERE id = ? AND user_id = ?").bind(keep, m[1], user.id).run();
+    return {ok: true, name: keep || row.name, src_name: keep ? row.name : null};
+  }
   // how hard it felt (1-10), for any activity: Strava/Garmin ones too. Only the owner's own row.
   m = path.match(/^\/api\/activity\/([a-f0-9]{20})\/effort$/);
   if (M === "PUT" && m){
