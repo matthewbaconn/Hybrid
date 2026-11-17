@@ -144,6 +144,59 @@ button{font:600 14px -apple-system,system-ui,sans-serif;color:var(--ink);backgro
   .brief{grid-template-columns:repeat(4,1fr)}.brief .q.lead,.brief .q.full{grid-column:span 2}.brief .q:not(.lead):not(.full){grid-column:auto}.cards{grid-template-columns:1fr 1fr}.cards .wide{grid-column:1/-1}
   .nav .n{position:static;margin-left:2px}
 }
+
+/* ---------- J.A.R.V.I.S. desktop HUD (Nov 17): desktop only; phones never see it ---------- */
+.hud{display:none}
+@media (min-width:1000px){
+  body{background:radial-gradient(90% 50% at 50% -12%,#3a0c11 0%,rgba(7,8,11,0) 62%),
+    linear-gradient(rgba(190,56,62,.045) 1px,transparent 1px) 0 0/100% 28px,linear-gradient(90deg,rgba(190,56,62,.045) 1px,transparent 1px) 0 0/28px 100%,var(--bg)}
+  .wrap{max-width:1600px}
+  h1{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.32em;text-shadow:0 0 14px rgba(190,56,62,.55)}
+  .hud{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:10px;margin:12px 0 14px}
+  .hp{position:relative;min-width:0;padding:11px 13px 12px;border:1px solid #2b171b;border-radius:3px;overflow:hidden;
+    background:linear-gradient(180deg,rgba(20,13,17,.94),rgba(9,10,15,.94));box-shadow:inset 0 0 26px rgba(190,56,62,.06)}
+  .hp::before,.hp::after{content:"";position:absolute;width:12px;height:12px;border:2px solid var(--red);pointer-events:none;opacity:.85}
+  .hp::before{top:-1px;left:-1px;border-right:0;border-bottom:0}.hp::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+  .hp h5{margin:0 0 9px;display:flex;justify-content:space-between;gap:8px;font:600 10.5px/1.1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    letter-spacing:.16em;text-transform:uppercase;color:#ff7a80}
+  .hp h5 i{font-style:normal;letter-spacing:.04em;color:var(--grey);text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .s2{grid-column:span 2}.s3{grid-column:span 3}.s4{grid-column:span 4}.s5{grid-column:span 5}.s6{grid-column:span 6}.s7{grid-column:span 7}.s8{grid-column:span 8}.s12{grid-column:span 12}
+  .hn{font:700 34px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.02em;text-shadow:0 0 18px rgba(190,56,62,.35)}
+  .hn small{font:600 11.5px -apple-system,system-ui,sans-serif;color:var(--mut);margin-left:6px;letter-spacing:0;text-shadow:none}
+  .hs{color:var(--mut);font-size:11.5px;margin-top:5px;line-height:1.4}.hs b{color:var(--ink);font-weight:600}
+  .hlk{color:var(--grey);font-size:12px}
+  .hsp{display:block;width:100%;height:30px;margin-top:7px}
+  .hcore{display:flex;gap:12px;align-items:center}
+  .ring{flex:none;width:76px;height:76px}.ring .sweep{transform-origin:50% 50%;animation:spin 6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .hcore .hb{display:block;font-size:15px;line-height:1.25}
+  .gauge{display:flex;gap:11px;align-items:center}.gauge svg{flex:none;width:64px;height:64px}
+  .ht{width:100%;border-collapse:collapse;font:12px/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+  .ht th{color:var(--grey);font-weight:600;text-align:right;padding:3px 6px;border-bottom:1px solid #2b171b;letter-spacing:.06em;font-size:10px;text-transform:uppercase}
+  .ht td{text-align:right;padding:3px 6px;border-bottom:1px solid rgba(43,23,27,.55);color:var(--ink)}
+  .ht th:first-child,.ht td:first-child{text-align:left;color:var(--mut)}
+  .ht tr:last-child td{border-bottom:0;color:#fff;background:rgba(190,56,62,.09)}
+  .ht td.z{color:var(--grey)}
+  .ht .up{color:var(--green)}.ht .dn{color:#ff8a90}
+  .dk{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed}
+  .dk th:nth-child(1){width:118px}.dk th:nth-child(2){width:158px}.dk th:nth-child(4),.dk th:nth-child(5){width:126px}.dk th:nth-child(6){width:66px}
+  .dk th{font:600 10px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--grey);text-align:left;padding:4px 8px;border-bottom:1px solid #2b171b}
+  .dk td{padding:6px 8px;border-bottom:1px solid rgba(43,23,27,.55);vertical-align:top;overflow:hidden}
+  .dk tr{cursor:pointer}.dk tbody tr:hover td{background:rgba(190,56,62,.07)}
+  .dk td.nm b{display:block}.dk td.nm small{color:var(--grey);font-size:10.5px}
+  .dk td.st{white-space:nowrap;text-overflow:ellipsis}.dk td.tm{white-space:nowrap;color:var(--mut);font:11.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .dk td.wk{white-space:nowrap;font:11.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--mut)}
+  .dk .tx{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dk .tx2{color:var(--grey);font-size:11px}
+  .dot2{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:1px}
+  .dk tr.hot td{background:rgba(190,56,62,.10)}
+  .hl{list-style:none;margin:0;padding:0;font-size:12.5px}.hl li{display:flex;gap:9px;padding:5px 0;border-bottom:1px solid rgba(43,23,27,.55);min-width:0}
+  .hl li:last-child{border-bottom:0}.hl em{flex:none;width:74px;font:11.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--mut);font-style:normal}
+  .hl span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hl .r{color:#ff8a90}.hl .g{color:#6fe0ab}.hl .a{color:var(--amber)}
+  .scan{position:absolute;left:0;right:0;height:40%;top:-40%;pointer-events:none;background:linear-gradient(180deg,rgba(190,56,62,0),rgba(190,56,62,.05),rgba(190,56,62,0));animation:scan 7s linear infinite}
+  @keyframes scan{to{top:110%}}
+  .grid{grid-template-columns:minmax(380px,500px) 1fr}
+  @media (prefers-reduced-motion:reduce){.ring .sweep,.scan{animation:none}}
+}
 </style></head><body><div class="wrap">
 <div class="banner" id="banner"></div>
 <div class="top"><h1>MILESET HQ</h1><div class="clock"><span class="live" id="live"></span><span id="clock"></span><button class="rf" id="refresh" aria-label="Refresh HQ">↻ Refresh</button></div></div>
@@ -155,6 +208,7 @@ button{font:600 14px -apple-system,system-ui,sans-serif;color:var(--ink);backgro
 <button data-v="me"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2.500"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>My week</button>
 </nav>
 <section class="view on" id="v-hq">
+<div class="hud" id="hud" aria-label="Command HUD (desktop)"></div>
 <div class="brief" id="brief"><div class="q lead"><span class="dot"></span><div><small>Mileset HQ</small><b id="answerText">Opening the office…</b></div></div></div>
 <div class="grid">
 <div class="b-floor"><div class="stage"><canvas id="cv" aria-label="Office floor with one character per employee"></canvas></div>
@@ -489,13 +543,14 @@ addEventListener("hashchange", () => { if (takeKey()) loadPriv(); });
 const b64 = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), c => c.charCodeAt(0));
 const DEMO_PRIV = () => { const t = Date.now(), iso = m => new Date(t - m * 60000).toISOString().slice(0, 19) + "Z", day = n => new Date(t + n * 864e5).toISOString().slice(0, 10);
   return {v:1, t:iso(1), o:{streak:[2,7], working:["product-lead"], attention:["growth-sprint"], runs_today:9, ok_today:5, failed_today:1, approvals:1, plan_min_today:42,
+      kpis:{cols:["date","total_accounts","new_signups","founding_left","ai_spend_usd","ig_followers"], rows:Array.from({length:14}, (_, i) => [day(i - 13), 3 + Math.floor(i * .55), i % 3 ? 0 : 1, 97 - Math.floor(i * .5), +(0.2 + (i % 5) * .09).toFixed(2), 40 + i * 2 + (i % 4)])},
       spend:{spent:.42, cap:1.06, mail_left:.5, runs:6, by_model:{haiku:.12, sonnet:.30}, by_job:{chat:.31, email:.11}, cached_share:.62}},
     d:[{id:"product-lead", s:"w", last:iso(22), next:iso(-1418), sum:"Demo feature PR", art:"", hist:[[iso(1500),"ok","Demo: built a feature",""]], jobs:[["B1","Demo job","building"]], runs:1, min:18, model:"claude-opus-5-5", ok7:3, fail7:0},
        {id:"worker", s:"s", last:iso(14), next:iso(-46), sum:"No jobs", art:"", hist:[], jobs:[], runs:7, min:9, model:"claude-opus-5-5", ok7:11, fail7:0},
        {id:"instagram", s:"i", last:iso(900), next:iso(-2000), sum:"Queued 3 posts", art:"", hist:[], jobs:[], runs:0, min:0, model:"claude-sonnet-5-5", ok7:1, fail7:0}],
     f:[[iso(14),"worker","skipped","No jobs"],[iso(69),"ceo-shift","ok","Demo: sharpened the backlog"]], a:[{k:"backlog", n:"B4", title:"Demo decision: approve a partner outreach list", why:"needs you"}],
     dec:[["Nov 14","Demo decision","Implemented and verified","demo"]], done:[], jobs:[["B1","Demo: shorten onboarding to 3 steps","product lead","building"]],
-    g:{trend:[[day(-2),10,0,92],[day(-1),11,1,91],[day(0),12,1,90]], asof:day(0), src7:{ig:2, reddit:1, unknown:1}, src_all:{unknown:6, ig:3, reddit:1},
+    g:{trend:[[day(-2),10,0,92],[day(-1),11,1,91],[day(0),12,1,90]], asof:day(0), ig:[67, day(0)], src7:{ig:2, reddit:1, unknown:1}, src_all:{unknown:6, ig:3, reddit:1},
        funnel:{signed_up:10, plan:8, workout:5, d7_eligible:6, active_d7:3}, visits7:{"/":41, "/fueling-calculator":17, "app:/":22}, members:[[day(-6),6],[day(-5),6],[day(-4),7],[day(-3),7],[day(-2),8],[day(-1),9],[day(0),10]], week_ago:{date:day(-7), funnel:{signed_up:6}}},
     money:{today:.42, today_cap:1.06, month:3.1, month_cap:17, from:day(-3)}, fix:"GROWTH FIX OF THE WEEK: demo fix (product lead)",
     me:{days:[[day(0),[["shift","Demo shift","04:30","12:30"]]],[day(1),[]],[day(2),[["deadline","Demo exam","09:00",""]]],[day(3),[]],[day(4),[]],[day(5),[]],[day(6),[]]],
@@ -655,10 +710,101 @@ function renderBrief(){
   if (PRIV){ const n = (PRIV.a || []).length; Q.push([n ? "a" : "g", "Do you need me?", n ? `Yes: ${n} decision${n === 1 ? "" : "s"} waiting for you.` : "No. Nothing is waiting on you.", n ? (PRIV.a[0].title || "") : "", "appr"]); }
   else Q.push(["n", "Do you need me?", "Private. Unlock HQ to see approvals.", "", "hq"]);
   el.innerHTML = Q.map((q, i) => `<div class="q${i === 0 ? " lead" : i === 1 || (i === Q.length - 1 && Q.length % 2 === 1) ? " full" : ""}" data-go="${q[4]}"><span class="dot ${q[0]}"></span><div><small>${esc(q[1])}</small><b${i === 0 ? ' id="answerText"' : ""}>${esc(q[2])}</b>${q[3] ? `<span class="sub">${esc(q[3])}</span>` : ""}</div></div>`).join("");
+  renderHud();
 }
 document.getElementById("brief").addEventListener("click", e => { const q = e.target.closest(".q"); if (!q) return; const t = q.dataset.go;
   if (t === "appr"){ go("hq"); const b = document.querySelector('#tabs [data-t="appr"]'); if (b){ b.click(); document.getElementById("tabs").scrollIntoView({behavior:"smooth", block:"start"}); } }
   else if (t !== "hq") go(t); });
+// ---------- J.A.R.V.I.S. desktop HUD (Matthew via Vesper, Nov 17): one dense, live screen on a computer ----------
+// Only real signals already in the feed: the public run feed, the live founding count, and the private office
+// (nightly KPI rows, growth, money, desks). Anything missing says so; nothing is estimated.
+const HUD_MQ = matchMedia("(min-width:1000px)");
+const numv = v => typeof v === "number" && isFinite(v) ? v : typeof v === "string" && v.trim() !== "" && isFinite(+v) ? +v : null;
+function kpi14(){ const k = PRIV && PRIV.o && PRIV.o.kpis;
+  if (k && Array.isArray(k.cols) && Array.isArray(k.rows) && k.rows.length) return {cols: k.cols, rows: k.rows.slice(-14)};
+  const t = PRIV && PRIV.g && PRIV.g.trend;   // fallback: the growth trend carries three of the columns
+  return t && t.length ? {cols: ["date", "total_accounts", "new_signups", "founding_left"], rows: t.slice(-14)} : null; }
+function kcol(K, name){ const i = K ? K.cols.indexOf(name) : -1; return i < 0 ? [] : K.rows.map(r => numv(r[i])); }
+function hsp(vals, col){ const pts = vals.map((v, i) => [i, v]).filter(p => p[1] !== null); if (pts.length < 2) return "";
+  const ys = pts.map(p => p[1]), lo = Math.min(...ys), hi = Math.max(...ys), r = hi - lo || 1, n = Math.max(1, vals.length - 1);
+  const xy = pts.map(p => [p[0] / n * 196 + 2, 26 - (p[1] - lo) / r * 22]);
+  const d = xy.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" "), e = xy[xy.length - 1];
+  return `<svg class="hsp" viewBox="0 0 200 30" preserveAspectRatio="none" aria-hidden="true"><path d="${d} L${e[0].toFixed(1)} 30 L${xy[0][0].toFixed(1)} 30 Z" fill="${col}" opacity=".13"/><path d="${d}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle cx="${e[0].toFixed(1)}" cy="${e[1].toFixed(1)}" r="2.2" fill="${col}"/></svg>`; }
+function gauge(frac, col, label){ const f = Math.max(0, Math.min(1, frac || 0)), C = 2 * Math.PI * 26;
+  return `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="#1E2230" stroke-width="6"/>
+    <circle cx="32" cy="32" r="26" fill="none" stroke="${col}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(f * C).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 32 32)" style="filter:drop-shadow(0 0 4px ${col})"/>
+    <text x="32" y="36" text-anchor="middle" fill="#F2F3F7" font-family="ui-monospace,Menlo,monospace" font-size="12" font-weight="700">${esc(label)}</text></svg>`; }
+function renderHud(){
+  const el = document.getElementById("hud"); if (!el || !HUD_MQ.matches) return;
+  const f = feed || null, o = (PRIV && PRIV.o) || null, G = growthNow(), K = kpi14(), M = PRIV && PRIV.money, sp = o && o.spend;
+  const lock = `<div class="hlk">🔒 Private. Unlock HQ to see this.</div>`, tc = {g:"#3FB37F", a:"#F2B33D", r:"#BE383E", n:"#59607a"};
+  const bad = agents.filter(a => ["f","x","vb"].includes(a.code)), work = agents.filter(a => a.code === "w" && a.id !== "vesper");
+  const stale = f && f.t ? (Date.now() - new Date(f.t)) / 60000 : null, sk = (f && f.sk) || [0, 7];
+  const ht = !f ? ["a", "Waiting for the live feed"] : f.ok === false ? ["r", "Site or app needs attention"] : bad.length ? ["r", `${bad.length} desk${bad.length === 1 ? "" : "s"} need a look`]
+    : stale > 40 ? ["a", "Live feed delayed"] : ["g", "All systems nominal"];
+  const P = [];
+  // core status
+  P.push(`<div class="hp s3"><div class="scan"></div><h5>Core status <i>${f && f.t ? "feed " + esc(ago(f.t)) : "no feed"}</i></h5><div class="hcore">
+    <svg class="ring" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="34" fill="none" stroke="#1E2230" stroke-width="2"/>
+      <circle cx="40" cy="40" r="27" fill="none" stroke="${tc[ht[0]]}" stroke-width="3" stroke-dasharray="4 5" opacity=".7"/>
+      <g class="sweep"><path d="M40 6 A34 34 0 0 1 74 40" fill="none" stroke="${tc[ht[0]]}" stroke-width="3" stroke-linecap="round" style="filter:drop-shadow(0 0 5px ${tc[ht[0]]})"/></g>
+      <circle cx="40" cy="40" r="9" fill="${tc[ht[0]]}" opacity=".9" style="filter:drop-shadow(0 0 8px ${tc[ht[0]]})"/></svg>
+    <div><b class="hb">${esc(ht[1])}</b><div class="hs">No silent failures <b>${sk[0]}/${sk[1]}</b> days · <b>${work.length}</b> working · <b>${bad.length}</b> stuck${o ? ` · <b>${o.approvals ?? 0}</b> waiting on you` : ""}</div></div></div></div>`);
+  // members
+  const mem = kcol(K, "total_accounts"), nsu = kcol(K, "new_signups"), fl = kcol(K, "founding_left"), ai = kcol(K, "ai_spend_usd"), ig = kcol(K, "ig_followers");
+  P.push(`<div class="hp s2"><h5>Members <i>${G && G.live ? "live" : G && G.asof ? esc(dstr(G.asof)) : ""}</i></h5>${!PRIV && !LIVE ? lock :
+    `<div class="hn">${G && G.members !== null ? G.members : LIVE && typeof LIVE.members === "number" ? LIVE.members : "–"}<small>real</small></div>${hsp(mem, "#BE383E")}<div class="hs">${mem.some(v => v !== null) ? "accounts, last " + mem.length + " nights" : "trend after two nightly counts"}</div>`}</div>`);
+  // founding 100
+  const left = G && G.left !== null ? G.left : LIVE ? LIVE.left : null;
+  P.push(`<div class="hp s2"><h5>Founding 100</h5>${left === null ? `<div class="hlk">Not reported yet.</div>` :
+    `<div class="gauge">${gauge((100 - left) / 100, "#BE383E", (100 - left) + "%")}<div><div class="hn" style="font-size:26px">${left}</div><div class="hs">spots left · ${Math.max(1, Math.ceil((new Date("2027-01-01T00:00:00-05:00") - Date.now()) / 864e5))} days to Jan 1</div></div></div>`}</div>`);
+  // sign-ups
+  const n14 = nsu.filter(v => v !== null).reduce((a, b) => a + b, 0);
+  P.push(`<div class="hp s2"><h5>Sign-ups <i>7 days</i></h5>${!PRIV ? lock : `<div class="hn">${G && G.n7 !== null ? (G.n7 > 0 ? "+" : "") + G.n7 : "–"}</div>${hsp(nsu, "#3FB37F")}
+    <div class="hs">${nsu.some(v => v !== null) ? `<b>${n14}</b> in the last ${nsu.length} nights` : "nightly counts pending"}</div>`}</div>`);
+  // instagram
+  const igNow = PRIV && PRIV.g && PRIV.g.ig;
+  P.push(`<div class="hp s3"><h5>Instagram followers <i>${igNow ? "counted " + esc(dstr(igNow[1])) : ""}</i></h5>${!PRIV ? lock : igNow ?
+    `<div class="hn">${igNow[0]}</div>${hsp(ig, "#d45d9b")}<div class="hs">${(() => { const v = ig.filter(x => x !== null); return v.length > 1 ? `<b>${v[v.length - 1] - v[0] >= 0 ? "+" : ""}${v[v.length - 1] - v[0]}</b> over ${v.length} counts` : "trend after two counts"; })()}</div>`
+    : `<div class="hlk">Not counted yet. The nightly KPI row has no follower count.</div>`}</div>`);
+  // API spend vs budget
+  P.push(`<div class="hp s4"><h5>Vesper API spend <i>vs budget</i></h5>${!PRIV ? lock : M && M.month_cap ? (() => { const r = M.month / M.month_cap, c = r >= 1 ? "#BE383E" : r >= .75 ? "#F2B33D" : "#3FB37F";
+      return `<div class="gauge">${gauge(r, c, Math.round(r * 100) + "%")}<div><div class="hn" style="font-size:24px">${usd(M.month)}<small>of ${usd(M.month_cap)}</small></div>
+        <div class="hs">this month · today <b>${usd(M.today)}</b> of ${usd(M.today_cap)}</div></div></div>`; })()
+    : sp ? `<div class="hn" style="font-size:24px">${usd(sp.spent)}<small>of ${usd(sp.cap)} today</small></div>` : `<div class="hlk">Not reported yet.</div>`}</div>`);
+  // failures
+  const fails = PRIV ? (PRIV.f || []).filter(x => ["failed", "push_failed", "push_blocked"].includes(x[2])).slice(0, 5) : [];
+  const nm = id => TEAM[id] ? TEAM[id].n : id === "drill" ? "Recovery drill" : id;
+  P.push(`<div class="hp s4"><h5>Failures <i>${o ? (o.failed_today ?? 0) + " today" : ""}</i></h5>${bad.length || fails.length ? `<ul class="hl">${
+    bad.map(a => `<li><em class="r">${esc(STATE[a.code][0].toUpperCase())}</em><span><b>${esc(a.t.n)}</b>${rows[a.id] && rows[a.id][2] ? " · " + esc(fmtT(rows[a.id][2])) : ""}</span></li>`).join("") +
+    fails.map(x => `<li><em>${esc(fmtT(x[0]))}</em><span><b class="r">${esc(nm(x[1]))}</b> ${esc(rword[x[2]] || x[2])}${x[3] ? " · " + esc(x[3]) : ""}</span></li>`).join("")}</ul>`
+    : `<div class="hn" style="font-size:24px;color:#6fe0ab">0</div><div class="hs">${PRIV ? "No failed runs in the last 3 days." : "No desk is failed or stuck right now."}</div>`}</div>`);
+  // up next
+  const nx = agents.filter(a => a.id !== "vesper" && rows[a.id] && rows[a.id][3] && new Date(rows[a.id][3]) > Date.now() - 6e4).sort((a, b) => rows[a.id][3] < rows[b.id][3] ? -1 : 1).slice(0, 6);
+  P.push(`<div class="hp s4"><h5>Up next <i>scheduled runs</i></h5>${nx.length ? `<ul class="hl">${nx.map(a => `<li><em>${esc(fmtT(rows[a.id][3]))}</em><span><b>${esc(a.t.n)}</b> · ${esc(VERB[a.id] || a.t.t)}</span></li>`).join("")}</ul>` : `<div class="hlk">No runs scheduled in the feed.</div>`}</div>`);
+  // desks
+  const dd = id => PRIV && (PRIV.d || []).find(x => x.id === id);
+  const order = {f:0, x:0, vb:0, w:1, v:2, i:3, s:3, n:4};
+  const list = agents.slice().sort((a, b) => (order[a.code] ?? 5) - (order[b.code] ?? 5));
+  P.push(`<div class="hp s8"><h5>Team desks <i>who is working · what is stuck · what is next</i></h5><table class="dk"><thead><tr><th>Desk</th><th>State</th><th>Doing / last result</th><th>Last</th><th>Next</th><th>7 days</th></tr></thead><tbody>${
+    list.map(a => { const s = STATE[a.code] || STATE.n, r = rows[a.id], d = dd(a.id), j = d && d.jobs && d.jobs[0], hot = ["f","x","vb"].includes(a.code);
+      const doing = a.code === "w" ? nowText(a) : d && d.sum ? d.sum : a.id === "vesper" ? "Chief of staff, always on" : PRIV ? "–" : "🔒 private";
+      return `<tr data-id="${a.id}"${hot ? ' class="hot"' : ""}><td class="nm"><b>${esc(a.t.n)}</b><small>${esc(a.t.t.split(" · ")[0])}</small></td>
+        <td class="st"><span class="dot2" style="background:${s[1]};box-shadow:0 0 7px ${s[1]}"></span>${esc(s[0])}</td>
+        <td><span class="tx">${esc(doing)}</span>${j ? `<span class="tx tx2">Next: ${esc(j[1])}${j[2] ? " · " + esc(j[2]) : ""}</span>` : ""}</td>
+        <td class="tm">${r && r[2] ? esc(fmtT(r[2])) : "–"}</td><td class="tm">${r && r[3] ? esc(fmtT(r[3])) : "–"}</td>
+        <td class="wk">${d ? `<span class="ok">${d.ok7 || 0}✓</span> <span class="${d.fail7 ? "bad" : "sk"}">${d.fail7 || 0}✗</span>` : "–"}</td></tr>`; }).join("")}</tbody></table></div>`);
+  // KPI row, last 14 nights
+  const kcols = [["total_accounts", "Accts"], ["new_signups", "New"], ["founding_left", "F100"], ["ai_spend_usd", "AI $"], ["ig_followers", "IG"]].filter(c => K && K.cols.includes(c[0]));
+  P.push(`<div class="hp s4"><h5>KPI row <i>${K ? "last " + K.rows.length + " nights" : "nightly"}</i></h5>${!PRIV ? lock : !K ? `<div class="hlk">The first nightly KPI row hasn't arrived.</div>` :
+    `<table class="ht"><thead><tr><th>Night</th>${kcols.map(c => `<th>${c[1]}</th>`).join("")}</tr></thead><tbody>${K.rows.map((r, ri) => `<tr><td>${esc(dstr(String(r[0])))}</td>${kcols.map(c => {
+      const i = K.cols.indexOf(c[0]), v = numv(r[i]), pv = ri ? numv(K.rows[ri - 1][i]) : null;
+      const cls = v === null ? "z" : pv === null || v === pv || c[0] === "ai_spend_usd" || c[0] === "new_signups" ? "" : (v > pv) === (c[0] !== "founding_left") ? "up" : "dn";
+      return `<td class="${cls}">${v === null ? "·" : c[0] === "ai_spend_usd" ? v.toFixed(2) : v}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`}</div>`);
+  el.innerHTML = P.join("");
+  el.querySelectorAll(".dk tr[data-id]").forEach(tr => tr.onclick = () => openSheet(tr.dataset.id));
+}
+HUD_MQ.addEventListener ? HUD_MQ.addEventListener("change", renderHud) : HUD_MQ.addListener(renderHud);
 function spark(pts){ if (!pts || pts.length < 2) return `<div class="note">The trend line appears after two nightly counts.</div>`;
   const ys = pts.map(p => p[1]), lo = Math.min(...ys), hi = Math.max(...ys), r = hi - lo || 1, W2 = 300, H2 = 64;
   const xy = pts.map((p, i) => [i / (pts.length - 1) * (W2 - 8) + 4, H2 - 8 - (p[1] - lo) / r * (H2 - 18)]);
@@ -748,7 +894,7 @@ setInterval(load, 120000); setInterval(tick, 20000);
 // resumes from memory (no reload), so opening it again fires visibilitychange / pageshow / focus instead.
 // The page updates itself too: a home-screen app can keep an old copy of HQ in memory for days, so every refresh
 // checks the published build and reloads when a newer HQ is live.
-const HQ_BUILD = "2026-11-15.3";
+const HQ_BUILD = "2026-11-17.1";
 let lastRefresh = 0, lastBuildCheck = 0;
 async function newerBuild(){
   if (DEMO || location.protocol === "file:") return false;
