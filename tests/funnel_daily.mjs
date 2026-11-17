@@ -34,11 +34,13 @@ try {
   const act = (n, d) => `INSERT INTO activities (id, user_id, source, date, type, name, created) VALUES ('a-${n}-${d}', '${id[n]}', 'strava', '${d}', 'run', 'Run', '${d}T12:00:00.000Z');`;
   sql(`INSERT INTO done (user_id, key) VALUES ('${id.Checked}', '${day(-1)}-0'); INSERT INTO done (user_id, key) VALUES ('${id.Owner}', '${day(-1)}-0');
        ${act("Synced", day(-2))} ${act("Old", day(-20))} ${act("Robot", day(-1))} ${act("Owner", day(-1))}`);
+  // everyone joined 10 days ago (logins that day too); Synced joined through Checked's invite link
+  sql(`UPDATE users SET created = '${day(-10)}T09:00:00.000Z'; UPDATE sessions SET created = '${day(-10)}T09:00:00.000Z'; UPDATE users SET ref = '${id.Checked}' WHERE id = '${id.Synced}';`);
   const before = {done: sql("SELECT COUNT(*) AS n FROM done")[0].n, acts: sql("SELECT COUNT(*) AS n FROM activities")[0].n, profiles: sql("SELECT COUNT(*) AS n FROM profiles")[0].n};
 
   const tick = async () => { for (let k = 0; k < 4; k++){ try { if ((await fetch(API + "/__scheduled?cron=*+*+*+*+*")).ok) break; } catch(e){} await sleep(1000); } await sleep(4000); };
   await tick();
-  const rows = sql("SELECT day, signed_up, plan, checked_off, trained, trained_7d, d7_eligible, active_d7 FROM funnel_daily");
+  const rows = sql("SELECT day, signed_up, plan, checked_off, trained, trained_7d, d7_eligible, active_d7, returned, via_invite, referrers FROM funnel_daily");
   ok(rows.length === 1 && rows[0].day === new Date().toISOString().slice(0, 10), "cron wrote one row for today (" + rows.length + ")");
   const r = rows[0] || {};
   ok(r.signed_up === 5, "real members counted, owner and test account left out (" + r.signed_up + ")");
@@ -46,13 +48,15 @@ try {
   ok(r.checked_off === 1, "checked off in the app (" + r.checked_off + ")");
   ok(r.trained === 3, "trained = check-off OR synced workout (" + r.trained + ")");
   ok(r.trained_7d === 2, "trained in the last 7 days leaves out the 20-day-old run (" + r.trained_7d + ")");
+  ok(r.returned === 2, "returned = activity on a later day than sign-up: the check-off and the synced run, not the run from before joining (" + r.returned + ")");
+  ok(r.via_invite === 1 && r.referrers === 1, "joined through an invite and members who brought someone (" + r.via_invite + ", " + r.referrers + ")");
   const cols = sql("SELECT name FROM pragma_table_info('funnel_daily')").map(c => c.name);
   ok(!cols.some(c => /user|name|email|mi|pace|hr|src/i.test(c)), "funnel_daily holds totals only: " + cols.join(","));
   await tick();
   ok(sql("SELECT COUNT(*) AS n FROM funnel_daily")[0].n === 1, "second cron run the same day refreshes the row, no duplicate");
   ok(sql("SELECT COUNT(*) AS n FROM done")[0].n === before.done && sql("SELECT COUNT(*) AS n FROM activities")[0].n === before.acts && sql("SELECT COUNT(*) AS n FROM profiles")[0].n === before.profiles, "member data unchanged");
   const owner = await (await fetch(API + "/api/admin/funnel", {headers: {Authorization: "Bearer " + tok.Owner}})).json();
-  ok(owner.funnel && owner.funnel.workout === 3 && owner.funnel.trained === 3 && owner.funnel.checked_off === 1, "owner's Members funnel: workout = trained (" + JSON.stringify(owner.funnel) + ")");
+  ok(owner.funnel && owner.funnel.workout === 3 && owner.funnel.trained === 3 && owner.funnel.checked_off === 1 && owner.funnel.returned === 2, "owner's Members funnel: workout = trained (" + JSON.stringify(owner.funnel) + ")");
   const other = await fetch(API + "/api/admin/funnel", {headers: {Authorization: "Bearer " + tok.Checked}});
   ok(other.status === 403, "a member can't read the funnel (" + other.status + ")");
 } catch(e){ ok(false, "test crashed: " + (e && e.message)); }

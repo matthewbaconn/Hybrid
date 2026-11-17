@@ -11,5 +11,8 @@ CREATE TABLE IF NOT EXISTS funnel_daily (
   trained_7d INTEGER NOT NULL,    -- trained in the last 7 days (check-off or workout dated in the last 7 days)
   d7_eligible INTEGER NOT NULL,   -- joined 7+ days ago
   active_d7 INTEGER NOT NULL,     -- of those, still active after their first week
+  returned INTEGER NOT NULL DEFAULT 0,   -- came back: any activity (check-off, food, check-in, workout, login) on a later day than sign-up
+  via_invite INTEGER NOT NULL DEFAULT 0, -- joined through a member's invite link
+  referrers INTEGER NOT NULL DEFAULT 0,  -- members who brought at least one member
   updated TEXT NOT NULL
 );
