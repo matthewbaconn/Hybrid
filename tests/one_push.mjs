@@ -4,6 +4,10 @@
 //   - only one activity is kept (the Strava copy), and the coach's review moves onto it
 //   - the run is not reviewed (and so not announced) a second time
 //   - a Strava run with no Garmin twin is still reviewed as before
+// Also (Nov 16): giving a workout your own name (PUT /api/activity/:id/name, preview "rename"). Checks that the name
+//   - is saved only on your own workout, cleaned and cut to 60 characters; an empty name puts the original back
+//   - moves from the Garmin copy to the Strava copy that is kept, and is never undone by a later sync
+//   - is owner-only while "rename" is in PREVIEW
 //   cd api && node ../tests/one_push.mjs
 import http from "node:http";
 import {spawn, execFileSync} from "node:child_process";
@@ -11,7 +15,7 @@ import {mkdtempSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 
-const PORT = 8794, MOCK = 9914, API = "http://127.0.0.1:" + PORT;
+const PORT = 8794, MOCK = 9914, API = "http://127.0.0.1:" + PORT, OWNER = "owner-onep@mileset-test.dev";
 let failed = 0, aiCalls = 0, list = [];
 const ok = (cond, msg) => { console.log((cond ? "ok " : "::error::") + msg); if (!cond) failed++; };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -29,20 +33,22 @@ const dir = mkdtempSync(join(tmpdir(), "onep-"));
 const sql = q => JSON.parse(execFileSync("npx", ["wrangler", "d1", "execute", "hybrid", "--local", "--persist-to", dir, "--json", "--command", q], {encoding: "utf8", stdio: ["ignore", "pipe", "ignore"]}))[0].results;
 execFileSync("npx", ["wrangler", "d1", "migrations", "apply", "hybrid", "--local", "--persist-to", dir], {stdio: "ignore", env: {...process.env, CI: "1"}});
 const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--local-upstream", "127.0.0.1:" + PORT, "--persist-to", dir,
-  "--var", "STRAVA_BASE:http://127.0.0.1:" + MOCK, "--var", "ANTHROPIC_URL:http://127.0.0.1:" + MOCK + "/v1/messages", "--var", "ANTHROPIC_API_KEY:test-key"], {stdio: "ignore", detached: true});
+  "--var", "STRAVA_BASE:http://127.0.0.1:" + MOCK, "--var", "ANTHROPIC_URL:http://127.0.0.1:" + MOCK + "/v1/messages", "--var", "ANTHROPIC_API_KEY:test-key", "--var", "OWNER_EMAIL:" + OWNER], {stdio: "ignore", detached: true});
 const stop = () => { try { process.kill(-dev.pid); } catch(e){} mock.close(); rmSync(dir, {recursive: true, force: true}); };
 const iso = d => d.toISOString().slice(0, 10), addDays = (s, n) => { const d = new Date(s + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return iso(d); };
 
 try {
   for (let i = 0; i < 40; i++){ try { if ((await fetch(API + "/api/health")).ok) break; } catch(e){} await sleep(1500); }
   const call = (token, method, path, data) => fetch(API + path, {method, headers: {"Content-Type": "application/json", Origin: "http://localhost:8000", ...(token ? {Authorization: "Bearer " + token} : {})}, body: data ? JSON.stringify(data) : undefined});
-  const token = (await (await call(null, "POST", "/api/signup", {email: "onep-" + Date.now() + "@example.com", password: "one-push-test-123", name: "One Push", agree: true, adult: true})).json()).token;
+  const token = (await (await call(null, "POST", "/api/signup", {email: OWNER, password: "one-push-test-123", name: "One Push", agree: true, adult: true})).json()).token;
   ok(!!token, "signed up a throwaway local member");
   const today = iso(new Date()), dow = (new Date(today + "T12:00:00Z").getUTCDay() + 6) % 7, monday = addDays(today, -dow), far = Math.floor(Date.now() / 1000) + 86400;
   await call(token, "PUT", "/api/settings", {tz: "UTC"});
   const profile = {name: "One Push", goal: "half", raceDate: addDays(monday, 11 * 7 + 6), goalSec: 6240, weekly: 20, longest: 8, prDist: "10k", prSec: 2910, easyPace: null, weight: 178, goalWeight: 172, lifts: 3, liftExp: "Some", days: [1, 2, 3, 5, 6], longDay: 6};
   ok((await call(token, "PUT", "/api/profile", {profile})).ok, "plan saved");
-  const uid = sql("SELECT id FROM users ORDER BY created DESC LIMIT 1")[0].id;
+  const uid = sql("SELECT id FROM users WHERE email = '" + OWNER + "'")[0].id;
+  const rename = async (tok, id, name) => { const r = await call(tok, "PUT", "/api/activity/" + id + "/name", {name}); let j = null; try { j = await r.json(); } catch(e){} return {status: r.status, j}; };
+  const mine = async ext => ((await (await call(token, "GET", "/api/me")).json()).activities || []).find(a => a.ext_id === ext);
   sql(`INSERT INTO strava_links (user_id, athlete_id, access_token, refresh_token, expires_at) VALUES ('${uid}', 'ath-1', 't', 'r', ${far});
        INSERT INTO garmin_links (user_id, garmin_user_id, access_token, refresh_token, expires_at, connected) VALUES ('${uid}', 'g-1', 't', 'r', ${far}, '${today}')`);
   const n = q => sql(q)[0].n;
@@ -55,6 +61,13 @@ try {
   for (let i = 0; i < 12 && !n("SELECT COUNT(*) AS n FROM reviews WHERE user_id = '" + uid + "'"); i++) await sleep(1000);
   ok(n("SELECT COUNT(*) AS n FROM activities WHERE user_id = '" + uid + "' AND source = 'garmin'") === 1, "the Garmin copy of the run is stored");
   ok(n("SELECT COUNT(*) AS n FROM reviews WHERE user_id = '" + uid + "'") === 1 && aiCalls === 1, "the coach reviewed it once (AI calls: " + aiCalls + ")");
+
+  // 1b. the member gives the Garmin copy their own name
+  const gid = sql("SELECT id FROM activities WHERE user_id = '" + uid + "' AND source = 'garmin'")[0].id;
+  const r1 = await rename(token, gid, "  Sunday long run with Dad  ");
+  ok(r1.status === 200 && r1.j.name === "Sunday long run with Dad" && r1.j.src_name === "Evening Run", "rename: saved, trimmed, and the original name comes back with it (" + r1.status + " " + JSON.stringify(r1.j) + ")");
+  const m1 = await mine("ga1");
+  ok(m1 && m1.name === "Sunday long run with Dad" && m1.src_name === "Evening Run", "rename: the app is sent the new name, with the original underneath");
 
   // 2. a minute later Strava has the same run, plus a different run that Garmin never sent
   list = [{id: 777, start_date_local: startLocal + "Z", sport_type: "Run", name: "Evening Run", distance: 13003, moving_time: 3838, average_heartrate: 165, map: {summary_polyline: "abc"}},
@@ -72,9 +85,35 @@ try {
   ok(aiCalls === 1, "no extra AI call (Strava data never goes to the AI): " + aiCalls);
   ok(n("SELECT COUNT(*) AS n FROM events WHERE kind = 'strava_sync' AND detail LIKE '%1 already reviewed from Garmin%'") === 1, "the event log says one run was already reviewed from Garmin");
 
+  const m2 = await mine("777");
+  ok(m2 && m2.name === "Sunday long run with Dad" && m2.src_name === "Evening Run", "rename: the name moved from the Garmin copy to the Strava copy that is kept (" + (m2 && m2.name) + ")");
+
   // 3. syncing again changes nothing
   await call(token, "POST", "/api/strava/sync"); await sleep(2500);
   ok(n("SELECT COUNT(*) AS n FROM reviews WHERE user_id = '" + uid + "'") === 2 && n("SELECT COUNT(*) AS n FROM activities WHERE user_id = '" + uid + "'") === 2, "a second sync adds nothing");
+  const m3 = await mine("777");
+  ok(m3 && m3.name === "Sunday long run with Dad", "rename: a later sync (which writes Strava's name again) does not undo it");
+  ok(sql("SELECT name, title FROM activities WHERE ext_id = '777'")[0].name === "Evening Run", "rename: the original name is still stored underneath");
+
+  // 4. renaming: the edges
+  const sid = m3.id;
+  const junk = await rename(token, sid, "Tempo <script>alert(1)</script>\u0000\u202E day " + "x".repeat(80));
+  ok(junk.status === 200 && junk.j.name.length <= 60 && !/[<>\u0000-\u001F\u202E]/.test(junk.j.name) && /^Tempo script/.test(junk.j.name), "rename: tags and control characters are stripped and the name is cut to 60 (" + JSON.stringify(junk.j.name) + ")");
+  const same = await rename(token, sid, "Evening Run");
+  ok(same.status === 200 && same.j.name === "Evening Run" && same.j.src_name === null && sql("SELECT title FROM activities WHERE id = '" + sid + "'")[0].title === null, "rename: typing the original name back clears the rename");
+  await rename(token, sid, "Again");
+  const empty = await rename(token, sid, "   ");
+  ok(empty.status === 200 && empty.j.name === "Evening Run" && empty.j.src_name === null, "rename: an empty name puts the original back");
+  ok((await rename(token, sid, 12345)).status === 400 && (await rename(token, sid, {a: 1})).status === 400, "rename: a name that is not text is refused");
+  const otherTok = (await (await call(null, "POST", "/api/signup", {email: "onep-" + Date.now() + "@example.com", password: "one-push-test-123", name: "Other", agree: true, adult: true})).json()).token;
+  const oid = sql("SELECT id FROM users WHERE email LIKE 'onep-%'")[0].id;
+  sql(`INSERT INTO activities (id, user_id, source, ext_id, date, type, name, mi, minutes, created) VALUES ('aaaaaaaaaaaaaaaaaaaa', '${oid}', 'manual', NULL, '${today}', 'run', 'Their run', 3, 30, '${new Date().toISOString()}')`);
+  const theirs = await rename(token, "aaaaaaaaaaaaaaaaaaaa", "Mine now");
+  ok(theirs.status === 404 && sql("SELECT title FROM activities WHERE id = 'aaaaaaaaaaaaaaaaaaaa'")[0].title === null, "rename: someone else's workout cannot be renamed (" + theirs.status + ")");
+  ok((await rename(null, sid, "x y")).status === 401, "rename: no login, no rename");
+  const meOther = await (await call(otherTok, "GET", "/api/me")).json(), prev = await rename(otherTok, "aaaaaaaaaaaaaaaaaaaa", "My own run");
+  ok(meOther.features && meOther.features.rename === false && prev.status === 404, "rename (preview): a member who is not the owner is told it is off and gets 404 on their own workout");
+  ok((await (await call(token, "GET", "/api/me")).json()).features.rename === true, "rename (preview): on for the owner");
 } catch(e){ ok(false, "test crashed: " + (e && e.stack || e)); }
 finally { stop(); }
 console.log(failed ? failed + " problem(s)" : "ALL PASS");

@@ -267,6 +267,10 @@ button{cursor:pointer}
 .adet-h{display:flex;align-items:center;gap:10px}
 .adet-h .arrow{flex:none}
 .adet-h h1{font:800 24px/1.2 var(--f-display);margin:0;overflow-wrap:anywhere}
+.adet-h>div{flex:1;min-width:0} .adet-h .an-edit{flex:none;width:44px;height:44px;border:0;background:none;color:var(--muted);display:grid;place-items:center;border-radius:50%}
+.adet-h .an-edit svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.an-form{display:grid;gap:8px;margin:0 0 4px} .an-form input{width:100%;min-height:48px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:700 18px/1.2 var(--f-body)}
+.an-form .an-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap} .an-form .an-row .btn{min-height:44px} .an-form .err{margin:0}
 .agrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 10px}
 .agrid span{display:block;font-size:12.5px;color:var(--muted)} .agrid b{font:700 20px/1.25 var(--f-display)}
 .splits{display:grid;gap:6px;font-size:14px}
@@ -1022,6 +1026,18 @@ function workoutCard(){
 }
 /* ---------- activities feed with route maps (like Strava) ---------- */
 let actSel = null, actFilter = "all";
+/* Rename a workout (preview: features.rename). Like Strava: open the workout, tap the pencil, type your own name.
+   The name from Strava/Garmin is kept underneath, so "Use the original name" always works and a sync never undoes a rename. */
+let actName = null;   // {id, v, err, busy} while the name of the open workout is being edited
+const canRename = a => mode === "account" && !!(feat && feat.rename) && a && a.source !== "sample";
+const cleanName = v => String(v || "").replace(/[\u0000-\u001F\u007F<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+async function saveActName(id, v){
+  const a = acts.find(x => x.id === id); if (!a || !actName || actName.busy) return;
+  const name = cleanName(v); if (name === a.name){ actName = null; render(); return; }
+  actName = {id, v: name, err: "", busy: true}; render();
+  try { const j = await api("PUT", "/api/activity/" + id + "/name", {name}); a.name = j.name; a.src_name = j.src_name || null; save(); actName = null; render(); toast(j.src_name ? "Renamed." : "Back to the original name."); }
+  catch(e){ actName = {id, v: name, err: e.message || "That didn't save. Try again.", busy: false}; render(); }
+}
 const polyCache = new Map();
 function decodePoly(str){
   if (polyCache.has(str)) return polyCache.get(str);
@@ -1096,7 +1112,12 @@ function renderActivities(){
 }
 function actDetail(a){
   const pts = ptsOf(a), tone = ACT_TONE[a.type] || "long", rv = reviewFor(a);
-  let h = '<div class="adet-h"><button class="arrow" type="button" data-act="actback" aria-label="Back to activities">‹</button><div><h1>' + esc(a.name) + '</h1><span class="sub">' + whenTxt(a) + ' · ' + (a.source === "strava" ? 'Strava' : a.source === "sample" ? 'Sample' : 'Logged by hand') + '</span></div></div>';
+  let h = '<div class="adet-h"><button class="arrow" type="button" data-act="actback" aria-label="Back to activities">‹</button><div>' + (actName && actName.id === a.id
+    ? '<form class="an-form" id="an-form"><input id="an-q" type="text" maxlength="60" autocomplete="off" enterkeyhint="done" aria-label="Workout name" value="' + esc(actName.v) + '">' +
+      '<div class="an-row"><button class="btn primary" type="submit"' + (actName.busy ? ' disabled aria-busy="true"' : '') + '>' + (actName.busy ? 'Saving…' : 'Save') + '</button><button class="btn" type="button" data-act="ancancel">Cancel</button>' +
+      (a.src_name ? '<button class="linkbtn" type="button" data-act="anreset">Use the original name</button>' : '') + '</div>' + (actName.err ? '<p class="err" role="alert">' + esc(actName.err) + '</p>' : '') + '</form>'
+    : '<h1>' + esc(a.name) + '</h1>') + '<span class="sub">' + whenTxt(a) + ' · ' + (a.source === "strava" ? 'Strava' : a.source === "sample" ? 'Sample' : 'Logged by hand') + '</span></div>' +
+    (canRename(a) && !(actName && actName.id === a.id) ? '<button class="an-edit" type="button" data-act="anedit" aria-label="Rename this workout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 7.5l3 3"/></svg></button>' : '') + '</div>';
   if (pts && pts.length > 1) h += '<div class="amap big" data-map="' + esc(a.id) + '" data-big="1">' + routeSvg(pts) + '</div>';
   h += '<section class="card" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv, a) : '') + summaryHtml(a) + '</section>';
   let laps = null; try { laps = a.laps ? (typeof a.laps === "string" ? JSON.parse(a.laps) : a.laps) : null; } catch(e){}
@@ -2988,7 +3009,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "83";
+const APP_VERSION = "84";
 let reportView = null, isOwner = false, reports = [], feat = {};
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -3312,7 +3333,7 @@ function setTab(t, scroll){ nav("fade", () => setTab_(t, scroll)); }
 function setTab_(t, scroll){
   scr = null;
   if (!["today","plan","activities","recovery","training","more"].includes(t)) t = "today";
-  tab = t; if (t !== "plan") wkSel = null; if (t !== "activities") actSel = null;
+  tab = t; if (t !== "plan") wkSel = null; if (t !== "activities"){ actSel = null; actName = null; }
   try { if (location.hash !== "#" + t) history.replaceState(null, "", "#" + t); } catch(e){}
   render(); if (scroll) window.scrollTo(0, 0);
 }
@@ -3358,7 +3379,10 @@ document.addEventListener("click", ev => {
   }
   if (act === "actgo"){ const id = a.dataset.id; nav("fwd", () => { scr = null; tab = "activities"; actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actopen"){ const id = a.dataset.id; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
-  if (act === "actback"){ nav("back", () => { actSel = null; render(); }); return; }
+  if (act === "actback"){ nav("back", () => { actSel = null; actName = null; render(); }); return; }
+  if (act === "anedit"){ const x = acts.find(y => y.id === actSel); if (x && canRename(x)){ actName = {id: x.id, v: x.name, err: "", busy: false}; render(); const q = $("#an-q"); if (q){ q.focus(); q.select(); } } return; }
+  if (act === "ancancel"){ actName = null; render(); return; }
+  if (act === "anreset"){ if (actName) saveActName(actName.id, ""); return; }
   if (act === "afilt"){ actFilter = a.dataset.k; render(); return; }
   if (act === "gwsync"){
     gwBusy = true; render();
@@ -3823,7 +3847,8 @@ function readStepSoft(){ const keep = setup.err; readStep(); setup.err = keep &&
 document.addEventListener("keydown", ev => { if (ev.key === "Escape") closeMenu(); });
 document.addEventListener("touchstart", () => {}, {passive: true});
 ["gesturestart", "gesturechange", "gestureend"].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
-document.addEventListener("submit", ev => { if (ev.target.id === "askform"){ ev.preventDefault(); const q = $("#ask-q"); askSend(q ? q.value : ""); return; } if (ev.target.id === "rs-form"){ ev.preventDefault(); if (!rsv.busy) rsSearch(); return; } if (ev.target.id === "authform"){ ev.preventDefault(); if (!authv.busy) submitAuth(); } });
+document.addEventListener("input", ev => { if (ev.target.id === "an-q" && actName && !actName.busy) actName.v = ev.target.value; });
+document.addEventListener("submit", ev => { if (ev.target.id === "an-form"){ ev.preventDefault(); const q = $("#an-q"); if (actName) saveActName(actName.id, q ? q.value : actName.v); return; } if (ev.target.id === "askform"){ ev.preventDefault(); const q = $("#ask-q"); askSend(q ? q.value : ""); return; } if (ev.target.id === "rs-form"){ ev.preventDefault(); if (!rsv.busy) rsSearch(); return; } if (ev.target.id === "authform"){ ev.preventDefault(); if (!authv.busy) submitAuth(); } });
 window.addEventListener("hashchange", () => { if (!setup && plan) setTab(location.hash.slice(1), true); });
 
 tab = ["today","plan","activities","recovery","training","more"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "today";

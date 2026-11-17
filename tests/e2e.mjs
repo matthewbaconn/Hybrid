@@ -479,6 +479,41 @@ await check("Activities tab (feed + detail)", async () => {
   await page.click('[data-act="actback"]'); await page.waitForSelector(".afilt");
   return n + " activit" + (n === 1 ? "y" : "ies") + " · opened " + t;
 }, {needs: "Log a workout (with rep pace)"});
+await check("Rename a workout (preview): hidden for members; with it on, pencil, type, save, original back", async () => {
+  await tab("activities"); await page.waitForSelector(".actc", {timeout: 5000});
+  await page.click(".actc >> nth=0"); await page.waitForSelector(".adet-h h1");
+  // the test member is not the owner, so the preview is off for it
+  if (await page.locator('[data-act="anedit"]').count()) throw new Error("the rename pencil shows on an account that is not in the preview");
+  // Switch the preview on in the app's view only; the save goes to a stand-in that answers the way the API does.
+  const sent = []; let orig = null;
+  const me = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {...(j.features || {}), rename: true}; await route.fulfill({response: r, json: j}); };
+  const put = async route => { const b = route.request().postDataJSON(); sent.push(b); const nm = String(b.name || "").trim();
+    await route.fulfill({json: nm && nm !== orig ? {ok: true, name: nm, src_name: orig} : {ok: true, name: orig, src_name: null}}); };
+  await page.route("**/api/me", me); await page.route("**/api/activity/*/name", put);
+  try {
+    await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar"); await tab("activities"); await page.waitForSelector(".actc");
+    await page.click(".actc >> nth=0"); await page.waitForSelector(".adet-h h1"); orig = (await page.innerText(".adet-h h1")).trim();
+    await page.click('[data-act="anedit"]'); await page.waitForSelector("#an-q");
+    if ((await page.inputValue("#an-q")) !== orig) throw new Error("the name box does not start with the current name");
+    await noOverflow(); await shot("06d-rename", true);
+    await page.click('[data-act="ancancel"]'); await page.waitForSelector(".adet-h h1");
+    if ((await page.innerText(".adet-h h1")).trim() !== orig || sent.length) throw new Error("Cancel changed something");
+    await page.click('[data-act="anedit"]'); await page.fill("#an-q", "Sunday long run <b>with</b> Dad"); await page.press("#an-q", "Enter");
+    await page.waitForFunction(() => { const h = document.querySelector(".adet-h h1"); return h && /Sunday long run/.test(h.textContent); }, null, {timeout: 5000});
+    const shown = (await page.innerText(".adet-h h1")).trim();
+    if (await page.locator(".adet-h h1 b").count()) throw new Error("typed markup was put into the page");
+    if (!sent.length || /[<>]/.test(sent[sent.length - 1].name)) throw new Error("the name was not cleaned before it was sent: " + JSON.stringify(sent));
+    await page.click('[data-act="actback"]'); await page.waitForSelector(".actc");
+    if (!(await page.locator(".actc h3").allInnerTexts()).some(t => /Sunday long run/.test(t))) throw new Error("the new name does not show in the Activities list");
+    await page.click('.actc:has(h3:has-text("Sunday long run"))'); await page.waitForSelector('[data-act="anedit"]');
+    await page.click('[data-act="anedit"]'); await page.click('[data-act="anreset"]');
+    await page.waitForFunction(o => { const h = document.querySelector(".adet-h h1"); return h && h.textContent.trim() === o; }, orig, {timeout: 5000});
+    await page.click('[data-act="actback"]'); await page.waitForSelector(".afilt");
+    return '"' + orig + '" -> "' + shown + '" -> back to the original';
+  } finally {
+    await page.unroute("**/api/me", me); await page.unroute("**/api/activity/*/name", put); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
+  }
+}, {needs: "Log a workout (with rep pace)"});
 await check("Today overview", async () => {
   await tab("today"); const order = await page.$$eval("#app .view > *", els => els.map(e => e.classList.contains("ci-done") ? "readiness" : e.dataset.scr || e.className));
   const ci = order.indexOf("readiness"), fu = order.indexOf("fuel"), wo = order.findIndex(x => /\bsession\b/.test(x));
