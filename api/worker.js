@@ -550,6 +550,13 @@ async function askCoach(env, system, data){
    runs the same code as its own Move / Change workout screens. Strava data stays out of the prompt (noStrava). */
 const ASK_SCREENS = ["fuel", "weather", "weight", "workouts", "meals", "fuelplan", "settings", "set-train", "set-run", "set-profile", "set-acct", "set-watch", "set-notif", "set-hr", "set-help", "t-paces", "t-races", "set-report", "faq"];
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+// The model sometimes writes a screen's id ("the t-paces screen") in its answer: members see the name the app shows
+// instead (same names as SCR_T in index.html). A fixed rule after the model, so it holds whatever the model writes.
+const ASK_SCREEN_NAMES = {"set-train": "Coaching and training", "set-run": "Running", "set-profile": "Body and goals", "set-acct": "Account and profile",
+  "set-watch": "Devices and apps", "set-notif": "Notifications", "set-hr": "Heart rate zones", "set-help": "Help and support", "set-report": "Report a problem",
+  "t-paces": "Training paces", "t-races": "Race predictions", fuelplan: "Race fueling"};
+const SCREEN_ID_RE = new RegExp("\\b(" + Object.keys(ASK_SCREEN_NAMES).join("|") + ")\\b", "gi");   // only real ids: "set-up" stays a word
+const screenWords = t => t.replace(SCREEN_ID_RE, w => ASK_SCREEN_NAMES[w.toLowerCase()]);
 /* How Mileset decides things, in plain words, kept next to the code it describes (plan.js: readiness, ADJ, fitnessFrom,
    assess, deficitFor, fuel). Members can ask the coach to explain any of it ("pick apart the coach's brain", Matthew,
    Nov 16), so this has to stay true: change it whenever those rules change. */
@@ -639,7 +646,7 @@ async function askAnything(env, user, b){
   let text = j ? (typeof j.answer === "string" ? j.answer : "") : raw;
   if (!j && /^\s*(```[a-z]*\s*)?\{/.test(raw)){ const m = raw.match(/"answer"\s*:\s*"((?:[^"\\]|\\.)*)"/); text = ""; if (m && out.stop_reason !== "max_tokens"){ try { text = JSON.parse('"' + m[1] + '"'); } catch(e){} } }
   // the reply is shown as plain text: markup, tags and code fences are stripped here as well as escaped in the app
-  const answer = clip(String(text).replace(/```[a-z]*|<[^>]{0,300}>/gi, " ").replace(/[*_#`<>]/g, "").replace(/\s+/g, " ").trim(), 1000);
+  const answer = clip(screenWords(String(text)).replace(/```[a-z]*|<[^>]{0,300}>/gi, " ").replace(/[*_#`<>]/g, "").replace(/\s+/g, " ").trim(), 1000);
   if (!answer){ await logEvent(env, "ai_ask", false, "unreadable reply (" + (out && out.stop_reason) + ", " + raw.length + " chars)"); throw new HttpError(502, "The coach didn't answer. Try again in a moment."); }
   await env.DB.prepare("INSERT INTO ai_usage (user_id, day, count) VALUES (?, ?, 1) ON CONFLICT (user_id, day) DO UPDATE SET count = count + 1").bind(user.id, day).run();   // only answered questions count toward the day's 40
   const last = plan => HP.addDays(plan.start, plan.weeks.length * 7 - 1), inPlan = d => ISO_DAY.test(d) && d >= U0.plan.start && d <= last(U0.plan);
