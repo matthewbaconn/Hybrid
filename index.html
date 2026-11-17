@@ -3021,7 +3021,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "86";
+const APP_VERSION = "87";
 let reportView = null, isOwner = false, reports = [], feat = {};
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
@@ -3366,6 +3366,8 @@ document.addEventListener("click", ev => {
   if (act === "next"){
     if (setup.step >= 0){ const e = readStep(); if (e){ setup.err = e; render(); const el = $("#s-err"); if (el) el.scrollIntoView({block:"center"}); return; } }
     setup.err = ""; setup.step++;
+    // funnel question 4 (Nov 17): remember the furthest setup step a member reached, so we can see where people stop
+    if (mode === "account" && !plan && setup.step >= 1) api("POST", "/api/account/setup-step", {step: setup.step}).catch(() => {});
     if (setup.step === 4){
       const prof = {...setup.p, start: mondayOf(TODAY)}; delete prof.sample; delete prof.swaps;   // a new plan starts with no moved days
       // training location: from "Use my location", or look up the typed city (doesn't hold up the plan)
