@@ -322,6 +322,7 @@ await check("Ask bar (preview): hidden for members; with the preview on, ask, co
     if (gap < 2) throw new Error("the ask bar overlaps the Today button (gap " + gap + "px)");
     await noOverflow(); await shot("03-ask-bar", true);
     await page.click("#askbar"); await page.waitForSelector(".sheet.asks #ask-q");
+    if (!(await page.locator('.ask-chips button:has-text("How is my readiness score worked out?")').count())) throw new Error("the 'how did you work this out' starter questions are missing");
     await page.fill("#ask-q", "Can you move that workout a day later?"); await page.press("#ask-q", "Enter");
     await page.waitForSelector(".ask-acts .btn");
     if (asked[0].q !== "Can you move that workout a day later?") throw new Error("the question sent was: " + JSON.stringify(asked[0]));

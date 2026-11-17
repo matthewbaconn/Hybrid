@@ -412,6 +412,7 @@ body.has-ask .wrap{padding-bottom:calc(176px + env(safe-area-inset-bottom,0px))}
 .ask-log{display:grid;gap:10px;max-height:52dvh;overflow-y:auto;overscroll-behavior:contain;align-content:start}
 .ask-m{max-width:88%;padding:10px 13px;border-radius:14px;font-size:15px;line-height:1.45;overflow-wrap:anywhere} .ask-m.u{justify-self:end;background:color-mix(in srgb,var(--accent) 34%,#15171D);color:#fff} .ask-m.a{justify-self:start;background:#1F222B;color:var(--ink)} .ask-m.busy{color:var(--muted)}
 .ask-acts{display:grid;gap:8px;justify-self:start;max-width:100%} .ask-acts .btn{justify-content:flex-start;text-align:left;min-height:44px;white-space:normal;height:auto;padding:10px 14px} .ask-acts small{color:var(--muted);font-size:13px}
+.ask-about{font-size:13.5px;line-height:1.4;color:var(--muted);border-left:3px solid var(--accent-2);padding:2px 0 2px 10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden} .coach .askab{margin-top:8px}
 .ask-chips{display:flex;flex-wrap:wrap;gap:8px} .ask-chips button{min-height:40px;padding:0 14px;border-radius:999px;background:#1F222B;border:1px solid var(--line);color:var(--ink);font:500 14px var(--f-body);cursor:pointer}
 .ask-f{display:flex;gap:8px} .ask-f input{flex:1;min-width:0;min-height:46px;border-radius:999px;padding:0 16px;background:#0F1116;border:1px solid var(--line);color:var(--ink);font:16px var(--f-body)} .ask-f .btn{min-height:46px;border-radius:999px;padding:0 18px}
 .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -888,7 +889,8 @@ function reviewHtml(rv, a){
         [["easy", "Easy"], ["just right", "Just right"], ["hard", "Hard"], ["very hard", "Very hard"]].map(([k, l]) => '<button type="button" data-act="feel" data-id="' + esc(id) + '" data-f="' + k + '"' + (feelBusy === id ? ' disabled' : '') + '>' + l + '</button>').join("") + '</div>' +
         '<input class="feelnote" id="fn-' + esc(id) + '" maxlength="300" placeholder="Anything else? Legs, pace, how you slept (optional)">' : '') + '</div></div>';
   }
-  return '<div class="coach">' + ic("spark") + '<div><small class="ai">AI coach · can be wrong</small><b>' + esc(rv.headline) + '</b>' + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + (rv.feel ? '<p class="fine">From how you said it felt: ' + esc(rv.feel) + '.</p>' : '') + '</div></div>';
+  return '<div class="coach">' + ic("spark") + '<div><small class="ai">AI coach · can be wrong</small><b>' + esc(rv.headline) + '</b>' + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + (rv.feel ? '<p class="fine">From how you said it felt: ' + esc(rv.feel) + '.</p>' : '') +
+    (askOn() && (!a || a.source !== "strava") ? '<button class="linkbtn askab" type="button" data-act="askabout" data-t="' + esc([rv.headline, rv.meaning, rv.next ? "Next: " + rv.next : ""].filter(Boolean).join(" ").slice(0, 480)) + '">Ask about this</button>' : '') + '</div></div>';
 }
 let feelBusy = null;
 let notePending = false;
@@ -2174,7 +2176,7 @@ function isLastSwap(a, b){ const sw = plan.profile.swaps || [], x = sw[sw.length
    One line above the tab bar opens the coach. Questions go to /api/ask. The coach never changes anything: a change
    comes back as a button, worded here from the plan itself, and runs the app's own Move / Change workout code
    only when the member taps it. */
-let ask = {msgs: [], busy: false, err: "", hint: "", kind: ""};
+let ask = {msgs: [], busy: false, err: "", hint: "", kind: "", about: ""};
 const askOn = () => mode === "account" && !!(feat && feat.ask) && !!plan;
 function askBarShow(on){ const b = $("#askbar"), show = !!on && askOn(); if (b) b.hidden = !show; document.body.classList.toggle("has-ask", show); }
 const lc1 = t => /^(Today|Tomorrow|Yesterday)/.test(t) ? t.replace(/^[A-Z]/, c => c.toLowerCase()) : t;   // "tomorrow", but "Wednesday"
@@ -2198,19 +2200,21 @@ function askMsgHtml(m, mi){
     return l ? '<button class="btn" type="button" data-act="askdo" data-m="' + mi + '" data-i="' + i + '">' + esc(l) + '</button>' : '<small>That change isn\'t possible on your plan right now.</small>'; }).join("") + '</div>';
   return h;
 }
-function askOpen(hint, kind){
-  closeMenu(); ask.hint = hint || ""; ask.kind = kind || ""; ask.err = "";
+function askOpen(hint, kind, about){
+  closeMenu(); ask.hint = hint || ""; ask.kind = kind || ""; ask.about = about || ""; ask.err = "";
   const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
   b.innerHTML = '<div class="sheet asks" role="dialog" aria-modal="true" aria-label="Ask your coach"></div>';
   document.body.appendChild(b); askRender(true);
 }
 function askRender(focus, keep){
   const el = $(".sheet.asks"); if (!el) return;
-  const chips = ask.kind === "feel" ? ["Legs feel heavy today", "Slept badly, but I feel fine", "I feel great"] : ["Move today's workout to tomorrow", "How should I fuel today?", "Why this workout today?"];
+  const chips = ask.kind === "feel" ? ["Legs feel heavy today", "Slept badly, but I feel fine", "I feel great"]
+    : ask.about ? ["Why did you say this?", "What numbers is this based on?", "What should I do differently?"]
+    : ["Why this workout today?", "How is my readiness score worked out?", "How do you set my calories?", "Move today's workout to tomorrow"];
   el.innerHTML = '<div class="ask-h"><b>Coach</b><small class="ai">AI coach · can be wrong</small><button class="linkbtn r" type="button" data-act="askclose">Close</button></div>' +
-    '<div class="ask-log" aria-live="polite">' + (ask.msgs.length ? ask.msgs.map(askMsgHtml).join("") : '<p class="sub">Ask anything about your training, or tell me what to change. I suggest the change; nothing moves until you tap it.</p>') +
+    '<div class="ask-log" aria-live="polite">' + (ask.about ? '<p class="ask-about">About: ' + esc(ask.about) + '</p>' : '') + (ask.msgs.length ? ask.msgs.map(askMsgHtml).join("") : ask.about ? '' : '<p class="sub">Ask me anything, including how I worked something out: I show the rule and your numbers. Tell me what to change and I suggest it; nothing moves until you tap it.</p>') +
     (ask.busy ? '<p class="ask-m a busy">Thinking…</p>' : '') + '</div>' +
-    (!ask.busy && (!ask.msgs.length || ask.kind === "feel") ? '<div class="ask-chips">' + chips.map(c => '<button type="button" data-act="askchip">' + esc(c) + '</button>').join("") + '</div>' : '') +
+    (!ask.busy && (!ask.msgs.length || ask.kind === "feel" || ask.about) ? '<div class="ask-chips">' + chips.map(c => '<button type="button" data-act="askchip">' + esc(c) + '</button>').join("") + '</div>' : '') +
     (ask.err ? '<p class="err" role="alert">' + esc(ask.err) + '</p>' : '') +
     '<form id="askform" class="ask-f"><input id="ask-q" type="text" maxlength="600" autocomplete="off" enterkeyhint="send" placeholder="' + esc(ask.hint || "Ask, or say what to change") + '" aria-label="Message your coach" value="' + esc(keep || "") + '">' +
     '<button class="btn primary" type="submit"' + (ask.busy ? ' disabled' : '') + '>Send</button></form>';
@@ -2219,10 +2223,10 @@ function askRender(focus, keep){
 }
 async function askSend(q){
   q = String(q || "").replace(/\s+/g, " ").trim(); if (q.length < 2 || ask.busy) return;
-  const history = ask.msgs.slice(-6).map(m => ({role: m.role, text: m.text})), kind = ask.kind;
+  const history = ask.msgs.slice(-6).map(m => ({role: m.role, text: m.text})), kind = ask.kind, about = ask.about;
   ask.msgs.push({role: "user", text: q}); ask.busy = true; ask.err = ""; ask.hint = ""; askRender();
   let keep = "";
-  try { const j = await api("POST", "/api/ask", {q, history, ...(kind ? {kind} : {})}); ask.msgs.push({role: "assistant", text: String(j.answer || ""), actions: Array.isArray(j.actions) ? j.actions.slice(0, 2) : []}); ask.kind = ""; }
+  try { const j = await api("POST", "/api/ask", {q, history, ...(kind ? {kind} : {}), ...(about ? {about} : {})}); ask.msgs.push({role: "assistant", text: String(j.answer || ""), actions: Array.isArray(j.actions) ? j.actions.slice(0, 2) : []}); ask.kind = ""; }   // ask.about stays for follow-ups until the sheet is opened for something else
   catch(e){ ask.err = e.message; ask.msgs.pop(); keep = q; }
   ask.busy = false; if (ask.msgs.length > 40) ask.msgs = ask.msgs.slice(-40);
   askRender(true, keep);
@@ -3728,6 +3732,7 @@ document.addEventListener("click", ev => {
   if (act === "mvpick"){ doMove(a.dataset.a, a.dataset.b); return; }
   if (act === "askopen"){ if (askOn()) askOpen(); return; }
   if (act === "askfeel"){ if (askOn()) askOpen("How do you feel this morning?", "feel"); return; }
+  if (act === "askabout"){ if (askOn()) askOpen("Ask about this note", "", a.dataset.t || ""); return; }
   if (act === "askclose"){ closeMenu(); return; }
   if (act === "askchip"){ askSend(a.textContent); return; }
   if (act === "askdo"){ askDo(+a.dataset.m, +a.dataset.i); return; }

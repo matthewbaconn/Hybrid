@@ -67,13 +67,22 @@ try {
   ok(!wire.includes(OWNER) && !/owner-ask/.test(wire), "the member's email was NOT sent to the AI");
   ok(sent.messages.length === 3 && sent.messages[0].role === "user" && sent.messages[1].role === "assistant", "earlier messages travel with the question");
   ok(sent.max_tokens <= 700 && /ONLY JSON/.test(sent.system) && /cannot change anything yourself/.test(sent.system), "the AI is told it can only propose, and to keep it short");
+  // the coach's "brain": the app's real rules travel with every question, and so do the member's own numbers behind them
+  ok(/HOW MILESET WORKS/.test(sent.system) && /minus 8/.test(sent.system) && /Riegel/.test(sent.system) && /never under 1,500/.test(sent.system) && /show your working/.test(sent.system), "the AI is given the app's real rules and told to show its working");
+  const ctx = JSON.parse(sent.messages[2].content).context;
+  ok(ctx.training_paces && /^\d+:\d\d to \d+:\d\d$/.test(ctx.training_paces.easy) && /10k best of 48:30/.test(ctx.training_paces.from) && ctx.predicted_race_times && ctx.fuel_target_today && ctx.fuel_target_today.how && ctx.fuel_target_today.how.maintenance > 1500,
+    "the member's own paces (and where they come from) and how the calorie target was built are in the context");
+  reply = {answer: "Because of the rule.", actions: []};
+  await call(owner, "POST", "/api/ask", {q: "Why did you say this?", about: "Go easier today. HRV is below your normal."});
+  const said = JSON.parse(seen[seen.length - 1].messages.slice(-1)[0].content);
+  ok(said.coach_note_they_are_asking_about === "Go easier today. HRV is below your normal." && said.member_says === "Why did you say this?", "a coach note the member asks about travels with the question");
 
   // 3. a reply that isn't JSON still comes back as plain text with no actions; an empty question is refused
   reply = "Just rest today.";
   const jP = await (await call(owner, "POST", "/api/ask", {q: "Should I rest?"})).json();
   ok(jP.answer === "Just rest today." && Array.isArray(jP.actions) && jP.actions.length === 0, "a plain-text reply is passed through with no actions");
   ok((await call(owner, "POST", "/api/ask", {q: " "})).status === 400, "an empty question is refused");
-  ok(sql("SELECT count FROM ai_usage WHERE user_id = '" + uid + "' AND day LIKE 'ask:%'")[0].count === 2, "each answered question is counted toward the daily cap");
+  ok(sql("SELECT count FROM ai_usage WHERE user_id = '" + uid + "' AND day LIKE 'ask:%'")[0].count === 3, "each answered question is counted toward the daily cap");
 } catch(e){ ok(false, "test crashed: " + (e && e.stack || e)); }
 finally { stop(); }
 console.log(failed ? failed + " problem(s)" : "ALL PASS");
