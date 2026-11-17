@@ -69,4 +69,7 @@ catch(e){ failed++; console.log("::error::event-log privacy test failed"); }
 // The food-read retry test (Nov 17) runs here too, for the same reason.
 try { execFileSync("node", [new URL("./food_retry.mjs", import.meta.url).pathname], {stdio: "inherit"}); }
 catch(e){ failed++; console.log("::error::food-read retry test failed"); }
+// The report-kind test (Nov 17) runs here too, for the same reason.
+try { execFileSync("node", [new URL("./report_kind.mjs", import.meta.url).pathname], {stdio: "inherit"}); }
+catch(e){ failed++; console.log("::error::report kind test failed"); }
 process.exit(failed ? 1 : 0);
