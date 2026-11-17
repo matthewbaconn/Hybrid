@@ -404,6 +404,17 @@ button{cursor:pointer}
 .hub-hero + .hub-hero{margin-top:-26px;border-top:1px solid rgba(255,255,255,.08)}
 .wxs{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;margin-top:14px;padding:9px 14px;background:var(--surface);border:1px solid rgba(255,255,255,.05);border-radius:8px;color:var(--ink);font-family:inherit;text-align:left;cursor:pointer}
 .wxs .ic{width:20px;height:20px;flex:none;color:var(--work)} .wxs-t{font:700 24px/1 var(--f-display);flex:none} .wxs-c{display:grid;gap:2px;flex:1;min-width:0} .wxs-c b{font-size:14.5px;font-weight:600} .wxs-c span{font-size:13px;color:var(--muted)} .wxs > i{font-style:normal;color:var(--muted);flex:none}
+/* ask bar (preview): one line above the tab bar that opens the coach */
+.askbar{position:fixed;left:12px;right:12px;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:29;max-width:616px;margin:0 auto;display:flex;align-items:center;gap:10px;min-height:46px;padding:0 16px;border-radius:999px;background:#1C1F27;border:1px solid var(--line);box-shadow:0 8px 22px rgba(0,0,0,.5);color:var(--muted);font:500 15px/1 var(--f-body);text-align:left;cursor:pointer}
+.askbar .ic{width:18px;height:18px;flex:none;color:var(--accent-2)} .askbar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.has-ask .wrap{padding-bottom:calc(176px + env(safe-area-inset-bottom,0px))}
+.sheet.asks{gap:12px;align-content:start} .ask-h{display:flex;align-items:baseline;gap:10px} .ask-h b{font:700 18px/1.1 var(--f-display)} .ask-h .ai{font-size:12px;color:var(--muted)} .ask-h .r{margin-left:auto}
+.ask-log{display:grid;gap:10px;max-height:52dvh;overflow-y:auto;overscroll-behavior:contain;align-content:start}
+.ask-m{max-width:88%;padding:10px 13px;border-radius:14px;font-size:15px;line-height:1.45;overflow-wrap:anywhere} .ask-m.u{justify-self:end;background:color-mix(in srgb,var(--accent) 34%,#15171D);color:#fff} .ask-m.a{justify-self:start;background:#1F222B;color:var(--ink)} .ask-m.busy{color:var(--muted)}
+.ask-acts{display:grid;gap:8px;justify-self:start;max-width:100%} .ask-acts .btn{justify-content:flex-start;text-align:left;min-height:44px;white-space:normal;height:auto;padding:10px 14px} .ask-acts small{color:var(--muted);font-size:13px}
+.ask-about{font-size:13.5px;line-height:1.4;color:var(--muted);border-left:3px solid var(--accent-2);padding:2px 0 2px 10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden} .coach .askab{margin-top:8px}
+.ask-chips{display:flex;flex-wrap:wrap;gap:8px} .ask-chips button{min-height:40px;padding:0 14px;border-radius:999px;background:#1F222B;border:1px solid var(--line);color:var(--ink);font:500 14px var(--f-body);cursor:pointer}
+.ask-f{display:flex;gap:8px} .ask-f input{flex:1;min-width:0;min-height:46px;border-radius:999px;padding:0 16px;background:#0F1116;border:1px solid var(--line);color:var(--ink);font:16px var(--f-body)} .ask-f .btn{min-height:46px;border-radius:999px;padding:0 18px}
 .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .tl{background:var(--surface);border:1px solid rgba(255,255,255,.05);border-radius:8px;padding:18px;display:grid;gap:6px;align-content:start;min-height:132px;cursor:pointer;text-align:left;color:var(--ink);min-width:0}
 .tl.wide{grid-column:1/-1;min-height:0}
@@ -792,6 +803,7 @@ a.scard{text-decoration:none;color:var(--ink)}
   <button type="button" data-tab="training"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg><span>Progress</span></button>
   <button type="button" data-tab="more"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>More</span></button>
 </nav>
+<button type="button" class="askbar" id="askbar" data-act="askopen" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.94 14.06 4 20M14 4l1.5 4.5L20 10l-4.5 1.5L14 16l-1.5-4.5L8 10l4.5-1.5z"/></svg><span>Ask your coach or change your plan</span></button>
 
 <script src="plan.js"></script>
 <script>
@@ -853,12 +865,12 @@ function loadAccount(j){
   clearObj(checkins); (j.checkins || []).forEach(c => checkins[c.date] = c);
   clearObj(weights); (j.weights || []).forEach(w => weights[w.date] = w.lb);
   acts = j.activities || []; strava = j.strava || strava; garmin = j.garmin || {available: false, connected: false, last_push: null};
-  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {}; isOwner = !!j.owner; founding = j.founding || null; reports = j.reports || [];
+  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {}; isOwner = !!j.owner; feat = j.features || {}; founding = j.founding || null; reports = j.reports || [];
   liftLog = j.lifts || []; mealplan = j.mealplan || null; crews = j.crews || []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null;
   plan = j.profile ? buildPlan(j.profile) : null;
   setup = plan ? null : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
 }
-function signedOut(){ scr = null; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
+function signedOut(){ scr = null; feat = {}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
 const checkins = S.checkins || {};          // date -> {sleep_h, sleep_q, soreness, energy, stress}
 const weights = S.weights || {};            // date -> lb
@@ -877,7 +889,8 @@ function reviewHtml(rv, a){
         [["easy", "Easy"], ["just right", "Just right"], ["hard", "Hard"], ["very hard", "Very hard"]].map(([k, l]) => '<button type="button" data-act="feel" data-id="' + esc(id) + '" data-f="' + k + '"' + (feelBusy === id ? ' disabled' : '') + '>' + l + '</button>').join("") + '</div>' +
         '<input class="feelnote" id="fn-' + esc(id) + '" maxlength="300" placeholder="Anything else? Legs, pace, how you slept (optional)">' : '') + '</div></div>';
   }
-  return '<div class="coach">' + ic("spark") + '<div><small class="ai">AI coach · can be wrong</small><b>' + esc(rv.headline) + '</b>' + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + (rv.feel ? '<p class="fine">From how you said it felt: ' + esc(rv.feel) + '.</p>' : '') + '</div></div>';
+  return '<div class="coach">' + ic("spark") + '<div><small class="ai">AI coach · can be wrong</small><b>' + esc(rv.headline) + '</b>' + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + (rv.feel ? '<p class="fine">From how you said it felt: ' + esc(rv.feel) + '.</p>' : '') +
+    (askOn() && (!a || a.source !== "strava") ? '<button class="linkbtn askab" type="button" data-act="askabout" data-t="' + esc([rv.headline, rv.meaning, rv.next ? "Next: " + rv.next : ""].filter(Boolean).join(" ").slice(0, 480)) + '">Ask about this</button>' : '') + '</div></div>';
 }
 let feelBusy = null;
 let notePending = false;
@@ -919,7 +932,7 @@ function watchReadyCard(){
   const bits = [sg.sleep_h ? n1(sg.sleep_h) + ' h sleep' : '', sg.sleep_score != null ? 'sleep score ' + sg.sleep_score : '',
     sg.hrv ? 'HRV ' + Math.round(sg.hrv) + ' ms' + (sg.hrvA ? ' (your normal ' + Math.round(sg.hrvA) + ')' : '') : '',
     sg.rhr ? 'resting HR ' + Math.round(sg.rhr) + (sg.rhrA ? ' (your normal ' + Math.round(sg.rhrA) + ')' : '') : ''].filter(Boolean);
-  return '<section class="card ci-done wr" style="--tone:var(--' + r.tone + ')"><div class="ci-row"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>From your watch · ' + esc(bits.join(' · ')) + '</span></div><button class="linkbtn" type="button" data-act="ciopen">Add how you feel</button></div>' +
+  return '<section class="card ci-done wr" style="--tone:var(--' + r.tone + ')"><div class="ci-row"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>From your watch · ' + esc(bits.join(' · ')) + '</span></div>' + (askOn() ? '<button class="linkbtn" type="button" data-act="askfeel">Tell your coach how you feel</button>' : '<button class="linkbtn" type="button" data-act="ciopen">Add how you feel</button>') + '</div>' +
     (r.watch ? '<p class="sub">' + esc(r.watch.join(' · ')) + '.</p>' : '') + '</section>';
 }
 function checkinCard(){
@@ -939,7 +952,8 @@ function checkinCard(){
   return '<section class="card ci" style="--tone:var(--long)"><div class="ci-top"><b>Morning check-in</b><span>' + (d.fromWatch && ws ? 'sleep from your watch' : 'adjusts today') + '</span></div>' + hs +
     CIQ.map(([k, label, opts]) => '<div class="ciq"><span>' + label + '</span><div class="cio" role="group" aria-label="' + label + '">' +
       opts.map(([v, l]) => '<button type="button" class="' + (d[k] === v ? 'on' : '') + '" data-act="ciset" data-k="' + k + '" data-v="' + v + '" aria-pressed="' + (d[k] === v) + '">' + l + '</button>').join("") + '</div></div>').join("") +
-    (d.err ? '<p class="err" role="alert">' + esc(d.err) + '</p>' : '') + '<button class="btn primary block" type="button" data-act="cisave"' + (d.busy ? ' disabled aria-busy="true"' : '') + '>' + (d.busy ? 'Saving…' : 'Save') + '</button></section>';
+    (d.err ? '<p class="err" role="alert">' + esc(d.err) + '</p>' : '') + '<button class="btn primary block" type="button" data-act="cisave"' + (d.busy ? ' disabled aria-busy="true"' : '') + '>' + (d.busy ? 'Saving…' : 'Save') + '</button>' +
+    (!c && watchLinked() ? '<button class="linkbtn" type="button" data-act="ciclose" style="justify-self:center;margin-top:4px">Not now · back to my watch numbers</button>' : '') + '</section>';
 }
 
 /* ---------- weigh-in ---------- */
@@ -1210,6 +1224,15 @@ function reloadIfIdle(){
   else location.reload();
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkVersion(); });
+/* A new day: the app can sit open in the background overnight, and TODAY is set when it starts. Start it fresh when the
+   date has changed, so "today" is really today (yesterday's workout and an opened check-in used to stay on screen). */
+function newDay(){ if (isoLocal(new Date()) === TODAY || typing() || loading || setup || (fs && fs.busy) || (ci && ci.busy)) return; location.reload(); }
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") newDay(); });
+addEventListener("focus", newDay); setInterval(newDay, 5 * 60e3);
+/* Watch connected and the survey was only opened, not answered: leaving the app puts the watch's numbers back. */
+const ciUntouched = () => !ci || (!ci.busy && !CIQ.slice(1).some(([k]) => ci[k] != null));
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && (ci || ciForce) && !checkins[TODAY] && watchLinked() && ciUntouched()){ ci = null; ciForce = false; pendingRender = true; }
+  else if (document.visibilityState === "visible" && pendingRender && !typing()) safeRender(); });
 addEventListener("focus", checkVersion);
 setInterval(checkVersion, 4 * 60e3);
 document.addEventListener("focusout", () => setTimeout(reloadIfIdle, 400));
@@ -2149,6 +2172,86 @@ function moveBtn(date){ return canMoveFrom(date) && moveTargets(date).length ? '
 function lastSwap(date){ const sw = plan.profile.swaps || []; for (let i = sw.length - 1; i >= 0; i--) if (sw[i][0] === date || sw[i][1] === date) return {i, a: sw[i][0], b: sw[i][1]}; return null; }
 function movedNote(date){ const l = lastSwap(date); if (!l) return ''; const o = l.a === date ? l.b : l.a; if (date < TODAY && o >= TODAY) return ''; return 'Moved from ' + DAYF[dow(o)] + (weekOf(o) !== weekOf(date) ? ' ' + fmtD(o) : ''); }
 function isLastSwap(a, b){ const sw = plan.profile.swaps || [], x = sw[sw.length - 1]; return !!x && ((x[0] === a && x[1] === b) || (x[0] === b && x[1] === a)); }
+/* ---------- Ask bar (preview: only accounts whose /api/me says features.ask) ----------
+   One line above the tab bar opens the coach. Questions go to /api/ask. The coach never changes anything: a change
+   comes back as a button, worded here from the plan itself, and runs the app's own Move / Change workout code
+   only when the member taps it. */
+let ask = {msgs: [], busy: false, err: "", hint: "", kind: "", about: ""};
+const askOn = () => mode === "account" && !!(feat && feat.ask) && !!plan;
+function askBarShow(on){ const b = $("#askbar"), show = !!on && askOn(); if (b) b.hidden = !show; document.body.classList.toggle("has-ask", show); }
+const lc1 = t => /^(Today|Tomorrow|Yesterday)/.test(t) ? t.replace(/^[A-Z]/, c => c.toLowerCase()) : t;   // "tomorrow", but "Wednesday"
+function askLabel(a){   // what a proposed change would do, in the app's own words; null = not possible on this plan right now
+  if (a.type === "move"){
+    if (isLastSwap(a.from, a.to) && untouched(a.from) && untouched(a.to)) return 'Put ' + lc1(dayName(a.from < a.to ? a.from : a.to)) + ' and ' + lc1(dayName(a.from < a.to ? a.to : a.from)) + ' back the way they were';   // undoing the last move works either way round, even onto a now-empty day (doMove treats it as Put back)
+    const dA = dayOf(a.from), dB = dayOf(a.to); if (!dA || !dB || !dA.sessions.length || !canMoveFrom(a.from) || !moveTargets(a.from).some(d => d.date === a.to)) return null;
+    return 'Move ' + lc1(dayName(a.from)) + "'s " + sessShort(dA.sessions) + ' to ' + lc1(dayName(a.to)) + (dB.sessions.length ? ' (' + sessShort(dB.sessions) + ' goes to ' + lc1(dayName(a.from)) + ')' : '');
+  }
+  if (a.type === "change"){
+    const d = dayOf(a.date), x = d && d.sessions[0], m = d ? dayMatches(a.date) : {};
+    if (!x || !x.o || a.date < TODAY || x.type === "race" || sessDone(a.date, 0, m)) return null;
+    return 'Pick a different workout for ' + lc1(dayName(a.date)) + ' (' + x.title + ')';
+  }
+  if (a.type === "open") return SCR_T[a.screen] ? 'Open ' + SCR_T[a.screen] : null;
+  return null;
+}
+function askMsgHtml(m, mi){
+  if (m.role === "user") return '<p class="ask-m u">' + esc(m.text) + '</p>';
+  let h = '<p class="ask-m a">' + esc(m.text) + '</p>';
+  if (m.actions && m.actions.length) h += '<div class="ask-acts">' + m.actions.map((a, i) => { if (a.done) return '<small>✓ ' + esc(a.done) + '</small>'; const l = askLabel(a);
+    return l ? '<button class="btn" type="button" data-act="askdo" data-m="' + mi + '" data-i="' + i + '">' + esc(l) + '</button>' : '<small>That change isn\'t possible on your plan right now.</small>'; }).join("") + '</div>';
+  return h;
+}
+function askOpen(hint, kind, about){
+  closeMenu(); ask.hint = hint || ""; ask.kind = kind || ""; ask.about = about || ""; ask.err = "";
+  const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
+  b.innerHTML = '<div class="sheet asks" role="dialog" aria-modal="true" aria-label="Ask your coach"></div>';
+  document.body.appendChild(b); askRender(true);
+}
+function askRender(focus, keep){
+  const el = $(".sheet.asks"); if (!el) return;
+  const chips = ask.kind === "feel" ? ["Legs feel heavy today", "Slept badly, but I feel fine", "I feel great"]
+    : ask.about ? ["Why did you say this?", "What numbers is this based on?", "What should I do differently?"]
+    : ["Why this workout today?", "How is my readiness score worked out?", "How do you set my calories?", "Move today's workout to tomorrow"];
+  el.innerHTML = '<div class="ask-h"><b>Coach</b><small class="ai">AI coach · can be wrong</small><button class="linkbtn r" type="button" data-act="askclose">Close</button></div>' +
+    '<div class="ask-log" aria-live="polite">' + (ask.about ? '<p class="ask-about">About: ' + esc(ask.about) + '</p>' : '') + (ask.msgs.length ? ask.msgs.map(askMsgHtml).join("") : ask.about ? '' : '<p class="sub">Ask me anything, including how I worked something out: I show the rule and your numbers. Tell me what to change and I suggest it; nothing moves until you tap it.</p>') +
+    (ask.busy ? '<p class="ask-m a busy">Thinking…</p>' : '') + '</div>' +
+    (!ask.busy && (!ask.msgs.length || ask.kind === "feel" || ask.about) ? '<div class="ask-chips">' + chips.map(c => '<button type="button" data-act="askchip">' + esc(c) + '</button>').join("") + '</div>' : '') +
+    (ask.err ? '<p class="err" role="alert">' + esc(ask.err) + '</p>' : '') +
+    '<form id="askform" class="ask-f"><input id="ask-q" type="text" maxlength="600" autocomplete="off" enterkeyhint="send" placeholder="' + esc(ask.hint || "Ask, or say what to change") + '" aria-label="Message your coach" value="' + esc(keep || "") + '">' +
+    '<button class="btn primary" type="submit"' + (ask.busy ? ' disabled' : '') + '>Send</button></form>';
+  const log = el.querySelector(".ask-log"); if (log) log.scrollTop = log.scrollHeight;
+  if (focus){ const i = $("#ask-q"); if (i) i.focus({preventScroll: true}); }
+}
+async function askSend(q){
+  q = String(q || "").replace(/\s+/g, " ").trim(); if (q.length < 2 || ask.busy) return;
+  const history = ask.msgs.slice(-6).map(m => ({role: m.role, text: m.text})), kind = ask.kind, about = ask.about;
+  ask.msgs.push({role: "user", text: q}); ask.busy = true; ask.err = ""; ask.hint = ""; askRender();
+  let keep = "";
+  try { const j = await api("POST", "/api/ask", {q, history, ...(kind ? {kind} : {}), ...(about ? {about} : {})}); ask.msgs.push({role: "assistant", text: String(j.answer || ""), actions: Array.isArray(j.actions) ? j.actions.slice(0, 2) : []}); ask.kind = ""; }   // ask.about stays for follow-ups until the sheet is opened for something else
+  catch(e){ ask.err = e.message; ask.msgs.pop(); keep = q; }
+  ask.busy = false; if (ask.msgs.length > 40) ask.msgs = ask.msgs.slice(-40);
+  askRender(true, keep);
+}
+function askDo(mi, i){
+  const m = ask.msgs[mi], a = m && m.actions && m.actions[i]; if (!a || a.done) return;
+  const label = askLabel(a); if (!label){ askRender(); return; }
+  if (a.type === "move"){ a.done = label; doMove(a.from, a.to); return; }            // closes the sheet and says what moved
+  if (a.type === "change"){ closeMenu(); openChange(a.date + "-0"); return; }
+  if (a.type === "open"){ closeMenu(); go(a.screen); }
+}
+/* trade two days (the Move sheet's confirm button, and the coach's "move" button) */
+function doMove(A, B){
+  closeMenu(); mv = null;
+  const undoing = isLastSwap(A, B) && untouched(A) && untouched(B);
+  if (!undoing && (!canMoveFrom(A) || !canMove(B) || Math.abs(daysBetween(A, B)) > 7)){ toast("That day can't move any more."); render(); return; }
+  const prof = {...plan.profile}, sw = (prof.swaps || []).slice(), last = sw[sw.length - 1];
+  if (last && ((last[0] === A && last[1] === B) || (last[0] === B && last[1] === A))) sw.pop(); else sw.push([A, B]);
+  if (sw.length > 200){ toast("Too many moves on this plan. Rebuild it in Settings to start fresh."); return; }
+  if (sw.length) prof.swaps = sw; else delete prof.swaps;
+  const prev = plan; plan = buildPlan(prof); fbCache = null; save(); render();
+  toast((A < TODAY && !undoing ? dayName(A) + "'s workout moved to " + dayName(B).replace(/^[A-Z]/, c => c.toLowerCase()) + "." : undoing ? "Put back." : dayName(A) + " and " + dayName(B) + " swapped.") + (garmin.connected ? " Your Garmin calendar updates too." : ""));
+  if (mode === "account") api("PUT", "/api/profile", {profile: prof}).catch(e => { plan = prev; fbCache = null; render(); toast(e.message); });
+}
 /* the move sheet: a small calendar. Tap a day, see what your days look like after, confirm. */
 let mv = null;
 function openMove(date){
@@ -2556,12 +2659,12 @@ async function submitAuth(){
   } catch(e){ loading = false; if (authv){ authv.busy = false; authv.err = e.message; } else authv = {view: a.view, email: a.email, err: e.message}; render(); }
 }
 function render(){
-  if (loading){ bar.hidden = true; app.innerHTML = header() + '<section class="building"><div class="spin" aria-hidden="true"></div><p class="sub">Loading your plan…</p></section>'; return; }
-  if (authv){ bar.hidden = true; app.innerHTML = renderAuth(); return; }
-  if (needsConsent()){ bar.hidden = true; app.innerHTML = renderConsent(); return; }
-  if (setup){ bar.hidden = true; app.innerHTML = renderSetup(); return; }
+  if (loading){ bar.hidden = true; askBarShow(false); app.innerHTML = header() + '<section class="building"><div class="spin" aria-hidden="true"></div><p class="sub">Loading your plan…</p></section>'; return; }
+  if (authv){ bar.hidden = true; askBarShow(false); app.innerHTML = renderAuth(); return; }
+  if (needsConsent()){ bar.hidden = true; askBarShow(false); app.innerHTML = renderConsent(); return; }
+  if (setup){ bar.hidden = true; askBarShow(false); app.innerHTML = renderSetup(); return; }
   if (!plan){ setup = {step: -1, p: blankProfile()}; return render(); }
-  bar.hidden = false;
+  bar.hidden = false; askBarShow(!scr);
   bar.querySelectorAll("[data-tab]").forEach(b => b.dataset.tab === (tab === "recovery" ? "training" : tab) ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   if (scr && !SCR_T[scr]) scr = null;
   const keepMaps = {}; app.querySelectorAll(".amap[data-map]").forEach(e => { if (e._map) keepMaps[e.dataset.map + "|" + (e.dataset.big || "")] = e; });   // reuse live maps: no flash, no re-download
@@ -2873,8 +2976,8 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "79";
-let reportView = null, isOwner = false, reports = [];
+const APP_VERSION = "82";
+let reportView = null, isOwner = false, reports = [], feat = {};
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
   if (v.sent) return '<section class="card"><h2 class="sec-t" style="font-size:22px">Thanks, got it</h2><p class="sub">Your report was sent. We\'ll look into it.</p><button class="btn block" type="button" data-act="back">Done</button></section>';
@@ -3465,6 +3568,7 @@ document.addEventListener("click", ev => {
   if (act === "ciset"){ ci = ci || {}; ci[a.dataset.k] = +a.dataset.v; if (a.dataset.k === "sleep_h") ci.fromWatch = false; ci.err = ""; render(); return; }
   if (act === "ciedit"){ ci = {...checkins[TODAY]}; render(); return; }
   if (act === "ciopen"){ ciForce = true; render(); return; }
+  if (act === "ciclose"){ ci = null; ciForce = false; render(); return; }
   if (act === "cisave"){
     const d = ci || {}; if (CIQ.some(([k]) => d[k] == null)){ ci = {...d, err: "Answer all five so the plan can adjust."}; render(); return; }
     const c = {date: TODAY, sleep_h: d.sleep_h, sleep_q: d.sleep_q, soreness: d.soreness, energy: d.energy, stress: d.stress};
@@ -3626,19 +3730,13 @@ document.addEventListener("click", ev => {
   if (act === "mvopen"){ closeMenu(); if (canMoveFrom(a.dataset.date)) openMove(a.dataset.date); return; }
   if (act === "mvsel"){ if (mv){ mv.pick = mv.pick === a.dataset.d ? null : a.dataset.d; mvRender(); const c = $(".sheet.mvs .mvpv"); if (c) c.scrollIntoView({block: "nearest", behavior: "smooth"}); } return; }
   if (act === "mskip"){ try { localStorage.setItem("hy-mskip-" + a.dataset.date, "1"); } catch(e){} render(); return; }
-  if (act === "mvpick"){
-    const A = a.dataset.a, B = a.dataset.b; closeMenu(); mv = null;
-    const undoing = isLastSwap(A, B) && untouched(A) && untouched(B);
-    if (!undoing && (!canMoveFrom(A) || !canMove(B) || Math.abs(daysBetween(A, B)) > 7)){ toast("That day can't move any more."); render(); return; }
-    const prof = {...plan.profile}, sw = (prof.swaps || []).slice(), last = sw[sw.length - 1];
-    if (last && ((last[0] === A && last[1] === B) || (last[0] === B && last[1] === A))) sw.pop(); else sw.push([A, B]);
-    if (sw.length > 200){ toast("Too many moves on this plan. Rebuild it in Settings to start fresh."); return; }
-    if (sw.length) prof.swaps = sw; else delete prof.swaps;
-    const prev = plan; plan = buildPlan(prof); fbCache = null; save(); render();
-    toast((A < TODAY && !undoing ? dayName(A) + "'s workout moved to " + dayName(B).replace(/^[A-Z]/, c => c.toLowerCase()) + "." : undoing ? "Put back." : dayName(A) + " and " + dayName(B) + " swapped.") + (garmin.connected ? " Your Garmin calendar updates too." : ""));
-    if (mode === "account") api("PUT", "/api/profile", {profile: prof}).catch(e => { plan = prev; fbCache = null; render(); toast(e.message); });
-    return;
-  }
+  if (act === "mvpick"){ doMove(a.dataset.a, a.dataset.b); return; }
+  if (act === "askopen"){ if (askOn()) askOpen(); return; }
+  if (act === "askfeel"){ if (askOn()) askOpen("How do you feel this morning?", "feel"); return; }
+  if (act === "askabout"){ if (askOn()) askOpen("Ask about this note", "", a.dataset.t || ""); return; }
+  if (act === "askclose"){ closeMenu(); return; }
+  if (act === "askchip"){ askSend(a.textContent); return; }
+  if (act === "askdo"){ askDo(+a.dataset.m, +a.dataset.i); return; }
   if (act === "edit"){ closeMenu(); scr = null; const p = plan.profile.sample ? blankProfile() : {...plan.profile}; delete p.sample; delete p.start; setup = {step: 0, p}; render(); window.scrollTo(0, 0); return; }
   if (act === "reset"){ closeMenu(); scr = null; plan = null; for (const k in done) delete done[k]; for (const k in food) delete food[k]; store.set(null); setup = {step: -1, p: blankProfile()}; render(); window.scrollTo(0, 0); return; }
 });
@@ -3712,7 +3810,7 @@ function readStepSoft(){ const keep = setup.err; readStep(); setup.err = keep &&
 document.addEventListener("keydown", ev => { if (ev.key === "Escape") closeMenu(); });
 document.addEventListener("touchstart", () => {}, {passive: true});
 ["gesturestart", "gesturechange", "gestureend"].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
-document.addEventListener("submit", ev => { if (ev.target.id === "rs-form"){ ev.preventDefault(); if (!rsv.busy) rsSearch(); return; } if (ev.target.id === "authform"){ ev.preventDefault(); if (!authv.busy) submitAuth(); } });
+document.addEventListener("submit", ev => { if (ev.target.id === "askform"){ ev.preventDefault(); const q = $("#ask-q"); askSend(q ? q.value : ""); return; } if (ev.target.id === "rs-form"){ ev.preventDefault(); if (!rsv.busy) rsSearch(); return; } if (ev.target.id === "authform"){ ev.preventDefault(); if (!authv.busy) submitAuth(); } });
 window.addEventListener("hashchange", () => { if (!setup && plan) setTab(location.hash.slice(1), true); });
 
 tab = ["today","plan","activities","recovery","training","more"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "today";

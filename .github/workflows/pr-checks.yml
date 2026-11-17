@@ -31,6 +31,8 @@ jobs:
         run: cd api && node ../tests/one_push.mjs
       - name: Forged webhook test (own local API + fake Strava/Garmin; a post alone must never delete member data)
         run: cd api && node ../tests/webhooks.mjs
+      - name: Ask-bar test (own local API + stand-in AI; preview is owner-only, Strava data never reaches the AI, only allowed actions come back)
+        run: cd api && node ../tests/ask.mjs
       - name: Start the local API and app
         run: |
           rm -rf /tmp/site && mkdir /tmp/site && tar --exclude=./api --exclude=./.git --exclude=./node_modules -cf - . | tar -xf - -C /tmp/site
