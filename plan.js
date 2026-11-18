@@ -62,7 +62,10 @@ function fitnessFrom(p){
   // seconds per mile at each effort, from a recent race (Riegel) or a typical easy pace
   let base;
   if (p.prDist && p.prSec) base = {d: RACES[p.prDist].mi, t: p.prSec};
-  else { const easy = p.easyPace || 600; base = {d: 26.219, t: (easy - 80) * 26.219}; }
+  // no race and no pace given (setup's "leave it blank", Nov 17): start from current miles, slower for lower mileage,
+  // so a beginner's easy days really are easy; older profiles without a pace keep the 10:00 default unchanged
+  else { const easy = p.easyPace || (p.paceUnknown ? (p.weekly == null || p.weekly < 10 ? 690 : p.weekly < 25 ? 630 : 570) : 600);
+    base = {d: 26.219, t: (easy - 80) * 26.219}; }
   const T = d => riegel(base.t, base.d, d);
   const pred = {"5k": T(3.107), "10k": T(6.214), "half": T(13.109), "marathon": T(26.219)};
   const p5 = pred["5k"] / 3.107, p10 = pred["10k"] / 6.214, pH = pred.half / 13.109, pM = pred.marathon / 26.219;
