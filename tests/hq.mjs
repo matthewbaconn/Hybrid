@@ -41,7 +41,7 @@ for (const [name, w, h] of [['phone', 390, 844], ['desktop', 1280, 900]]) {
 // on a desktop the key leaves the address bar, in iPhone Safari it stays so "Add to Home Screen" keeps it
 const KEY = 'B'.repeat(43);
 for (const [name, opts] of [['desktop', { viewport: { width: 1280, height: 900 } }],
-                            ['iphone', { viewport: { width: 390, height: 844 }, isMobile: true, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1' }]]) {
+                            ['iphone', { viewport: { width: 390, height: 844 }, isMobile: true, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1 Playwright MilesetTest' }]]) {
   const ctx = await b.newContext(opts), p = await ctx.newPage();
   p.on('pageerror', e => errs.push(`${name} link: ${e.message}`));
   await p.goto(page + '#k=' + KEY); await p.waitForTimeout(600);

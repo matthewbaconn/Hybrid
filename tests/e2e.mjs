@@ -7,11 +7,18 @@ const SITE = process.env.SITE || "https://app.hybrdrunning.com/";
 const SHOTS = process.env.SHOTS || "e2e-shots";
 const FAST = !!process.env.LOCAL;          // local runs: no internet weather/AI waits
 fs.mkdirSync(SHOTS, {recursive: true});
-const iPhone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+// " Playwright MilesetTest" marks this as test traffic: the live visit counter (api/worker.js BOT_UA) skips it, so the
+// nightly runs stop showing up as website visits (B2b, Nov 17). "iPhone" stays in it, so the app still treats it as an iPhone.
+const iPhone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1 Playwright MilesetTest";
 const results = [], problems = [];
 let step = "";
 const ok = (name, detail) => { results.push("✅ " + name + (detail ? " — " + detail : "")); console.log("ok   " + name + (detail ? " — " + detail : "")); };
 const fail = (name, detail) => { problems.push(name + ": " + detail); results.push("❌ " + name + " — " + detail); console.log("FAIL " + name + " — " + detail); };
+// B2b guard: this browser's identity must be one the live visit counter skips (api/worker.js BOT_UA), or every
+// run inflates the website visit numbers again. It must still read as an iPhone to the app.
+{ const w = fs.readFileSync(new URL("../api/worker.js", import.meta.url), "utf8"), m = w.match(/const BOT_UA = \/(.+)\/i;/), bot = m && new RegExp(m[1], "i");
+  if (bot && bot.test(iPhone) && /iPhone/.test(iPhone)) ok("Test traffic is marked, so it is never counted as a website visit");
+  else fail("Test traffic is marked, so it is never counted as a website visit", "the visit counter's bot filter does not match this test's user agent"); }
 // One failed check must not break the ones after it (Nov 14: three nightly runs each had ONE real failure that
 // cascaded into 4-14, because the page was left on a stuck screen). After any failure the app is reloaded to its
 // home screen (and signed back in if needed). A check that continues from a failed one is reported as "not run",
@@ -380,6 +387,32 @@ await check("Ask bar: shows only when the server says so; ask, confirm a move, p
     await page.unroute("**/api/me", me); await page.unroute("**/api/ask", coach); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
   }
 }, {needs: "Build a plan (4 steps)"});
+await check("Readiness card: ring, plain sentence, 3 numbers vs normal, small", async () => {
+  const today = await page.evaluate(() => HP.isoLocal(new Date()));
+  const HPaddDays = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+  const me = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {...(j.features || {}), ask: true, ready2: true}; j.ai = {on: true, asked: true, needs: false, available: true}; j.coach = true;
+    j.checkins = (j.checkins || []).filter(c => c.date !== today);
+    j.health = [1, 2, 3, 4, 5].map(i => ({date: HPaddDays(today, -i), sleep_h: 7.4, sleep_score: 80, hrv: 55, rhr: 52, source: "garmin"})).concat([{date: today, sleep_h: 8.9, sleep_score: 88, hrv: 64, rhr: 48, source: "garmin"}]);
+    await route.fulfill({response: r, json: j}); };
+  await page.route("**/api/me", me);
+  try {
+    await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar"); await tab("today"); await page.waitForSelector(".rcard");
+    const t = (await page.textContent(".rcard")).replace(/\s+/g, " ");
+    if (!/Ready to train/.test(t) || !/Train as planned/.test(t) || !/8\.9 h/.test(t) || !/64 ms/.test(t) || !/48/.test(t) || !/Garmin device-sourced/.test(t)) throw new Error("readiness card text: " + t.slice(0, 260));
+    if ((await page.locator(".rcard .rchip.up").count()) !== 3) throw new Error("all three numbers are better than normal here, so all three should show ▲");
+    const h = await page.evaluate(() => Math.round(document.querySelector(".rcard").getBoundingClientRect().height));
+    if (h > 300) throw new Error("readiness card is " + h + "px tall");
+    await noOverflow(); await shot("03d-readiness-v2", true);
+    // the coach sheet follows the visible area (the keyboard shrinks it on a phone)
+    await page.click('.rcard [data-act="askfeel"]'); await page.waitForSelector(".sheet.asks #ask-q");
+    const vp = page.viewportSize(); await page.setViewportSize({width: vp.width, height: Math.round(vp.height * 0.55)}); await page.waitForTimeout(500);
+    const fit = await page.evaluate(() => { const b = document.querySelector(".back"), f = document.querySelector("#askform"); const vv = window.visualViewport; return {bh: Math.round(b.getBoundingClientRect().height), vh: Math.round(vv.height), fb: Math.round(f.getBoundingClientRect().bottom)}; });
+    await page.setViewportSize(vp);
+    if (Math.abs(fit.bh - fit.vh) > 2 || fit.fb > fit.vh) throw new Error("the coach sheet does not fit the visible area: " + JSON.stringify(fit));
+    await page.click('.sheet.asks [data-act="askclose"]');
+    return h + "px tall · sheet fits a " + fit.vh + "px visible area";
+  } finally { await page.unroute("**/api/me", me); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar"); }
+});
 await check("AI coach consent: a Garmin member is asked once; yes turns the coach on, the Settings switch turns it off", async () => {
   // Only the app's view changes: /api/me says "Garmin linked, never asked", and the save goes to a stand-in that answers the way the API does.
   let st = {on: false, asked: false, needs: true, available: true}; const puts = [];
