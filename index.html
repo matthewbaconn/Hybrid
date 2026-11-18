@@ -461,7 +461,8 @@ a.srow{text-decoration:none;box-sizing:border-box}
 .zr div{flex:1;min-width:0} .zr b{display:block;font-weight:600} .zr span{font-size:13px;color:var(--muted)}
 .zr .zp{width:52px;min-height:30px;padding:0 6px;font-size:14px;text-align:center;display:inline-block;margin:0 2px}
 .zr em{font-style:normal;font-weight:700;white-space:nowrap}
-.dark-tiles{filter:invert(1) hue-rotate(180deg) brightness(1.05) contrast(1.05) saturate(.5)}
+.dark-tiles{filter:invert(1) hue-rotate(180deg) brightness(1.45) contrast(.92) saturate(.75)}   /* Nov 18: a little brighter */
+.shbtn{display:flex;align-items:center;justify-content:center;gap:8px}.shbtn svg{width:18px;height:18px}
 
 /* setup */
 .setup{display:grid;gap:22px}
@@ -1160,6 +1161,7 @@ function actDetail(a){
     : '<h1>' + esc(a.name) + '</h1>') + '<span class="sub">' + whenTxt(a) + ' · ' + (a.source === "strava" ? 'Strava' : a.source === "garmin" ? 'Garmin' : a.source === "sample" ? 'Sample' : 'Logged by hand') + '</span></div>' +
     (canRename(a) && !(actName && actName.id === a.id) ? '<button class="an-edit" type="button" data-act="anedit" aria-label="Rename this workout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 7.5l3 3"/></svg></button>' : '') + '</div>';
   if (pts && pts.length > 1) h += '<div class="amap big" data-map="' + esc(a.id) + '" data-big="1">' + routeSvg(pts) + '</div>';
+  if (a.mi > 0 || (pts && pts.length > 1)) h += '<button class="btn block shbtn" type="button" data-act="ashare" data-id="' + esc(a.id) + '">' + ic("share") + ' Share image</button>';
   h += '<section class="card" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv, a) : '') + summaryHtml(a) + '</section>';
   let laps = null; try { laps = a.laps ? (typeof a.laps === "string" ? JSON.parse(a.laps) : a.laps) : null; } catch(e){}
   laps = (laps || []).filter(l => l[0] > 50 && l[1] > 0);
@@ -1172,6 +1174,65 @@ function actDetail(a){
   if (a.source === "manual") h += '<button class="btn block" type="button" data-act="adel" data-id="' + esc(a.id) + '" style="color:var(--crit)">Delete this workout</button>';
   if (a.source === "strava" && a.ext_id) h += '<a class="linkbtn" style="justify-self:center" href="https://www.strava.com/activities/' + esc(a.ext_id) + '" target="_blank" rel="noopener" style="justify-self:center;color:#FC5200">View on Strava</a>';
   return h;
+}
+/* Share image (Matthew, Nov 18: "an overlay for after runs that clients can paste anywhere, similar to Strava"). A 1080x1350
+   picture of the workout: route, distance, pace or speed, time, the date and the Mileset mark. Drawn on the phone from
+   the member's own workout (nothing is uploaded); shared with the phone's share sheet, or saved as a PNG. */
+function shareStats(a){
+  const st = [];
+  if (a.mi > 0) st.push(["Distance", r2(a.mi) + " mi"]);
+  if (a.type === "run" && a.mi > 0 && a.minutes > 0) st.push(["Pace", fmtPace(a.minutes * 60 / a.mi) + " /mi"]);
+  else if (a.type === "bike" && a.mi > 0 && a.minutes > 0) st.push(["Speed", (Math.round(a.mi / a.minutes * 600) / 10) + " mph"]);
+  if (a.minutes) st.push(["Time", durTxt(a.minutes)]);
+  if (st.length < 3 && a.elev_ft) st.push(["Elevation", comma(a.elev_ft) + " ft"]);
+  if (st.length < 3 && a.avg_hr) st.push(["Avg HR", a.avg_hr + " bpm"]);
+  return st.slice(0, 3);
+}
+async function shareImage(a){
+  const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  try { await document.fonts.load('800 64px Archivo'); await document.fonts.load('600 32px Inter'); } catch(e){}
+  const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, "#1A080C"); bg.addColorStop(.55, "#0E0F14"); bg.addColorStop(1, "#0A0B0F");
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  const pts = ptsOf(a);
+  if (pts && pts.length > 1){
+    let y0 = 90, y1 = -90, x0 = 180, x1 = -180; pts.forEach(([y, x]) => { y0 = Math.min(y0, y); y1 = Math.max(y1, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); });
+    const k = Math.cos((y0 + y1) / 2 * Math.PI / 180), w = Math.max((x1 - x0) * k, 1e-5), h = Math.max(y1 - y0, 1e-5);
+    const bx = 110, by = 250, bw = W - 220, bh = 640, s = Math.min(bw / w, bh / h);
+    const P = ([y, x]) => [bx + (bw - w * s) / 2 + (x - x0) * k * s, by + (bh - h * s) / 2 + (y1 - y) * s];
+    const step = Math.max(1, Math.floor(pts.length / 1500)), q = pts.filter((_, i) => i % step === 0 || i === pts.length - 1).map(P);
+    const line = (wd, col) => { g.beginPath(); q.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.lineWidth = wd; g.strokeStyle = col; g.lineJoin = g.lineCap = "round"; g.stroke(); };
+    line(34, "rgba(190,56,62,.22)"); line(18, "rgba(255,90,95,.35)"); line(9, "#FF5A5F");
+    const dot = ([x, y], col) => { g.beginPath(); g.arc(x, y, 14, 0, 7); g.fillStyle = col; g.fill(); g.lineWidth = 5; g.strokeStyle = "#0E0F14"; g.stroke(); };
+    dot(q[0], "#FFFFFF"); dot(q[q.length - 1], "#FF5A5F");
+  }
+  const fit = (t, f, max) => { g.font = f; while (g.measureText(t).width > max && t.length > 4) t = t.slice(0, -2).trimEnd() + "…"; return t; };
+  g.textBaseline = "alphabetic";
+  g.fillStyle = "#FFFFFF"; g.fillText(fit(a.name || "Workout", "800 66px Archivo, system-ui, sans-serif", W - 160), 80, 140);
+  const day = a.date ? new Date(a.date + "T12:00:00").toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric", year: "numeric"}) : "";
+  const tm = a.start_local && a.start_local.length >= 16 ? new Date(a.start_local.slice(0, 16) + ":00").toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit"}) : "";
+  g.fillStyle = "#A7ACB8"; g.font = "600 32px Inter, system-ui, sans-serif"; g.fillText(fit([day, tm].filter(Boolean).join(" · ") || whenTxt(a), g.font, W - 160), 82, 192);   // a real date: the picture outlives "yesterday"
+  const st = shareStats(a), cw = (W - 160) / Math.max(1, st.length);
+  st.forEach(([k, v], i) => {
+    const x = 80 + i * cw;
+    g.fillStyle = "#8A90A0"; g.font = "700 26px Inter, system-ui, sans-serif"; g.fillText(k.toUpperCase(), x, 1010);
+    g.fillStyle = "#FFFFFF"; g.fillText(fit(v, "800 " + (st.length > 2 ? 62 : 72) + "px Archivo, system-ui, sans-serif", cw - 24), x, 1085);
+  });
+  g.fillStyle = "#BE383E"; g.fillRect(80, 1170, W - 160, 4);
+  g.fillStyle = "#FFFFFF"; g.font = "800 44px Archivo, system-ui, sans-serif"; g.fillText("MILESET", 80, 1250);
+  g.fillStyle = "#A7ACB8"; g.font = "600 28px Inter, system-ui, sans-serif"; g.textAlign = "right";
+  g.fillText((a.source === "strava" ? "Data via Strava · " : a.source === "garmin" ? "Data via Garmin · " : "") + "Train for anything", W - 80, 1248);
+  g.textAlign = "left";
+  return new Promise(r => c.toBlob(r, "image/png"));
+}
+async function shareRun(a){
+  let blob; try { blob = await shareImage(a); } catch(e){ return toast("Couldn't make the image. Try again."); }
+  if (!blob) return toast("Couldn't make the image. Try again.");
+  const name = "mileset-" + (a.date || "workout") + ".png", file = new File([blob], name, {type: "image/png"});
+  try { if (navigator.canShare && navigator.canShare({files: [file]})){ await navigator.share({files: [file]}); return; } }
+  catch(e){ if (e && e.name === "AbortError") return; }
+  const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = name; document.body.appendChild(l); l.click(); l.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 10000); toast("Image saved");
 }
 /* maps: the route is drawn right away; dark street tiles load on top when the card scrolls into view */
 let LP = null, mapObs = null;
@@ -3086,7 +3147,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "100";
+const APP_VERSION = "101";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3208,8 +3269,10 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-18.3";
+const NEW_ID = "2026-11-18.4";
 const NEWS = [
+  ["share", "Share your run as an image", "Open a workout and tap Share image: a picture with your route, distance, pace and time, ready for your story or a group chat.", "activities", null, "2026-11-18.4"],
+  ["watch", "A brighter route map", "Workout maps are easier to read: brighter streets under your route.", "activities", null, "2026-11-18.4"],
   ["spark", "Stress nudges from your Garmin", "When your watch shows a stressful stretch, you get one short nudge to breathe, or a rest-day suggestion on a very hard day. Turn it off in Settings, Notifications.", "settings", null, "2026-11-18.3"],
   ["check", "Sleep check in your morning note", "After a night far outside your normal sleep, the morning notification says how far off it was and what it usually means for today's training.", null, null, "2026-11-18.3"],
   ["spark", "Rough night? Adjust today", "Open the coach bar and tap Rough night: adjust today. The coach offers an easier day as buttons, plus fluids and simple food, and says when to skip training.", null, null, "2026-11-18.2"],
@@ -3505,6 +3568,7 @@ document.addEventListener("click", ev => {
     return;
   }
   if (act === "actgo"){ const id = a.dataset.id; nav("fwd", () => { scr = null; tab = "activities"; actSel = id; render(); window.scrollTo(0, 0); }); return; }
+  if (act === "ashare"){ const x = feedActs().find(y => y.id === a.dataset.id); if (x) shareRun(x); return; }
   if (act === "actopen"){ const id = a.dataset.id; scrollMem[viewKey()] = window.scrollY; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actback"){ nav("back", () => { actSel = null; actName = null; render(); restoreScroll(viewKey()); }); return; }
   if (act === "anedit"){ const x = acts.find(y => y.id === actSel); if (x && canRename(x)){ actName = {id: x.id, v: x.name, err: "", busy: false}; render(); const q = $("#an-q"); if (q){ q.focus(); q.select(); } } return; }
