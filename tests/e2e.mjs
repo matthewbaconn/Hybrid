@@ -327,9 +327,15 @@ await check("Ask bar: shows only when the server says so; ask, confirm a move, p
   if (says !== null && shown !== says) throw new Error("the server says the ask bar is " + (says ? "on" : "off") + " for this account but the app " + (shown ? "shows" : "hides") + " it");
   // Switch the preview on for this account in the app's view only, with a stand-in coach (no AI call, nothing leaves the test).
   await tab("plan"); await page.waitForSelector(".day-h .mvb");
-  const from = await page.evaluate(() => { const today = HP.isoLocal(new Date()); return [...document.querySelectorAll(".day-h .mvb")].map(b => b.dataset.date).filter(d => d > today)[0] || null; });
-  if (!from) throw new Error("no future day to move in the test plan");
-  const to = await page.evaluate(d => HP.addDays(d, 1), from), asked = [];
+  // a future day with a workout whose next day is a valid target (a rest day can carry a Move button too, and the coach's
+  // Move is only offered for a day that has sessions: picking the first future day failed on days the plan rests, Nov 18)
+  const pick = await page.evaluate(() => { const today = HP.isoLocal(new Date());
+    for (const d of [...document.querySelectorAll(".day-h .mvb")].map(b => b.dataset.date).filter(d => d > today)){
+      const t = HP.addDays(d, 1), a = document.getElementById("d-" + d), b = document.getElementById("d-" + t);
+      if (a && !a.classList.contains("t-rest") && b && !b.classList.contains("t-race")) return [d, t]; }
+    return null; });
+  if (!pick) throw new Error("no future workout day to move in the test plan");
+  const [from, to] = pick, asked = [];
   const me = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {ask: true}; await route.fulfill({response: r, json: j}); };
   const coach = async route => { const b = route.request().postDataJSON(); asked.push(b);
     await route.fulfill({json: {answer: "Done thinking: moving it a day keeps your long run fresh.", actions: [{type: "move", from, to}, {type: "open", screen: "fuel"}]}}); };
@@ -491,6 +497,17 @@ await check("Activities tab (feed + detail)", async () => {
   await page.click('[data-act="actback"]'); await page.waitForSelector(".afilt");
   return n + " activit" + (n === 1 ? "y" : "ies") + " · opened " + t;
 }, {needs: "Log a workout (with rep pace)"});
+await check("Back lands where you were (Progress card -> back, Activities detail -> back)", async () => {
+  await tab("training"); await page.waitForSelector('.pc[data-scr="p-fit"]');
+  await page.evaluate(() => { const c = document.querySelector('.pc[data-scr="p-fit"]'); window.scrollTo(0, Math.max(0, c.getBoundingClientRect().top + window.scrollY - 200)); });
+  await page.waitForTimeout(150); const y0 = await page.evaluate(() => Math.round(window.scrollY));
+  if (y0 < 50) throw new Error("the test page is too short to scroll (" + y0 + ")");
+  await page.click('.pc[data-scr="p-fit"]'); await page.waitForSelector(".scrbar"); await page.waitForTimeout(250);
+  await page.click('[data-act="back"]'); await page.waitForSelector('.pc[data-scr="p-fit"]'); await page.waitForTimeout(350);
+  const y1 = await page.evaluate(() => Math.round(window.scrollY));
+  if (Math.abs(y1 - y0) > 4) throw new Error("back from Your fitness went to " + y1 + ", was " + y0);
+  return "Progress: back to " + y1 + "px (was " + y0 + ")";
+});
 await check("Rename a workout: the pencil shows when the server says so; type, save, see it in the list, original back", async () => {
   // released Nov 17: the pencil shows exactly when /api/me says features.rename
   const [meResp] = await Promise.all([page.waitForResponse(r => /\/api\/me$/.test(r.url()) && r.request().method() === "GET" && r.ok(), {timeout: 20000}).catch(() => null), page.reload({waitUntil: "networkidle"})]);

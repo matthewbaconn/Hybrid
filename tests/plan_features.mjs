@@ -75,4 +75,15 @@ for (const goal of ["hyrox", "tri_olympic", "everyday"]){
   const pm = HP.buildPlan({goal, raceDate: goal === "everyday" ? null : "2027-03-07", days: [0, 1, 3, 4, 6], longDay: 6, weekly: 15, longest: 6, hours: 6, lifts: 2, fitLevel: "some", liftDays: [1, 4]}, today);
   t(pm.weeks.slice(0, 4).every(w => [1, 4].every(d => w.days[d].sessions.some(s => s.type === "lift"))), goal + ": lifts land on the pinned Tue + Fri");
 }
+// Nov 17: easy pace is optional in setup ("leave it blank"). Blank = paces from current miles, slower for fewer miles;
+// older profiles without a pace keep the 10:00 default (their plans don't change).
+{ const base = {goal: "5k", raceDate: HP.addDays(today, 70), days: [1, 3, 6], longDay: 6, longest: 3, prDist: "none", prSec: null, easyPace: null};
+  const E = q => HP.fitnessFrom ? HP.fitnessFrom(q).pace.E[0] : null;
+  const pl0 = HP.buildPlan({...base, weekly: 5, paceUnknown: true}, today);
+  t(pl0 && pl0.weeks.length > 0, "a plan builds with no race and no pace");
+  if (HP.fitnessFrom){
+    t(E({...base, weekly: 5, paceUnknown: true}) > E({...base, weekly: 30, paceUnknown: true}), "blank pace: fewer miles = slower easy pace");
+    t(Math.abs(E({...base, weekly: 5}) - E({...base, weekly: 30})) < 1, "older profiles without a pace keep the same default");
+  }
+}
 console.log(bad ? bad + " failed" : "ALL PASS"); process.exit(bad ? 1 : 0);
