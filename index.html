@@ -2593,7 +2593,7 @@ function renderSetup(){
       '<div class="q"><label for="s-longest">Longest recent run (mi)</label><input id="s-longest" inputmode="decimal" placeholder="6" value="' + (p.longest ?? '') + '"></div></div>' +
       '<div class="q"><span class="ql">A recent race or time trial</span><p class="hint">This sets your paces. Any distance in the last 3 months.</p>' + optList("prDist", [["5k","5K"],["10k","10K"],["half","Half"],["marathon","Marathon"],["none","None yet"]], p.prDist || "none") + '</div>' +
       (p.prDist && p.prDist !== "none" ? '<div class="q"><label for="s-pr">Your time</label><input id="s-pr" inputmode="numeric" placeholder="' + ({"5k":"24:30","10k":"52:00","half":"1:55:00","marathon":"4:10:00"}[p.prDist]) + '" value="' + (p.prSec ? fmtTime(p.prSec) : '') + '"></div>'
-        : '<div class="q"><label for="s-easy">Typical easy pace (per mile)</label><input id="s-easy" inputmode="numeric" placeholder="10:30" value="' + (p.easyPace ? fmtPace(p.easyPace) : '') + '"></div>');
+        : '<div class="q"><label for="s-easy">Typical easy pace (per mile, optional)</label><input id="s-easy" inputmode="numeric" placeholder="10:30" value="' + (p.easyPace ? fmtPace(p.easyPace) : '') + '"><p class="hint">Not sure? Leave it blank. Your plan starts at an easy, conversational effort.</p></div>');
   } else if (st.step === 2){
     body = '<h2 class="sec-t">' + (p.goal === "everyday" ? 'Strength and your body' : 'Strength and body') + '</h2>' +
       '<div class="q"><span class="ql">Lifting days per week</span>' + optList("lifts", [["0","None"],["1","1"],["2","2"],["3","3"],["4","4"]], p.lifts) + '</div>' +
@@ -2632,7 +2632,10 @@ function readStep(){
     if (p.weekly == null || p.weekly < 0 || p.weekly > 120) return "Enter your miles per week (0 is fine).";
     if (p.longest == null) p.longest = Math.max(2, Math.round(p.weekly * .3));
     if (document.getElementById("s-pr")){ const t = parseTime(v("s-pr")); if (v("s-pr") && !t) return "Type your time as numbers, like 2430 for 24:30."; p.prSec = t; if (!t) return "Add your race time, or pick None yet."; p.easyPace = null; }
-    if (document.getElementById("s-easy")){ const t = parseTime(v("s-easy")); if (!t || t < 300 || t > 1200) return "Type your easy pace as numbers, like 1030 for 10:30."; p.easyPace = t; p.prSec = null; p.prDist = "none"; }
+    if (document.getElementById("s-easy")){   // optional (Nov 17): a beginner often doesn't know it; blank = start easy, adjust from runs
+      const raw = v("s-easy"), t = raw ? parseTime(raw) : null;
+      if (raw && (!t || t < 300 || t > 1200)) return "Type your easy pace as numbers, like 1030 for 10:30, or leave it blank.";
+      p.easyPace = t || null; p.paceUnknown = !t; p.prSec = null; p.prDist = "none"; }
   } else if (st.step === 2){
     p.lifts = +(radio("lifts") || 0); p.liftExp = radio("liftExp") || p.liftExp;
     const be = readBody(p, "s"); if (be) return be;
@@ -3021,7 +3024,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "86";
+const APP_VERSION = "87";
 let reportView = null, isOwner = false, reports = [], feat = {};
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
