@@ -710,7 +710,7 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .board.big li{padding:14px 0;font-size:16px}
 .crewc{cursor:pointer}
 .code{font:700 34px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;text-align:center;padding:14px;border-radius:8px;background:var(--sunk);user-select:all}
-.code.invurl{font-size:15px;letter-spacing:0;overflow-wrap:anywhere;margin:10px 0}.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.invbig{font:800 44px/1.1 var(--f-display);margin:4px 0 12px}.invbig+.wkstats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.code.invurl{font-size:15px;letter-spacing:0;overflow-wrap:anywhere;margin:10px 0}.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.invbig{font:800 44px/1.1 var(--f-display);margin:4px 0 12px}.rw{display:grid;gap:8px;margin:10px 0 4px}.rwbar{display:flex;gap:6px}.rwbar i{flex:1;height:8px;border-radius:4px;background:var(--line,#333)}.rwbar i.on{background:var(--accent-2,#BE383E)}.invbig+.wkstats{grid-template-columns:repeat(2,minmax(0,1fr))}
 .stbtn{border:0;padding:0;background:none;display:block;justify-self:center;line-height:0;border-radius:6px;transition:transform .08s ease,opacity .12s}.stbtn img{display:block;height:48px;width:auto}.stbtn:active{transform:scale(.97);opacity:.9}.stwrap{padding:0 0 16px;display:grid;border-bottom:1px solid var(--line)}.stbtn:disabled{opacity:.6}
 .cws{display:flex;width:fit-content;align-items:center;background:#fff;border-radius:4px;padding:5px 8px;margin-top:8px;font-style:normal;line-height:0}.cws img{height:10px;width:auto;display:block}
 
@@ -876,7 +876,7 @@ function loadAccount(j){
   plan = j.profile ? buildPlan(j.profile) : null;
   setup = plan ? null : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
 }
-function signedOut(){ scr = null; feat = {}; aiSt = {on: true, asked: true, needs: false, available: false}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
+function signedOut(){ scr = null; feat = {}; inv = null; revOpen = false; aiSt = {on: true, asked: true, needs: false, available: false}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
 const checkins = S.checkins || {};          // date -> {sleep_h, sleep_q, soreness, energy, stress}
 const weights = S.weights || {};            // date -> lb
@@ -3042,7 +3042,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "92";
+const APP_VERSION = "93";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3312,13 +3312,31 @@ function inviteCard(){
   if (skip && daysBetween(skip, TODAY) < 7) return '';
   if (fspots == null){ fspots = -1; api("GET", "/api/founding").then(j => { fspots = j.left; render(); }).catch(() => { fspots = 0; }); return ''; }
   if (fspots <= 0) return '';
-  return '<section class="card invc" style="--tone:var(--accent-2)"><div class="card-h">' + ic("share") + '<span class="lbl">Bring a training partner</span><button class="linkbtn r" type="button" data-act="invskip">Not now</button></div>' +
+  if (feat.refreward) loadInvites();
+  const rw = feat.refreward && inv && inv.d && inv.d.reward;
+  return '<section class="card invc" style="--tone:var(--accent-2)"><div class="card-h">' + ic("share") + '<span class="lbl">' + (feat.refreward ? 'Bring 2 training partners' : 'Bring a training partner') + '</span><button class="linkbtn r" type="button" data-act="invskip">Not now</button></div>' +
     '<p class="sub">' + fspots + ' Founding 100 spot' + (fspots === 1 ? '' : 's') + ' left. Anyone who joins before Jan 1 gets Mileset free for life, like you.</p>' +
+    (rw ? rewardHtml(rw) : '') +
     '<button class="btn primary block" type="button" data-act="invite">' + ic("share") + 'Send an invite</button>' +
     '<button class="linkbtn" type="button" data-act="go" data-scr="invites" style="justify-self:center">See who joined through your link</button></section>';
 }
 /* Your invite link: the member's own link and how many joined through it (counts only, never names) */
-let inv = null;
+let inv = null, revOpen = false;
+function loadInvites(){
+  if (inv && !inv.stale) return;
+  if (!inv || !inv.busy){ inv = {busy: true, d: inv && inv.d}; api("GET", "/api/invites").then(j => { inv = {d: j}; if (scr === "invites" || (!scr && tab === "today")) render(); }).catch(e => { inv = {err: e.message}; if (scr === "invites") render(); }); }
+}
+/* Referral reward (preview "refreward"): 2 training partners who join through your link and build a plan unlock a
+   personal plan review from Matthew. Counts only; the member never sees who. Nothing beyond the review is promised. */
+function rewardHtml(r){
+  const bar = '<div class="rwbar" role="img" aria-label="' + r.have + ' of ' + r.need + '">' + Array.from({length: r.need}, (_, i) => '<i class="' + (i < r.have ? 'on' : '') + '"></i>').join("") + '</div>';
+  if (r.requested) return '<div class="rw">' + bar + '<p class="sub"><b>Plan review requested.</b> Matthew will look over your plan and email you.</p></div>';
+  if (!r.earned) return '<div class="rw">' + bar + '<p class="sub"><b>' + r.have + ' of ' + r.need + '</b> friends joined and built a plan. At ' + r.need + ', Matthew reviews your plan personally.</p></div>';
+  if (!revOpen) return '<div class="rw">' + bar + '<p class="sub"><b>You earned a plan review.</b> ' + r.need + ' friends joined through your link and built a plan.</p>' +
+    '<button class="btn block" type="button" data-act="revopen">Ask Matthew for your plan review</button></div>';
+  return '<div class="rw form">' + bar + '<label>Anything you want him to look at? (optional)<textarea id="rv-note" maxlength="300" rows="3" placeholder="Your race, a goal, a week that feels off"></textarea></label>' +
+    '<button class="btn primary block" type="button" data-act="revsend">Send to Matthew</button></div>';
+}
 function inviteUrl(){ return location.origin + location.pathname + (me && me.id ? "?ref=" + me.id.slice(0, 8) : ""); }
 function invitesHtml(){
   if (!inv || inv.stale){ if (!inv || !inv.busy){ inv = {busy: true, d: inv && inv.d}; api("GET", "/api/invites").then(j => { inv = {d: j}; if (scr === "invites") render(); }).catch(e => { inv = {err: e.message}; if (scr === "invites") render(); }); } }
@@ -3328,6 +3346,7 @@ function invitesHtml(){
     '<div class="row2"><button class="btn primary" type="button" data-act="invite">' + ic("share") + 'Share</button><button class="btn" type="button" data-act="invcopy">Copy link</button></div></section>';
   if (inv && inv.err && !d) return h + '<section class="card"><p class="sub">Couldn\'t load your stats: ' + esc(inv.err) + '</p></section>';
   if (!d) return h + '<section class="card"><p class="sub">Loading…</p></section>';
+  if (d.reward) h += '<section class="card" style="--tone:var(--accent-2)"><div class="card-h"><span class="lbl">Your plan review</span></div>' + rewardHtml(d.reward) + '</section>';
   h += '<section class="card"><div class="card-h"><span class="lbl">Joined through your link</span></div><div class="invbig" data-n="' + d.joined + '">' + d.joined + '</div>' +
     '<div class="wkstats"><div><span>Last 7 days</span><b>' + d.week + '</b></div><div><span>Built a plan</span><b>' + d.plan + '</b></div></div>' +
     (d.weeks.length ? '<ul class="fl">' + d.weeks.map(w => '<li><div class="fi"><b>Week of ' + fmtD(w.start) + '</b></div><span class="r">' + w.n + ' joined</span></li>').join("") + '</ul>' : '<p class="sub">No one yet. Share your link to get started.</p>') +
@@ -3364,7 +3383,7 @@ function membersHtml(){
     '<label>Message<small>Type {name} and each person sees their own first name. Links work. Every email has an unsubscribe link.</small><textarea id="ml-body" rows="7" maxlength="8000" placeholder="Hey {name},&#10;&#10;…">' + esc(mv.message || "") + '</textarea></label>' +
     (mv.err ? '<p class="err" role="alert">' + esc(mv.err) + '</p>' : '') +
     '<div class="fbtns"><button class="btn" type="button" data-act="mltest"' + (mv.busy ? ' disabled' : '') + '>Send me a test</button><button class="btn primary" type="button" data-act="mlsend"' + (mv.busy ? ' disabled aria-busy="true"' : '') + '>' + (mv.busy ? 'Sending…' : 'Send to ' + reach) + '</button></div></section>';
-  h += '<section class="card"><ul class="fl mlist">' + L.map(m => '<li><div class="fi"><b>' + esc(m.name || m.email.split("@")[0]) + '</b><span>' + esc(m.email) + '</span><span>' + (m.goal ? esc(m.goal) + (m.race_date ? ' · ' + fmtD(m.race_date) : '') : 'No plan yet') + ' · joined ' + fmtD(joined(m)) + ' · active ' + ago(seen(m)) + (m.src ? ' · from ' + esc(m.src) : '') + (m.ref_name ? ' · invited by ' + esc(m.ref_name) : '') + (m.invited ? ' · invited ' + m.invited : '') + '</span></div>' +
+  h += '<section class="card"><ul class="fl mlist">' + L.map(m => '<li><div class="fi"><b>' + esc(m.name || m.email.split("@")[0]) + '</b><span>' + esc(m.email) + '</span><span>' + (m.goal ? esc(m.goal) + (m.race_date ? ' · ' + fmtD(m.race_date) : '') : 'No plan yet') + ' · joined ' + fmtD(joined(m)) + ' · active ' + ago(seen(m)) + (m.src ? ' · from ' + esc(m.src) : '') + (m.ref_name ? ' · invited by ' + esc(m.ref_name) : '') + (m.invited ? ' · invited ' + m.invited : '') + (m.review ? ' · plan review ' + esc(m.review) + (m.review_note ? ': "' + esc(m.review_note) + '"' : '') : '') + '</span></div>' +
     '<span class="mtags">' + (m.strava ? '<em class="chip2" style="color:#FC5200">Strava</em>' : '') + (m.garmin ? '<em class="chip2">Garmin</em>' : '') + (m.no_mail ? '<em class="chip2">No emails</em>' : '') + '</span></li>').join("") + '</ul></section>';
   return h;
 }
@@ -3462,6 +3481,13 @@ document.addEventListener("click", ev => {
   }
   if (act === "invcopy"){ const u = inviteUrl(); if (navigator.clipboard) navigator.clipboard.writeText(u).then(() => toast("Link copied."), () => toast(u)); else toast(u); return; }
   if (act === "invskip"){ try { localStorage.setItem("hy-invskip", TODAY); } catch(e){} render(); return; }
+  if (act === "revopen"){ revOpen = true; render(); return; }
+  if (act === "revsend"){
+    const el = document.getElementById("rv-note"), note = el ? el.value : "";
+    api("POST", "/api/invites/review", {note}).then(() => { revOpen = false; if (inv && inv.d && inv.d.reward) inv.d.reward.requested = "requested"; toast("Sent. Matthew will email you."); render(); })
+      .catch(e => toast(e.message));
+    return;
+  }
   if (act === "invite"){
     const url = location.origin + location.pathname + (me && me.id ? "?ref=" + me.id.slice(0, 8) : ""), msg = "I've been training with Mileset. It builds a plan for your race, sets your food targets and adjusts when you're tired. Try it free: " + url;
     if (navigator.share) navigator.share({title: "Mileset", text: msg}).catch(() => {});
