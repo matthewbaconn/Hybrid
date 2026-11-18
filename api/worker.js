@@ -104,7 +104,8 @@ async function ownerIdRaw(env){
    "ask" (the coach bar) was released Nov 17 after its stress test passed, so the list is empty for now.
    PREVIEW_ADD is for tests only (tests/ask.mjs sets it to "ask" so the owner-only switch stays tested); it can only
    narrow who sees a feature, never widen it. */
-const PREVIEW = new Set(["liftdays", "rough", "source"]);   // source: one-time "How did you hear about Mileset?" (Nov 18)   // rough = "Rough night: adjust today" in the coach bar (Nov 17), Matthew's account first;   // liftdays: pin which days you lift (setup, "When can you run?"), Nov 17. "rename" was released Nov 17 on Matthew's word ("Release rename")
+const PREVIEW = new Set(["liftdays", "rough", "refreward", "source"]);   // source: one-time "How did you hear about Mileset?" (Nov 18)   // "refreward": bring 2 training partners -> a plan review from Matthew (built Nov 17, audit P1-8);   // rough = "Rough night: adjust today" in the coach bar (Nov 17), Matthew's account first;   // liftdays: pin which days you lift (setup, "When can you run?"), Nov 17. "rename" was released Nov 17 on Matthew's word ("Release rename")
+const REWARD_NEED = 2;   // referral reward: training partners who joined through your link and built a plan
 const previewOk = async (env, user, k) => !(PREVIEW.has(k) || String(env.PREVIEW_ADD || "").split(",").includes(k)) || user.id === await ownerId(env);
 
 /* ---------- AI food reading ---------- */
@@ -1409,7 +1410,7 @@ async function route(req, env, path, ctx){
         workouts: gl.results[0] ? (/WORKOUT_IMPORT/.test(gl.results[0].permissions || "") ? gl.results[0].wk : (gl.results[0].permissions ? -1 : null)) : null},
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
       settings: meSet, ai: {...meAi, available: !!env.ANTHROPIC_API_KEY}, push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY && meAi.on,
-      owner, features: {ask: !!env.ANTHROPIC_API_KEY && (await previewOk(env, user, "ask")), rename: await previewOk(env, user, "rename"), liftdays: await previewOk(env, user, "liftdays"), rough: await previewOk(env, user, "rough"), source: await askSource(env, user)}, founding, reports, health: hd.results, lifts: ll.results, mealplan: mp.results[0] ? JSON.parse(mp.results[0].data) : null, crews: await crewsFor(env, user.id), health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
+      owner, features: {ask: !!env.ANTHROPIC_API_KEY && (await previewOk(env, user, "ask")), rename: await previewOk(env, user, "rename"), liftdays: await previewOk(env, user, "liftdays"), rough: await previewOk(env, user, "rough"), refreward: await previewOk(env, user, "refreward"), source: await askSource(env, user)}, founding, reports, health: hd.results, lifts: ll.results, mealplan: mp.results[0] ? JSON.parse(mp.results[0].data) : null, crews: await crewsFor(env, user.id), health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
   }
   if (M === "PUT" && path === "/api/account"){
     const b = await body(req), name = String(b.name ?? "").trim().slice(0, 30);
@@ -1716,8 +1717,23 @@ async function route(req, env, path, ctx){
     const rows = (await env.DB.prepare("SELECT substr(u.created, 1, 10) AS day, EXISTS(SELECT 1 FROM profiles p WHERE p.user_id = u.id) AS plan FROM users u WHERE u.ref = ? AND u.id != ? AND " + REAL("u.") + " ORDER BY u.created").bind(user.id, user.id).all()).results;
     const wk = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10), weeks = {};
     for (const r of rows){ const d = new Date(r.day + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); const k = d.toISOString().slice(0, 10); weeks[k] = (weeks[k] || 0) + 1; }
-    return {code: user.id.slice(0, 8), joined: rows.length, plan: rows.filter(r => r.plan).length, week: rows.filter(r => r.day >= wk).length,
+    const out = {code: user.id.slice(0, 8), joined: rows.length, plan: rows.filter(r => r.plan).length, week: rows.filter(r => r.day >= wk).length,
       weeks: Object.entries(weeks).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 8).map(([start, n]) => ({start, n}))};
+    if (await previewOk(env, user, "refreward")){   // the referral reward: 2 partners who joined AND built a plan
+      const rv = await env.DB.prepare("SELECT status, created FROM plan_reviews WHERE user_id = ?").bind(user.id).first();
+      out.reward = {need: REWARD_NEED, have: Math.min(REWARD_NEED, out.plan), earned: out.plan >= REWARD_NEED, requested: rv ? rv.status : null};
+    }
+    return out;
+  }
+  if (M === "POST" && path === "/api/invites/review"){   // ask Matthew for the plan review you earned
+    if (!(await previewOk(env, user, "refreward"))) throw new HttpError(404, "Not found.");
+    const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM users u WHERE u.ref = ? AND u.id != ? AND " + REAL("u.") + " AND EXISTS(SELECT 1 FROM profiles p WHERE p.user_id = u.id)").bind(user.id, user.id).first("n");
+    if ((n || 0) < REWARD_NEED) throw new HttpError(400, "Your plan review unlocks when " + REWARD_NEED + " friends join through your link and build a plan.");
+    if (await env.DB.prepare("SELECT 1 FROM plan_reviews WHERE user_id = ?").bind(user.id).first()) return {ok: true, requested: "requested", again: true};
+    const b = await body(req), note = String(b.note || "").replace(/\s+/g, " ").trim().slice(0, 300);
+    await env.DB.prepare("INSERT INTO plan_reviews (user_id, note, status, created) VALUES (?, ?, 'requested', ?)").bind(user.id, note, now()).run();
+    await logEvent(env, "plan_review", true);
+    return {ok: true, requested: "requested"};
   }
   if (M === "GET" && path === "/api/crews") return {crews: await crewsFor(env, user.id, String(new URL(req.url).searchParams.get("week") || ""))};
   if (M === "POST" && path === "/api/crews"){
@@ -1784,12 +1800,13 @@ async function route(req, env, path, ctx){
     const q = seenCol => env.DB.prepare(
       "SELECT u.name, u.email, u.created, u.no_mail, u.src, " + seenCol + " AS seen_at, p.data AS profile, (SELECT 1 FROM strava_links s WHERE s.user_id = u.id) AS strava, (SELECT 1 FROM garmin_links g WHERE g.user_id = u.id) AS garmin, " +
       "(SELECT name FROM users r WHERE r.id = u.ref) AS ref_name, (SELECT COUNT(*) FROM users c WHERE c.ref = u.id AND " + REAL("c.") + ") AS invited, " +
+      "(SELECT v.status FROM plan_reviews v WHERE v.user_id = u.id) AS review, (SELECT v.note FROM plan_reviews v WHERE v.user_id = u.id) AS review_note, " +
       "(SELECT MAX(created) FROM sessions x WHERE x.user_id = u.id) AS last_login, (SELECT MAX(date) FROM food f WHERE f.user_id = u.id) AS last_food, (SELECT MAX(date) FROM activities a WHERE a.user_id = u.id) AS last_act " +
       "FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE " + REAL("u.") + " ORDER BY u.created DESC").all();
     let rows;
     try { rows = (await q("u.last_seen")).results; } catch(e){ rows = (await q("NULL")).results; }   // before migration 0028 runs
     return {members: rows.map(r => { let pr = null; try { pr = r.profile ? JSON.parse(r.profile) : null; } catch(e){}
-      return {name: r.name, email: r.email, created: r.created, founding: r.created < FOUNDING_END, no_mail: !!r.no_mail, strava: !!r.strava, garmin: !!r.garmin, ref_name: r.ref_name || null, src: r.src || null, invited: r.invited || 0, goal: pr ? HP.raceName(pr) : null, race_date: pr && pr.raceDate || null,
+      return {name: r.name, email: r.email, created: r.created, founding: r.created < FOUNDING_END, no_mail: !!r.no_mail, strava: !!r.strava, garmin: !!r.garmin, ref_name: r.ref_name || null, src: r.src || null, invited: r.invited || 0, review: r.review || null, review_note: r.review_note || null, goal: pr ? HP.raceName(pr) : null, race_date: pr && pr.raceDate || null,
         // last_seen: a UTC time (the app last saw them, or their last log-in); last_day: their last logged meal or workout day
         last_seen: [r.seen_at, r.last_login].filter(Boolean).sort().pop() || null,
         last_day: [r.last_food, r.last_act].filter(Boolean).map(d => String(d).slice(0, 10)).sort().pop() || null}; })};
@@ -1798,7 +1815,7 @@ async function route(req, env, path, ctx){
     const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
     if (link){ try { const tok = await stravaToken(env, link); await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/deauthorize", {method: "POST", headers: {Authorization: "Bearer " + tok}}); } catch(e){} }
     await garminForget(env, user.id, true);
-    await env.DB.batch(["sessions", "pw_resets", "garmin_workouts", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily", "reports", "link_keys", "lift_logs", "meal_plans", "crew_members"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
+    await env.DB.batch(["sessions", "pw_resets", "garmin_workouts", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily", "reports", "link_keys", "lift_logs", "meal_plans", "crew_members", "plan_reviews"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
       .concat([env.DB.prepare("DELETE FROM crews WHERE id NOT IN (SELECT crew_id FROM crew_members)"),
         env.DB.prepare("UPDATE crews SET owner_id = (SELECT user_id FROM crew_members m WHERE m.crew_id = crews.id ORDER BY joined LIMIT 1) WHERE owner_id = ?").bind(user.id),
         env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id)]));
