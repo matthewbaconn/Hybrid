@@ -548,6 +548,18 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 .cio button{min-height:34px;border-radius:4px;border:1px solid transparent;background:transparent;font:600 12px/1.1 var(--f-body);color:var(--muted);padding:0 1px;transition:background-color .15s,color .15s}
 .ci .btn{min-height:40px}
 .ci-done{padding:14px 16px;gap:10px}
+.rcard{padding:12px 14px;gap:8px}
+.rtop{display:flex;align-items:center;gap:14px}
+.rscore{position:relative;width:60px;height:60px;flex:none} .rscore b{position:absolute;inset:0;display:grid;place-items:center;font:800 22px/1 var(--f-display);color:var(--ink)}
+.rring{width:60px;height:60px;transform:rotate(-90deg)} .rr-bg{fill:none;stroke:var(--line);stroke-width:6} .rr-fg{fill:none;stroke-width:6;stroke-linecap:round}
+.rtxt{min-width:0} .rtxt strong{display:block;font:700 17px/1.2 var(--f-display);color:var(--tone)} .rtxt p{margin:3px 0 0;font-size:14px;line-height:1.35;color:var(--ink)}
+.rchips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.rchip{display:grid;gap:2px;padding:8px 10px;border-radius:10px;background:var(--sunk);border:1px solid var(--line)} .rchip small{font-size:11.5px;color:var(--muted)} .rchip b{font:700 16px/1.1 var(--f-display);white-space:nowrap}
+.rchip i{font-style:normal;font-size:10px;margin-left:4px;vertical-align:2px} .rchip.up i{color:var(--long)} .rchip.dn i{color:var(--work)}
+.rwhy{margin:0;font-size:11.5px;color:var(--muted)}
+.rnote{border-top:1px solid var(--line);padding-top:8px} .rnote summary{display:flex;gap:8px;align-items:center;cursor:pointer;font-size:14px;font-weight:600;list-style:none} .rnote summary::-webkit-details-marker{display:none}
+.rnote summary svg{width:16px;height:16px;flex:none;color:var(--accent-2)} .rnote p{margin:6px 0 0;font-size:14px;line-height:1.4;color:var(--muted)}
+.rfeel{font-size:14px}
 .ci-row{display:flex;align-items:center;gap:12px}
 .ci-row > b{font:800 28px/1 var(--f-display);color:var(--tone)}
 .ci-row div{flex:1;min-width:0} .ci-row strong{display:block;font-weight:700;color:var(--tone)} .ci-row div span{font-size:12.5px;color:var(--muted)}
@@ -941,10 +953,33 @@ const watchLinked = () => !!(garmin.connected || (healthLink && healthLink.on) |
    (A watch that is linked but has sent nothing for 3 days is not feeding the app, so checking in by hand stays possible.) */
 const watchFeeding = () => Object.keys(dev || {}).some(k => k >= addDays(TODAY, -3) && k <= TODAY);
 const feelBtn = () => askOn() ? '<button class="linkbtn" type="button" data-act="askfeel">Tell your coach how you feel</button>' : '';
+/* Readiness card, new look (released Nov 17; shown when /api/me says features.ready2: Matthew: "smaller and more next level and easy to understand").
+   A score ring, one plain sentence of what it means, and the three numbers it comes from compared with your normal. */
+const READY_SAY = ["You're recovered. Train as planned.", "A bit run down. Keep the hard parts controlled.", "Your body needs a lighter day. Go easy or rest."];
+function readyRing(score, tone){
+  const r = 26, c = 2 * Math.PI * r, f = Math.max(0, Math.min(100, score)) / 100;
+  return '<svg class="rring" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="' + r + '" class="rr-bg"/><circle cx="32" cy="32" r="' + r + '" class="rr-fg" style="stroke:var(--' + tone + ')" stroke-dasharray="' + (c * f).toFixed(1) + ' ' + c.toFixed(1) + '"/></svg>';
+}
+function readyChip(label, val, cmp, norm){   // cmp: 1 better than your normal, -1 worse, 0 about the same or unknown; norm: your normal, said on long-press and to screen readers
+  return '<span class="rchip' + (cmp > 0 ? ' up' : cmp < 0 ? ' dn' : '') + '"' + (norm ? ' title="Your normal: ' + norm + '" aria-label="' + label + ' ' + val + ', your normal ' + norm + '"' : '') + '><small>' + label + '</small><b>' + val + (cmp ? '<i aria-hidden="true">' + (cmp > 0 ? '▲' : '▼') + '</i>' : '') + '</b></span>';
+}
+function readyCard2(r, sg, fromGarmin, mn){
+  const n1 = x => Math.round(x * 10) / 10, vs = (v, a, higherBetter) => !v || !a || Math.abs(v - a) / a < 0.05 ? 0 : ((v > a) === higherBetter ? 1 : -1);
+  const chips = [sg.sleep_h ? readyChip("Sleep", n1(sg.sleep_h) + ' h', sg.sleep_h >= 7 ? 1 : sg.sleep_h < 6 ? -1 : 0) : '',
+    sg.hrv ? readyChip("HRV", Math.round(sg.hrv) + ' ms', vs(sg.hrv, sg.hrvA, true), sg.hrvA ? Math.round(sg.hrvA) + ' ms' : '') : '',
+    sg.rhr ? readyChip("Resting HR", Math.round(sg.rhr), vs(sg.rhr, sg.rhrA, false), sg.rhrA ? String(Math.round(sg.rhrA)) : '') : ''].filter(Boolean).join('');
+  return '<section class="card rcard" style="--tone:var(--' + r.tone + ')" aria-label="Readiness ' + r.score + ' out of 100: ' + esc(r.word) + '">' +
+    '<div class="rtop"><div class="rscore">' + readyRing(r.score, r.tone) + '<b>' + r.score + '</b></div><div class="rtxt"><strong>' + esc(r.word) + '</strong><p>' + READY_SAY[r.level] + '</p></div></div>' +
+    (chips ? '<div class="rchips">' + chips + '</div>' : '<p class="sub">Waiting for last night\'s watch numbers.</p>') +
+    gAttr(fromGarmin && !!chips) +
+    (mn ? '<details class="rnote"><summary>' + ic("spark") + '<span>Coach: ' + esc(mn.headline) + '</span></summary><p>' + esc((mn.lines || []).join(" ")) + '</p></details>' : '') +
+    (askOn() ? '<button class="linkbtn rfeel" type="button" data-act="askfeel">Tell your coach how you feel ›</button>' : '') + '</section>';
+}
 function watchReadyCard(){
   const sg0 = sigOn(TODAY), sg = sg0 || {}, c = checkins[TODAY], r = readiness(c, sg0);   // a check-in already saved today still counts, so the score matches the rest of the app
   if (!r) return morningNow() ? '<section class="card ci-done wr" style="--tone:var(--long)"><div class="ci-row"><div><strong>Waiting for your watch</strong><span>Last night\'s sleep and today\'s readiness show here once your watch syncs.</span></div>' + (watchFeeding() ? feelBtn() : '<button class="linkbtn" type="button" data-act="ciopen">Check in by hand</button>') + '</div></section>' : '';
   const n1 = x => Math.round(x * 10) / 10, mn = morningNote(), fromGarmin = !!(dev && dev[TODAY] && dev[TODAY].source === "garmin");
+  if (feat && feat.ready2) return readyCard2(r, sg, fromGarmin, mn);
   const bits = [sg.sleep_h ? n1(sg.sleep_h) + ' h sleep' : '', sg.sleep_score != null ? 'sleep score ' + sg.sleep_score : '',
     sg.hrv ? 'HRV ' + Math.round(sg.hrv) + ' ms' + (sg.hrvA ? ' (your normal ' + Math.round(sg.hrvA) + ')' : '') : '',
     sg.rhr ? 'resting HR ' + Math.round(sg.rhr) + (sg.rhrA ? ' (your normal ' + Math.round(sg.rhrA) + ')' : '') : ''].filter(Boolean);
@@ -3051,7 +3086,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "96";
+const APP_VERSION = "97";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3173,8 +3208,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-17.3";
+const NEW_ID = "2026-11-18";
 const NEWS = [
+  ["heart", "A clearer readiness score", "Today's readiness now shows as a ring with one sentence on what it means, plus your sleep, HRV and resting heart rate with arrows against your own normal.", null, null, "2026-11-18"],
   ["check", "AI coach: your call", "The coach is AI, and you decide if it may read your data. The switch is in Settings, Coaching and training. Off means nothing of yours goes to AI and the app runs on its fixed rules. If you use Garmin, you are asked once on Today.", "set-train", null, "2026-11-17.3"],
   ["spark", "Your coach can see your runs", "Ask how a run went and it answers from the distance, pace and heart rate your Garmin sent, or that you logged by hand. Runs that only come through Strava can't be read by the coach (Strava's rules), so type those numbers in.", null, null, "2026-11-17.3"],
   ["check", "Name your workouts", "Open a workout in Activities, tap the pencil next to its name and type your own. Use the original name puts the old one back.", "activities", null, "2026-11-17.2"],
