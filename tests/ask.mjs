@@ -90,6 +90,16 @@ try {
   ok((await call(owner, "POST", "/api/ask", {q: " "})).status === 400, "an empty question is refused");
   ok(sql("SELECT count FROM ai_usage WHERE user_id = '" + uid + "' AND day LIKE 'ask:%'")[0].count === 4, "each answered question is counted toward the daily cap");
 
+  // 3b. rough night (preview "rough", owner only): the chip is offered and the coach is told the situation
+  reply = {answer: "Take it easy today.", actions: []};
+  const meR = await (await call(owner, "GET", "/api/me")).json(), memR = await (await call(member, "GET", "/api/me")).json();
+  ok(meR.features.rough === true && memR.features.rough === false, "rough night: on for the owner, off for other members while in preview");
+  await call(owner, "POST", "/api/ask", {q: "Rough night: adjust today", kind: "rough"});
+  const roughSent = seen[seen.length - 1], roughMsg = JSON.parse(roughSent.messages.slice(-1)[0].content);
+  ok(roughMsg.situation === "rough_night" && /ROUGH NIGHT/.test(roughSent.system) && /never judge/.test(roughSent.system) && /medical help/.test(roughSent.system) && /Never suggest medicines/.test(roughSent.system), "rough night: the coach is told the situation and the safety rules");
+  await call(owner, "POST", "/api/ask", {q: "What's today?"});
+  ok(!("situation" in JSON.parse(seen[seen.length - 1].messages.slice(-1)[0].content)), "rough night: an ordinary question carries no situation");
+
   // 4. the AI coach is the member's own choice (Nov 17). No Garmin link and never asked: on, as before.
   const me = async () => (await (await call(owner, "GET", "/api/me")).json());
   let m = await me();
