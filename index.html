@@ -841,6 +841,63 @@ a.scard{text-decoration:none;color:var(--ink)}
 .asum{margin-top:12px;padding:12px 14px;border-left:3px solid var(--tc,var(--accent));background:color-mix(in srgb,var(--accent) 6%,transparent);border-radius:0 8px 8px 0}
 .asum b{display:block;margin-bottom:4px}.asum p{margin:4px 0;font-size:14px;color:var(--ink-2,var(--muted))}
 .asub{display:block;font-size:13px;color:var(--muted);margin:-2px 0 6px}
+
+/* ===== Full-screen layout (Matthew, Nov 18 11:56am: "a legit app that takes up the whole screen ... similar to Runna, Strava
+   and Endorphins ... it's so instant and boxy ... make it smooth"). Same information, same order. Sections run edge to edge
+   with a thin canvas gap between them (like a feed), labels are sentence case, the tab bar sits flush at the bottom, sheets
+   rise from the bottom edge, and things move when you act on them. Undo = revert this PR. ===== */
+:root{--bg:#07080B;--surface:#111318;--sunk:#1A1D24;--line:rgba(255,255,255,.07);--ease:cubic-bezier(.2,.8,.2,1)}
+.wrap{max-width:none;padding:0 0 calc(92px + env(safe-area-inset-bottom,0px));gap:6px}
+.wrap > .view{gap:8px}
+.view > *{margin-inline:0}
+.view > :not(.card):not(.hub-hero):not(.days):not(.pc.wide):not(.tl.wide):not(.scards):not(svg){padding-inline:20px}
+.view > .card,.view > .pc.wide,.view > .tl.wide,.days > .card{border-radius:0;border:0;box-shadow:none;padding-inline:20px}
+.view > .scards{gap:0;padding:0}
+.view > .scards > .scard{border-radius:0;border:0;border-bottom:1px solid var(--line);padding:18px 20px;background:var(--surface)}
+.view > .scards > .scard:last-child{border-bottom:0}
+.view > .card.actc,.days > .card.day{padding-inline:0}
+.days{gap:8px}
+.hub-hero{margin-inline:0;padding:28px 20px 26px}
+.view > .sec-t{padding-top:10px;font-size:28px;letter-spacing:-.03em}
+.view > svg.pchart{padding-inline:12px}
+.view > .hello{padding-top:6px;padding-bottom:0}
+.view > .hello > .wxs,.view > .hello > .racecd{width:calc(100% + 40px);max-width:none;margin-inline:-20px;border-radius:0;border-left:0;border-right:0;padding-inline:20px}
+.view > .hello > .wxs{border-top:1px solid var(--line);border-bottom:0;margin-top:16px;background:transparent}
+.view > .hello > .racecd{margin-top:0;border-bottom:0;padding-top:18px;padding-bottom:18px}
+.view > .segsw{margin-inline:20px;padding:4px}
+.card > .wsum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+/* header: sticky, see-through */
+.wrap > .top{position:sticky;top:0;z-index:25;padding:max(10px,env(safe-area-inset-top,0px)) 20px 10px;margin-top:calc(-1 * env(safe-area-inset-top,0px));
+  background:color-mix(in srgb,var(--bg) 84%,transparent);-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%)}
+.iconbtn{background:transparent;border-radius:50%;transition:background-color .2s var(--ease)} .iconbtn:active{background:var(--sunk)}
+/* tab bar: flush with the bottom edge */
+.tabbar{left:0;right:0;bottom:0;max-width:none;margin:0;border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;gap:0;
+  padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,#0C0D11 86%,transparent);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%)}
+.tabbar button{padding:8px 0 6px;border-radius:0;transition:color .2s var(--ease)}
+.tabbar button[aria-current="page"]{background:none!important}
+.tabbar button:not(.tb-today)[aria-current="page"]::after{content:"";width:18px;height:3px;border-radius:2px;background:var(--tabc);margin-top:-1px}
+.tabbar .tb-today{margin-top:-14px}
+.tabbar .tb-today .ic{padding:13px;border-radius:50%;background:linear-gradient(160deg,#BE383E,#800000);box-shadow:0 6px 16px rgba(128,0,0,.45),0 0 0 4px var(--bg)!important}
+/* sentence-case labels instead of tracked capitals */
+.hello .kick,.rc-top small,.pc .ph,.mvpv-h,.mealh,.wx-best b,.pl-top,.pl-now small,.wnew .kick,.chgl,.awk,.groc h3,.apps h3,.meal em,.rg > span,.coach small.ai,.fbanner b,.chg .mvo .ty{text-transform:none;letter-spacing:0}
+.hello .kick{font-size:14px;font-weight:600} .rc-top small,.pc .ph,.mealh,.chgl,.awk{font-size:13.5px;font-weight:600}
+/* sheets rise from the bottom edge */
+.back{padding:0;animation:ui-fade .22s var(--ease)}
+.sheet{max-width:640px;border:0;border-top:1px solid var(--line);border-radius:20px 20px 0 0;padding:14px 20px calc(20px + env(safe-area-inset-bottom,0px));margin-bottom:0;
+  max-height:calc(100dvh - 12px - env(safe-area-inset-top,0px));animation:ui-up .34s var(--ease)}
+.sheet::before{content:"";justify-self:center;width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.2);margin-bottom:4px}
+.sheet.asks{animation:none}   /* the coach sheet follows the keyboard (visual viewport); it appears in place */
+@keyframes ui-up{from{transform:translateY(100%)}} @keyframes ui-fade{from{opacity:0}}
+/* things answer a tap */
+.btn,.card[data-act],.actc,.linkbtn,.tabbar button{transition:transform .18s var(--ease),background-color .2s var(--ease),opacity .2s var(--ease)}
+.btn:active,.card[data-act]:active,.actc:active{transform:scale(.985)}
+.btn{border-radius:10px}
+/* screens arrive with a short cross-fade (the app already uses view transitions to move between screens) */
+::view-transition-old(root){animation:ui-out .16s ease both} ::view-transition-new(root){animation:ui-in .26s var(--ease) both}
+@keyframes ui-out{to{opacity:0}} @keyframes ui-in{from{opacity:0;transform:translateY(8px)}}
+@media (prefers-reduced-motion:reduce){.back,.sheet{animation:none}::view-transition-old(root),::view-transition-new(root){animation:none}.btn:active,.card[data-act]:active,.actc:active{transform:none}}
+/* big screens: keep a centred column, rounded like a phone screen */
+@media (min-width:700px){.wrap{max-width:640px;padding-top:12px}.view > .card,.view > .pc.wide,.days > .card,.hub-hero{border-radius:14px}.tabbar{max-width:640px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}}
 </style>
 </head>
 <body>
@@ -3382,7 +3439,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "104";
+const APP_VERSION = "105";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3504,8 +3561,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-18.7";
+const NEW_ID = "2026-11-18.8";
 const NEWS = [
+  ["spark", "A cleaner, full-screen look", "Every screen now runs edge to edge, the tab bar sits at the bottom, and sheets slide up smoothly. Everything is still where it was.", null, null, "2026-11-18.8"],
   ["pencil", "Edit any workout", "Open a workout and tap Edit, or use the sheet after a run: name, how it went, type, a tag, how it felt, private notes and your shoes, with the miles on each pair.", "activities", null, "2026-11-18.7"],
   ["bars", "More in every workout", "Activities now shows heart rate and zone, climb, effort, and how each run lined up with your plan. This week's box shows planned miles left, and the list is grouped by week.", "activities", null, "2026-11-18.6"],
   ["share", "See-through share stickers", "Open a workout, tap Share image and pick a style: stats, big numbers, route, splits or heart rate. They're see-through, so they sit right on your Instagram Story or photo.", "activities", null, "2026-11-18.5"],
