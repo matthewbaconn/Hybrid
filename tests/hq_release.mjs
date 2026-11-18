@@ -97,6 +97,13 @@ async function open(opts){
   const ver = await p.textContent('#panels [data-p="verified"]');
   if (!/TEST FIXTURE verified item/.test(ver) || !/receipts/i.test(ver)) errs.push('office: verified panel must list ledger-verified items and say receipts are not available yet');
   if (/TEST FIXTURE shipped/.test(ver)) errs.push('office: a self-reported run must never appear as verified');
+  { // simple home (Nov 18): answers, then only what needs Matthew; the rest behind one button, remembered
+    if (!/TEST FIXTURE approval/.test(await p.textContent('#needs'))) errs.push('home: Needs you must list what waits for Matthew');
+    if (await p.isVisible('#objs')) errs.push('home: the full office must start folded away');
+    await p.click('#moreBtn');
+    if (!(await p.isVisible('#objs')) || !(await p.isVisible('#panels'))) errs.push('home: Show the full office must open it');
+    await p.click('#moreBtn');
+    if (await p.isVisible('#objs')) errs.push('home: Hide the full office must fold it again'); }
   const att = await p.textContent('#panels [data-p="attention"]');
   if (!/failed run/.test(att) || !/TEST FIXTURE approval/.test(att) || !/Telegram/.test(att)) errs.push('office: attention panel must show failed runs and waiting approvals (approved only in Telegram)');
   if (/TEST FIXTURE gate item|TEST FIXTURE draft item/.test(att)) errs.push('office: a PR the gate handles (or a draft) is not something Matthew must approve');

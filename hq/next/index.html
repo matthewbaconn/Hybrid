@@ -80,6 +80,8 @@ a.lnk{color:#ff9aa0;text-decoration:none}.jl{color:#ff9aa0;cursor:pointer;white-
 .panel h3{margin:0 0 2px;font-size:18px}.panel .rl{color:var(--mut);font-size:12.5px}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:14px 0;font-size:14px}.kv span{color:var(--mut)}
 .view{display:none}.view.on{display:block}
+.morebtn{display:block;width:100%;margin:14px 0 4px;padding:12px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-weight:650;cursor:pointer}
+.fullof{display:none}.fullof.on{display:block}
 .brief{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:12px 0 12px}.brief .q.lead,.brief .q.full{grid-column:1/-1}
 .brief .q:not(.lead):not(.full){padding:9px 10px;gap:8px}.brief .q:not(.lead):not(.full) b{font-size:13px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.brief .q:not(.lead):not(.full) span.sub{-webkit-line-clamp:1;font-size:11.5px}
 .q{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:13px;background:var(--card);border:1px solid var(--line);cursor:pointer;min-width:0}
@@ -367,6 +369,9 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 <div class="hello" id="hero"></div>
 <div class="kstrip" id="kstrip"></div>
 <div class="brief" id="brief"><div class="q lead"><span class="dot"></span><div><small>Mileset HQ</small><b id="answerText">Opening the office…</b></div></div></div>
+<h2>Needs you</h2><div class="list" id="needs"></div>
+<button type="button" class="morebtn" id="moreBtn" aria-expanded="false">Show the full office</button>
+<div id="fullOffice" class="fullof">
 <h2>Objectives</h2><div class="objs" id="objs"></div>
 <h2>Executive office</h2>
 <div class="legend" id="legend"><span>Every line says where it comes from:</span><span class="src sys">System count</span><span class="src aud">Verified in the ledger</span><span class="src rep">Reported by the role</span><span class="src na">Not available yet</span></div>
@@ -386,6 +391,7 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 </div>
 </div>
 <div class="b-today"><h2>Today</h2><div class="list" id="ticker"></div>
+</div>
 </div>
 </div>
 <div class="foot" id="foot">The office floor is live from each employee's run log. A lit desk with a bubble is a real run happening now; dimmed people are between runs. Someone walking to Vesper just finished a run and is handing in the result. Tap anyone for their workspace.</div>
@@ -785,7 +791,7 @@ document.getElementById("priv").addEventListener("click", e => { const m = e.tar
   const it = e.target.closest(".item"); if (it && !e.target.closest("a")) it.classList.toggle("open"); });
 function renderPriv(){
   const box = document.getElementById("priv"), lock = document.getElementById("lock");
-  renderBrief(); renderGrowth(); renderMoney(); renderMe(); renderPanels(); renderFresh(); renderAll();
+  renderBrief(); renderNeeds(); renderGrowth(); renderMoney(); renderMe(); renderPanels(); renderFresh(); renderAll();
   if (!PRIV){ box.classList.remove("on"); lock.style.display = "block"; if (!lock.querySelector(".unlock") || lock.dataset.err !== privErr){ lock.dataset.err = privErr; lock.innerHTML = "🔒 " + esc(privErr || "Assignments, history, approvals and decisions are private.") + UNLOCK; } return; }
   box.classList.add("on"); lock.style.display = "none";
   const o = PRIV.o || {}, nm = id => TEAM[id] ? TEAM[id].n : id === "drill" ? "Recovery drill (test)" : id, k = o.kpis || null;
@@ -1430,6 +1436,23 @@ async function loadLive(){
     if (feed) apply(); renderPriv();
   } catch(e){}
 }
+/* Home, simplified (Matthew, Nov 18 6:42am: "The hq is confusing me"): the answers above, then only what needs him,
+   with the exact step. Everything else sits behind "Show the full office" (remembered on this device). */
+function renderNeeds(){
+  const el = document.getElementById("needs"); if (!el) return;
+  if (!PRIV){ el.innerHTML = `<div class="item"><div class="h"><span>🔒 Unlock HQ to see what needs you.</span></div></div>`; return; }
+  const ap = asks(PRIV.a).slice(0, 6);
+  el.innerHTML = ap.length ? ap.map(a => { const e = explain(a), step = a.do || e.how;
+    return `<div class="item"><div class="h"><span><b>${a.url ? linkify(a.title, a.url) : esc(a.title)}</b></span>${a.min ? `<span class="pill">${esc(a.min)} min</span>` : ""}</div><div class="note">${esc(step)}</div></div>`; }).join("")
+    : `<div class="item"><div class="h"><span>✅ Nothing needs you right now.</span></div></div>`;
+}
+(function(){
+  const b = document.getElementById("moreBtn"), f = document.getElementById("fullOffice"); if (!b || !f) return;
+  const set = on => { f.classList.toggle("on", on); b.textContent = on ? "Hide the full office" : "Show the full office"; b.setAttribute("aria-expanded", on);
+    if (on) setTimeout(() => dispatchEvent(new Event("resize")), 0); try { localStorage.setItem("hq-full", on ? "1" : ""); } catch(e){} };
+  let on = false; try { on = localStorage.getItem("hq-full") === "1"; } catch(e){}
+  set(on); b.addEventListener("click", () => set(!f.classList.contains("on")));
+})();
 function renderBrief(){
   const el = document.getElementById("brief"); if (!el) return;
   const nm = id => TEAM[id] ? TEAM[id].n : id, o = (PRIV && PRIV.o) || null, f = feed || null;
