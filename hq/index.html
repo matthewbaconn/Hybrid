@@ -226,8 +226,9 @@ function renderOrder(){
 // ready, so neither is an approval. Once Vesper's owner queue (vesper-relay #170) is installed, every item carries a
 // tag and is already a real ask, so it's shown as is.
 function asks(ap){ ap = ap || []; if (ap.some(a => a.tag)) return ap;
-  return ap.filter(a => { if (a.k !== "pr") return true; if (a.why === "SHIP IT") return true; if (/^draft/.test(a.why || "")) return false;
-    if (a.repo !== "Hybrid") return true; const p = (ORDER || []).find(x => x.n === a.n); return !!(p && isHeld(p)); }); }
+  return ap.filter(a => { if (a.k !== "pr") return true; if (/^draft/.test(a.why || "")) return false;
+    if (a.repo !== "Hybrid") return true; const p = (ORDER || []).find(x => x.n === a.n);
+    return p ? isHeld(p) : a.why === "SHIP IT"; }); }   // Vesper's feed still calls every product-team PR "SHIP IT"; since Nov 18 only NEEDS MATTHEW ones wait for him
 const FEED_API = "https://api.github.com/repos/matthewbaconn/Hybrid/contents/hq.json?ref=vesper/hq-data";
 const FEED_RAW = "https://raw.githubusercontent.com/matthewbaconn/Hybrid/vesper/hq-data/hq.json";
 const W = 360, H = 540;
