@@ -586,6 +586,7 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 .fdate .arrow{background:var(--surface)}
 .coach{display:flex;gap:12px;align-items:flex-start;background:color-mix(in srgb,var(--accent) 12%,var(--sunk));border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:6px;padding:12px 14px}
 .coach > .ic{color:var(--accent-2);margin-top:2px}
+.gattr{display:block;font-size:12px;line-height:1.35;color:var(--muted);margin:3px 0 0} .ask-m.a + .gattr{margin:-4px 0 0 4px}
 .coach b{display:block;font-weight:700} .coach .num{display:block;font-size:13px;color:var(--muted);margin:2px 0}
 .coach p{margin:4px 0 0;font-size:14px;line-height:1.5} .coach strong{color:var(--ink)}
 .assess{display:grid;gap:2px;border-radius:5px;padding:10px 12px;background:var(--sunk);border-left:4px solid var(--vc)}
@@ -870,12 +871,12 @@ function loadAccount(j){
   clearObj(checkins); (j.checkins || []).forEach(c => checkins[c.date] = c);
   clearObj(weights); (j.weights || []).forEach(w => weights[w.date] = w.lb);
   acts = j.activities || []; strava = j.strava || strava; garmin = j.garmin || {available: false, connected: false, last_push: null};
-  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {}; isOwner = !!j.owner; feat = j.features || {}; founding = j.founding || null; reports = j.reports || [];
+  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; aiSt = j.ai || {on: true, asked: true, needs: false, available: !!j.coach}; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {}; isOwner = !!j.owner; feat = j.features || {}; founding = j.founding || null; reports = j.reports || [];
   liftLog = j.lifts || []; mealplan = j.mealplan || null; crews = j.crews || []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null;
   plan = j.profile ? buildPlan(j.profile) : null;
   setup = plan ? null : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
 }
-function signedOut(){ scr = null; feat = {}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
+function signedOut(){ scr = null; feat = {}; aiSt = {on: true, asked: true, needs: false, available: false}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
 const checkins = S.checkins || {};          // date -> {sleep_h, sleep_q, soreness, energy, stress}
 const weights = S.weights || {};            // date -> lb
@@ -885,7 +886,12 @@ let ci = null, wf = null, aw = {open: false, err: "", busy: false};
 let reviews = {}, notes = [], uset = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", n_morning: true, n_run: true, n_weekly: true, n_bed: true}, pushInfo = {key: null, devices: 0}, coachOn = false;
 const reviewFor = a => reviews[a.id] || null;
 const VCLS = {ok: "good", easy: "easy", hard: "warn", unknown: "muted", extra: "good"};
-function reviewHtml(rv, a){
+/* Garmin attribution (Garmin API brand guidelines, Nov 17): anything worked out with Garmin device data as an input says
+   so right under its heading, in Garmin's own sample wording. Shown only where Garmin data really was an input. */
+const GARMIN_ATTR = 'Insights derived in part from Garmin device-sourced data.';
+const gAttr = on => on ? '<small class="gattr">' + GARMIN_ATTR + '</small>' : '';
+function reviewHtml(rv, a, garminIn){
+  const gm = gAttr(garminIn || (a && a.source === "garmin"));
   if (rv.askFeel){
     // Strava workout: rule-based summary, then the coach needs the person's own take (Strava data isn't sent to AI)
     const id = a ? a.id : "";
@@ -894,7 +900,7 @@ function reviewHtml(rv, a){
         [["easy", "Easy"], ["just right", "Just right"], ["hard", "Hard"], ["very hard", "Very hard"]].map(([k, l]) => '<button type="button" data-act="feel" data-id="' + esc(id) + '" data-f="' + k + '"' + (feelBusy === id ? ' disabled' : '') + '>' + l + '</button>').join("") + '</div>' +
         '<input class="feelnote" id="fn-' + esc(id) + '" maxlength="300" placeholder="Anything else? Legs, pace, how you slept (optional)">' : '') + '</div></div>';
   }
-  return '<div class="coach">' + ic("spark") + '<div><small class="ai">AI coach · can be wrong</small><b>' + esc(rv.headline) + '</b>' + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + (rv.feel ? '<p class="fine">From how you said it felt: ' + esc(rv.feel) + '.</p>' : '') +
+  return '<div class="coach">' + ic("spark") + '<div><small class="ai">AI coach · can be wrong</small><b>' + esc(rv.headline) + '</b>' + gm + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + (rv.feel ? '<p class="fine">From how you said it felt: ' + esc(rv.feel) + '.</p>' : '') +
     (askOn() && (!a || a.source !== "strava") ? '<button class="linkbtn askab" type="button" data-act="askabout" data-t="' + esc([rv.headline, rv.meaning, rv.next ? "Next: " + rv.next : ""].filter(Boolean).join(" ").slice(0, 480)) + '">Ask about this</button>' : '') + '</div></div>';
 }
 let feelBusy = null;
@@ -938,12 +944,12 @@ const feelBtn = () => askOn() ? '<button class="linkbtn" type="button" data-act=
 function watchReadyCard(){
   const sg0 = sigOn(TODAY), sg = sg0 || {}, c = checkins[TODAY], r = readiness(c, sg0);   // a check-in already saved today still counts, so the score matches the rest of the app
   if (!r) return morningNow() ? '<section class="card ci-done wr" style="--tone:var(--long)"><div class="ci-row"><div><strong>Waiting for your watch</strong><span>Last night\'s sleep and today\'s readiness show here once your watch syncs.</span></div>' + (watchFeeding() ? feelBtn() : '<button class="linkbtn" type="button" data-act="ciopen">Check in by hand</button>') + '</div></section>' : '';
-  const n1 = x => Math.round(x * 10) / 10, mn = morningNote();
+  const n1 = x => Math.round(x * 10) / 10, mn = morningNote(), fromGarmin = !!(dev && dev[TODAY] && dev[TODAY].source === "garmin");
   const bits = [sg.sleep_h ? n1(sg.sleep_h) + ' h sleep' : '', sg.sleep_score != null ? 'sleep score ' + sg.sleep_score : '',
     sg.hrv ? 'HRV ' + Math.round(sg.hrv) + ' ms' + (sg.hrvA ? ' (your normal ' + Math.round(sg.hrvA) + ')' : '') : '',
     sg.rhr ? 'resting HR ' + Math.round(sg.rhr) + (sg.rhrA ? ' (your normal ' + Math.round(sg.rhrA) + ')' : '') : ''].filter(Boolean);
-  return '<section class="card ci-done wr" style="--tone:var(--' + r.tone + ')"><div class="ci-row"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>' + (bits.length ? 'From your watch · ' + esc(bits.join(' · ')) : 'Waiting for last night\'s watch numbers') + '</span></div>' + feelBtn() + '</div>' +
-    (r.watch ? '<p class="sub">' + esc(r.watch.join(' · ')) + '.</p>' : '') + (mn ? reviewHtml({headline: mn.headline, meaning: (mn.lines || []).join(" ")}) : '') + '</section>';
+  return '<section class="card ci-done wr" style="--tone:var(--' + r.tone + ')"><div class="ci-row"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>' + (bits.length ? (fromGarmin ? 'From your Garmin · ' : 'From your watch · ') + esc(bits.join(' · ')) : 'Waiting for last night\'s watch numbers') + '</span></div>' + feelBtn() + '</div>' +
+    (r.watch ? '<p class="sub">' + esc(r.watch.join(' · ')) + '.</p>' : '') + (mn ? reviewHtml({headline: mn.headline, meaning: (mn.lines || []).join(" ")}, null, fromGarmin) : gAttr(fromGarmin && bits.length)) + '</section>';
 }
 function checkinCard(){
   const c = checkins[TODAY], r = readiness(c, sigOn(TODAY));
@@ -1116,7 +1122,7 @@ function actDetail(a){
     ? '<form class="an-form" id="an-form"><input id="an-q" type="text" maxlength="60" autocomplete="off" enterkeyhint="done" aria-label="Workout name" value="' + esc(actName.v) + '">' +
       '<div class="an-row"><button class="btn primary" type="submit"' + (actName.busy ? ' disabled aria-busy="true"' : '') + '>' + (actName.busy ? 'Saving…' : 'Save') + '</button><button class="btn" type="button" data-act="ancancel">Cancel</button>' +
       (a.src_name ? '<button class="linkbtn" type="button" data-act="anreset">Use the original name</button>' : '') + '</div>' + (actName.err ? '<p class="err" role="alert">' + esc(actName.err) + '</p>' : '') + '</form>'
-    : '<h1>' + esc(a.name) + '</h1>') + '<span class="sub">' + whenTxt(a) + ' · ' + (a.source === "strava" ? 'Strava' : a.source === "sample" ? 'Sample' : 'Logged by hand') + '</span></div>' +
+    : '<h1>' + esc(a.name) + '</h1>') + '<span class="sub">' + whenTxt(a) + ' · ' + (a.source === "strava" ? 'Strava' : a.source === "garmin" ? 'Garmin' : a.source === "sample" ? 'Sample' : 'Logged by hand') + '</span></div>' +
     (canRename(a) && !(actName && actName.id === a.id) ? '<button class="an-edit" type="button" data-act="anedit" aria-label="Rename this workout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 7.5l3 3"/></svg></button>' : '') + '</div>';
   if (pts && pts.length > 1) h += '<div class="amap big" data-map="' + esc(a.id) + '" data-big="1">' + routeSvg(pts) + '</div>';
   h += '<section class="card" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv, a) : '') + summaryHtml(a) + '</section>';
@@ -2085,7 +2091,7 @@ function renderToday(){
   const quickW = !wt && wskip !== TODAY && wAsk() ? '<section class="card qw" style="--tone:var(--lift)"><div class="card-h">' + ic("scale") + '<span class="lbl">Morning weigh-in</span><button class="linkbtn r" type="button" data-act="wskip">Not today</button></div>' +
     '<div class="wform"><input id="w-lb" inputmode="decimal" placeholder="' + (aw7 ? aw7.toFixed(1) : "Weight") + '" aria-label="Weight in pounds"><span>lb</span><button class="btn primary" type="button" data-act="wsave">Save</button></div>' + (wf && wf.err ? '<p class="err" role="alert">' + esc(wf.err) + '</p>' : '') + '</section>' : '';
   const mvT = day.sessions.length && canMove(TODAY) && moveTargets(TODAY).length && !day.sessions.some((s, i) => sessDone(TODAY, i, dayMatches(TODAY)));
-  h += checkinCard() + cycleCard(day) + heroSummary(day) + (mvT ? '<button class="linkbtn hmove" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t do it today? Move it</button>' : '') + missedCard() + fuelTile + quickW;   // today's workout first, then food
+  h += aiCard() + checkinCard() + cycleCard(day) + heroSummary(day) + (mvT ? '<button class="linkbtn hmove" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t do it today? Move it</button>' : '') + missedCard() + fuelTile + quickW;   // today's workout first, then food
   if (L && wxState === "idle") setTimeout(() => loadWeather(), 0);
   let wmi = 0, wdone = 0;
   if (w) w.days.forEach(d => { const m = dayMatches(d.date); d.sessions.forEach((s, i) => { if (sessDone(d.date, i, m)) wdone += plan.multi ? (m[i] && m[i].minutes ? m[i].minutes : s.min || 0) / 60 : m[i] && m[i].mi ? m[i].mi : s.mi || 0; }); });
@@ -2205,7 +2211,7 @@ function isLastSwap(a, b){ const sw = plan.profile.swaps || [], x = sw[sw.length
    comes back as a button, worded here from the plan itself, and runs the app's own Move / Change workout code
    only when the member taps it. */
 let ask = {msgs: [], busy: false, err: "", hint: "", kind: "", about: ""};
-const askOn = () => mode === "account" && !!(feat && feat.ask) && !!plan;
+const askOn = () => mode === "account" && !!(feat && feat.ask) && !!plan && aiSt.on;
 const ASK_SCREENS = ["fuel", "weather", "weight", "workouts", "meals", "fuelplan", "settings", "set-train", "set-run", "set-profile", "set-acct", "set-watch", "set-notif", "set-hr", "set-help", "t-paces", "t-races", "set-report", "faq"];   // the same list the server allows (ASK_SCREENS in api/worker.js)
 const isDay = d => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d);
 function askBarShow(on){ const b = $("#askbar"), show = !!on && askOn(); if (b) b.hidden = !show; document.body.classList.toggle("has-ask", show); }
@@ -2229,7 +2235,7 @@ function askLabel(a){   // what a proposed change would do, in the app's own wor
 }
 function askMsgHtml(m, mi){
   if (m.role === "user") return '<p class="ask-m u">' + esc(m.text) + '</p>';
-  let h = '<p class="ask-m a">' + esc(m.text) + '</p>';
+  let h = '<p class="ask-m a">' + esc(m.text) + '</p>' + gAttr(m.garmin);
   if (m.actions && m.actions.length) h += '<div class="ask-acts">' + m.actions.map((a, i) => { if (a.done) return '<small>✓ ' + esc(a.done) + '</small>'; const l = askLabel(a);
     return l ? '<button class="btn" type="button" data-act="askdo" data-m="' + mi + '" data-i="' + i + '">' + esc(l) + '</button>' : '<small>That change isn\'t possible on your plan right now.</small>'; }).join("") + '</div>';
   return h;
@@ -2272,7 +2278,7 @@ async function askSend(q){
   const history = ask.msgs.slice(-6).map(m => ({role: m.role, text: m.text})), kind = ask.kind, about = ask.about;
   ask.msgs.push({role: "user", text: q}); ask.busy = true; ask.err = ""; ask.hint = ""; askRender();
   let keep = "";
-  try { const j = await api("POST", "/api/ask", {q, history, ...(kind ? {kind} : {}), ...(about ? {about} : {})}); ask.msgs.push({role: "assistant", text: String(j.answer || "").slice(0, 1200), actions: Array.isArray(j.actions) ? j.actions.filter(x => x && typeof x === "object").slice(0, 2) : []}); ask.kind = ""; }   // ask.about stays for follow-ups until the sheet is opened for something else
+  try { const j = await api("POST", "/api/ask", {q, history, ...(kind ? {kind} : {}), ...(about ? {about} : {})}); ask.msgs.push({role: "assistant", text: String(j.answer || "").slice(0, 1200), garmin: j.garmin === true, actions: Array.isArray(j.actions) ? j.actions.filter(x => x && typeof x === "object").slice(0, 2) : []}); ask.kind = ""; }   // ask.about stays for follow-ups until the sheet is opened for something else
   catch(e){ ask.err = e.message; ask.msgs.pop(); keep = q; }
   ask.busy = false; if (ask.msgs.length > 40) ask.msgs = ask.msgs.slice(-40);
   askRender(true, keep);
@@ -2891,7 +2897,9 @@ function settingsScreen(k){
       group("Sign-in", row("set-email", "Email", esc(me.email), "user") + row("set-password", "Password", "Change your password", "lock")) +
       group("", row("set-account", "Delete account", "Removes everything for good", "flag", "", "danger"))
     : group("Profile", row("set-profile", "Body and goals", (pr.weight ? pr.weight + ' lb' : 'Weight not set') + (pr.goalWeight ? ' → ' + pr.goalWeight + ' lb' : ''), "scale")));
-  if (k === "set-train") return training;
+  if (k === "set-train") return training + (mode === "account" && aiSt.available ? '<section class="card"><div class="card-h">' + ic("spark") + '<span class="lbl">AI coach</span></div>' +
+    '<label class="tgl"><input type="checkbox" data-ai="1"' + (aiSt.on ? ' checked' : '') + '><span>Let the AI coach read my data</span></label><p class="sub">' + AI_WHAT + '</p>' +
+    '<p class="sub">Off: no coach chat, no morning note, no AI workout reviews and no meal prep ideas. Food photo estimates and race search only send what you type or snap. Runs that come only through Strava never go to AI either way.</p></section>' : '');
   if (k === "set-help") return '<div class="scards" style="margin-bottom:14px">' + mailCard() + '</div>' + help;
   if (k === "set-hr") return hrScreen();
   if (k === "set-health-info") return '<section class="card legal">' + legalHtml("health") + '</section>';
@@ -3032,8 +3040,21 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "88";
+const APP_VERSION = "89";
 let reportView = null, isOwner = false, reports = [], feat = {};
+/* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
+   Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
+let aiSt = {on: true, asked: true, needs: false, available: false};
+const AI_WHAT = 'Mileset\'s coach is AI. With your OK it reads your plan, workouts, sleep and recovery numbers, including what your Garmin sends, to write your notes and reviews and to answer your questions. Each request goes to our AI provider (Anthropic) and is never used to train AI. Without it, the app still builds and adjusts your plan with its fixed rules.';
+function aiCard(){
+  if (mode !== "account" || !aiSt.available || !aiSt.needs) return '';
+  return '<section class="card aiask" style="--tone:var(--race)"><div class="card-h">' + ic("spark") + '<span class="lbl">Your AI coach needs your OK</span></div><p class="sub">' + AI_WHAT + ' You can change this any time in Settings, Coaching and training.</p>' +
+    '<div class="an-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn primary" type="button" data-act="aiset" data-v="1">Turn on AI coach</button><button class="btn" type="button" data-act="aiset" data-v="0">Keep it off</button></div></section>';
+}
+function setAi(on){
+  return api("PUT", "/api/settings", {ai: !!on}).then(j => { uset = j.settings || uset; aiSt = {...aiSt, ...(j.ai || {on: !!on, asked: true, needs: false})}; coachOn = aiSt.available && aiSt.on; if (!aiSt.on && $(".sheet.asks")) closeMenu();
+    render(); toast(aiSt.on ? "AI coach is on." : "AI coach is off. Nothing of yours goes to AI."); }).catch(e => { toast(e.message); render(); });
+}
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
   if (v.sent) return '<section class="card"><h2 class="sec-t" style="font-size:22px">Thanks, got it</h2><p class="sub">Your report was sent. We\'ll look into it.</p><button class="btn block" type="button" data-act="back">Done</button></section>';
@@ -3088,7 +3109,7 @@ function healthHtml(){
   const ah = healthLink && healthLink.on;
   const direct = st +
     (garmin.connected ? card(A("garmin"), garmin.last_push ? "Linked · last data " + agoText(garmin.last_push) : "Linked · data comes in after your next watch sync", pill("Linked", "on"), '<i class="cws gbadge"><img src="brand/garmin-black.png" alt="Garmin" width="463" height="72"></i>')
-      : garmin.available && mode === "account" ? card(A("garmin"), "Workouts, sleep, resting heart rate and HRV", '', '<button class="gmbtn" type="button" data-act="gmconnect" aria-label="Connect with Garmin"><span>Connect with</span><img src="brand/garmin-white.png" alt="Garmin" width="463" height="72"></button>')
+      : garmin.available && mode === "account" ? card(A("garmin"), "Workouts, sleep, resting heart rate and HRV. After you connect, you choose whether the AI coach may read them.", '', '<button class="gmbtn" type="button" data-act="gmconnect" aria-label="Connect with Garmin"><span>Connect with</span><img src="brand/garmin-white.png" alt="Garmin" width="463" height="72"></button>')
       : card(A("garmin"), "Direct sync is on the way. For now, link Garmin to Strava.", pill("Coming soon", "soon"))) +
     card(A("apple-health"), ah ? "Linked · sleep, resting heart rate and HRV from your iPhone" : "Sleep, resting heart rate and HRV from your iPhone", SHORTCUT_URL ? (ah ? pill("Linked", "on") : '') : pill("Coming soon", "soon"),
       SHORTCUT_URL && !ah ? '<button class="ahbtn" type="button" data-act="hlsetup">' + ic("heart") + '<span>Set up Apple Health</span></button>' : '', SHORTCUT_URL && ah ? "hlsetup" : "");
@@ -3141,8 +3162,10 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-17.2";
+const NEW_ID = "2026-11-17.3";
 const NEWS = [
+  ["check", "AI coach: your call", "The coach is AI, and you decide if it may read your data. The switch is in Settings, Coaching and training. Off means nothing of yours goes to AI and the app runs on its fixed rules. If you use Garmin, you are asked once on Today.", "set-train", null, "2026-11-17.3"],
+  ["spark", "Your coach can see your runs", "Ask how a run went and it answers from the distance, pace and heart rate your Garmin sent, or that you logged by hand. Runs that only come through Strava can't be read by the coach (Strava's rules), so type those numbers in.", null, null, "2026-11-17.3"],
   ["check", "Name your workouts", "Open a workout in Activities, tap the pencil next to its name and type your own. Use the original name puts the old one back.", "activities", null, "2026-11-17.2"],
   ["watch", "Watch connected: no survey at all", "Your readiness, sleep, HRV and resting heart rate come straight from your watch, on Today and on Recovery. To add how you feel, tap Tell your coach how you feel and type it.", null, null, "2026-11-17"],
   ["spark", "Ask your coach anything", "Tap Ask your coach above the tabs and type: ask about your plan, why a number is what it is, or to move a workout. Any change shows as a button, and nothing moves until you tap it.", null, null, "2026-11-17"],
@@ -3798,6 +3821,7 @@ document.addEventListener("click", ev => {
   if (act === "mvsel"){ if (mv){ mv.pick = mv.pick === a.dataset.d ? null : a.dataset.d; mvRender(); const c = $(".sheet.mvs .mvpv"); if (c) c.scrollIntoView({block: "nearest", behavior: "smooth"}); } return; }
   if (act === "mskip"){ try { localStorage.setItem("hy-mskip-" + a.dataset.date, "1"); } catch(e){} render(); return; }
   if (act === "mvpick"){ doMove(a.dataset.a, a.dataset.b); return; }
+  if (act === "aiset"){ a.disabled = true; setAi(a.dataset.v === "1"); return; }
   if (act === "askopen"){ if (askOn()) askOpen(); return; }
   if (act === "askfeel"){ if (askOn()) askOpen("How do you feel this morning?", "feel"); return; }
   if (act === "askabout"){ if (askOn()) askOpen("Ask about this note", "", a.dataset.t || ""); return; }
@@ -3815,6 +3839,7 @@ document.addEventListener("input", ev => {
 });
 document.addEventListener("change", ev => {
   if (ev.target.dataset && ev.target.dataset.exsw){ const v = ev.target.value; if (v) swapExercise(ev.target.dataset.exsw, +ev.target.dataset.i, v); return; }
+  if (ev.target.dataset && ev.target.dataset.ai){ setAi(ev.target.checked); return; }
   const sk = ev.target.dataset && ev.target.dataset.set;
   if (sk === "run_time" && mode !== "account"){ uset.run_time = ev.target.value; render(); return; }
   if (sk === "run_time"){ uset.run_time = ev.target.value; safeRender(); }
