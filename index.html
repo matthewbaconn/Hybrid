@@ -250,6 +250,14 @@ button{cursor:pointer}
 .wsum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .wsum div{background:var(--sunk);border-radius:6px;padding:12px}
 .wsum span{display:block;font-size:12px;color:var(--muted)} .wsum b{font:800 21px/1.2 var(--f-display);white-space:nowrap}
+.achips{display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 14px;margin-top:-4px}
+.achips span{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:var(--sunk);color:var(--ink);font:600 12.5px/1.2 var(--f-body);max-width:100%;overflow-wrap:anywhere}
+.achips .ok{color:var(--good)} .achips .warn{color:var(--warn)} .achips .mut{color:var(--muted)} .achips .ac-hr{font-style:normal;color:#FF5A5F}
+.wsum small{font:700 13px var(--f-body);color:var(--muted)}
+.wbar{height:6px;border-radius:3px;background:var(--sunk);overflow:hidden;margin-top:12px} .wbar i{display:block;height:100%;background:linear-gradient(90deg,#800000,#BE383E)}
+.wnote{margin:8px 0 0;font-size:13px;color:var(--muted)}
+.afilt button em{font-style:normal;opacity:.7;margin-left:2px}
+.awk{display:flex;justify-content:space-between;align-items:baseline;margin:6px 2px -4px;font:700 13px/1.2 var(--f-body);color:var(--muted);text-transform:uppercase;letter-spacing:.04em} .awk em{font-style:normal;text-transform:none;letter-spacing:0}
 .actc{cursor:pointer;padding:0;overflow:hidden;gap:0}
 .actc .ah{display:flex;gap:12px;align-items:center;padding:18px 18px 0}
 .actc .aic{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--tc) 18%,transparent);color:var(--tc)}
@@ -271,6 +279,14 @@ button{cursor:pointer}
 .adet-h .an-edit svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .an-form{display:grid;gap:8px;margin:0 0 4px} .an-form input{width:100%;min-height:48px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:700 18px/1.2 var(--f-body)}
 .an-form .an-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap} .an-form .an-row .btn{min-height:44px} .an-form .err{margin:0}
+.shs h2,.apls h2{margin:0;font:800 22px/1.2 var(--f-head)} .shs .sub{margin:0}
+:root{--chk:repeating-conic-gradient(#2a2c33 0 25%,#1c1e24 0 50%)}
+.shs-g{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.shs-t{display:grid;gap:6px;padding:0;border:0;background:none;color:var(--ink);font:700 14px/1.2 var(--f-body);text-align:center;cursor:pointer}
+.shs-i{display:block;aspect-ratio:4/5;border-radius:12px;border:1px solid var(--line);background-image:var(--chk);background-size:22px 22px;background-repeat:no-repeat,repeat;background-position:center,0 0}
+.shs-i[style]{background-size:contain,22px 22px} .shs-i.solid[style]{background-size:cover} .shs-t:focus-visible .shs-i{outline:2px solid var(--accent-2);outline-offset:2px}
+.apls .kick{margin:0} .apls .lbl{font:700 13px/1.2 var(--f-body);color:var(--sub)} .apl-map{height:150px} .apl-map svg{width:100%;height:100%}
+.apl-b{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between} .apl-b .btn{flex:1;min-height:46px}
 .agrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 10px}
 .agrid span{display:block;font-size:12.5px;color:var(--muted)} .agrid b{font:700 20px/1.25 var(--f-display)}
 .splits{display:grid;gap:6px;font-size:14px}
@@ -461,7 +477,8 @@ a.srow{text-decoration:none;box-sizing:border-box}
 .zr div{flex:1;min-width:0} .zr b{display:block;font-weight:600} .zr span{font-size:13px;color:var(--muted)}
 .zr .zp{width:52px;min-height:30px;padding:0 6px;font-size:14px;text-align:center;display:inline-block;margin:0 2px}
 .zr em{font-style:normal;font-weight:700;white-space:nowrap}
-.dark-tiles{filter:invert(1) hue-rotate(180deg) brightness(1.05) contrast(1.05) saturate(.5)}
+.dark-tiles{filter:invert(1) hue-rotate(180deg) brightness(1.45) contrast(.92) saturate(.75)}   /* Nov 18: a little brighter */
+.shbtn{display:flex;align-items:center;justify-content:center;gap:8px}.shbtn svg{width:18px;height:18px}
 
 /* setup */
 .setup{display:grid;gap:22px}
@@ -846,6 +863,12 @@ const SAMPLE = {name:"Jordan", sample:true, goal:"half", raceDate: addDays(monda
 const API = "https://hybrid-api.hybridapp.workers.dev";
 const tokenStore = { get(){ try { return localStorage.getItem("hp-token"); } catch(e){ return null; } },
   set(t){ try { t ? localStorage.setItem("hp-token", t) : localStorage.removeItem("hp-token"); } catch(e){} } };
+// plan setup answers, kept on this phone so a member who leaves halfway comes back to the step they were on
+// (onboarding incident, Nov 18: members sign up but don't finish a plan). One account at a time, 30 days, cleared on log out.
+const setupDraft = {
+  get(uid){ try { const d = JSON.parse(localStorage.getItem("hp-setup") || "null"); return d && d.uid === uid && d.p && Date.now() - (d.ts || 0) < 30 * 864e5 ? d : null; } catch(e){ return null; } },
+  set(uid, st){ try { localStorage.setItem("hp-setup", JSON.stringify({uid, step: st.step, p: st.p, ts: Date.now()})); } catch(e){} },
+  clear(){ try { localStorage.removeItem("hp-setup"); } catch(e){} } };
 // the app lives at app.hybrdrunning.com: the old addresses (github.io, app.hybridrunnin.com) forward here and carry the login along
 let movedHere = false;
 try { const rf = new URLSearchParams(location.search).get("ref"); if (/^[a-f0-9]{8}$/.test(rf || "")) localStorage.setItem("hp-ref", rf); } catch(e){}
@@ -886,7 +909,9 @@ function loadAccount(j){
   reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; aiSt = j.ai || {on: true, asked: true, needs: false, available: !!j.coach}; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {}; isOwner = !!j.owner; feat = j.features || {}; founding = j.founding || null; reports = j.reports || [];
   liftLog = j.lifts || []; mealplan = j.mealplan || null; crews = j.crews || []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null;
   plan = j.profile ? buildPlan(j.profile) : null;
-  setup = plan ? null : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
+  const dr = plan ? null : setupDraft.get(me.id);
+  if (plan) setupDraft.clear();
+  setup = plan ? null : dr ? {step: Math.min(3, Math.max(0, Math.floor(+dr.step) || 0)), p: {...blankProfile(), ...dr.p}, resumed: true} : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
 }
 function signedOut(){ scr = null; feat = {}; inv = null; revOpen = false; aiSt = {on: true, asked: true, needs: false, available: false}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
@@ -1119,11 +1144,36 @@ function routeSvg(pts){
   const step = Math.max(1, Math.floor(pts.length / 400)), path = pts.filter((_, i) => i % step === 0 || i === pts.length - 1).map(xy).join(' ');
   return '<svg viewBox="0 0 340 200" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><polyline points="' + path + '" fill="none" stroke="var(--accent)" stroke-width="7" stroke-opacity=".25" stroke-linejoin="round" stroke-linecap="round"/><polyline points="' + path + '" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></svg>';
 }
+/* More in each workout's box (Matthew's Nov 18 list, item 4): heart rate with zone, climb, effort, and how it lined up with the
+   plan, as small chips under the stats. Every chip comes from the member's own workout and plan; nothing is guessed. */
+function planVs(a){
+  if (!plan || !a.date || !HP.dayOf(plan, a.date)) return null;
+  const m = HP.dayMatches(plan, feedActs(), a.date), idx = Object.keys(m).find(i => m[i].id === a.id), day = HP.dayOf(plan, a.date);
+  if (idx == null) return a.date <= TODAY && (a.type === "run" || a.type === "lift") ? {t: "Extra", tone: "mut"} : null;
+  const ss = day.sessions[idx]; if (!ss) return null;
+  const short = ss.type === "easy" ? "Easy run" : ss.type === "long" ? "Long run" : ss.type === "lift" ? "Strength" : ss.type === "workout" ? "Workout" : ss.type === "race" ? "Race" : ss.title.split(" · ")[0];
+  if (m[idx].sub) return {t: "Counted as " + short.toLowerCase(), tone: "ok"};
+  let tone = "ok", word = "done";
+  if (["easy", "long", "workout"].includes(ss.type)){ const v = HP.assess(plan, ss, a); if (v.verdict === "ok") word = "on target"; else if (v.verdict === "hard") { word = ss.type === "workout" ? "slower than target" : "faster than easy"; tone = "warn"; } else if (v.verdict === "easy") { word = "faster than target"; tone = "warn"; } }
+  if (ss.mi > 0 && a.mi > 0 && a.mi < ss.mi * .8){ word = r2(a.mi) + " of " + ss.mi + " mi"; tone = "warn"; }
+  return {t: short + " · " + word, tone};
+}
+function actChips(a){
+  const out = [], z = a.avg_hr ? zoneOf(a.avg_hr) : 0, mx = maxHrNow(), shown = actStats(a).some(([k]) => k === "Avg HR");
+  if (a.avg_hr && (z || !shown)) out.push(['<i class="ac-hr">♥</i>' + a.avg_hr + ' bpm' + (z ? ' · Z' + z : ''), '']);
+  if (a.elev_ft >= 30) out.push(['▲ ' + comma(a.elev_ft) + ' ft', '']);
+  if (a.type !== "lift" && ((a.avg_hr && mx) || a.rpe > 0 || a.feel)){ const e = HP.effortOf(a, mx); out.push([(e <= 4 ? 'Easy' : e <= 6 ? 'Moderate' : e <= 8 ? 'Hard' : 'All-out') + ' effort', '']); }
+  const pv = planVs(a); if (pv) out.push([pv.t, pv.tone]);
+  return out.length ? '<div class="achips">' + out.map(([t, k]) => '<span' + (k ? ' class="' + k + '"' : '') + '>' + t + '</span>').join("") + '</div>' : '';
+}
+// the plan's run miles for a week (Mon..Sun), to show "12.4 of 20 mi"
+function weekPlanMi(ws){ if (!plan) return 0; let t = 0; for (let i = 0; i < 7; i++){ const d = HP.dayOf(plan, addDays(ws, i)); if (d) d.sessions.forEach(x => { if (["easy", "long", "workout", "race"].includes(x.type)) t += x.mi || 0; }); } return Math.round(t * 10) / 10; }
+const weekLabel = ws => ws === mondayOf(TODAY) ? "This week" : ws === addDays(mondayOf(TODAY), -7) ? "Last week" : fmtD(ws) + " – " + fmtD(addDays(ws, 6));
 function actCard(a){
   const pts = ptsOf(a), tone = ACT_TONE[a.type] || "long", src = a.source === "strava" ? "Strava" : a.source === "garmin" ? "Garmin" : a.source === "sample" ? "Sample" : "Logged";
   return '<article class="card actc" style="--tc:var(--' + tone + ')" data-act="actopen" data-id="' + esc(a.id) + '" tabindex="0" role="button" aria-label="Open ' + esc(a.name) + '">' +
     '<div class="ah"><span class="aic">' + ic(ACT_IC[a.type] || "watch") + '</span><div><b>' + esc((me && me.name) || (plan && plan.profile.name) || "You") + '</b><span>' + whenTxt(a) + ' · ' + src + '</span></div></div>' +
-    '<h3>' + esc(a.name) + '</h3>' + (plan && a.type !== "run" && a.type !== "lift" ? '<span class="asub">' + esc(HP.actSummary(plan, feedActs(), a, TODAY, maxHrNow()).headline) + '</span>' : '') + '<div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
+    '<h3>' + esc(a.name) + '</h3>' + (plan && a.type !== "run" && a.type !== "lift" ? '<span class="asub">' + esc(HP.actSummary(plan, feedActs(), a, TODAY, maxHrNow()).headline) + '</span>' : '') + '<div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + actChips(a) +
     (pts && pts.length > 1 ? '<div class="amap" data-map="' + esc(a.id) + '">' + routeSvg(pts) + '</div>' : '') + '</article>';
 }
 function feedActs(){
@@ -1137,15 +1187,20 @@ function renderActivities(){
   const ws = mondayOf(TODAY), wk = all.filter(a => a.date >= ws && a.date <= TODAY);
   const wmi = wk.reduce((t, a) => t + (a.type === "run" ? a.mi || 0 : 0), 0), wmin = wk.reduce((t, a) => t + (a.minutes || 0), 0);
   let h = '<h2 class="sec-t">Activities</h2>';
+  const pmi = weekPlanMi(ws), pct = pmi > 0 ? Math.min(100, Math.round(wmi / pmi * 100)) : 0;
   h += '<section class="card" style="--tone:var(--lift)"><div class="card-h">' + ic("bars") + '<span class="lbl">This week</span><span class="r">' + wk.length + ' activit' + (wk.length === 1 ? 'y' : 'ies') + '</span></div>' +
-    '<div class="wsum"><div><span>Run miles</span><b>' + r2(wmi) + '</b></div><div><span>Time</span><b>' + durTxt(wmin) + '</b></div><div><span>Activities</span><b>' + wk.length + '</b></div></div></section>';
+    '<div class="wsum"><div><span>Run miles</span><b>' + r2(wmi) + (pmi > 0 ? '<small> / ' + pmi + '</small>' : '') + '</b></div><div><span>Time</span><b>' + durTxt(wmin) + '</b></div><div><span>Activities</span><b>' + wk.length + '</b></div></div>' +
+    (pmi > 0 ? '<div class="wbar" role="img" aria-label="' + r2(wmi) + ' of ' + pmi + ' planned run miles"><i style="width:' + pct + '%"></i></div><p class="wnote">' + (wmi >= pmi ? 'Planned miles done this week.' : r2(Math.max(0, pmi - wmi)) + ' mi left on the plan this week.') + '</p>' : '') + '</section>';
   const F = [["all", "All"], ["run", "Runs"], ["lift", "Strength"], ["other", "Other"]];
-  h += '<div class="afilt" role="group" aria-label="Filter activities">' + F.map(([k, l]) => '<button type="button" data-act="afilt" data-k="' + k + '" aria-pressed="' + (actFilter === k) + '">' + l + '</button>').join("") + '</div>';
-  const list = all.filter(a => actFilter === "all" || (actFilter === "other" ? !["run", "lift"].includes(a.type) : a.type === actFilter));
-  if (!list.length) h += '<section class="card"><p class="sub">' + (all.length ? 'Nothing here for this filter.' :
+  const inF = (a, k) => k === "all" || (k === "other" ? !["run", "lift"].includes(a.type) : a.type === k);
+  h += '<div class="afilt" role="group" aria-label="Filter activities">' + F.map(([k, l]) => { const n = all.filter(a => inF(a, k)).length; return '<button type="button" data-act="afilt" data-k="' + k + '" aria-pressed="' + (actFilter === k) + '">' + l + (all.length ? ' <em>' + n + '</em>' : '') + '</button>'; }).join("") + '</div>';
+  const list = all.filter(a => inF(a, actFilter));
+  const EMPTY = {run: "No runs here yet. They come in from Strava or Garmin, or log one on the Today tab.", lift: "No strength sessions yet. Log one on the Today tab after you lift.", other: "Rides, swims, walks and other sports show up here."};
+  if (!list.length) h += '<section class="card"><p class="sub">' + (all.length ? EMPTY[actFilter] || 'Nothing here for this filter.' :
     mode === "account" && strava.available && !strava.connected ? 'Connect Strava and your runs show up here with a map of your route. Garmin, COROS and Apple Watch work through Strava too.</p><button class="stbtn" type="button" data-act="stconnect" aria-label="Connect with Strava"><img src="brand/strava-connect.svg" alt="Connect with Strava" width="237" height="48"></button><p class="sub">You can also log workouts by hand on the Today tab.' :
-    'No activities yet. Log a workout on the Today tab' + (mode === "account" ? ' or sync Strava' : '') + '.') + '</p></section>';
-  else h += list.slice(0, 40).map(actCard).join("");
+    'No activities yet. Log a workout on the Today tab' + (mode === "account" ? ' or sync Strava' : '') + '.') + '</p>' + (all.length ? '<button class="linkbtn" type="button" data-act="afilt" data-k="all">Show all activities</button>' : '') + '</section>';
+  else { let lastW = ""; list.slice(0, 40).forEach(a => { const w = a.date ? mondayOf(a.date) : ""; if (w && w !== lastW){ lastW = w; const wa = list.filter(x => x.date && mondayOf(x.date) === w), rm = wa.reduce((t, x) => t + (x.type === "run" ? x.mi || 0 : 0), 0);
+      h += '<h3 class="awk"><span>' + weekLabel(w) + '</span><em>' + wa.length + ' · ' + (rm > 0 ? r2(rm) + ' mi' : durTxt(wa.reduce((t, x) => t + (x.minutes || 0), 0))) + '</em></h3>'; } h += actCard(a); }); }
   if (strava.connected) h += '<button class="linkbtn" type="button" data-act="stsync" style="justify-self:center">Sync Strava now · ' + agoText(strava.last_sync) + '</button>';
   if (strava.connected || garmin.connected) h += '<div class="badges">' + (strava.connected ? '<i class="cws"><img src="brand/compatible-strava-orange.svg" alt="Compatible with Strava" width="437" height="37"></i>' : '') + (garmin.connected ? '<i class="cws gbadge"><img src="brand/garmin-black.png" alt="Garmin" width="463" height="72"></i>' : '') + '</div>';
   h += crewCardHtml();
@@ -1160,6 +1215,7 @@ function actDetail(a){
     : '<h1>' + esc(a.name) + '</h1>') + '<span class="sub">' + whenTxt(a) + ' · ' + (a.source === "strava" ? 'Strava' : a.source === "garmin" ? 'Garmin' : a.source === "sample" ? 'Sample' : 'Logged by hand') + '</span></div>' +
     (canRename(a) && !(actName && actName.id === a.id) ? '<button class="an-edit" type="button" data-act="anedit" aria-label="Rename this workout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 7.5l3 3"/></svg></button>' : '') + '</div>';
   if (pts && pts.length > 1) h += '<div class="amap big" data-map="' + esc(a.id) + '" data-big="1">' + routeSvg(pts) + '</div>';
+  if (a.mi > 0 || (pts && pts.length > 1)) h += '<button class="btn block shbtn" type="button" data-act="ashare" data-id="' + esc(a.id) + '">' + ic("share") + ' Share image</button>';
   h += '<section class="card" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv, a) : '') + summaryHtml(a) + '</section>';
   let laps = null; try { laps = a.laps ? (typeof a.laps === "string" ? JSON.parse(a.laps) : a.laps) : null; } catch(e){}
   laps = (laps || []).filter(l => l[0] > 50 && l[1] > 0);
@@ -1172,6 +1228,185 @@ function actDetail(a){
   if (a.source === "manual") h += '<button class="btn block" type="button" data-act="adel" data-id="' + esc(a.id) + '" style="color:var(--crit)">Delete this workout</button>';
   if (a.source === "strava" && a.ext_id) h += '<a class="linkbtn" style="justify-self:center" href="https://www.strava.com/activities/' + esc(a.ext_id) + '" target="_blank" rel="noopener" style="justify-self:center;color:#FC5200">View on Strava</a>';
   return h;
+}
+/* Share image (Matthew, Nov 18: "an overlay for after runs that clients can paste anywhere, similar to Strava"; 10:43am: "something
+   transparent with mileset logo like the attached images"). "Share image" opens a sheet of styles: see-through stickers (stats,
+   big numbers, route, mile splits, heart rate) to drop on an Instagram Story or a photo, plus the full dark card. Each is drawn
+   on the phone from the member's own workout (nothing is uploaded) and goes to the phone's share sheet, or is saved as a PNG. */
+function shareStats(a){
+  const st = [];
+  if (a.mi > 0) st.push(["Distance", r2(a.mi) + " mi"]);
+  if (a.type === "run" && a.mi > 0 && a.minutes > 0) st.push(["Pace", fmtPace(a.minutes * 60 / a.mi) + " /mi"]);
+  else if (a.type === "bike" && a.mi > 0 && a.minutes > 0) st.push(["Speed", (Math.round(a.mi / a.minutes * 600) / 10) + " mph"]);
+  if (a.minutes) st.push(["Time", durTxt(a.minutes)]);
+  if (st.length < 3 && a.elev_ft) st.push(["Elevation", comma(a.elev_ft) + " ft"]);
+  if (st.length < 3 && a.avg_hr) st.push(["Avg HR", a.avg_hr + " bpm"]);
+  return st.slice(0, 3);
+}
+async function drawCard(a){
+  const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  try { await document.fonts.load('800 64px Archivo'); await document.fonts.load('600 32px Inter'); } catch(e){}
+  const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, "#1A080C"); bg.addColorStop(.55, "#0E0F14"); bg.addColorStop(1, "#0A0B0F");
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  const pts = ptsOf(a);
+  if (pts && pts.length > 1){
+    let y0 = 90, y1 = -90, x0 = 180, x1 = -180; pts.forEach(([y, x]) => { y0 = Math.min(y0, y); y1 = Math.max(y1, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); });
+    const k = Math.cos((y0 + y1) / 2 * Math.PI / 180), w = Math.max((x1 - x0) * k, 1e-5), h = Math.max(y1 - y0, 1e-5);
+    const bx = 110, by = 250, bw = W - 220, bh = 640, s = Math.min(bw / w, bh / h);
+    const P = ([y, x]) => [bx + (bw - w * s) / 2 + (x - x0) * k * s, by + (bh - h * s) / 2 + (y1 - y) * s];
+    const step = Math.max(1, Math.floor(pts.length / 1500)), q = pts.filter((_, i) => i % step === 0 || i === pts.length - 1).map(P);
+    const line = (wd, col) => { g.beginPath(); q.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.lineWidth = wd; g.strokeStyle = col; g.lineJoin = g.lineCap = "round"; g.stroke(); };
+    line(34, "rgba(190,56,62,.22)"); line(18, "rgba(255,90,95,.35)"); line(9, "#FF5A5F");
+    const dot = ([x, y], col) => { g.beginPath(); g.arc(x, y, 14, 0, 7); g.fillStyle = col; g.fill(); g.lineWidth = 5; g.strokeStyle = "#0E0F14"; g.stroke(); };
+    dot(q[0], "#FFFFFF"); dot(q[q.length - 1], "#FF5A5F");
+  }
+  const fit = (t, f, max) => { g.font = f; while (g.measureText(t).width > max && t.length > 4) t = t.slice(0, -2).trimEnd() + "…"; return t; };
+  g.textBaseline = "alphabetic";
+  g.fillStyle = "#FFFFFF"; g.fillText(fit(a.name || "Workout", "800 66px Archivo, system-ui, sans-serif", W - 160), 80, 140);
+  const day = a.date ? new Date(a.date + "T12:00:00").toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric", year: "numeric"}) : "";
+  const tm = a.start_local && a.start_local.length >= 16 ? new Date(a.start_local.slice(0, 16) + ":00").toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit"}) : "";
+  g.fillStyle = "#A7ACB8"; g.font = "600 32px Inter, system-ui, sans-serif"; g.fillText(fit([day, tm].filter(Boolean).join(" · ") || whenTxt(a), g.font, W - 160), 82, 192);   // a real date: the picture outlives "yesterday"
+  const st = shareStats(a), cw = (W - 160) / Math.max(1, st.length);
+  st.forEach(([k, v], i) => {
+    const x = 80 + i * cw;
+    g.fillStyle = "#8A90A0"; g.font = "700 26px Inter, system-ui, sans-serif"; g.fillText(k.toUpperCase(), x, 1010);
+    g.fillStyle = "#FFFFFF"; g.fillText(fit(v, "800 " + (st.length > 2 ? 62 : 72) + "px Archivo, system-ui, sans-serif", cw - 24), x, 1085);
+  });
+  g.fillStyle = "#BE383E"; g.fillRect(80, 1170, W - 160, 4);
+  g.fillStyle = "#FFFFFF"; g.font = "800 44px Archivo, system-ui, sans-serif"; g.fillText("MILESET", 80, 1250);
+  g.fillStyle = "#A7ACB8"; g.font = "600 28px Inter, system-ui, sans-serif"; g.textAlign = "right";
+  g.fillText((a.source === "strava" ? "Data via Strava · " : a.source === "garmin" ? "Data via Garmin · " : "") + "Train for anything", W - 80, 1248);
+  g.textAlign = "left";
+  return c;
+}
+const MARK_P = ["M58 -10 L30 95 L52 102 L18 205 L44 212 L26 300", "M30 95 L8 140 M18 205 L4 236"];
+const STF = (w, px) => w + " " + px + "px Archivo, system-ui, sans-serif", STI = (w, px) => w + " " + px + "px Inter, system-ui, sans-serif";
+function stShadow(g, on){ g.shadowColor = on ? "rgba(0,0,0,.55)" : "transparent"; g.shadowBlur = on ? 18 : 0; g.shadowOffsetY = on ? 2 : 0; }
+// the Mileset mark (the bolt) and wordmark, `px` tall, centred on x (or from x when align is "left")
+function stLogo(g, x, y, px, align){
+  const mh = px * 1.3, mw = mh * 92 / 344, gap = px * .32;
+  g.font = STF(800, px); const tw = g.measureText("MILESET").width, all = mw + gap + tw;
+  const x0 = align === "left" ? x : align === "right" ? x - all : x - all / 2;
+  g.save(); g.translate(x0, y - mh * .86); g.scale(mh / 344, mh / 344); g.translate(16, 24);
+  g.lineWidth = 26; g.lineCap = g.lineJoin = "round"; g.strokeStyle = "#FF5A5F"; MARK_P.forEach(d => g.stroke(new Path2D(d))); g.restore();
+  g.fillStyle = "#FFFFFF"; g.textAlign = "left"; g.fillText("MILESET", x0 + mw + gap, y);
+}
+function stLaps(a){
+  let laps = null; try { laps = a.laps ? (typeof a.laps === "string" ? JSON.parse(a.laps) : a.laps) : null; } catch(e){}
+  return (laps || []).filter(l => l[0] > 50 && l[1] > 0).slice(0, 12);
+}
+function stRoute(g, pts, bx, by, bw, bh){
+  let y0 = 90, y1 = -90, x0 = 180, x1 = -180; pts.forEach(([y, x]) => { y0 = Math.min(y0, y); y1 = Math.max(y1, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); });
+  const k = Math.cos((y0 + y1) / 2 * Math.PI / 180), w = Math.max((x1 - x0) * k, 1e-5), h = Math.max(y1 - y0, 1e-5), s = Math.min(bw / w, bh / h);
+  const P = ([y, x]) => [bx + (bw - w * s) / 2 + (x - x0) * k * s, by + (bh - h * s) / 2 + (y1 - y) * s];
+  const step = Math.max(1, Math.floor(pts.length / 1500)), q = pts.filter((_, i) => i % step === 0 || i === pts.length - 1).map(P);
+  g.beginPath(); q.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.lineJoin = g.lineCap = "round";
+  stShadow(g, true); g.lineWidth = 16; g.strokeStyle = "#FF5A5F"; g.stroke(); stShadow(g, false);
+}
+// which stickers this workout can make: [key, label]
+function stickers(a){
+  const L = [["stats", "Stats"], ["stack", "Big numbers"]], pts = ptsOf(a);
+  if (pts && pts.length > 1) L.push(["route", "Route"]);
+  if (a.type === "run" && stLaps(a).length > 1) L.push(["splits", "Splits"]);
+  if (a.avg_hr) L.push(["hr", "Heart rate"]);
+  L.push(["card", "Photo card"]);
+  return L;
+}
+async function drawSticker(a, k){
+  try { await document.fonts.load('800 64px Archivo'); await document.fonts.load('700 32px Inter'); } catch(e){}
+  if (k === "card") return drawCard(a);
+  const st = shareStats(a), W = 1080, H = {stats: 520, stack: 1080, route: 1180, splits: 1080, hr: 560}[k] || 1080;
+  const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");   // never filled: see-through
+  g.textBaseline = "alphabetic"; stShadow(g, true);
+  const lab = (t, x, y, al) => { g.textAlign = al || "left"; g.fillStyle = "rgba(255,255,255,.82)"; g.font = STI(700, 30); g.fillText(t, x, y); };
+  const val = (t, x, y, px, al) => { g.textAlign = al || "left"; g.fillStyle = "#FFFFFF"; g.font = STF(800, px); g.fillText(t, x, y); };
+  if (k === "stats"){
+    stLogo(g, W / 2, 150, 64);
+    const cw = (W - 120) / Math.max(1, st.length);
+    st.forEach(([l, v], i) => { const x = 60 + cw * i + cw / 2; lab(l, x, 330, "center"); val(v, x, 420, st.length > 2 ? 66 : 88, "center"); });
+  } else if (k === "stack"){
+    stLogo(g, W / 2, 150, 60);
+    st.forEach(([l, v], i) => { const y = 330 + i * 260; lab(l, W / 2, y, "center"); val(v, W / 2, y + 130, 128, "center"); });
+  } else if (k === "route"){
+    stRoute(g, ptsOf(a), 120, 60, W - 240, 760); stShadow(g, true);
+    const cw = (W - 120) / Math.max(1, st.length);
+    st.forEach(([l, v], i) => { const x = 60 + cw * i + cw / 2; lab(l, x, 930, "center"); val(v, x, 1010, st.length > 2 ? 64 : 80, "center"); });
+    stLogo(g, W / 2, 1120, 46);
+  } else if (k === "splits"){
+    const laps = stLaps(a), paces = laps.map(l => l[1] / (l[0] / 1609.34)), fast = Math.min(...paces), slow = Math.max(...paces);
+    const mile = laps.every(l => Math.abs(l[0] - 1609.34) < 80 || l === laps[laps.length - 1]);
+    val(mile ? "Mile splits" : "Lap splits", 90, 150, 72);
+    const top = 220, rh = Math.min(64, 640 / laps.length), bw = W - 180 - 300;
+    laps.forEach((l, i) => {
+      const y = top + i * rh, len = slow > fast ? .35 + .65 * (slow - paces[i]) / (slow - fast) : 1;
+      g.fillStyle = "rgba(255,255,255,.85)"; g.font = STI(700, 30); g.textAlign = "left"; g.fillText(String(i + 1), 90, y + rh * .62);
+      g.fillStyle = "#FF5A5F"; g.beginPath(); if (g.roundRect) g.roundRect(160, y + rh * .22, bw * len, rh * .5, rh * .25); else g.rect(160, y + rh * .22, bw * len, rh * .5); g.fill();
+      g.fillStyle = "#FFFFFF"; g.font = STF(800, 38); g.textAlign = "right"; g.fillText(fmtPace(paces[i]), W - 90, y + rh * .66);
+    });
+    stLogo(g, W / 2, Math.min(H - 70, top + laps.length * rh + 150), 50);
+  } else if (k === "hr"){
+    stLogo(g, W / 2, 140, 56);
+    lab("Avg heart rate", W / 2, 290, "center"); val(a.avg_hr + " bpm", W / 2, 430, 140, "center");
+    if (a.max_hr){ lab("Max " + a.max_hr + " bpm", W / 2, 510, "center"); }
+  }
+  g.textAlign = "left"; stShadow(g, false);
+  return c;
+}
+const toBlob = c => new Promise(r => c.toBlob(r, "image/png"));
+async function shareSheet(a){
+  const L = stickers(a), b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
+  b.innerHTML = '<div class="sheet shs" role="dialog" aria-modal="true" aria-labelledby="shs-h"><h2 id="shs-h">Share your workout</h2><p class="sub">See-through stickers: tap one, then add it to an Instagram Story or a photo.</p>' +
+    '<div class="shs-g">' + L.map(([k, l]) => '<button type="button" class="shs-t" data-act="shpick" data-k="' + k + '" data-id="' + esc(a.id) + '" aria-label="Share the ' + l + ' image"><span class="shs-i' + (k === "card" ? ' solid' : '') + '" data-k="' + k + '"></span><b>' + l + '</b></button>').join("") + '</div>' +
+    '<button class="btn block" type="button" data-act="close">Close</button></div>';
+  document.body.appendChild(b);
+  for (const [k] of L){ try { const c = await drawSticker(a, k), el = b.querySelector('.shs-i[data-k="' + k + '"]'); if (el) el.style.backgroundImage = 'url(' + c.toDataURL("image/png") + ')' + (k === "card" ? '' : ', var(--chk)'); } catch(e){} }
+}
+async function shareRun(a, k){
+  let blob; try { blob = await toBlob(await drawSticker(a, k || "card")); } catch(e){ return toast("Couldn't make the image. Try again."); }
+  if (!blob) return toast("Couldn't make the image. Try again.");
+  const name = "mileset-" + (a.date || "workout") + "-" + (k || "card") + ".png", file = new File([blob], name, {type: "image/png"});
+  try { if (navigator.canShare && navigator.canShare({files: [file]})){ await navigator.share({files: [file]}); return; } }
+  catch(e){ if (e && e.name === "AbortError") return; }
+  const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = name; document.body.appendChild(l); l.click(); l.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 10000); toast("Image saved");
+}
+/* After a workout (Matthew, Nov 18 10:43am: "after each activity ... a pop up for the bottom of the page next time it's opened like
+   Strava where they can edit the name and whatever"). The next time the app opens, a new synced workout (Strava or Garmin, last
+   2 days) slides up once: name it, share it, or open it. Seen ids are kept on the phone so each workout shows once. */
+const APL_KEY = "hy-actpop";
+function aplSeen(){ try { return JSON.parse(localStorage.getItem(APL_KEY) || "null"); } catch(e){ return null; } }
+function aplMark(ids){ try { const old = aplSeen() || []; localStorage.setItem(APL_KEY, JSON.stringify([...new Set(ids.concat(old))].slice(0, 60))); } catch(e){} }
+let apl = null;   // {id, err, busy} while the after-workout sheet is open
+function actPop(){
+  if (mode !== "account" || !plan || setup || authv || $(".back")) return;
+  const fresh = acts.filter(a => a.source !== "manual" && a.source !== "sample" && a.date && daysBetween(a.date, TODAY) <= 1);
+  const seen = aplSeen();
+  if (!seen){ aplMark(acts.filter(a => !fresh.includes(a)).map(a => a.id)); }   // first time: older workouts never pop up
+  const a = fresh.filter(x => !(seen || []).includes(x.id)).sort((x, y) => (y.start_local || y.date).localeCompare(x.start_local || x.date))[0];
+  if (!a) return;
+  aplMark(fresh.map(x => x.id));   // shown once, and older ones from the same sync don't stack up behind it
+  apl = {id: a.id, err: "", busy: false}; aplDraw(a);
+}
+function aplDraw(a){
+  let b = $(".back.apl"); if (!b){ b = document.createElement("div"); b.className = "back apl"; b.dataset.close = "1"; document.body.appendChild(b); }
+  const pts = ptsOf(a), can = canRename(a);
+  b.innerHTML = '<div class="sheet apls" role="dialog" aria-modal="true" aria-labelledby="apl-h"><p class="kick">' + (a.type === "run" ? 'Nice run' : 'Nice work') + ' · ' + whenTxt(a) + '</p>' +
+    (can ? '<form id="apl-form" class="an-form"><label for="apl-q" id="apl-h" class="lbl">Name this workout</label><input id="apl-q" type="text" maxlength="60" autocomplete="off" enterkeyhint="done" value="' + esc(a.name) + '">' +
+      (apl.err ? '<p class="err" role="alert">' + esc(apl.err) + '</p>' : '') + '</form>' : '<h2 id="apl-h">' + esc(a.name) + '</h2>') +
+    (pts && pts.length > 1 ? '<div class="amap apl-map">' + routeSvg(pts) + '</div>' : '') +
+    '<div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
+    '<div class="apl-b">' + (can ? '<button class="btn primary" type="button" data-act="aplsave"' + (apl.busy ? ' disabled aria-busy="true"' : '') + '>' + (apl.busy ? 'Saving…' : 'Save') + '</button>' : '') +
+    '<button class="btn" type="button" data-act="aplshare">' + ic("share") + ' Share</button></div>' +
+    '<div class="apl-b"><button class="linkbtn" type="button" data-act="aplopen">See the full workout</button><button class="linkbtn" type="button" data-act="close">Close</button></div></div>';
+}
+async function aplSave(){
+  const a = apl && acts.find(x => x.id === apl.id); if (!a || apl.busy) return;
+  const q = $("#apl-q"), name = cleanName(q ? q.value : a.name);
+  if (!name || name === a.name){ apl = null; closeMenu(); return; }
+  apl.busy = true; aplDraw(a);
+  try { const j = await api("PUT", "/api/activity/" + a.id + "/name", {name}); a.name = j.name; a.src_name = j.src_name || null; save(); apl = null; closeMenu(); render(); toast("Saved."); }
+  catch(e){ apl.busy = false; apl.err = e.message || "That didn't save. Try again."; aplDraw(a); }
 }
 /* maps: the route is drawn right away; dark street tiles load on top when the card scrolls into view */
 let LP = null, mapObs = null;
@@ -1246,6 +1481,7 @@ async function stravaSync(quiet){
     const j = await api("POST", "/api/strava/sync"), me2 = await api("GET", "/api/me");
     const before = JSON.stringify([acts, reviews]); acts = me2.activities || []; strava = me2.strava || strava; reviews = me2.reviews || reviews; notes = me2.notes || notes;
     if (JSON.stringify([acts, reviews]) !== before || !quiet) safeRender();
+    if (j.fresh) setTimeout(actPop, 400);   // a workout that just synced gets its after-workout sheet
     if (j.fresh && coachOn) waitForReview(null);
     else { const r = $(".card-h .r"); if (r && /^Strava/.test(r.textContent)) r.textContent = "Strava · " + agoText(strava.last_sync); }
     if (!quiet) toast(j.synced ? "Strava is up to date." : "No new Strava activities.");
@@ -1926,6 +2162,7 @@ const IC = {
   spark:'<path d="M9.94 14.06 4 20M14 4l1.5 4.5L20 10l-4.5 1.5L14 16l-1.5-4.5L8 10l4.5-1.5z"/>',
   bell:'<path d="M10.27 21a2 2 0 0 0 3.46 0"/><path d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33"/>',
   download:'<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+  pencil:'<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 7.5l3 3"/>',
   share:'<path d="M12 3v13"/><path d="m7 8 5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',
   camera:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
   cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
@@ -2598,7 +2835,7 @@ function progressHtml(){
 }
 
 /* ============ setup flow ============ */
-function blankProfile(){ return {name:"", goal:"half", raceDate: addDays(TODAY, 84), goalSec:null, weekly:15, longest:6, prDist:"5k", prSec:null, easyPace:null, weight:null, goalWeight:null, lifts:2, liftExp:"Some", days:[0,2,4,6], longDay:6}; }
+function blankProfile(){ return {name:"", goal:"half", raceDate: addDays(TODAY, 84), goalSec:null, weekly:15, longest:6, prDist:"none", prSec:null, easyPace:null, weight:null, goalWeight:null, lifts:2, liftExp:"Some", days:[0,2,4,6], longDay:6}; }
 function optList(name, items, cur, type){ return '<div class="opts' + (name === "days" || name === "liftDays" ? ' days' : '') + '" role="group">' + items.map(([v, l]) => '<label class="opt"><input type="' + (type || "radio") + '" name="' + name + '" value="' + v + '"' + ((type === "checkbox" ? cur.includes(+v) : String(cur) === String(v)) ? ' checked' : '') + '><span>' + l + '</span></label>').join("") + '</div>'; }
 function renderSetup(){
   const st = setup, p = st.p;
@@ -2660,7 +2897,8 @@ function renderSetup(){
       '<div class="q"><label for="s-city">Where do you usually train? <small>Optional</small></label><small class="hint" style="margin:0">Used for the weather, the best time to run, and heat-adjusted paces.</small>' +
       '<div class="cityrow"><input id="s-city" autocomplete="address-level2" placeholder="City, e.g. Vero Beach, FL" value="' + esc(st.city != null ? st.city : ((wxLoc() || {}).place || "")) + '"><button class="btn" type="button" data-act="sgeo">' + (st.geoBusy ? 'Finding…' : 'Use my location') + '</button></div></div>';
   }
-  return header() + '<section class="setup view">' + bars + body + '<p class="err" id="s-err" role="alert">' + esc(st.err || "") + '</p><div class="nav"><button class="btn" type="button" data-act="prev">Back</button><button class="btn primary" type="button" data-act="next">' + (st.step === 3 ? 'Build my plan' : 'Next') + '</button></div></section>';
+  const back = st.resumed && st.step > 0 ? '<p class="hint" role="status">Welcome back. Your answers are saved, so you can pick up right here.</p>' : '';
+  return header() + '<section class="setup view">' + bars + back + body + '<p class="err" id="s-err" role="alert">' + esc(st.err || "") + '</p><div class="nav"><button class="btn" type="button" data-act="prev">Back</button><button class="btn primary" type="button" data-act="next">' + (st.step === 3 ? 'Build my plan' : 'Next') + '</button></div></section>';
 }
 function readStep(){
   const st = setup, p = st.p, v = id => { const e = document.getElementById(id); return e ? e.value.trim() : ""; }, num = id => { const x = parseFloat(v(id)); return isFinite(x) ? x : null; };
@@ -2685,7 +2923,7 @@ function readStep(){
     if (p.weekly == null || p.weekly < 0 || p.weekly > 120) return "Enter your miles per week (0 is fine).";
     if (p.longest == null) p.longest = Math.max(2, Math.round(p.weekly * .3));
     if (document.getElementById("s-pr")){ const t = parseTime(v("s-pr")); if (v("s-pr") && !t) return "Type your time as numbers, like 2430 for 24:30."; p.prSec = t; if (!t) return "Add your race time, or pick None yet."; p.easyPace = null; }
-    if (document.getElementById("s-easy")){   // optional (Nov 17): a beginner often doesn't know it; blank = start easy, adjust from runs
+    if (document.getElementById("s-easy") && p.prDist === "none"){   // optional (Nov 17); only while None yet is picked, so switching to a race distance sticks: a beginner often doesn't know it; blank = start easy, adjust from runs
       const raw = v("s-easy"), t = raw ? parseTime(raw) : null;
       if (raw && (!t || t < 300 || t > 1200)) return "Type your easy pace as numbers, like 1030 for 10:30, or leave it blank.";
       p.easyPace = t || null; p.paceUnknown = !t; p.prSec = null; p.prDist = "none"; }
@@ -3086,7 +3324,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "100";
+const APP_VERSION = "104";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3208,8 +3446,13 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-18.3";
+const NEW_ID = "2026-11-18.6";
 const NEWS = [
+  ["bars", "More in every workout", "Activities now shows heart rate and zone, climb, effort, and how each run lined up with your plan. This week's box shows planned miles left, and the list is grouped by week.", "activities", null, "2026-11-18.6"],
+  ["share", "See-through share stickers", "Open a workout, tap Share image and pick a style: stats, big numbers, route, splits or heart rate. They're see-through, so they sit right on your Instagram Story or photo.", "activities", null, "2026-11-18.5"],
+  ["pencil", "Name it right after", "After a synced run, the app opens with it at the bottom: give it a name, share it, or open the full workout.", null, null, "2026-11-18.5"],
+  ["share", "Share your run as an image", "Open a workout and tap Share image: a picture with your route, distance, pace and time, ready for your story or a group chat.", "activities", null, "2026-11-18.4"],
+  ["watch", "A brighter route map", "Workout maps are easier to read: brighter streets under your route.", "activities", null, "2026-11-18.4"],
   ["spark", "Stress nudges from your Garmin", "When your watch shows a stressful stretch, you get one short nudge to breathe, or a rest-day suggestion on a very hard day. Turn it off in Settings, Notifications.", "settings", null, "2026-11-18.3"],
   ["check", "Sleep check in your morning note", "After a night far outside your normal sleep, the morning notification says how far off it was and what it usually means for today's training.", null, null, "2026-11-18.3"],
   ["spark", "Rough night? Adjust today", "Open the coach bar and tap Rough night: adjust today. The coach offers an easier day as buttons, plus fluids and simple food, and says when to skip training.", null, null, "2026-11-18.2"],
@@ -3471,9 +3714,10 @@ document.addEventListener("click", ev => {
   const act = a.dataset.act;
   if (act === "next"){
     if (setup.step >= 0){ const e = readStep(); if (e){ setup.err = e; render(); const el = $("#s-err"); if (el) el.scrollIntoView({block:"center"}); return; } }
-    setup.err = ""; setup.step++;
+    setup.err = ""; setup.resumed = false; setup.step++;
     // funnel question 4 (Nov 17): remember the furthest setup step a member reached, so we can see where people stop
     if (mode === "account" && !plan && setup.step >= 1) api("POST", "/api/account/setup-step", {step: setup.step}).catch(() => {});
+    if (mode === "account" && !plan && me && setup.step >= 1 && setup.step <= 3) setupDraft.set(me.id, setup);
     if (setup.step === 4){
       const prof = {...setup.p, start: mondayOf(TODAY), pv: HP.PLAN_V}; delete prof.sample; delete prof.swaps;   // a new plan starts with no moved days
       // training location: from "Use my location", or look up the typed city (doesn't hold up the plan)
@@ -3489,13 +3733,13 @@ document.addEventListener("click", ev => {
       const saving = mode === "account" ? api("PUT", "/api/profile", {profile: prof, resetFrom: TODAY}) : Promise.resolve();
       Promise.all([wait, saving]).then(() => {
         if (mode === "account") Object.keys(done).forEach(k => { if (k >= TODAY) delete done[k]; });
-        plan = buildPlan(prof); setup = null; save(); setTab("today", true);
+        plan = buildPlan(prof); setup = null; setupDraft.clear(); save(); setTab("today", true);
       }).catch(e => { setup.step = 3; setup.err = e.message; render(); });
       return;
     }
     render(); window.scrollTo(0, 0); return;
   }
-  if (act === "prev"){ setup.err = ""; if (setup.step === 0 && plan){ setup = null; render(); return; } setup.step = Math.max(-1, setup.step - 1); render(); window.scrollTo(0, 0); return; }
+  if (act === "prev"){ setup.err = ""; setup.resumed = false; if (setup.step === 0 && plan){ setup = null; render(); return; } setup.step = Math.max(-1, setup.step - 1); render(); window.scrollTo(0, 0); return; }
   if (act === "sample"){ if (API) mode = "sample"; plan = buildPlan({...SAMPLE}); setup = null; save(); setTab("today", true); toast("Showing a sample runner. Tap the gear to build your own plan."); return; }
   if (act === "done"){
     const k = a.dataset.key, on = !done[k], firstEver = on && !Object.keys(done).length && !acts.length;
@@ -3505,6 +3749,11 @@ document.addEventListener("click", ev => {
     return;
   }
   if (act === "actgo"){ const id = a.dataset.id; nav("fwd", () => { scr = null; tab = "activities"; actSel = id; render(); window.scrollTo(0, 0); }); return; }
+  if (act === "ashare"){ const x = feedActs().find(y => y.id === a.dataset.id); if (x) shareSheet(x); return; }
+  if (act === "shpick"){ const x = feedActs().find(y => y.id === a.dataset.id); if (x) shareRun(x, a.dataset.k); return; }
+  if (act === "aplsave"){ aplSave(); return; }
+  if (act === "aplshare"){ const x = apl && acts.find(y => y.id === apl.id); if (x){ apl = null; closeMenu(); shareSheet(x); } return; }
+  if (act === "aplopen"){ const id = apl && apl.id; apl = null; closeMenu(); if (id) nav("fwd", () => { scr = null; tab = "activities"; actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actopen"){ const id = a.dataset.id; scrollMem[viewKey()] = window.scrollY; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actback"){ nav("back", () => { actSel = null; actName = null; render(); restoreScroll(viewKey()); }); return; }
   if (act === "anedit"){ const x = acts.find(y => y.id === actSel); if (x && canRename(x)){ actName = {id: x.id, v: x.name, err: "", busy: false}; render(); const q = $("#an-q"); if (q){ q.focus(); q.select(); } } return; }
@@ -3726,10 +3975,10 @@ document.addEventListener("click", ev => {
   if (act === "authsignup" || act === "authlogin"){ closeMenu(); scr = null; authv = {view: act === "authsignup" ? "signup" : "login", email: authv ? authv.email : ""}; render(); window.scrollTo(0, 0); return; }
   if (act === "authback"){ authv = null; render(); return; }
   if (act === "authforgot"){ const em = ((document.getElementById("a-email") || {}).value || (authv && authv.email) || "").trim(); authv = {view: "forgot", email: em}; render(); window.scrollTo(0, 0); return; }
-  if (act === "logout"){ closeMenu(); scr = null; const t = token; api("POST", "/api/logout").catch(() => {}).finally(() => { if (token === t) signedOut(); }); return; }
+  if (act === "logout"){ closeMenu(); scr = null; setupDraft.clear(); const t = token; api("POST", "/api/logout").catch(() => {}).finally(() => { if (token === t) signedOut(); }); return; }
   if (act === "delacct"){
     if (a.dataset.sure !== "1"){ a.dataset.sure = "1"; a.textContent = "Tap again to delete everything"; return; }
-    closeMenu(); scr = null; api("DELETE", "/api/account").then(() => { signedOut(); toast("Your account and data are deleted."); }).catch(e => toast(e.message)); return;
+    closeMenu(); scr = null; api("DELETE", "/api/account").then(() => { setupDraft.clear(); signedOut(); toast("Your account and data are deleted."); }).catch(e => toast(e.message)); return;
   }
   if (act === "getapp"){
     if (installEvt){ const e = installEvt; installEvt = null; e.prompt(); e.userChoice.then(c => { if (c.outcome !== "accepted") toast("No problem. Tap Get app any time."); render(); }).catch(() => render()); }
@@ -3989,7 +4238,7 @@ document.addEventListener("keydown", ev => { if (ev.key === "Escape") closeMenu(
 document.addEventListener("touchstart", () => {}, {passive: true});
 ["gesturestart", "gesturechange", "gestureend"].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
 document.addEventListener("input", ev => { if (ev.target.id === "an-q" && actName && !actName.busy) actName.v = ev.target.value; });
-document.addEventListener("submit", ev => { if (ev.target.id === "an-form"){ ev.preventDefault(); const q = $("#an-q"); if (actName) saveActName(actName.id, q ? q.value : actName.v); return; } if (ev.target.id === "askform"){ ev.preventDefault(); const q = $("#ask-q"); askSend(q ? q.value : ""); return; } if (ev.target.id === "rs-form"){ ev.preventDefault(); if (!rsv.busy) rsSearch(); return; } if (ev.target.id === "authform"){ ev.preventDefault(); if (!authv.busy) submitAuth(); } });
+document.addEventListener("submit", ev => { if (ev.target.id === "apl-form"){ ev.preventDefault(); aplSave(); return; } if (ev.target.id === "an-form"){ ev.preventDefault(); const q = $("#an-q"); if (actName) saveActName(actName.id, q ? q.value : actName.v); return; } if (ev.target.id === "askform"){ ev.preventDefault(); const q = $("#ask-q"); askSend(q ? q.value : ""); return; } if (ev.target.id === "rs-form"){ ev.preventDefault(); if (!rsv.busy) rsSearch(); return; } if (ev.target.id === "authform"){ ev.preventDefault(); if (!authv.busy) submitAuth(); } });
 window.addEventListener("hashchange", () => { if (!setup && plan) setTab(location.hash.slice(1), true); });
 
 tab = ["today","plan","activities","recovery","training","more"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "today";
@@ -4008,7 +4257,7 @@ function hideSplash(){
 }
 if (splashReady) hideSplash(); else setTimeout(hideSplash, 4000);
 if (!token && mode === "local") setTimeout(whatsNew, 1600);
-if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); garminReturn(); if (location.hash === "#members"){ try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} if (isOwner) go("members"); } if (movedHere) setTimeout(() => toast("Mileset has a new address: app.hybrdrunning.com. If you added it to your Home Screen, add this one again."), 600); autoSync(true); setTimeout(whatsNew, 900); if (pushOK()) checkPush().then(() => { safeRender(); setTimeout(askNotif, 1800); }); })
+if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); garminReturn(); if (location.hash === "#members"){ try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} if (isOwner) go("members"); } if (movedHere) setTimeout(() => toast("Mileset has a new address: app.hybrdrunning.com. If you added it to your Home Screen, add this one again."), 600); autoSync(true); setTimeout(actPop, 700); setTimeout(whatsNew, 900); if (pushOK()) checkPush().then(() => { safeRender(); setTimeout(askNotif, 1800); }); })
   .catch(e => { loading = false; if (token){ mode = "none"; plan = null; } render(); hideSplash(); toast(e.message); });
 })();
 </script>

@@ -36,13 +36,13 @@ try {
   const signup = async (email, name) => { const r = await fetch(API + "/api/signup", {method: "POST", headers: {"Content-Type": "application/json", Origin: "http://localhost:8000"}, body: JSON.stringify({email, password: "first-workout-123", name, agree: true})}); return (await r.json()).token; };
   const t0 = Date.now();
   await signup("owner-" + t0 + "@fw.test", "Owner");   // oldest real account = the owner, never counted
-  for (const k of ["due", "trained", "fresh", "unsub", "robot"]) ok(!!(await signup((k === "robot" ? "robot-" + t0 + "@example.com" : k + "-" + t0 + "@fw.test"), k[0].toUpperCase() + k.slice(1))), "signed up " + k);
+  for (const k of ["due", "trained", "fresh", "tweaked", "unsub", "robot"]) ok(!!(await signup((k === "robot" ? "robot-" + t0 + "@example.com" : k + "-" + t0 + "@fw.test"), k[0].toUpperCase() + k.slice(1))), "signed up " + k);
   const id = {}; for (const r of sql("SELECT id, name FROM users")) id[r.name] = r.id;
   sql(`INSERT OR IGNORE INTO not_members (user_id, why, created) VALUES ('${id.Owner}', 'owner', '${day(0)}');
        UPDATE lifecycle_mail SET sent_at = '${day(-10)}';`);
   const p = profile.replace(/'/g, "''");
-  for (const n of ["Owner", "Due", "Trained", "Fresh", "Unsub", "Robot"]){
-    sql(`INSERT INTO profiles (user_id, data, updated) VALUES ('${id[n]}', '${p}', '${n === "Fresh" ? new Date().toISOString() : day(-5) + "T12:00:00.000Z"}');
+  for (const n of ["Owner", "Due", "Trained", "Fresh", "Tweaked", "Unsub", "Robot"]){
+    sql(`INSERT INTO profiles (user_id, data, updated) VALUES ('${id[n]}', '${p}', '${n === "Fresh" ? new Date().toISOString() : n === "Tweaked" ? day(-2) + "T12:00:00.000Z" : day(-5) + "T12:00:00.000Z"}');
          INSERT INTO settings (user_id, data) VALUES ('${id[n]}', '{"tz":"${tz}"}') ON CONFLICT (user_id) DO UPDATE SET data = excluded.data;`);
   }
   sql(`INSERT INTO done (user_id, key) VALUES ('${id.Trained}', '${day(-2)}-0'); UPDATE users SET no_mail = 1 WHERE id = '${id.Unsub}'; UPDATE users SET created = '${day(-6)}T00:00:00.000Z';`);
@@ -58,12 +58,13 @@ try {
   ok(/I did it/.test(m.text || "") && /Matthew/.test(m.text || "") && /Unsubscribe/.test(m.text || ""), "body names the one tap, is signed Matthew, has unsubscribe");
   ok(to("trained").length === 0, "member who checked off a workout got nothing");
   ok(to("fresh").length === 0, "member who just built a plan got nothing");
+  ok(to("tweaked").length === 1, "member who changed their plan 2 days ago (a member for 6 days) still gets the reminder");
   ok(to("unsub").length === 0, "unsubscribed member got nothing");
   ok(to("owner").length === 0 && to("robot").length === 0, "owner and test accounts got nothing");
   ok(sql(`SELECT COUNT(*) AS n FROM lifecycle_mail WHERE kind = 'first_workout' AND ok = 1 AND user_id = '${id.Due}'`)[0].n === 1, "recorded once in lifecycle_mail");
   await tick();
   ok(to("due").length === 1, "second cron run: still only one reminder, ever");
-  ok(sql(`SELECT COUNT(*) AS n FROM done`)[0].n === 1 && sql(`SELECT COUNT(*) AS n FROM profiles`)[0].n === 6, "member data unchanged");
+  ok(sql(`SELECT COUNT(*) AS n FROM done`)[0].n === 1 && sql(`SELECT COUNT(*) AS n FROM profiles`)[0].n === 7, "member data unchanged");
 } catch(e){ ok(false, "test crashed: " + (e && e.message)); }
 stop();
 console.log(failed ? failed + " check(s) failed" : "ALL PASS");

@@ -985,16 +985,17 @@ async function day7Nudges(env){
   }
 }
 /* first-workout reminder (B7, Matthew approved Nov 15: "Let's do 1"; member contact policy): once per member ever,
-   3+ days after they built (or last changed) a plan that has had sessions since, when they have never checked off a
+   3+ days after they signed up, once their plan has been unchanged for a day (Nov 18: 7 of 12 plan holders had changed
+   their plan in the last 3 days, and each change used to restart the 3-day wait) and has had sessions since, when they have never checked off a
    workout and nothing has synced. One push if they turned notifications on, otherwise one email (never to unsubscribed,
    test or owner accounts, never within 48 h of another email). 9 am-7 pm their time. Uses the plan only, never Strava data. */
 async function firstWorkoutNudges(env){
   const t = Date.now(), iso = d => new Date(t - d * 864e5).toISOString();
   const rows = (await env.DB.prepare(
-    "SELECT u.id, u.name, u.email, u.no_mail FROM users u JOIN profiles p ON p.user_id = u.id WHERE " + REAL("u.") + " AND p.updated <= ? " +
+    "SELECT u.id, u.name, u.email, u.no_mail FROM users u JOIN profiles p ON p.user_id = u.id WHERE " + REAL("u.") + " AND u.created <= ? AND p.updated <= ? " +
     "AND NOT EXISTS (SELECT 1 FROM done d WHERE d.user_id = u.id) AND NOT EXISTS (SELECT 1 FROM activities a WHERE a.user_id = u.id) " +
     "AND NOT EXISTS (SELECT 1 FROM lifecycle_mail l WHERE l.user_id = u.id AND l.kind = 'first_workout') LIMIT 20"
-  ).bind(iso(3)).all()).results;
+  ).bind(iso(3), iso(1)).all()).results;   // 3+ days a member, plan unchanged for a day: tweaking the plan no longer pushes it back 3 days
   if (!rows.length) return;
   const bulk = await env.DB.prepare("SELECT 1 FROM mail_sent WHERE sent_at > ? AND sent > 0").bind(iso(2)).first();
   for (const u of rows){
