@@ -235,13 +235,13 @@ await check("Watch connected: readiness and sleep replace the morning survey, an
   try {
     await load();
     const t = (await page.textContent(".ci-done.wr")).replace(/\s+/g, " ");
-    if (!/From your watch/.test(t) || !/7\.2 h sleep/.test(t) || !/sleep score 82/.test(t) || !/HRV 61 ms/.test(t) || !/resting HR 49/.test(t)) throw new Error("watch card wrong: " + t.slice(0, 200));
+    if (!/From your Garmin/.test(t) || !/Insights derived in part from Garmin device-sourced data\./.test(t) || !/7\.2 h sleep/.test(t) || !/sleep score 82/.test(t) || !/HRV 61 ms/.test(t) || !/resting HR 49/.test(t)) throw new Error("watch card wrong: " + t.slice(0, 200));
     await noSurvey("on Today"); await noOverflow();
     await tab("recovery"); await page.waitForSelector(".rings"); await noSurvey("on Recovery");
     // a check-in saved earlier today (before this change) must not bring the survey or its Edit link back
     saved = true; await load();
     const t2 = (await page.textContent(".ci-done.wr")).replace(/\s+/g, " ");
-    if (!/From your watch/.test(t2) || !/HRV 61 ms/.test(t2)) throw new Error("with a check-in saved today the watch card is gone: " + t2.slice(0, 200));
+    if (!/From your Garmin/.test(t2) || !/HRV 61 ms/.test(t2)) throw new Error("with a check-in saved today the watch card is gone: " + t2.slice(0, 200));
     await noSurvey("on Today (check-in already saved)");
     await tab("recovery"); await page.waitForSelector(".rings"); await noSurvey("on Recovery (check-in already saved)");
     // with the coach on: how you feel is typed to the coach, from Today and from Recovery
@@ -327,12 +327,18 @@ await check("Ask bar: shows only when the server says so; ask, confirm a move, p
   if (says !== null && shown !== says) throw new Error("the server says the ask bar is " + (says ? "on" : "off") + " for this account but the app " + (shown ? "shows" : "hides") + " it");
   // Switch the preview on for this account in the app's view only, with a stand-in coach (no AI call, nothing leaves the test).
   await tab("plan"); await page.waitForSelector(".day-h .mvb");
-  const from = await page.evaluate(() => { const today = HP.isoLocal(new Date()); return [...document.querySelectorAll(".day-h .mvb")].map(b => b.dataset.date).filter(d => d > today)[0] || null; });
-  if (!from) throw new Error("no future day to move in the test plan");
-  const to = await page.evaluate(d => HP.addDays(d, 1), from), asked = [];
+  // a future day with a workout whose next day is a valid target (a rest day can carry a Move button too, and the coach's
+  // Move is only offered for a day that has sessions: picking the first future day failed on days the plan rests, Nov 18)
+  const pick = await page.evaluate(() => { const today = HP.isoLocal(new Date());
+    for (const d of [...document.querySelectorAll(".day-h .mvb")].map(b => b.dataset.date).filter(d => d > today)){
+      const t = HP.addDays(d, 1), a = document.getElementById("d-" + d), b = document.getElementById("d-" + t);
+      if (a && !a.classList.contains("t-rest") && b && !b.classList.contains("t-race")) return [d, t]; }
+    return null; });
+  if (!pick) throw new Error("no future workout day to move in the test plan");
+  const [from, to] = pick, asked = [];
   const me = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {ask: true}; await route.fulfill({response: r, json: j}); };
   const coach = async route => { const b = route.request().postDataJSON(); asked.push(b);
-    await route.fulfill({json: {answer: "Done thinking: moving it a day keeps your long run fresh.", actions: [{type: "move", from, to}, {type: "open", screen: "fuel"}]}}); };
+    await route.fulfill({json: {answer: "Done thinking: moving it a day keeps your long run fresh.", garmin: asked.length === 1, actions: [{type: "move", from, to}, {type: "open", screen: "fuel"}]}}); };
   await page.route("**/api/me", me); await page.route("**/api/ask", coach);
   try {
     await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar"); await tab("today");
@@ -345,6 +351,8 @@ await check("Ask bar: shows only when the server says so; ask, confirm a move, p
     await page.fill("#ask-q", "Can you move that workout a day later?"); await page.press("#ask-q", "Enter");
     await page.waitForSelector(".ask-acts .btn");
     if (asked[0].q !== "Can you move that workout a day later?") throw new Error("the question sent was: " + JSON.stringify(asked[0]));
+    // Garmin attribution: an answer the server marks as built with Garmin data shows Garmin's line right under it
+    if ((await page.locator(".sheet.asks .gattr").count()) !== 1 || (await page.innerText(".sheet.asks .gattr")).trim() !== "Insights derived in part from Garmin device-sourced data.") throw new Error("the Garmin attribution line is missing or worded differently under a Garmin-based answer");
     const labels = await page.locator(".ask-acts .btn").allInnerTexts();
     if (labels.length !== 2 || !/^Move /.test(labels[0]) || !/^Open Fuel and food$/.test(labels[1])) throw new Error("action buttons: " + labels.join(" | "));
     await shot("03-ask-sheet", true);
@@ -372,6 +380,36 @@ await check("Ask bar: shows only when the server says so; ask, confirm a move, p
     await page.unroute("**/api/me", me); await page.unroute("**/api/ask", coach); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
   }
 }, {needs: "Build a plan (4 steps)"});
+await check("AI coach consent: a Garmin member is asked once; yes turns the coach on, the Settings switch turns it off", async () => {
+  // Only the app's view changes: /api/me says "Garmin linked, never asked", and the save goes to a stand-in that answers the way the API does.
+  let st = {on: false, asked: false, needs: true, available: true}; const puts = [];
+  const me = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {...(j.features || {}), ask: true}; j.ai = st; j.coach = st.on; await route.fulfill({response: r, json: j}); };
+  const put = async route => { if (route.request().method() !== "PUT") return route.continue(); const b = route.request().postDataJSON() || {};
+    if (typeof b.ai !== "boolean") return route.continue(); puts.push(b.ai); st = {on: b.ai, asked: true, needs: false, available: true}; await route.fulfill({json: {settings: {tz: "America/New_York", morning: "07:00", bedtime: "21:30", run_time: "07:00", n_morning: true, n_run: true, n_weekly: true, n_bed: true, ai: b.ai}, ai: st}}); };
+  await page.route("**/api/me", me); await page.route("**/api/settings", put);
+  try {
+    await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar"); await tab("today"); await page.waitForSelector(".card.aiask");
+    const t = (await page.textContent(".card.aiask")).replace(/\s+/g, " ");
+    if (!/AI/.test(t) || !/Garmin/.test(t) || !/Anthropic/.test(t) || !/never used to train/.test(t) || !/Settings/.test(t)) throw new Error("the consent card does not say what it should: " + t.slice(0, 240));
+    if (await page.locator("#askbar").isVisible()) throw new Error("the coach bar shows before the member has said yes");
+    await noOverflow(); await shot("03c-ai-consent", true);
+    await page.click('.card.aiask [data-act="aiset"][data-v="1"]'); await page.waitForSelector(".card.aiask", {state: "detached"});
+    await page.waitForFunction(() => { const b = document.getElementById("askbar"); return b && !b.hidden; }, null, {timeout: 5000});
+    if (puts.join() !== "true") throw new Error("yes was not saved once: " + puts.join());
+    // the switch in Settings turns it off again, and the coach bar goes away
+    await settings(); await open("set-train"); await page.waitForSelector('input[data-ai]');
+    if (!(await page.isChecked('input[data-ai]'))) throw new Error("the AI coach switch is not on after saying yes");
+    await noOverflow();
+    await page.click('label.tgl:has(input[data-ai])'); await page.waitForFunction(() => { const b = document.getElementById("askbar"); return b && b.hidden; }, null, {timeout: 5000});
+    if (puts.join() !== "true,false") throw new Error("off was not saved: " + puts.join());
+    if (await page.isChecked('input[data-ai]')) throw new Error("the AI coach switch still shows on");
+    await back(); await back(); await tab("today"); await page.waitForSelector(".hub-hero");
+    if (await page.locator(".card.aiask").count()) throw new Error("the member is asked again after answering");
+    return "asked once, yes -> coach on, Settings switch -> coach off";
+  } finally {
+    await page.unroute("**/api/me", me); await page.unroute("**/api/settings", put); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
+  }
+});
 await check("Ask bar stress: hostile replies, bad buttons, a burst of taps, 14 random moves, a dead network, a tiny screen", async () => {
   // The coach is a stand-in that this check controls, so it can send things a real reply never should.
   let reply = {answer: "ok", actions: []}, calls = 0, dead = false, step = "start";

@@ -586,6 +586,7 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 .fdate .arrow{background:var(--surface)}
 .coach{display:flex;gap:12px;align-items:flex-start;background:color-mix(in srgb,var(--accent) 12%,var(--sunk));border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:6px;padding:12px 14px}
 .coach > .ic{color:var(--accent-2);margin-top:2px}
+.gattr{display:block;font-size:12px;line-height:1.35;color:var(--muted);margin:3px 0 0} .ask-m.a + .gattr{margin:-4px 0 0 4px}
 .coach b{display:block;font-weight:700} .coach .num{display:block;font-size:13px;color:var(--muted);margin:2px 0}
 .coach p{margin:4px 0 0;font-size:14px;line-height:1.5} .coach strong{color:var(--ink)}
 .assess{display:grid;gap:2px;border-radius:5px;padding:10px 12px;background:var(--sunk);border-left:4px solid var(--vc)}
@@ -815,7 +816,7 @@ a.scard{text-decoration:none;color:var(--ink)}
 (function(){
 "use strict";
 /* ============ helpers (shared plan logic lives in plan.js) ============ */
-const {pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma} = HP;
+const {pad, isoLocal, localDay, lastActiveDay, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma} = HP;
 const {RACES, pace} = HP;
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -870,12 +871,12 @@ function loadAccount(j){
   clearObj(checkins); (j.checkins || []).forEach(c => checkins[c.date] = c);
   clearObj(weights); (j.weights || []).forEach(w => weights[w.date] = w.lb);
   acts = j.activities || []; strava = j.strava || strava; garmin = j.garmin || {available: false, connected: false, last_push: null};
-  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {}; isOwner = !!j.owner; feat = j.features || {}; founding = j.founding || null; reports = j.reports || [];
+  reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; aiSt = j.ai || {on: true, asked: true, needs: false, available: !!j.coach}; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {}; isOwner = !!j.owner; feat = j.features || {}; founding = j.founding || null; reports = j.reports || [];
   liftLog = j.lifts || []; mealplan = j.mealplan || null; crews = j.crews || []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null;
   plan = j.profile ? buildPlan(j.profile) : null;
   setup = plan ? null : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
 }
-function signedOut(){ scr = null; feat = {}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
+function signedOut(){ scr = null; feat = {}; aiSt = {on: true, asked: true, needs: false, available: false}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
 const checkins = S.checkins || {};          // date -> {sleep_h, sleep_q, soreness, energy, stress}
 const weights = S.weights || {};            // date -> lb
@@ -885,7 +886,12 @@ let ci = null, wf = null, aw = {open: false, err: "", busy: false};
 let reviews = {}, notes = [], uset = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", n_morning: true, n_run: true, n_weekly: true, n_bed: true}, pushInfo = {key: null, devices: 0}, coachOn = false;
 const reviewFor = a => reviews[a.id] || null;
 const VCLS = {ok: "good", easy: "easy", hard: "warn", unknown: "muted", extra: "good"};
-function reviewHtml(rv, a){
+/* Garmin attribution (Garmin API brand guidelines, Nov 17): anything worked out with Garmin device data as an input says
+   so right under its heading, in Garmin's own sample wording. Shown only where Garmin data really was an input. */
+const GARMIN_ATTR = 'Insights derived in part from Garmin device-sourced data.';
+const gAttr = on => on ? '<small class="gattr">' + GARMIN_ATTR + '</small>' : '';
+function reviewHtml(rv, a, garminIn){
+  const gm = gAttr(garminIn || (a && a.source === "garmin"));
   if (rv.askFeel){
     // Strava workout: rule-based summary, then the coach needs the person's own take (Strava data isn't sent to AI)
     const id = a ? a.id : "";
@@ -894,7 +900,7 @@ function reviewHtml(rv, a){
         [["easy", "Easy"], ["just right", "Just right"], ["hard", "Hard"], ["very hard", "Very hard"]].map(([k, l]) => '<button type="button" data-act="feel" data-id="' + esc(id) + '" data-f="' + k + '"' + (feelBusy === id ? ' disabled' : '') + '>' + l + '</button>').join("") + '</div>' +
         '<input class="feelnote" id="fn-' + esc(id) + '" maxlength="300" placeholder="Anything else? Legs, pace, how you slept (optional)">' : '') + '</div></div>';
   }
-  return '<div class="coach">' + ic("spark") + '<div><small class="ai">AI coach · can be wrong</small><b>' + esc(rv.headline) + '</b>' + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + (rv.feel ? '<p class="fine">From how you said it felt: ' + esc(rv.feel) + '.</p>' : '') +
+  return '<div class="coach">' + ic("spark") + '<div><small class="ai">AI coach · can be wrong</small><b>' + esc(rv.headline) + '</b>' + gm + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + (rv.feel ? '<p class="fine">From how you said it felt: ' + esc(rv.feel) + '.</p>' : '') +
     (askOn() && (!a || a.source !== "strava") ? '<button class="linkbtn askab" type="button" data-act="askabout" data-t="' + esc([rv.headline, rv.meaning, rv.next ? "Next: " + rv.next : ""].filter(Boolean).join(" ").slice(0, 480)) + '">Ask about this</button>' : '') + '</div></div>';
 }
 let feelBusy = null;
@@ -938,12 +944,12 @@ const feelBtn = () => askOn() ? '<button class="linkbtn" type="button" data-act=
 function watchReadyCard(){
   const sg0 = sigOn(TODAY), sg = sg0 || {}, c = checkins[TODAY], r = readiness(c, sg0);   // a check-in already saved today still counts, so the score matches the rest of the app
   if (!r) return morningNow() ? '<section class="card ci-done wr" style="--tone:var(--long)"><div class="ci-row"><div><strong>Waiting for your watch</strong><span>Last night\'s sleep and today\'s readiness show here once your watch syncs.</span></div>' + (watchFeeding() ? feelBtn() : '<button class="linkbtn" type="button" data-act="ciopen">Check in by hand</button>') + '</div></section>' : '';
-  const n1 = x => Math.round(x * 10) / 10, mn = morningNote();
+  const n1 = x => Math.round(x * 10) / 10, mn = morningNote(), fromGarmin = !!(dev && dev[TODAY] && dev[TODAY].source === "garmin");
   const bits = [sg.sleep_h ? n1(sg.sleep_h) + ' h sleep' : '', sg.sleep_score != null ? 'sleep score ' + sg.sleep_score : '',
     sg.hrv ? 'HRV ' + Math.round(sg.hrv) + ' ms' + (sg.hrvA ? ' (your normal ' + Math.round(sg.hrvA) + ')' : '') : '',
     sg.rhr ? 'resting HR ' + Math.round(sg.rhr) + (sg.rhrA ? ' (your normal ' + Math.round(sg.rhrA) + ')' : '') : ''].filter(Boolean);
-  return '<section class="card ci-done wr" style="--tone:var(--' + r.tone + ')"><div class="ci-row"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>' + (bits.length ? 'From your watch · ' + esc(bits.join(' · ')) : 'Waiting for last night\'s watch numbers') + '</span></div>' + feelBtn() + '</div>' +
-    (r.watch ? '<p class="sub">' + esc(r.watch.join(' · ')) + '.</p>' : '') + (mn ? reviewHtml({headline: mn.headline, meaning: (mn.lines || []).join(" ")}) : '') + '</section>';
+  return '<section class="card ci-done wr" style="--tone:var(--' + r.tone + ')"><div class="ci-row"><b>' + r.score + '</b><div><strong>' + r.word + '</strong><span>' + (bits.length ? (fromGarmin ? 'From your Garmin · ' : 'From your watch · ') + esc(bits.join(' · ')) : 'Waiting for last night\'s watch numbers') + '</span></div>' + feelBtn() + '</div>' +
+    (r.watch ? '<p class="sub">' + esc(r.watch.join(' · ')) + '.</p>' : '') + (mn ? reviewHtml({headline: mn.headline, meaning: (mn.lines || []).join(" ")}, null, fromGarmin) : gAttr(fromGarmin && bits.length)) + '</section>';
 }
 function checkinCard(){
   const c = checkins[TODAY], r = readiness(c, sigOn(TODAY));
@@ -1116,7 +1122,7 @@ function actDetail(a){
     ? '<form class="an-form" id="an-form"><input id="an-q" type="text" maxlength="60" autocomplete="off" enterkeyhint="done" aria-label="Workout name" value="' + esc(actName.v) + '">' +
       '<div class="an-row"><button class="btn primary" type="submit"' + (actName.busy ? ' disabled aria-busy="true"' : '') + '>' + (actName.busy ? 'Saving…' : 'Save') + '</button><button class="btn" type="button" data-act="ancancel">Cancel</button>' +
       (a.src_name ? '<button class="linkbtn" type="button" data-act="anreset">Use the original name</button>' : '') + '</div>' + (actName.err ? '<p class="err" role="alert">' + esc(actName.err) + '</p>' : '') + '</form>'
-    : '<h1>' + esc(a.name) + '</h1>') + '<span class="sub">' + whenTxt(a) + ' · ' + (a.source === "strava" ? 'Strava' : a.source === "sample" ? 'Sample' : 'Logged by hand') + '</span></div>' +
+    : '<h1>' + esc(a.name) + '</h1>') + '<span class="sub">' + whenTxt(a) + ' · ' + (a.source === "strava" ? 'Strava' : a.source === "garmin" ? 'Garmin' : a.source === "sample" ? 'Sample' : 'Logged by hand') + '</span></div>' +
     (canRename(a) && !(actName && actName.id === a.id) ? '<button class="an-edit" type="button" data-act="anedit" aria-label="Rename this workout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 7.5l3 3"/></svg></button>' : '') + '</div>';
   if (pts && pts.length > 1) h += '<div class="amap big" data-map="' + esc(a.id) + '" data-big="1">' + routeSvg(pts) + '</div>';
   h += '<section class="card" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv, a) : '') + summaryHtml(a) + '</section>';
@@ -2085,7 +2091,7 @@ function renderToday(){
   const quickW = !wt && wskip !== TODAY && wAsk() ? '<section class="card qw" style="--tone:var(--lift)"><div class="card-h">' + ic("scale") + '<span class="lbl">Morning weigh-in</span><button class="linkbtn r" type="button" data-act="wskip">Not today</button></div>' +
     '<div class="wform"><input id="w-lb" inputmode="decimal" placeholder="' + (aw7 ? aw7.toFixed(1) : "Weight") + '" aria-label="Weight in pounds"><span>lb</span><button class="btn primary" type="button" data-act="wsave">Save</button></div>' + (wf && wf.err ? '<p class="err" role="alert">' + esc(wf.err) + '</p>' : '') + '</section>' : '';
   const mvT = day.sessions.length && canMove(TODAY) && moveTargets(TODAY).length && !day.sessions.some((s, i) => sessDone(TODAY, i, dayMatches(TODAY)));
-  h += checkinCard() + cycleCard(day) + heroSummary(day) + (mvT ? '<button class="linkbtn hmove" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t do it today? Move it</button>' : '') + missedCard() + fuelTile + quickW;   // today's workout first, then food
+  h += aiCard() + checkinCard() + cycleCard(day) + heroSummary(day) + (mvT ? '<button class="linkbtn hmove" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t do it today? Move it</button>' : '') + missedCard() + fuelTile + quickW;   // today's workout first, then food
   if (L && wxState === "idle") setTimeout(() => loadWeather(), 0);
   let wmi = 0, wdone = 0;
   if (w) w.days.forEach(d => { const m = dayMatches(d.date); d.sessions.forEach((s, i) => { if (sessDone(d.date, i, m)) wdone += plan.multi ? (m[i] && m[i].minutes ? m[i].minutes : s.min || 0) / 60 : m[i] && m[i].mi ? m[i].mi : s.mi || 0; }); });
@@ -2205,7 +2211,7 @@ function isLastSwap(a, b){ const sw = plan.profile.swaps || [], x = sw[sw.length
    comes back as a button, worded here from the plan itself, and runs the app's own Move / Change workout code
    only when the member taps it. */
 let ask = {msgs: [], busy: false, err: "", hint: "", kind: "", about: ""};
-const askOn = () => mode === "account" && !!(feat && feat.ask) && !!plan;
+const askOn = () => mode === "account" && !!(feat && feat.ask) && !!plan && aiSt.on;
 const ASK_SCREENS = ["fuel", "weather", "weight", "workouts", "meals", "fuelplan", "settings", "set-train", "set-run", "set-profile", "set-acct", "set-watch", "set-notif", "set-hr", "set-help", "t-paces", "t-races", "set-report", "faq"];   // the same list the server allows (ASK_SCREENS in api/worker.js)
 const isDay = d => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d);
 function askBarShow(on){ const b = $("#askbar"), show = !!on && askOn(); if (b) b.hidden = !show; document.body.classList.toggle("has-ask", show); }
@@ -2229,7 +2235,7 @@ function askLabel(a){   // what a proposed change would do, in the app's own wor
 }
 function askMsgHtml(m, mi){
   if (m.role === "user") return '<p class="ask-m u">' + esc(m.text) + '</p>';
-  let h = '<p class="ask-m a">' + esc(m.text) + '</p>';
+  let h = '<p class="ask-m a">' + esc(m.text) + '</p>' + gAttr(m.garmin);
   if (m.actions && m.actions.length) h += '<div class="ask-acts">' + m.actions.map((a, i) => { if (a.done) return '<small>✓ ' + esc(a.done) + '</small>'; const l = askLabel(a);
     return l ? '<button class="btn" type="button" data-act="askdo" data-m="' + mi + '" data-i="' + i + '">' + esc(l) + '</button>' : '<small>That change isn\'t possible on your plan right now.</small>'; }).join("") + '</div>';
   return h;
@@ -2272,7 +2278,7 @@ async function askSend(q){
   const history = ask.msgs.slice(-6).map(m => ({role: m.role, text: m.text})), kind = ask.kind, about = ask.about;
   ask.msgs.push({role: "user", text: q}); ask.busy = true; ask.err = ""; ask.hint = ""; askRender();
   let keep = "";
-  try { const j = await api("POST", "/api/ask", {q, history, ...(kind ? {kind} : {}), ...(about ? {about} : {})}); ask.msgs.push({role: "assistant", text: String(j.answer || "").slice(0, 1200), actions: Array.isArray(j.actions) ? j.actions.filter(x => x && typeof x === "object").slice(0, 2) : []}); ask.kind = ""; }   // ask.about stays for follow-ups until the sheet is opened for something else
+  try { const j = await api("POST", "/api/ask", {q, history, ...(kind ? {kind} : {}), ...(about ? {about} : {})}); ask.msgs.push({role: "assistant", text: String(j.answer || "").slice(0, 1200), garmin: j.garmin === true, actions: Array.isArray(j.actions) ? j.actions.filter(x => x && typeof x === "object").slice(0, 2) : []}); ask.kind = ""; }   // ask.about stays for follow-ups until the sheet is opened for something else
   catch(e){ ask.err = e.message; ask.msgs.pop(); keep = q; }
   ask.busy = false; if (ask.msgs.length > 40) ask.msgs = ask.msgs.slice(-40);
   askRender(true, keep);
@@ -2370,7 +2376,7 @@ function renderTraining(part){
     (p.goal !== "swim" && p.goal !== "bike" ? '<dt>Running now</dt><dd>' + (p.weekly || 0) + ' mi/week · long ' + (p.longest || 0) + ' mi</dd>' : '') +
     (plan.multi ? '<dt>Training now</dt><dd>' + (p.hours || '–') + ' h/week' + (p.swimLevel ? ' · swim: ' + {new: "learning", ok: "comfortable", strong: "strong"}[p.swimLevel] : '') + (p.longRide ? ' · longest ride ' + p.longRide + ' mi' : '') + '</dd>' : '') +
     '<dt>' + (plan.multi ? 'Training days' : 'Run days') + '</dt><dd>' + p.days.map(d => DAYS[d]).join(", ") + '</dd><dt>' + (plan.multi ? 'Long session' : 'Long run') + '</dt><dd>' + DAYF[p.longDay] + '</dd>' +
-    '<dt>Lifting</dt><dd>' + (p.lifts ? p.lifts + ' × a week' : 'None') + '</dd>' + (p.weight ? '<dt>Weight</dt><dd>' + p.weight + ' lb' + (p.goalWeight ? ' → ' + p.goalWeight + ' lb' : '') + '</dd>' : '') +
+    '<dt>Lifting</dt><dd>' + (p.lifts ? p.lifts + ' × a week' + (feat.liftdays && p.liftDays && p.liftDays.length ? ' · ' + p.liftDays.map(d => DAYS[d]).join(", ") : '') : 'None') + '</dd>' + (p.weight ? '<dt>Weight</dt><dd>' + p.weight + ' lb' + (p.goalWeight ? ' → ' + p.goalWeight + ' lb' : '') + '</dd>' : '') +
     '</dl><button class="btn block" type="button" data-act="edit">Edit goals and rebuild plan</button></section>';
   if (part) return S[part] || '';
   const aw = avgWeight(TODAY), row = (k, label, sub, icon) => '<button class="srow" type="button" data-act="go" data-scr="t-' + k + '">' + ic(icon) + '<div><b>' + label + '</b><span>' + sub + '</span></div><i>›</i></button>';
@@ -2547,7 +2553,7 @@ function progressHtml(){
 
 /* ============ setup flow ============ */
 function blankProfile(){ return {name:"", goal:"half", raceDate: addDays(TODAY, 84), goalSec:null, weekly:15, longest:6, prDist:"5k", prSec:null, easyPace:null, weight:null, goalWeight:null, lifts:2, liftExp:"Some", days:[0,2,4,6], longDay:6}; }
-function optList(name, items, cur, type){ return '<div class="opts' + (name === "days" ? ' days' : '') + '" role="group">' + items.map(([v, l]) => '<label class="opt"><input type="' + (type || "radio") + '" name="' + name + '" value="' + v + '"' + ((type === "checkbox" ? cur.includes(+v) : String(cur) === String(v)) ? ' checked' : '') + '><span>' + l + '</span></label>').join("") + '</div>'; }
+function optList(name, items, cur, type){ return '<div class="opts' + (name === "days" || name === "liftDays" ? ' days' : '') + '" role="group">' + items.map(([v, l]) => '<label class="opt"><input type="' + (type || "radio") + '" name="' + name + '" value="' + v + '"' + ((type === "checkbox" ? cur.includes(+v) : String(cur) === String(v)) ? ' checked' : '') + '><span>' + l + '</span></label>').join("") + '</div>'; }
 function renderSetup(){
   const st = setup, p = st.p;
   if (st.step === -1){
@@ -2593,7 +2599,7 @@ function renderSetup(){
       '<div class="q"><label for="s-longest">Longest recent run (mi)</label><input id="s-longest" inputmode="decimal" placeholder="6" value="' + (p.longest ?? '') + '"></div></div>' +
       '<div class="q"><span class="ql">A recent race or time trial</span><p class="hint">This sets your paces. Any distance in the last 3 months.</p>' + optList("prDist", [["5k","5K"],["10k","10K"],["half","Half"],["marathon","Marathon"],["none","None yet"]], p.prDist || "none") + '</div>' +
       (p.prDist && p.prDist !== "none" ? '<div class="q"><label for="s-pr">Your time</label><input id="s-pr" inputmode="numeric" placeholder="' + ({"5k":"24:30","10k":"52:00","half":"1:55:00","marathon":"4:10:00"}[p.prDist]) + '" value="' + (p.prSec ? fmtTime(p.prSec) : '') + '"></div>'
-        : '<div class="q"><label for="s-easy">Typical easy pace (per mile)</label><input id="s-easy" inputmode="numeric" placeholder="10:30" value="' + (p.easyPace ? fmtPace(p.easyPace) : '') + '"></div>');
+        : '<div class="q"><label for="s-easy">Typical easy pace (per mile, optional)</label><input id="s-easy" inputmode="numeric" placeholder="10:30" value="' + (p.easyPace ? fmtPace(p.easyPace) : '') + '"><p class="hint">Not sure? Leave it blank. Your plan starts at an easy, conversational effort.</p></div>');
   } else if (st.step === 2){
     body = '<h2 class="sec-t">' + (p.goal === "everyday" ? 'Strength and your body' : 'Strength and body') + '</h2>' +
       '<div class="q"><span class="ql">Lifting days per week</span>' + optList("lifts", [["0","None"],["1","1"],["2","2"],["3","3"],["4","4"]], p.lifts) + '</div>' +
@@ -2604,6 +2610,7 @@ function renderSetup(){
     body = '<h2 class="sec-t">' + (fit ? 'When can you work out?' : mk ? 'When can you train?' : 'When can you run?') + '</h2>' +
       '<div class="q"><span class="ql">' + (mk ? 'Training days' : 'Run days') + ' (pick 3–6)</span>' + optList("days", DAYS.map((d, i) => [i, d]), p.days, "checkbox") + '</div>' +
       '<div class="q"><label for="s-long">' + (fit ? 'Day for a longer session' : mk ? 'Long session day' : 'Long run day') + '</label><select id="s-long">' + p.days.slice().sort((a, b) => a - b).map(d => '<option value="' + d + '"' + (d === p.longDay ? ' selected' : '') + '>' + DAYF[d] + '</option>').join("") + '</select></div>' +
+      (feat.liftdays && p.lifts > 0 ? '<div class="q" id="s-liftdays"><span class="ql">Lifting days <small>Optional</small></span><p class="hint" style="margin-top:0">Gym on set days? Pick up to ' + p.lifts + (mk ? ' from your training days' : '') + ' and the plan keeps your lifts there and builds the running around them. Leave blank and we pick.</p>' + optList("liftDays", DAYS.map((d, i) => [i, d]), p.liftDays || [], "checkbox") + '</div>' : '') +
       '<div class="q"><label for="s-city">Where do you usually train? <small>Optional</small></label><small class="hint" style="margin:0">Used for the weather, the best time to run, and heat-adjusted paces.</small>' +
       '<div class="cityrow"><input id="s-city" autocomplete="address-level2" placeholder="City, e.g. Vero Beach, FL" value="' + esc(st.city != null ? st.city : ((wxLoc() || {}).place || "")) + '"><button class="btn" type="button" data-act="sgeo">' + (st.geoBusy ? 'Finding…' : 'Use my location') + '</button></div></div>';
   }
@@ -2632,15 +2639,25 @@ function readStep(){
     if (p.weekly == null || p.weekly < 0 || p.weekly > 120) return "Enter your miles per week (0 is fine).";
     if (p.longest == null) p.longest = Math.max(2, Math.round(p.weekly * .3));
     if (document.getElementById("s-pr")){ const t = parseTime(v("s-pr")); if (v("s-pr") && !t) return "Type your time as numbers, like 2430 for 24:30."; p.prSec = t; if (!t) return "Add your race time, or pick None yet."; p.easyPace = null; }
-    if (document.getElementById("s-easy")){ const t = parseTime(v("s-easy")); if (!t || t < 300 || t > 1200) return "Type your easy pace as numbers, like 1030 for 10:30."; p.easyPace = t; p.prSec = null; p.prDist = "none"; }
+    if (document.getElementById("s-easy")){   // optional (Nov 17): a beginner often doesn't know it; blank = start easy, adjust from runs
+      const raw = v("s-easy"), t = raw ? parseTime(raw) : null;
+      if (raw && (!t || t < 300 || t > 1200)) return "Type your easy pace as numbers, like 1030 for 10:30, or leave it blank.";
+      p.easyPace = t || null; p.paceUnknown = !t; p.prSec = null; p.prDist = "none"; }
   } else if (st.step === 2){
     p.lifts = +(radio("lifts") || 0); p.liftExp = radio("liftExp") || p.liftExp;
+    if (p.liftDays){ p.liftDays = p.liftDays.slice(0, p.lifts); if (!p.liftDays.length) delete p.liftDays; }
     const be = readBody(p, "s"); if (be) return be;
   } else if (st.step === 3){
     p.days = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(e => +e.value);
     const ld = document.getElementById("s-long"); p.longDay = ld ? +ld.value : p.longDay;
     if (p.days.length < 3 || p.days.length > 6) return "Pick between 3 and 6 days.";
     if (!p.days.includes(p.longDay)) p.longDay = p.days.includes(6) ? 6 : p.days.includes(5) ? 5 : p.days[p.days.length - 1];
+    if (document.getElementById("s-liftdays")){
+      const ldays = Array.from(document.querySelectorAll('input[name="liftDays"]:checked')).map(e => +e.value).sort((a, b) => a - b);
+      if (ldays.length) p.liftDays = ldays; else delete p.liftDays;   // kept even on an error below, so the picks survive the re-render
+      if (ldays.length > p.lifts) return "You lift " + p.lifts + " day" + (p.lifts === 1 ? "" : "s") + " a week: pick up to " + p.lifts + ", or change that on the Strength step.";
+      if ((RACES[p.goal] || {}).kind && ldays.some(d => !p.days.includes(d))) return "Pick lifting days from your training days.";
+    }
     const ce = document.getElementById("s-city"); if (ce){ setup.city = ce.value.trim().slice(0, 80); if (setup.city !== "Your location") delete setup.geo; }
   }
   return "";
@@ -2880,7 +2897,9 @@ function settingsScreen(k){
       group("Sign-in", row("set-email", "Email", esc(me.email), "user") + row("set-password", "Password", "Change your password", "lock")) +
       group("", row("set-account", "Delete account", "Removes everything for good", "flag", "", "danger"))
     : group("Profile", row("set-profile", "Body and goals", (pr.weight ? pr.weight + ' lb' : 'Weight not set') + (pr.goalWeight ? ' → ' + pr.goalWeight + ' lb' : ''), "scale")));
-  if (k === "set-train") return training;
+  if (k === "set-train") return training + (mode === "account" && aiSt.available ? '<section class="card"><div class="card-h">' + ic("spark") + '<span class="lbl">AI coach</span></div>' +
+    '<label class="tgl"><input type="checkbox" data-ai="1"' + (aiSt.on ? ' checked' : '') + '><span>Let the AI coach read my data</span></label><p class="sub">' + AI_WHAT + '</p>' +
+    '<p class="sub">Off: no coach chat, no morning note, no AI workout reviews and no meal prep ideas. Food photo estimates and race search only send what you type or snap. Runs that come only through Strava never go to AI either way.</p></section>' : '');
   if (k === "set-help") return '<div class="scards" style="margin-bottom:14px">' + mailCard() + '</div>' + help;
   if (k === "set-hr") return hrScreen();
   if (k === "set-health-info") return '<section class="card legal">' + legalHtml("health") + '</section>';
@@ -3021,8 +3040,21 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "87";
+const APP_VERSION = "92";
 let reportView = null, isOwner = false, reports = [], feat = {};
+/* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
+   Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
+let aiSt = {on: true, asked: true, needs: false, available: false};
+const AI_WHAT = 'Mileset\'s coach is AI. With your OK it reads your plan, workouts, sleep and recovery numbers, including what your Garmin sends, to write your notes and reviews and to answer your questions. Each request goes to our AI provider (Anthropic) and is never used to train AI. Without it, the app still builds and adjusts your plan with its fixed rules.';
+function aiCard(){
+  if (mode !== "account" || !aiSt.available || !aiSt.needs) return '';
+  return '<section class="card aiask" style="--tone:var(--race)"><div class="card-h">' + ic("spark") + '<span class="lbl">Your AI coach needs your OK</span></div><p class="sub">' + AI_WHAT + ' You can change this any time in Settings, Coaching and training.</p>' +
+    '<div class="an-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn primary" type="button" data-act="aiset" data-v="1">Turn on AI coach</button><button class="btn" type="button" data-act="aiset" data-v="0">Keep it off</button></div></section>';
+}
+function setAi(on){
+  return api("PUT", "/api/settings", {ai: !!on}).then(j => { uset = j.settings || uset; aiSt = {...aiSt, ...(j.ai || {on: !!on, asked: true, needs: false})}; coachOn = aiSt.available && aiSt.on; if (!aiSt.on && $(".sheet.asks")) closeMenu();
+    render(); toast(aiSt.on ? "AI coach is on." : "AI coach is off. Nothing of yours goes to AI."); }).catch(e => { toast(e.message); render(); });
+}
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
   if (v.sent) return '<section class="card"><h2 class="sec-t" style="font-size:22px">Thanks, got it</h2><p class="sub">Your report was sent. We\'ll look into it.</p><button class="btn block" type="button" data-act="back">Done</button></section>';
@@ -3077,7 +3109,7 @@ function healthHtml(){
   const ah = healthLink && healthLink.on;
   const direct = st +
     (garmin.connected ? card(A("garmin"), garmin.last_push ? "Linked · last data " + agoText(garmin.last_push) : "Linked · data comes in after your next watch sync", pill("Linked", "on"), '<i class="cws gbadge"><img src="brand/garmin-black.png" alt="Garmin" width="463" height="72"></i>')
-      : garmin.available && mode === "account" ? card(A("garmin"), "Workouts, sleep, resting heart rate and HRV", '', '<button class="gmbtn" type="button" data-act="gmconnect" aria-label="Connect with Garmin"><span>Connect with</span><img src="brand/garmin-white.png" alt="Garmin" width="463" height="72"></button>')
+      : garmin.available && mode === "account" ? card(A("garmin"), "Workouts, sleep, resting heart rate and HRV. After you connect, you choose whether the AI coach may read them.", '', '<button class="gmbtn" type="button" data-act="gmconnect" aria-label="Connect with Garmin"><span>Connect with</span><img src="brand/garmin-white.png" alt="Garmin" width="463" height="72"></button>')
       : card(A("garmin"), "Direct sync is on the way. For now, link Garmin to Strava.", pill("Coming soon", "soon"))) +
     card(A("apple-health"), ah ? "Linked · sleep, resting heart rate and HRV from your iPhone" : "Sleep, resting heart rate and HRV from your iPhone", SHORTCUT_URL ? (ah ? pill("Linked", "on") : '') : pill("Coming soon", "soon"),
       SHORTCUT_URL && !ah ? '<button class="ahbtn" type="button" data-act="hlsetup">' + ic("heart") + '<span>Set up Apple Health</span></button>' : '', SHORTCUT_URL && ah ? "hlsetup" : "");
@@ -3130,8 +3162,10 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-17.2";
+const NEW_ID = "2026-11-17.3";
 const NEWS = [
+  ["check", "AI coach: your call", "The coach is AI, and you decide if it may read your data. The switch is in Settings, Coaching and training. Off means nothing of yours goes to AI and the app runs on its fixed rules. If you use Garmin, you are asked once on Today.", "set-train", null, "2026-11-17.3"],
+  ["spark", "Your coach can see your runs", "Ask how a run went and it answers from the distance, pace and heart rate your Garmin sent, or that you logged by hand. Runs that only come through Strava can't be read by the coach (Strava's rules), so type those numbers in.", null, null, "2026-11-17.3"],
   ["check", "Name your workouts", "Open a workout in Activities, tap the pencil next to its name and type your own. Use the original name puts the old one back.", "activities", null, "2026-11-17.2"],
   ["watch", "Watch connected: no survey at all", "Your readiness, sleep, HRV and resting heart rate come straight from your watch, on Today and on Recovery. To add how you feel, tap Tell your coach how you feel and type it.", null, null, "2026-11-17"],
   ["spark", "Ask your coach anything", "Tap Ask your coach above the tabs and type: ask about your plan, why a number is what it is, or to move a workout. Any change shows as a button, and nothing moves until you tap it.", null, null, "2026-11-17"],
@@ -3314,8 +3348,9 @@ function membersHtml(){
   if (mem.err) return '<section class="card"><p class="err">' + esc(mem.err) + '</p></section>';
   if (!mem.list) return '<section class="card"><p class="sub">Loading…</p></section>';
   const L = mem.list, wk = addDays(TODAY, -7), n = k => L.filter(k).length;
-  const ago = d => { if (!d) return "never"; const x = daysBetween(d.slice(0, 10), TODAY); return x <= 0 ? "today" : x === 1 ? "yesterday" : x + " days ago"; };
-  let h = '<section class="card"><div class="wkstats"><div><span>Members</span><b>' + L.length + '</b></div><div><span>New this week</span><b>' + n(m => m.created.slice(0, 10) > wk) + '</b></div><div><span>Active this week</span><b>' + n(m => m.last_seen && m.last_seen.slice(0, 10) > wk) + '</b></div></div>' +
+  const seen = m => lastActiveDay(m, TODAY), joined = m => localDay(m.created);   // local days, not UTC (Nov 17 fix)
+  const ago = d => { if (!d) return "never"; const x = daysBetween(d, TODAY); return x <= 0 ? "today" : x === 1 ? "yesterday" : x + " days ago"; };
+  let h = '<section class="card"><div class="wkstats"><div><span>Members</span><b>' + L.length + '</b></div><div><span>New this week</span><b>' + n(m => joined(m) > wk) + '</b></div><div><span>Active this week</span><b>' + n(m => seen(m) > wk) + '</b></div></div>' +
     '<div class="wkstats"><div><span>Strava</span><b>' + n(m => m.strava) + '</b></div><div><span>Garmin</span><b>' + n(m => m.garmin) + '</b></div><div><span>With a plan</span><b>' + n(m => m.goal) + '</b></div></div><div class="wkstats"><div><span>Founding spots taken</span><b>' + Math.min(100, n(m => m.founding)) + ' / 100</b></div><div><span>Joined from invites</span><b>' + n(m => m.ref_name) + '</b></div></div>' +
     (() => { const c = {}; L.forEach(m => { const k = m.src || "unknown"; c[k] = (c[k] || 0) + 1; }); return '<p class="sub"><b>Sign-ups by source:</b> ' + Object.keys(c).sort((a, b) => c[b] - c[a]).map(k => esc(k) + ' ' + c[k]).join(' · ') + '</p>'; })() +
     '<p class="sub">Only you can see this screen.</p></section>';
@@ -3327,7 +3362,7 @@ function membersHtml(){
     '<label>Message<small>Type {name} and each person sees their own first name. Links work. Every email has an unsubscribe link.</small><textarea id="ml-body" rows="7" maxlength="8000" placeholder="Hey {name},&#10;&#10;…">' + esc(mv.message || "") + '</textarea></label>' +
     (mv.err ? '<p class="err" role="alert">' + esc(mv.err) + '</p>' : '') +
     '<div class="fbtns"><button class="btn" type="button" data-act="mltest"' + (mv.busy ? ' disabled' : '') + '>Send me a test</button><button class="btn primary" type="button" data-act="mlsend"' + (mv.busy ? ' disabled aria-busy="true"' : '') + '>' + (mv.busy ? 'Sending…' : 'Send to ' + reach) + '</button></div></section>';
-  h += '<section class="card"><ul class="fl mlist">' + L.map(m => '<li><div class="fi"><b>' + esc(m.name || m.email.split("@")[0]) + '</b><span>' + esc(m.email) + '</span><span>' + (m.goal ? esc(m.goal) + (m.race_date ? ' · ' + fmtD(m.race_date) : '') : 'No plan yet') + ' · joined ' + fmtD(m.created.slice(0, 10)) + ' · seen ' + ago(m.last_seen) + (m.src ? ' · from ' + esc(m.src) : '') + (m.ref_name ? ' · invited by ' + esc(m.ref_name) : '') + (m.invited ? ' · invited ' + m.invited : '') + '</span></div>' +
+  h += '<section class="card"><ul class="fl mlist">' + L.map(m => '<li><div class="fi"><b>' + esc(m.name || m.email.split("@")[0]) + '</b><span>' + esc(m.email) + '</span><span>' + (m.goal ? esc(m.goal) + (m.race_date ? ' · ' + fmtD(m.race_date) : '') : 'No plan yet') + ' · joined ' + fmtD(joined(m)) + ' · active ' + ago(seen(m)) + (m.src ? ' · from ' + esc(m.src) : '') + (m.ref_name ? ' · invited by ' + esc(m.ref_name) : '') + (m.invited ? ' · invited ' + m.invited : '') + '</span></div>' +
     '<span class="mtags">' + (m.strava ? '<em class="chip2" style="color:#FC5200">Strava</em>' : '') + (m.garmin ? '<em class="chip2">Garmin</em>' : '') + (m.no_mail ? '<em class="chip2">No emails</em>' : '') + '</span></li>').join("") + '</ul></section>';
   return h;
 }
@@ -3369,7 +3404,7 @@ document.addEventListener("click", ev => {
     // funnel question 4 (Nov 17): remember the furthest setup step a member reached, so we can see where people stop
     if (mode === "account" && !plan && setup.step >= 1) api("POST", "/api/account/setup-step", {step: setup.step}).catch(() => {});
     if (setup.step === 4){
-      const prof = {...setup.p, start: mondayOf(TODAY)}; delete prof.sample; delete prof.swaps;   // a new plan starts with no moved days
+      const prof = {...setup.p, start: mondayOf(TODAY), pv: HP.PLAN_V}; delete prof.sample; delete prof.swaps;   // a new plan starts with no moved days
       // training location: from "Use my location", or look up the typed city (doesn't hold up the plan)
       const cur = (wxLoc() || {}).place || "", city = setup.city || "";
       const geo = setup.geo;
@@ -3789,6 +3824,7 @@ document.addEventListener("click", ev => {
   if (act === "mvsel"){ if (mv){ mv.pick = mv.pick === a.dataset.d ? null : a.dataset.d; mvRender(); const c = $(".sheet.mvs .mvpv"); if (c) c.scrollIntoView({block: "nearest", behavior: "smooth"}); } return; }
   if (act === "mskip"){ try { localStorage.setItem("hy-mskip-" + a.dataset.date, "1"); } catch(e){} render(); return; }
   if (act === "mvpick"){ doMove(a.dataset.a, a.dataset.b); return; }
+  if (act === "aiset"){ a.disabled = true; setAi(a.dataset.v === "1"); return; }
   if (act === "askopen"){ if (askOn()) askOpen(); return; }
   if (act === "askfeel"){ if (askOn()) askOpen("How do you feel this morning?", "feel"); return; }
   if (act === "askabout"){ if (askOn()) askOpen("Ask about this note", "", a.dataset.t || ""); return; }
@@ -3806,6 +3842,7 @@ document.addEventListener("input", ev => {
 });
 document.addEventListener("change", ev => {
   if (ev.target.dataset && ev.target.dataset.exsw){ const v = ev.target.value; if (v) swapExercise(ev.target.dataset.exsw, +ev.target.dataset.i, v); return; }
+  if (ev.target.dataset && ev.target.dataset.ai){ setAi(ev.target.checked); return; }
   const sk = ev.target.dataset && ev.target.dataset.set;
   if (sk === "run_time" && mode !== "account"){ uset.run_time = ev.target.value; render(); return; }
   if (sk === "run_time"){ uset.run_time = ev.target.value; safeRender(); }
