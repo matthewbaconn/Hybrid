@@ -234,10 +234,12 @@ function buildPlan(p, today){
         why: "Easy miles build your base without adding fatigue. Most runs should feel this easy."});
     });
     // lifts
+    // pinned lifting days (p.liftDays, picked in setup) go first; the rest are placed as before. Never on race day or the day before.
+    const pinL = liftPins(p).filter(d => d !== raceIdx && (raceIdx == null || d < raceIdx - 1));
     const nL = Math.min(4, p.lifts || 0);
     if (nL){
-      const names = LIFT_SETS[nL], order = [];
-      qDays.forEach(d => order.push(d));
+      const names = LIFT_SETS[nL], order = pinL.slice(0, nL);
+      qDays.forEach(d => { if (!order.includes(d)) order.push(d); });
       for (let d = 0; d < 7; d++) if (!order.includes(d) && d !== longDay && d !== raceIdx && (raceIdx == null || d < raceIdx - 1)) order.push(d);
       const picks = order.slice(0, nL).sort((a, b) => a - b);
       picks.forEach((d, k) => {
@@ -263,6 +265,8 @@ const TAPER_W = {everyday: [], hyrox: [.6], tri_sprint: [.6], tri_olympic: [.65]
 const LONG_RIDE = {tri_sprint: 100, tri_olympic: 150, tri_half: 225, tri_full: 330};   // peak long ride, minutes
 const LONG_RUN_CAP = {hyrox: 9, tri_sprint: 6, tri_olympic: 9, tri_half: 13, tri_full: 18};
 const hm = m => { m = Math.round(m / 5) * 5; return m >= 60 ? Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60) + " min" : "") : m + " min"; };
+/* Lifting days the athlete pinned in setup (0 = Mon … 6 = Sun), cleaned: whole days, no repeats, at most 4. Empty = the plan picks. */
+const liftPins = p => Array.isArray(p.liftDays) ? [...new Set(p.liftDays.map(Number).filter(d => Number.isInteger(d) && d >= 0 && d <= 6))].slice(0, 4) : [];
 function buildMulti(p, today){
   const goal = p.goal, R = RACES[goal], kind = R.kind, fit = fitnessFrom(p), P = {...fit.pace};
   P.G = P.T;
@@ -408,13 +412,14 @@ function buildMulti(p, today){
       if (L1){ put(longDay, L1.s); if (brick) put(longDay, brick.s); }
       if (L2){ const d2 = free.find(d => d !== longDay && gap(d, longDay) === 1) ?? free.filter(d => d !== longDay).sort((a, b) => gap(b, longDay) - gap(a, longDay))[0]; put(d2 != null ? d2 : longDay, L2.s); }
       const hardDays = [longDay];
+      const pins = liftPins(p).filter(d => free.includes(d)), pinOf = (x, d) => x.s.type === "lift" && pins.length ? (pins.includes(d) && !wk[d].sessions.some(s => s.type === "lift") ? 0 : 1) : 0;
       list.filter(x => x.hard && !x.long && !x.long2).forEach(x => {
-        const d = free.filter(d => d !== longDay && wk[d].sessions.length < 2).sort((a, b) => (Math.min(...hardDays.map(h => gap(b, h))) - Math.min(...hardDays.map(h => gap(a, h)))) || (wk[a].sessions.length - wk[b].sessions.length))[0];
+        const d = free.filter(d => d !== longDay && wk[d].sessions.length < 2).sort((a, b) => (pinOf(x, a) - pinOf(x, b)) || (Math.min(...hardDays.map(h => gap(b, h))) - Math.min(...hardDays.map(h => gap(a, h)))) || (wk[a].sessions.length - wk[b].sessions.length))[0];
         if (d != null){ put(d, x.s); hardDays.push(d); }
       });
       list.filter(x => !x.hard && !x.long && !x.long2 && x.with !== "long").forEach(x => {
-        const d = free.filter(d => wk[d].sessions.length < 2 && !(x.s.type === "lift" && d === longDay) && !wk[d].sessions.some(s => s.type === x.s.type))
-          .sort((a, b) => (wk[a].sessions.length - wk[b].sessions.length) || (gap(b, longDay) - gap(a, longDay)))[0];
+        const d = free.filter(d => wk[d].sessions.length < 2 && !(x.s.type === "lift" && d === longDay && !pins.includes(d)) && !wk[d].sessions.some(s => s.type === x.s.type))
+          .sort((a, b) => (pinOf(x, a) - pinOf(x, b)) || (wk[a].sessions.length - wk[b].sessions.length) || (gap(b, longDay) - gap(a, longDay)))[0];
         if (d != null) put(d, x.s);
       });
     }
