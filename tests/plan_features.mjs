@@ -86,4 +86,29 @@ for (const goal of ["hyrox", "tri_olympic", "everyday"]){
     t(Math.abs(E({...base, weekly: 5}) - E({...base, weekly: 30})) < 1, "older profiles without a pace keep the same default");
   }
 }
+{ // Beginner week 1 (CEO shift B3 re-measure, Nov 18): plans built from Nov 18 on (pv 2) start at about what the runner does
+  // now: week 1 <= max(stated x 1.2, stated + 2) on 5K/10K, 3-6 days, 2-20 mi; no 25%+ spikes for low-mileage starts;
+  // plans built before (no pv) and 15+ mi/week plans keep exactly the same shape (check-offs are keyed to sessions).
+  const DAYSET = {3: [1, 3, 5], 4: [1, 2, 4, 6], 5: [0, 1, 3, 4, 6], 6: [0, 1, 2, 3, 4, 6]};
+  let over = [], spikes = [], changed = 0;
+  for (const goal of ["5k", "10k"]) for (const nd of [3, 4, 5, 6]) for (const w of [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20]) {
+    const p = {goal, weekly: w, longest: Math.max(2, Math.round(w / 3)), days: DAYSET[nd], longDay: 6, lifts: 0, pv: 2, start: "2026-11-23", raceDate: goal === "5k" ? "2027-02-28" : null};
+    const m = HP.buildPlan(p, "2026-11-18").weeks.map(x => x.miles);
+    if (m[0] > Math.max(w * 1.2, w + 2) + 1e-9) over.push(`${goal} ${nd}d ${w}mi: week 1 ${m[0]}`);
+    if (w < 8) for (let i = 1; i < Math.min(m.length - 3, 10); i++) if (m[i] > Math.max(m[i - 1] * 1.25, m[i - 1] + 2.5) && m[i] > Math.max(...m.slice(0, i)) * 1.25) { spikes.push(`${goal} ${nd}d ${w}mi week ${i + 1}: ${m.slice(0, i + 1)}`); break; }
+  }
+  for (const goal of ["5k", "half", "marathon"]) for (const w of [15, 20, 30, 45]) {
+    const p = {goal, weekly: w, longest: Math.round(w / 3), days: [0, 1, 3, 4, 6], longDay: 6, lifts: 2, start: "2026-11-23", raceDate: "2027-03-28"};
+    if (JSON.stringify(HP.buildPlan(p, "2026-11-18").weeks) !== JSON.stringify(HP.buildPlan({...p, pv: 2}, "2026-11-18").weeks)) changed++;
+  }
+  const old = {goal: "5k", weekly: 3, longest: 2, days: [1, 3, 5], longDay: 5, lifts: 0, start: "2026-11-16"};
+  t(!over.length, "beginner week 1 stays within +20% or +2 mi of what they run now" + (over.length ? ": " + over.slice(0, 3).join("; ") : ""));
+  t(!spikes.length, "low-mileage starts climb without 25% spikes" + (spikes.length ? ": " + spikes.slice(0, 2).join("; ") : ""));
+  t(!changed, "15+ mi/week plans are unchanged by the fix");
+  t(JSON.stringify(HP.buildPlan(old, "2026-11-18").weeks) === JSON.stringify(HP.buildPlan({...old, pv: 1}, "2026-11-18").weeks) && HP.buildPlan(old, "2026-11-18").weeks[0].miles === 9,
+    "plans built before Nov 18 keep their shape until rebuilt");
+  const nw = HP.buildPlan({...old, pv: HP.PLAN_V, start: "2026-11-23"}, "2026-11-18").weeks[0];
+  t(nw.miles <= 5 && nw.days.some(d => d.sessions.some(s => /walk breaks/.test(JSON.stringify(s.steps)))) && !nw.days.some(d => d.sessions.some(s => s.type === "workout")),
+    "a 3 mi/week beginner's first week: about 5 mi, short runs with walk breaks, no hard workout");
+}
 console.log(bad ? bad + " failed" : "ALL PASS"); process.exit(bad ? 1 : 0);
