@@ -88,7 +88,7 @@ try {
   const other = sql("SELECT r.data FROM reviews r JOIN activities a ON a.id = r.activity_id WHERE a.ext_id = '778'");
   ok(other.length === 1 && JSON.parse(other[0].data).askFeel === true, "a Strava run with no Garmin twin is still reviewed, with the how-did-it-feel ask");
   ok(aiCalls === 1, "no extra AI call (Strava data never goes to the AI): " + aiCalls);
-  ok(n("SELECT COUNT(*) AS n FROM events WHERE kind = 'strava_sync' AND detail LIKE '%1 already here from Garmin%'") === 1, "the event log says one run was already here from Garmin");
+  ok(n("SELECT COUNT(*) AS n FROM events WHERE kind = 'strava_sync' AND detail LIKE '%1 already from Garmin%'") === 1, "the event log says one run was already from Garmin (allowed words only, see events_safe.mjs)");
 
   const m2 = await mine("ga1");
   ok(m2 && m2.name === "Sunday long run with Dad" && m2.src_name === "Evening Run" && m2.source === "garmin", "rename: the name is still on the copy that is kept (" + (m2 && m2.name) + ")");

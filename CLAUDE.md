@@ -51,8 +51,11 @@ a member-facing PR without a NEWS/NEW_ID update gets one added (or is sent back)
 - It goes live for members only when Matthew says so: delete its name from `PREVIEW`, add the What's new entry,
   and ship that through the gate. If the feature costs money per use (AI calls), say what it will cost when you ask.
 - Bug fixes, security fixes and invisible changes do not wait in preview: they go live for everyone.
+- Bugs (Matthew, Nov 17: "The bugs should always be instantly fixed and tested and then sent to all members"): fix
+  right away, test, and open the fix as its OWN pull request from main, ready (not a draft), never stacked behind or
+  bundled with a feature, so the ship gate (oldest ready PR first) takes it on its next hourly run.
 - Released Nov 17: `ready2` (new readiness card on Today; Matthew: "release card").
-- In preview now: `rough` ("Rough night: adjust today" chip in the coach bar: the coach offers an easier day as buttons;
+- In preview now: `liftdays` (pick which days you lift in setup), `rough` ("Rough night: adjust today" chip in the coach bar: the coach offers an easier day as buttons;
   no drink logging. The safety guidance in the coach's prompt applies to every member who types it themselves).
 - Released: `rename` (Nov 17, Matthew: "Release rename". Activities: open a workout, tap the pencil, give it your own name;
   the original stays underneath in `activities.name`, the member's name lives in `activities.title`).

@@ -828,7 +828,7 @@ a.scard{text-decoration:none;color:var(--ink)}
 (function(){
 "use strict";
 /* ============ helpers (shared plan logic lives in plan.js) ============ */
-const {pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma} = HP;
+const {pad, isoLocal, localDay, lastActiveDay, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma} = HP;
 const {RACES, pace} = HP;
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -2414,7 +2414,7 @@ function renderTraining(part){
     (p.goal !== "swim" && p.goal !== "bike" ? '<dt>Running now</dt><dd>' + (p.weekly || 0) + ' mi/week · long ' + (p.longest || 0) + ' mi</dd>' : '') +
     (plan.multi ? '<dt>Training now</dt><dd>' + (p.hours || '–') + ' h/week' + (p.swimLevel ? ' · swim: ' + {new: "learning", ok: "comfortable", strong: "strong"}[p.swimLevel] : '') + (p.longRide ? ' · longest ride ' + p.longRide + ' mi' : '') + '</dd>' : '') +
     '<dt>' + (plan.multi ? 'Training days' : 'Run days') + '</dt><dd>' + p.days.map(d => DAYS[d]).join(", ") + '</dd><dt>' + (plan.multi ? 'Long session' : 'Long run') + '</dt><dd>' + DAYF[p.longDay] + '</dd>' +
-    '<dt>Lifting</dt><dd>' + (p.lifts ? p.lifts + ' × a week' : 'None') + '</dd>' + (p.weight ? '<dt>Weight</dt><dd>' + p.weight + ' lb' + (p.goalWeight ? ' → ' + p.goalWeight + ' lb' : '') + '</dd>' : '') +
+    '<dt>Lifting</dt><dd>' + (p.lifts ? p.lifts + ' × a week' + (feat.liftdays && p.liftDays && p.liftDays.length ? ' · ' + p.liftDays.map(d => DAYS[d]).join(", ") : '') : 'None') + '</dd>' + (p.weight ? '<dt>Weight</dt><dd>' + p.weight + ' lb' + (p.goalWeight ? ' → ' + p.goalWeight + ' lb' : '') + '</dd>' : '') +
     '</dl><button class="btn block" type="button" data-act="edit">Edit goals and rebuild plan</button></section>';
   if (part) return S[part] || '';
   const aw = avgWeight(TODAY), row = (k, label, sub, icon) => '<button class="srow" type="button" data-act="go" data-scr="t-' + k + '">' + ic(icon) + '<div><b>' + label + '</b><span>' + sub + '</span></div><i>›</i></button>';
@@ -2591,7 +2591,7 @@ function progressHtml(){
 
 /* ============ setup flow ============ */
 function blankProfile(){ return {name:"", goal:"half", raceDate: addDays(TODAY, 84), goalSec:null, weekly:15, longest:6, prDist:"5k", prSec:null, easyPace:null, weight:null, goalWeight:null, lifts:2, liftExp:"Some", days:[0,2,4,6], longDay:6}; }
-function optList(name, items, cur, type){ return '<div class="opts' + (name === "days" ? ' days' : '') + '" role="group">' + items.map(([v, l]) => '<label class="opt"><input type="' + (type || "radio") + '" name="' + name + '" value="' + v + '"' + ((type === "checkbox" ? cur.includes(+v) : String(cur) === String(v)) ? ' checked' : '') + '><span>' + l + '</span></label>').join("") + '</div>'; }
+function optList(name, items, cur, type){ return '<div class="opts' + (name === "days" || name === "liftDays" ? ' days' : '') + '" role="group">' + items.map(([v, l]) => '<label class="opt"><input type="' + (type || "radio") + '" name="' + name + '" value="' + v + '"' + ((type === "checkbox" ? cur.includes(+v) : String(cur) === String(v)) ? ' checked' : '') + '><span>' + l + '</span></label>').join("") + '</div>'; }
 function renderSetup(){
   const st = setup, p = st.p;
   if (st.step === -1){
@@ -2637,7 +2637,7 @@ function renderSetup(){
       '<div class="q"><label for="s-longest">Longest recent run (mi)</label><input id="s-longest" inputmode="decimal" placeholder="6" value="' + (p.longest ?? '') + '"></div></div>' +
       '<div class="q"><span class="ql">A recent race or time trial</span><p class="hint">This sets your paces. Any distance in the last 3 months.</p>' + optList("prDist", [["5k","5K"],["10k","10K"],["half","Half"],["marathon","Marathon"],["none","None yet"]], p.prDist || "none") + '</div>' +
       (p.prDist && p.prDist !== "none" ? '<div class="q"><label for="s-pr">Your time</label><input id="s-pr" inputmode="numeric" placeholder="' + ({"5k":"24:30","10k":"52:00","half":"1:55:00","marathon":"4:10:00"}[p.prDist]) + '" value="' + (p.prSec ? fmtTime(p.prSec) : '') + '"></div>'
-        : '<div class="q"><label for="s-easy">Typical easy pace (per mile)</label><input id="s-easy" inputmode="numeric" placeholder="10:30" value="' + (p.easyPace ? fmtPace(p.easyPace) : '') + '"></div>');
+        : '<div class="q"><label for="s-easy">Typical easy pace (per mile, optional)</label><input id="s-easy" inputmode="numeric" placeholder="10:30" value="' + (p.easyPace ? fmtPace(p.easyPace) : '') + '"><p class="hint">Not sure? Leave it blank. Your plan starts at an easy, conversational effort.</p></div>');
   } else if (st.step === 2){
     body = '<h2 class="sec-t">' + (p.goal === "everyday" ? 'Strength and your body' : 'Strength and body') + '</h2>' +
       '<div class="q"><span class="ql">Lifting days per week</span>' + optList("lifts", [["0","None"],["1","1"],["2","2"],["3","3"],["4","4"]], p.lifts) + '</div>' +
@@ -2648,6 +2648,7 @@ function renderSetup(){
     body = '<h2 class="sec-t">' + (fit ? 'When can you work out?' : mk ? 'When can you train?' : 'When can you run?') + '</h2>' +
       '<div class="q"><span class="ql">' + (mk ? 'Training days' : 'Run days') + ' (pick 3–6)</span>' + optList("days", DAYS.map((d, i) => [i, d]), p.days, "checkbox") + '</div>' +
       '<div class="q"><label for="s-long">' + (fit ? 'Day for a longer session' : mk ? 'Long session day' : 'Long run day') + '</label><select id="s-long">' + p.days.slice().sort((a, b) => a - b).map(d => '<option value="' + d + '"' + (d === p.longDay ? ' selected' : '') + '>' + DAYF[d] + '</option>').join("") + '</select></div>' +
+      (feat.liftdays && p.lifts > 0 ? '<div class="q" id="s-liftdays"><span class="ql">Lifting days <small>Optional</small></span><p class="hint" style="margin-top:0">Gym on set days? Pick up to ' + p.lifts + (mk ? ' from your training days' : '') + ' and the plan keeps your lifts there and builds the running around them. Leave blank and we pick.</p>' + optList("liftDays", DAYS.map((d, i) => [i, d]), p.liftDays || [], "checkbox") + '</div>' : '') +
       '<div class="q"><label for="s-city">Where do you usually train? <small>Optional</small></label><small class="hint" style="margin:0">Used for the weather, the best time to run, and heat-adjusted paces.</small>' +
       '<div class="cityrow"><input id="s-city" autocomplete="address-level2" placeholder="City, e.g. Vero Beach, FL" value="' + esc(st.city != null ? st.city : ((wxLoc() || {}).place || "")) + '"><button class="btn" type="button" data-act="sgeo">' + (st.geoBusy ? 'Finding…' : 'Use my location') + '</button></div></div>';
   }
@@ -2676,15 +2677,25 @@ function readStep(){
     if (p.weekly == null || p.weekly < 0 || p.weekly > 120) return "Enter your miles per week (0 is fine).";
     if (p.longest == null) p.longest = Math.max(2, Math.round(p.weekly * .3));
     if (document.getElementById("s-pr")){ const t = parseTime(v("s-pr")); if (v("s-pr") && !t) return "Type your time as numbers, like 2430 for 24:30."; p.prSec = t; if (!t) return "Add your race time, or pick None yet."; p.easyPace = null; }
-    if (document.getElementById("s-easy")){ const t = parseTime(v("s-easy")); if (!t || t < 300 || t > 1200) return "Type your easy pace as numbers, like 1030 for 10:30."; p.easyPace = t; p.prSec = null; p.prDist = "none"; }
+    if (document.getElementById("s-easy")){   // optional (Nov 17): a beginner often doesn't know it; blank = start easy, adjust from runs
+      const raw = v("s-easy"), t = raw ? parseTime(raw) : null;
+      if (raw && (!t || t < 300 || t > 1200)) return "Type your easy pace as numbers, like 1030 for 10:30, or leave it blank.";
+      p.easyPace = t || null; p.paceUnknown = !t; p.prSec = null; p.prDist = "none"; }
   } else if (st.step === 2){
     p.lifts = +(radio("lifts") || 0); p.liftExp = radio("liftExp") || p.liftExp;
+    if (p.liftDays){ p.liftDays = p.liftDays.slice(0, p.lifts); if (!p.liftDays.length) delete p.liftDays; }
     const be = readBody(p, "s"); if (be) return be;
   } else if (st.step === 3){
     p.days = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(e => +e.value);
     const ld = document.getElementById("s-long"); p.longDay = ld ? +ld.value : p.longDay;
     if (p.days.length < 3 || p.days.length > 6) return "Pick between 3 and 6 days.";
     if (!p.days.includes(p.longDay)) p.longDay = p.days.includes(6) ? 6 : p.days.includes(5) ? 5 : p.days[p.days.length - 1];
+    if (document.getElementById("s-liftdays")){
+      const ldays = Array.from(document.querySelectorAll('input[name="liftDays"]:checked')).map(e => +e.value).sort((a, b) => a - b);
+      if (ldays.length) p.liftDays = ldays; else delete p.liftDays;   // kept even on an error below, so the picks survive the re-render
+      if (ldays.length > p.lifts) return "You lift " + p.lifts + " day" + (p.lifts === 1 ? "" : "s") + " a week: pick up to " + p.lifts + ", or change that on the Strength step.";
+      if ((RACES[p.goal] || {}).kind && ldays.some(d => !p.days.includes(d))) return "Pick lifting days from your training days.";
+    }
     const ce = document.getElementById("s-city"); if (ce){ setup.city = ce.value.trim().slice(0, 80); if (setup.city !== "Your location") delete setup.geo; }
   }
   return "";
@@ -3067,7 +3078,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "87";
+const APP_VERSION = "93";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3189,9 +3200,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-17.4";
+const NEW_ID = "2026-11-18";
 const NEWS = [
-  ["heart", "A clearer readiness score", "Today's readiness now shows as a ring with one sentence on what it means, plus your sleep, HRV and resting heart rate with arrows against your own normal.", null, null, "2026-11-17.4"],
+  ["heart", "A clearer readiness score", "Today's readiness now shows as a ring with one sentence on what it means, plus your sleep, HRV and resting heart rate with arrows against your own normal.", null, null, "2026-11-18"],
   ["check", "AI coach: your call", "The coach is AI, and you decide if it may read your data. The switch is in Settings, Coaching and training. Off means nothing of yours goes to AI and the app runs on its fixed rules. If you use Garmin, you are asked once on Today.", "set-train", null, "2026-11-17.3"],
   ["spark", "Your coach can see your runs", "Ask how a run went and it answers from the distance, pace and heart rate your Garmin sent, or that you logged by hand. Runs that only come through Strava can't be read by the coach (Strava's rules), so type those numbers in.", null, null, "2026-11-17.3"],
   ["check", "Name your workouts", "Open a workout in Activities, tap the pencil next to its name and type your own. Use the original name puts the old one back.", "activities", null, "2026-11-17.2"],
@@ -3260,12 +3271,18 @@ function nav(dir, fn){
   }
   navDir = dir; fn(); navDir = null;
 }
+/* Going back lands where you were (Nov 17, Matthew: tapping Aerobic or Fitness on Recovery/Progress and swiping back
+   jumped to the top). Forward saves the scroll position of the screen you leave; back restores it. */
+const scrollMem = {};
+const viewKey = () => scr ? "scr:" + scr : "tab:" + tab + (tab === "activities" && actSel ? ":" + actSel : "");
+function restoreScroll(key){ const y = scrollMem[key] || 0; delete scrollMem[key]; window.scrollTo(0, y); if (y) requestAnimationFrame(() => window.scrollTo(0, y)); }
 function go(s){
   const dir = s === null || SCR_UP[scr] === s || (scr && !s) ? "back" : "fwd";
+  if (dir === "fwd") scrollMem[viewKey()] = window.scrollY;
   if (s === "members" && mem) mem.stale = true;
   if (s === "invites" && inv) inv.stale = true;
   if (s === "set-notif" && mode === "account" && pushOK() && !pushState.checked) checkPush().then(() => { if (scr === "set-notif") render(); });
-  nav(dir, () => { scr = s; render(); window.scrollTo(0, 0); });
+  nav(dir, () => { scr = s; render(); if (dir === "back") restoreScroll(viewKey()); else window.scrollTo(0, 0); });
 }
 function renderScreen(){
   const s = scr, back = '<header class="scrbar"><button class="iconbtn" type="button" data-act="back" aria-label="Back">‹</button><h1>' + esc(SCR_T[s] || "") + '</h1></header>';
@@ -3370,8 +3387,9 @@ function membersHtml(){
   if (mem.err) return '<section class="card"><p class="err">' + esc(mem.err) + '</p></section>';
   if (!mem.list) return '<section class="card"><p class="sub">Loading…</p></section>';
   const L = mem.list, wk = addDays(TODAY, -7), n = k => L.filter(k).length;
-  const ago = d => { if (!d) return "never"; const x = daysBetween(d.slice(0, 10), TODAY); return x <= 0 ? "today" : x === 1 ? "yesterday" : x + " days ago"; };
-  let h = '<section class="card"><div class="wkstats"><div><span>Members</span><b>' + L.length + '</b></div><div><span>New this week</span><b>' + n(m => m.created.slice(0, 10) > wk) + '</b></div><div><span>Active this week</span><b>' + n(m => m.last_seen && m.last_seen.slice(0, 10) > wk) + '</b></div></div>' +
+  const seen = m => lastActiveDay(m, TODAY), joined = m => localDay(m.created);   // local days, not UTC (Nov 17 fix)
+  const ago = d => { if (!d) return "never"; const x = daysBetween(d, TODAY); return x <= 0 ? "today" : x === 1 ? "yesterday" : x + " days ago"; };
+  let h = '<section class="card"><div class="wkstats"><div><span>Members</span><b>' + L.length + '</b></div><div><span>New this week</span><b>' + n(m => joined(m) > wk) + '</b></div><div><span>Active this week</span><b>' + n(m => seen(m) > wk) + '</b></div></div>' +
     '<div class="wkstats"><div><span>Strava</span><b>' + n(m => m.strava) + '</b></div><div><span>Garmin</span><b>' + n(m => m.garmin) + '</b></div><div><span>With a plan</span><b>' + n(m => m.goal) + '</b></div></div><div class="wkstats"><div><span>Founding spots taken</span><b>' + Math.min(100, n(m => m.founding)) + ' / 100</b></div><div><span>Joined from invites</span><b>' + n(m => m.ref_name) + '</b></div></div>' +
     (() => { const c = {}; L.forEach(m => { const k = m.src || "unknown"; c[k] = (c[k] || 0) + 1; }); return '<p class="sub"><b>Sign-ups by source:</b> ' + Object.keys(c).sort((a, b) => c[b] - c[a]).map(k => esc(k) + ' ' + c[k]).join(' · ') + '</p>'; })() +
     '<p class="sub">Only you can see this screen.</p></section>';
@@ -3383,7 +3401,7 @@ function membersHtml(){
     '<label>Message<small>Type {name} and each person sees their own first name. Links work. Every email has an unsubscribe link.</small><textarea id="ml-body" rows="7" maxlength="8000" placeholder="Hey {name},&#10;&#10;…">' + esc(mv.message || "") + '</textarea></label>' +
     (mv.err ? '<p class="err" role="alert">' + esc(mv.err) + '</p>' : '') +
     '<div class="fbtns"><button class="btn" type="button" data-act="mltest"' + (mv.busy ? ' disabled' : '') + '>Send me a test</button><button class="btn primary" type="button" data-act="mlsend"' + (mv.busy ? ' disabled aria-busy="true"' : '') + '>' + (mv.busy ? 'Sending…' : 'Send to ' + reach) + '</button></div></section>';
-  h += '<section class="card"><ul class="fl mlist">' + L.map(m => '<li><div class="fi"><b>' + esc(m.name || m.email.split("@")[0]) + '</b><span>' + esc(m.email) + '</span><span>' + (m.goal ? esc(m.goal) + (m.race_date ? ' · ' + fmtD(m.race_date) : '') : 'No plan yet') + ' · joined ' + fmtD(m.created.slice(0, 10)) + ' · seen ' + ago(m.last_seen) + (m.src ? ' · from ' + esc(m.src) : '') + (m.ref_name ? ' · invited by ' + esc(m.ref_name) : '') + (m.invited ? ' · invited ' + m.invited : '') + '</span></div>' +
+  h += '<section class="card"><ul class="fl mlist">' + L.map(m => '<li><div class="fi"><b>' + esc(m.name || m.email.split("@")[0]) + '</b><span>' + esc(m.email) + '</span><span>' + (m.goal ? esc(m.goal) + (m.race_date ? ' · ' + fmtD(m.race_date) : '') : 'No plan yet') + ' · joined ' + fmtD(joined(m)) + ' · active ' + ago(seen(m)) + (m.src ? ' · from ' + esc(m.src) : '') + (m.ref_name ? ' · invited by ' + esc(m.ref_name) : '') + (m.invited ? ' · invited ' + m.invited : '') + '</span></div>' +
     '<span class="mtags">' + (m.strava ? '<em class="chip2" style="color:#FC5200">Strava</em>' : '') + (m.garmin ? '<em class="chip2">Garmin</em>' : '') + (m.no_mail ? '<em class="chip2">No emails</em>' : '') + '</span></li>').join("") + '</ul></section>';
   return h;
 }
@@ -3423,7 +3441,7 @@ document.addEventListener("click", ev => {
     if (setup.step >= 0){ const e = readStep(); if (e){ setup.err = e; render(); const el = $("#s-err"); if (el) el.scrollIntoView({block:"center"}); return; } }
     setup.err = ""; setup.step++;
     if (setup.step === 4){
-      const prof = {...setup.p, start: mondayOf(TODAY)}; delete prof.sample; delete prof.swaps;   // a new plan starts with no moved days
+      const prof = {...setup.p, start: mondayOf(TODAY), pv: HP.PLAN_V}; delete prof.sample; delete prof.swaps;   // a new plan starts with no moved days
       // training location: from "Use my location", or look up the typed city (doesn't hold up the plan)
       const cur = (wxLoc() || {}).place || "", city = setup.city || "";
       const geo = setup.geo;
@@ -3453,8 +3471,8 @@ document.addEventListener("click", ev => {
     return;
   }
   if (act === "actgo"){ const id = a.dataset.id; nav("fwd", () => { scr = null; tab = "activities"; actSel = id; render(); window.scrollTo(0, 0); }); return; }
-  if (act === "actopen"){ const id = a.dataset.id; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
-  if (act === "actback"){ nav("back", () => { actSel = null; actName = null; render(); }); return; }
+  if (act === "actopen"){ const id = a.dataset.id; scrollMem[viewKey()] = window.scrollY; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
+  if (act === "actback"){ nav("back", () => { actSel = null; actName = null; render(); restoreScroll(viewKey()); }); return; }
   if (act === "anedit"){ const x = acts.find(y => y.id === actSel); if (x && canRename(x)){ actName = {id: x.id, v: x.name, err: "", busy: false}; render(); const q = $("#an-q"); if (q){ q.focus(); q.select(); } } return; }
   if (act === "ancancel"){ actName = null; render(); return; }
   if (act === "anreset"){ if (actName) saveActName(actName.id, ""); return; }
