@@ -63,6 +63,17 @@ async function auth(req, env){
   await touchSeen(env, row.id);
   return row;
 }
+/* Source question (funnel question 1, Matthew Nov 17 1:35pm; product/log.md queued priority). Members whose sign-up has no
+   source (no ?src= tag) are asked ONCE, optionally: "How did you hear about Mileset?". The answer (or "skip") goes in
+   users.src_answer (add-only migration 0029) and never overwrites the tagged src. Owner-only while in PREVIEW. */
+const SRC_ANSWERS = ["friend", "matthew", "instagram", "search", "club", "other", "skip"];
+async function askSource(env, user){
+  if (!(await previewOk(env, user, "source"))) return false;
+  try {
+    const r = await env.DB.prepare("SELECT src, src_answer FROM users WHERE id = ?").bind(user.id).first();
+    return !!r && !r.src_answer && (!r.src || r.src === "unknown");
+  } catch(e){ return false; }   // before migration 0029 runs
+}
 /* When the app last saw each member (Nov 17: "last active" only knew the last log-in, so anyone who stayed logged in
    looked inactive). One write per member per 10 minutes per worker; never blocks or breaks a request. */
 const seenAt = new Map();
@@ -93,7 +104,7 @@ async function ownerIdRaw(env){
    "ask" (the coach bar) was released Nov 17 after its stress test passed, so the list is empty for now.
    PREVIEW_ADD is for tests only (tests/ask.mjs sets it to "ask" so the owner-only switch stays tested); it can only
    narrow who sees a feature, never widen it. */
-const PREVIEW = new Set(["liftdays", "rough"]);   // rough = "Rough night: adjust today" in the coach bar (Nov 17), Matthew's account first;   // liftdays: pin which days you lift (setup, "When can you run?"), Nov 17. "rename" was released Nov 17 on Matthew's word ("Release rename")
+const PREVIEW = new Set(["liftdays", "rough", "source"]);   // source: one-time "How did you hear about Mileset?" (Nov 18)   // rough = "Rough night: adjust today" in the coach bar (Nov 17), Matthew's account first;   // liftdays: pin which days you lift (setup, "When can you run?"), Nov 17. "rename" was released Nov 17 on Matthew's word ("Release rename")
 const previewOk = async (env, user, k) => !(PREVIEW.has(k) || String(env.PREVIEW_ADD || "").split(",").includes(k)) || user.id === await ownerId(env);
 
 /* ---------- AI food reading ---------- */
@@ -1357,6 +1368,13 @@ async function route(req, env, path, ctx){
     await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(await sha256(t)).run();
     return {ok: true};
   }
+  if (M === "POST" && path === "/api/account/source"){
+    if (!(await previewOk(env, user, "source"))) throw new HttpError(404, "Not found.");
+    const b = await body(req), a = String((b && b.answer) || "");
+    if (!SRC_ANSWERS.includes(a)) throw new HttpError(400, "Pick one of the answers.");
+    await env.DB.prepare("UPDATE users SET src_answer = ? WHERE id = ? AND src_answer IS NULL").bind(a, user.id).run();
+    return {ok: true};
+  }
   if (M === "GET" && path === "/api/me"){
     const since = new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10);
     const [p, d, f] = await env.DB.batch([
@@ -1391,7 +1409,7 @@ async function route(req, env, path, ctx){
         workouts: gl.results[0] ? (/WORKOUT_IMPORT/.test(gl.results[0].permissions || "") ? gl.results[0].wk : (gl.results[0].permissions ? -1 : null)) : null},
       reviews: Object.fromEntries(rv.results.map(x => [x.activity_id, JSON.parse(x.data)])), notes: cn.results.map(x => ({date: x.date, kind: x.kind, ...JSON.parse(x.data)})),
       settings: meSet, ai: {...meAi, available: !!env.ANTHROPIC_API_KEY}, push: {key: env.VAPID_PUBLIC || null, devices: ps.results[0].n}, coach: !!env.ANTHROPIC_API_KEY && meAi.on,
-      owner, features: {ask: !!env.ANTHROPIC_API_KEY && (await previewOk(env, user, "ask")), rename: await previewOk(env, user, "rename"), liftdays: await previewOk(env, user, "liftdays"), rough: await previewOk(env, user, "rough")}, founding, reports, health: hd.results, lifts: ll.results, mealplan: mp.results[0] ? JSON.parse(mp.results[0].data) : null, crews: await crewsFor(env, user.id), health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
+      owner, features: {ask: !!env.ANTHROPIC_API_KEY && (await previewOk(env, user, "ask")), rename: await previewOk(env, user, "rename"), liftdays: await previewOk(env, user, "liftdays"), rough: await previewOk(env, user, "rough"), source: await askSource(env, user)}, founding, reports, health: hd.results, lifts: ll.results, mealplan: mp.results[0] ? JSON.parse(mp.results[0].data) : null, crews: await crewsFor(env, user.id), health_link: ik.results[0] ? {on: true, last_used: ik.results[0].last_used} : {on: false}};
   }
   if (M === "PUT" && path === "/api/account"){
     const b = await body(req), name = String(b.name ?? "").trim().slice(0, 30);

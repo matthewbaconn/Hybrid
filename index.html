@@ -2067,6 +2067,15 @@ function heroSummary(day){
       (inner ? '<button class="hcheck" type="button" data-act="done" data-key="' + key + '" aria-label="I did it: check off ' + esc(s.title) + '">' + ic("check") + 'I did it</button>' : '<span>›</span>') + '</div></article>';
   }).join("");
 }
+/* One optional question, once (preview: features.source): where did this member hear about Mileset? */
+const SRC_Q = [["friend", "A friend or family"], ["matthew", "Matthew"], ["instagram", "Instagram"], ["search", "Search"], ["club", "A run club or gym"], ["other", "Somewhere else"]];
+let srcSent = false;
+function sourceCard(){
+  if (mode !== "account" || !(feat && feat.source) || srcSent) return "";
+  return '<section class="card srcq"><p class="feelq">Quick one: how did you hear about Mileset?</p><div class="chips">' +
+    SRC_Q.map(([k, l]) => '<button type="button" data-act="srcpick" data-v="' + k + '">' + l + '</button>').join("") +
+    '</div><button class="linkbtn" type="button" data-act="srcpick" data-v="skip">Skip</button></section>';
+}
 function renderToday(){
   const p = plan.profile, first = plan.weeks[0].start, last = addDays(plan.weeks[plan.weeks.length - 1].start, 6);
   const wi = weekOf(TODAY), w = plan.weeks[wi], g = greeting(p, w);
@@ -2091,7 +2100,7 @@ function renderToday(){
   const quickW = !wt && wskip !== TODAY && wAsk() ? '<section class="card qw" style="--tone:var(--lift)"><div class="card-h">' + ic("scale") + '<span class="lbl">Morning weigh-in</span><button class="linkbtn r" type="button" data-act="wskip">Not today</button></div>' +
     '<div class="wform"><input id="w-lb" inputmode="decimal" placeholder="' + (aw7 ? aw7.toFixed(1) : "Weight") + '" aria-label="Weight in pounds"><span>lb</span><button class="btn primary" type="button" data-act="wsave">Save</button></div>' + (wf && wf.err ? '<p class="err" role="alert">' + esc(wf.err) + '</p>' : '') + '</section>' : '';
   const mvT = day.sessions.length && canMove(TODAY) && moveTargets(TODAY).length && !day.sessions.some((s, i) => sessDone(TODAY, i, dayMatches(TODAY)));
-  h += aiCard() + checkinCard() + cycleCard(day) + heroSummary(day) + (mvT ? '<button class="linkbtn hmove" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t do it today? Move it</button>' : '') + missedCard() + fuelTile + quickW;   // today's workout first, then food
+  h += sourceCard() + aiCard() + checkinCard() + cycleCard(day) + heroSummary(day) + (mvT ? '<button class="linkbtn hmove" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t do it today? Move it</button>' : '') + missedCard() + fuelTile + quickW;   // today's workout first, then food
   if (L && wxState === "idle") setTimeout(() => loadWeather(), 0);
   let wmi = 0, wdone = 0;
   if (w) w.days.forEach(d => { const m = dayMatches(d.date); d.sessions.forEach((s, i) => { if (sessDone(d.date, i, m)) wdone += plan.multi ? (m[i] && m[i].minutes ? m[i].minutes : s.min || 0) / 60 : m[i] && m[i].mi ? m[i].mi : s.mi || 0; }); });
@@ -3042,7 +3051,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "92";
+const APP_VERSION = "93";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3826,6 +3835,11 @@ document.addEventListener("click", ev => {
   if (act === "mvpick"){ doMove(a.dataset.a, a.dataset.b); return; }
   if (act === "aiset"){ a.disabled = true; setAi(a.dataset.v === "1"); return; }
   if (act === "askopen"){ if (askOn()) askOpen(); return; }
+  if (act === "srcpick"){
+    srcSent = true; feat.source = false; render();
+    api("POST", "/api/account/source", {answer: a.dataset.v}).then(() => { if (a.dataset.v !== "skip") toast("Thanks, that helps."); }).catch(() => {});
+    return;
+  }
   if (act === "askfeel"){ if (askOn()) askOpen("How do you feel this morning?", "feel"); return; }
   if (act === "askabout"){ if (askOn()) askOpen("Ask about this note", "", a.dataset.t || ""); return; }
   if (act === "askclose"){ closeMenu(); return; }
