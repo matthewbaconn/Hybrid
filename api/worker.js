@@ -60,7 +60,17 @@ async function auth(req, env){
   if (!m) throw new HttpError(401, "Please log in.");
   const row = await env.DB.prepare("SELECT u.id, u.email, u.name, u.terms_at, s.expires FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?").bind(await sha256(m[1])).first();
   if (!row || row.expires < now()) throw new HttpError(401, "Your session ended. Please log in again.");
+  await touchSeen(env, row.id);
   return row;
+}
+/* When the app last saw each member (Nov 17: "last active" only knew the last log-in, so anyone who stayed logged in
+   looked inactive). One write per member per 10 minutes per worker; never blocks or breaks a request. */
+const seenAt = new Map();
+async function touchSeen(env, id){
+  const t = Date.now();
+  if (t - (seenAt.get(id) || 0) < 600000) return;
+  seenAt.set(id, t);
+  try { await env.DB.prepare("UPDATE users SET last_seen = ? WHERE id = ?").bind(now(), id).run(); } catch(e){}
 }
 const userOut = u => ({id: u.id, email: u.email, name: u.name});
 /* The app's owner sees problem reports. OWNER_EMAIL (a secret) wins; otherwise it's the oldest real account. */
@@ -1710,14 +1720,18 @@ async function route(req, env, path, ctx){
   }
   if (M === "GET" && path === "/api/admin/members"){
     if (user.id !== (await ownerId(env))) throw new HttpError(403, "Not allowed.");
-    const rows = (await env.DB.prepare(
-      "SELECT u.name, u.email, u.created, u.no_mail, u.src, p.data AS profile, (SELECT 1 FROM strava_links s WHERE s.user_id = u.id) AS strava, (SELECT 1 FROM garmin_links g WHERE g.user_id = u.id) AS garmin, " +
+    const q = seenCol => env.DB.prepare(
+      "SELECT u.name, u.email, u.created, u.no_mail, u.src, " + seenCol + " AS seen_at, p.data AS profile, (SELECT 1 FROM strava_links s WHERE s.user_id = u.id) AS strava, (SELECT 1 FROM garmin_links g WHERE g.user_id = u.id) AS garmin, " +
       "(SELECT name FROM users r WHERE r.id = u.ref) AS ref_name, (SELECT COUNT(*) FROM users c WHERE c.ref = u.id AND " + REAL("c.") + ") AS invited, " +
       "(SELECT MAX(created) FROM sessions x WHERE x.user_id = u.id) AS last_login, (SELECT MAX(date) FROM food f WHERE f.user_id = u.id) AS last_food, (SELECT MAX(date) FROM activities a WHERE a.user_id = u.id) AS last_act " +
-      "FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE " + REAL("u.") + " ORDER BY u.created DESC").all()).results;
+      "FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE " + REAL("u.") + " ORDER BY u.created DESC").all();
+    let rows;
+    try { rows = (await q("u.last_seen")).results; } catch(e){ rows = (await q("NULL")).results; }   // before migration 0028 runs
     return {members: rows.map(r => { let pr = null; try { pr = r.profile ? JSON.parse(r.profile) : null; } catch(e){}
       return {name: r.name, email: r.email, created: r.created, founding: r.created < FOUNDING_END, no_mail: !!r.no_mail, strava: !!r.strava, garmin: !!r.garmin, ref_name: r.ref_name || null, src: r.src || null, invited: r.invited || 0, goal: pr ? HP.raceName(pr) : null, race_date: pr && pr.raceDate || null,
-        last_seen: [r.last_login, r.last_food, r.last_act].filter(Boolean).sort().pop() || null}; })};
+        // last_seen: a UTC time (the app last saw them, or their last log-in); last_day: their last logged meal or workout day
+        last_seen: [r.seen_at, r.last_login].filter(Boolean).sort().pop() || null,
+        last_day: [r.last_food, r.last_act].filter(Boolean).map(d => String(d).slice(0, 10)).sort().pop() || null}; })};
   }
   if (M === "DELETE" && path === "/api/account"){
     const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
