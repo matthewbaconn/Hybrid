@@ -405,6 +405,7 @@ async function garminPush(env, data, ctx){
     const r = d.restingHeartRateInBeatsPerMinute, st = d.averageStressLevel;
     await saveHealth(env, u, d.calendarDate, {rhr: r >= 25 && r <= 150 ? Math.round(r) : null, steps: d.steps >= 0 && d.steps <= 150000 ? Math.round(d.steps) : null,
       active_cal: d.activeKilocalories >= 0 && d.activeKilocalories <= 8000 ? Math.round(d.activeKilocalories) : null, stress: st >= 0 && st <= 100 ? Math.round(st) : null}, "garmin");
+    if (st >= 0) ctx.waitUntil(stressCheck(env, u, d.calendarDate, {high_s: d.highStressDurationInSeconds, avg: st, qualifier: d.stressQualifier}).catch(e => console.log("stress", e && e.message)));
   }
   for (const v of data.hrv || []){
     const u = uid(v); if (!u) continue; seen[u] = 1;
@@ -441,7 +442,7 @@ async function garminForget(env, userId, tellGarmin){
 }
 
 /* ---------- each person's data, in their own time zone ---------- */
-const DEFAULT_SETTINGS = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", run_time: "07:00", n_morning: true, n_run: true, n_weekly: true, n_bed: true};
+const DEFAULT_SETTINGS = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", run_time: "07:00", n_morning: true, n_run: true, n_weekly: true, n_bed: true, n_stress: true};
 function localNow(tz){
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false, weekday: "short"})
     .formatToParts(new Date()).map(p => [p.type, p.value]));
@@ -792,9 +793,27 @@ async function wakeUp(env, userId, date){
   if (!U.checkins[L.date] && (await aiState(env, userId, st)).on && (await coachUsage(env, userId))) await morningNote(env, userId, L.date).catch(e => console.log("wake note", e && e.message));
   if (st.n_morning){
     const fbk = HP.feedback(U.plan, U.acts, L.date), adj = ["Train as planned", "Today's session is trimmed", "Easy day or rest today"][r.level];
-    await pushTo(env, userId, {title: "Readiness " + r.score + " · " + r.word, body: adj + ". Today: " + sessionsText(U, L.date, fbk) + ".", tag: "morning-" + L.date});   // the watch already sent the numbers: no "check in" ask
+    const odd = HP.sleepOutlier(U.dev, L.date);   // Nov 18: a night far outside their normal is named, with what it usually means
+    if (odd) await logEvent(env, "sleep_outlier", true, odd.dir + " " + odd.diff);
+    await pushTo(env, userId, {title: (odd ? (odd.dir === "short" ? "Short night · " : "Long night · ") : "") + "Readiness " + r.score + " · " + r.word,
+      body: (odd ? odd.text + " " : "") + adj + ". Today: " + sessionsText(U, L.date, fbk) + ".", tag: "morning-" + L.date});   // the watch already sent the numbers: no "check in" ask
     await once(env, userId, "morning", L.date);   // no second morning reminder
   }
+}
+/* Stress nudges (Matthew, Nov 18). Each Garmin daily summary for today (it arrives every time the watch syncs) is checked;
+   a stressful stretch gets one push a day, between 8am and 9pm local, if the member allows it (settings n_stress). */
+async function stressCheck(env, userId, date, today){
+  const st = await settingsOf(env, userId), L = localNow(st.tz);
+  if (st.n_stress === false || date !== L.date || L.hm < "08:00" || L.hm >= "21:00") return;
+  if (await env.DB.prepare("SELECT 1 FROM notif_log WHERE user_id = ? AND kind = 'stress' AND day = ?").bind(userId, L.date).first()) return;
+  const hist = (await env.DB.prepare("SELECT stress FROM health_daily WHERE user_id = ? AND date < ? AND date >= ? AND stress IS NOT NULL ORDER BY stress").bind(userId, L.date, HP.addDays(L.date, -28)).all()).results.map(x => x.stress);
+  const usual = hist.length >= 5 ? hist[Math.floor(hist.length / 2)] : null;
+  let level = null;
+  try { const U = await loadUser(env, userId, L.date); const r = U ? HP.readiness(U.checkins[L.date], HP.devSignals(U.dev, L.date)) : null; level = r ? r.level : null; } catch(e){}
+  const n = HP.stressNudge(today, usual, level); if (!n) return;
+  if (!(await once(env, userId, "stress", L.date))) return;
+  await logEvent(env, "stress_nudge", true, n.kind);
+  await pushTo(env, userId, {title: n.title, body: n.body, tag: "stress-" + L.date});
 }
 /* ---------- push notifications ---------- */
 async function pushTo(env, userId, msg){
@@ -1558,7 +1577,7 @@ async function route(req, env, path, ctx){
     for (const k of ["morning", "bedtime", "run_time"]) if (/^([01]\d|2[0-3]):[0-5]\d$/.test(b[k] || "")) next[k] = b[k];
     if (b.lat === null){ delete next.lat; delete next.lon; }
     else if (Number.isFinite(+b.lat) && Number.isFinite(+b.lon) && Math.abs(+b.lat) <= 90 && Math.abs(+b.lon) <= 180){ next.lat = Math.round(+b.lat * 100) / 100; next.lon = Math.round(+b.lon * 100) / 100; if (typeof b.place === "string") next.place = b.place.slice(0, 60); }
-    for (const k of ["n_morning", "n_run", "n_weekly", "n_bed"]) if (typeof b[k] === "boolean") next[k] = b[k];
+    for (const k of ["n_morning", "n_run", "n_weekly", "n_bed", "n_stress"]) if (typeof b[k] === "boolean") next[k] = b[k];
     // heart rate zones: % of max HR or of lactate threshold HR
     if (b.hr_method === "max" || b.hr_method === "lthr") next.hr_method = b.hr_method;
     if (b.sweat_oz === null) delete next.sweat_oz; else if (b.sweat_oz >= 5 && b.sweat_oz <= 80) next.sweat_oz = Math.round(b.sweat_oz);

@@ -895,7 +895,7 @@ const weights = S.weights || {};            // date -> lb
 let acts = S.acts || [];                    // [{id, source, date, type, name, mi, minutes, cal, avg_hr}]
 let strava = {available: false, connected: false, name: "", last_sync: null}, garmin = {available: false, connected: false, last_push: null};
 let ci = null, wf = null, aw = {open: false, err: "", busy: false};
-let reviews = {}, notes = [], uset = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", n_morning: true, n_run: true, n_weekly: true, n_bed: true}, pushInfo = {key: null, devices: 0}, coachOn = false;
+let reviews = {}, notes = [], uset = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", n_morning: true, n_run: true, n_weekly: true, n_bed: true, n_stress: true}, pushInfo = {key: null, devices: 0}, coachOn = false;
 const reviewFor = a => reviews[a.id] || null;
 const VCLS = {ok: "good", easy: "easy", hard: "warn", unknown: "muted", extra: "good"};
 /* Garmin attribution (Garmin API brand guidelines, Nov 17): anything worked out with Garmin device data as an input says
@@ -3086,7 +3086,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "99";
+const APP_VERSION = "100";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3191,7 +3191,7 @@ function notifHtml(){
   if (!pushState.on) return h + '<p class="sub">Morning check-in reminder, a summary after every workout, a Monday recap and a bedtime reminder.</p><button class="btn primary block" type="button" data-act="pushon">Turn on notifications</button></div>';
   const tg = (k, label) => '<label class="tgl"><input type="checkbox" data-set="' + k + '"' + (uset[k] ? ' checked' : '') + '><span>' + label + '</span></label>';
   return h + tg("n_morning", watchFeeding() ? "Morning readiness and today's plan" : "Morning check-in reminder") + '<label class="tm">at<input type="time" data-set="morning" value="' + esc(uset.morning) + '"></label>' +
-    tg("n_run", "Summary after each workout") + tg("n_weekly", "Monday weekly recap") + tg("n_bed", "Bedtime reminder") + '<label class="tm">at<input type="time" data-set="bedtime" value="' + esc(uset.bedtime) + '"></label>' +
+    tg("n_run", "Summary after each workout") + tg("n_stress", "Stress nudges from your Garmin (breathe, or rest on a big stress day)") + tg("n_weekly", "Monday weekly recap") + tg("n_bed", "Bedtime reminder") + '<label class="tm">at<input type="time" data-set="bedtime" value="' + esc(uset.bedtime) + '"></label>' +
     '<div class="fbtns"><button class="btn" type="button" data-act="pushtest">Send a test</button><button class="btn" type="button" data-act="pushoff">Turn off here</button></div></div>';
 }
 function b64uToBytes(s){ s = s.replace(/-/g, "+").replace(/_/g, "/"); const raw = atob(s + "===".slice((s.length + 3) % 4)); return Uint8Array.from(raw, c => c.charCodeAt(0)); }
@@ -3208,8 +3208,10 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-18.2";
+const NEW_ID = "2026-11-18.3";
 const NEWS = [
+  ["spark", "Stress nudges from your Garmin", "When your watch shows a stressful stretch, you get one short nudge to breathe, or a rest-day suggestion on a very hard day. Turn it off in Settings, Notifications.", "settings", null, "2026-11-18.3"],
+  ["check", "Sleep check in your morning note", "After a night far outside your normal sleep, the morning notification says how far off it was and what it usually means for today's training.", null, null, "2026-11-18.3"],
   ["spark", "Rough night? Adjust today", "Open the coach bar and tap Rough night: adjust today. The coach offers an easier day as buttons, plus fluids and simple food, and says when to skip training.", null, null, "2026-11-18.2"],
   ["check", "Pick your lifting days", "In plan setup, choose which days you lift and the running is built around them. To change it, edit your plan.", null, null, "2026-11-18.2"],
   ["share", "Bring 2 training partners", "Share your invite link from Today. When 2 partners join and build a plan, you can ask Matthew for a personal review of your plan.", null, null, "2026-11-18.2"],
