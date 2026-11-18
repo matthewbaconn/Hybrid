@@ -90,10 +90,30 @@ Then report what you did in one line.
   `.github/`. Put it on a `claude/<name>` branch and open a pull request. Then stop.
 - The ship gate is the hourly Claude worker. It tests each PR independently, merges it, and checks the live app.
   No other session merges an app PR or writes a comment starting "Ship gate:", not even its own PR, not even
-  when Matthew says "ship it" in the chat: tell him it lands within the hour, or that texting Vesper
-  "SHIP IT <n>" approves a held PR. The session that wrote a change cannot be its independent test.
+  when Matthew says "ship it" in the chat: tell him it lands within the hour, or, only for a HOLD PR, that
+  texting Vesper "SHIP IT <n>" approves it. The session that wrote a change cannot be its independent test.
 - `.github/workflows/ship-gate-guard.yml` turns red on any app commit that reaches `main` another way, and Vesper
   alerts Matthew. A red guard is never "fixed" by changing the guard.
+- No "SHIP IT" for normal work (Matthew, Nov 18, 2026: "1" = drop it). Every claude/ PR, product-team features
+  included, goes live once the gate's independent test passes. Only a HOLD item (spends money or adds a paid
+  service, changes existing member data, security/auth/secrets/DNS/.github/infrastructure, first contact or a new
+  kind of bulk email, anything irreversible) starts its body with "NEEDS MATTHEW: <why>" and waits for his
+  "SHIP IT <n>".
+
+**Going live: tell Matthew, and let him undo it (Matthew, Nov 18, 2026: "I should be notified when things go live
+and what they are and I should be allowed to say something like 'I don't like that' or take that back or undo that")**
+- Every time the gate puts a PR live, the inbox report says in plain words what changed for members and how to
+  undo it, e.g. "🚢 Live: Rough night chip in the coach bar for everyone (#91). Don't like it? Reply 'undo 91'."
+  Invisible changes (tests, CI, docs, HQ-only) can be one short line. Between 9pm and 6am ET, write it as a dated
+  line in vesper-relay ceo/overnight.md instead, so it arrives in his morning brief, not at night.
+- When Matthew says "undo <n>", "take that back", "I don't like that" (the most recent live change, or the one he
+  names), or similar: open a revert PR from main on branch claude/undo-<n> that reverts that PR's squash commit
+  (`git revert --no-edit <sha>`), with APP_VERSION/CACHE bumped one above main so phones pick it up, and its
+  What's new entry removed. Title "Fix: undo <original title> (Matthew asked)", body "Matthew asked to undo #<n>"
+  plus what he said. It is a ready PR, ranked with bug fixes, so the gate takes it on its next run. Never revert
+  member data: a reverted add-only migration leaves its empty column or table in place. Tell him "Undoing #<n>:
+  it'll be gone within the hour", and again when it's live. If he wants it changed rather than removed, say what
+  you'll change and build that as a normal PR.
 
 **Still ask first** for:
 - anything that spends money (Meta Ads budgets, new ad spend, paid plans or services)

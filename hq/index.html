@@ -193,7 +193,7 @@ let DEMO_HOLD = true;   // the first load sets everyone's state; only later chan
 const ORDER_API = "https://api.github.com/repos/matthewbaconn/Hybrid/pulls?state=all&sort=updated&direction=desc&per_page=40";
 let ORDER = null, orderAt = 0, orderErr = false, orderTry = 0;
 try { const c = JSON.parse(localStorage.getItem("hq-order") || "null"); if (c && c.at && Array.isArray(c.list)){ ORDER = c.list; orderAt = c.at; } } catch(e){}
-const isHeld = p => !/^claude\//.test(p.ref) || /^claude\/product/.test(p.ref);
+const isHeld = p => !/^claude\//.test(p.ref) || /^NEEDS MATTHEW/.test(p.b || "");   // the gate takes every claude/ PR except HOLD ones ("NEEDS MATTHEW"); since Nov 18 product-team PRs need no SHIP IT
 const isFix = p => /^fix\b/i.test(p.t);
 function orderGroups(){
   const L = ORDER || [], open = L.filter(p => p.open);
@@ -203,7 +203,7 @@ function orderGroups(){
 }
 async function loadOrder(){ orderTry = Date.now();
   try { const r = await fetch(ORDER_API, {cache: "no-store"}); if (!r.ok) throw new Error(r.status);
-    ORDER = (await r.json()).map(p => ({n: p.number, t: p.title, url: p.html_url, ref: (p.head && p.head.ref) || "", draft: !!p.draft, open: p.state === "open", c: p.created_at, m: p.merged_at}));
+    ORDER = (await r.json()).map(p => ({n: p.number, t: p.title, url: p.html_url, ref: (p.head && p.head.ref) || "", draft: !!p.draft, open: p.state === "open", c: p.created_at, m: p.merged_at, b: String(p.body || "").slice(0, 20)}));
     orderAt = Date.now(); orderErr = false; try { localStorage.setItem("hq-order", JSON.stringify({at: orderAt, list: ORDER})); } catch(e){}
   } catch(e){ orderErr = true; }
   renderOrder(); if (typeof renderPriv === "function" && PRIV) try { renderPriv(); } catch(e){}
@@ -216,10 +216,10 @@ function renderOrder(){
   const row = (tag, cls, p, why, when) => `<div class="item"><div class="h"><span><span class="tag ${cls}">${esc(tag)}</span>${linkify("#" + p.n + " " + p.t, p.url)}</span>${when ? `<small>${esc(when)}</small>` : ""}</div>${why ? `<div class="why">${esc(why)}</div>` : ""}</div>`;
   const out = [];
   G.q.forEach((p, i) => out.push(row(String(i + 1), "", p, (isFix(p) ? "Bug fix, so it goes ahead of features. " : "") + (i ? "Then the gate tests it and puts it live." : "Next: the gate tests it and puts it live."), "~" + hm(new Date(+next + i * 36e5)))));
-  G.held.forEach(p => out.push(row("SHIP IT " + p.n, "ship", p, `Optional, only if you want it live: text Vesper "SHIP IT ${p.n}" in Telegram. Until then it just waits.`)));
+  G.held.forEach(p => out.push(row("SHIP IT " + p.n, "ship", p, `Needs your OK (money, member data, security or something irreversible): text Vesper "SHIP IT ${p.n}" when you want it live.`)));
   G.drafts.forEach(p => out.push(row("draft", "", p, "Not ready yet (still being finished or waiting on the PR before it). Nothing for you to do.")));
   G.live.forEach(p => out.push(row("live " + hm(new Date(p.m)), "live", p, "")));
-  el.innerHTML = `<div class="item"><div class="why" style="-webkit-line-clamp:unset">The ship gate puts one upgrade live about every hour: bug fixes first, then oldest first. Times are estimates. Nothing here needs you unless it says SHIP IT.${orderAt ? " Checked " + esc(fmtT(new Date(orderAt).toISOString())) + "." : ""}</div></div>`
+  el.innerHTML = `<div class="item"><div class="why" style="-webkit-line-clamp:unset">The ship gate puts one upgrade live about every hour: bug fixes first, then oldest first. Times are estimates. Nothing here needs you unless it says SHIP IT. When one goes live, Vesper tells you; reply \"undo <n>\" to take it back.${orderAt ? " Checked " + esc(fmtT(new Date(orderAt).toISOString())) + "." : ""}</div></div>`
     + (out.length ? out.join("") : `<div class="empty">No upgrades waiting.</div>`);
 }
 // Only what truly waits on Matthew. Ready app PRs are the gate's job (they're in Upgrade order) and drafts aren't
@@ -791,7 +791,7 @@ setInterval(load, 120000); setInterval(tick, 20000);
 // resumes from memory (no reload), so opening it again fires visibilitychange / pageshow / focus instead.
 // The page updates itself too: a home-screen app can keep an old copy of HQ in memory for days, so every refresh
 // checks the published build and reloads when a newer HQ is live.
-const HQ_BUILD = "2026-11-17.4";
+const HQ_BUILD = "2026-11-18.1";
 let lastRefresh = 0, lastBuildCheck = 0;
 async function newerBuild(){
   if (DEMO || location.protocol === "file:") return false;
