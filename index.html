@@ -250,6 +250,14 @@ button{cursor:pointer}
 .wsum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .wsum div{background:var(--sunk);border-radius:6px;padding:12px}
 .wsum span{display:block;font-size:12px;color:var(--muted)} .wsum b{font:800 21px/1.2 var(--f-display);white-space:nowrap}
+.achips{display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 14px;margin-top:-4px}
+.achips span{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:var(--sunk);color:var(--ink);font:600 12.5px/1.2 var(--f-body);max-width:100%;overflow-wrap:anywhere}
+.achips .ok{color:var(--good)} .achips .warn{color:var(--warn)} .achips .mut{color:var(--muted)} .achips .ac-hr{font-style:normal;color:#FF5A5F}
+.wsum small{font:700 13px var(--f-body);color:var(--muted)}
+.wbar{height:6px;border-radius:3px;background:var(--sunk);overflow:hidden;margin-top:12px} .wbar i{display:block;height:100%;background:linear-gradient(90deg,#800000,#BE383E)}
+.wnote{margin:8px 0 0;font-size:13px;color:var(--muted)}
+.afilt button em{font-style:normal;opacity:.7;margin-left:2px}
+.awk{display:flex;justify-content:space-between;align-items:baseline;margin:6px 2px -4px;font:700 13px/1.2 var(--f-body);color:var(--muted);text-transform:uppercase;letter-spacing:.04em} .awk em{font-style:normal;text-transform:none;letter-spacing:0}
 .actc{cursor:pointer;padding:0;overflow:hidden;gap:0}
 .actc .ah{display:flex;gap:12px;align-items:center;padding:18px 18px 0}
 .actc .aic{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--tc) 18%,transparent);color:var(--tc)}
@@ -1136,11 +1144,36 @@ function routeSvg(pts){
   const step = Math.max(1, Math.floor(pts.length / 400)), path = pts.filter((_, i) => i % step === 0 || i === pts.length - 1).map(xy).join(' ');
   return '<svg viewBox="0 0 340 200" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><polyline points="' + path + '" fill="none" stroke="var(--accent)" stroke-width="7" stroke-opacity=".25" stroke-linejoin="round" stroke-linecap="round"/><polyline points="' + path + '" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></svg>';
 }
+/* More in each workout's box (Matthew's Nov 18 list, item 4): heart rate with zone, climb, effort, and how it lined up with the
+   plan, as small chips under the stats. Every chip comes from the member's own workout and plan; nothing is guessed. */
+function planVs(a){
+  if (!plan || !a.date || !HP.dayOf(plan, a.date)) return null;
+  const m = HP.dayMatches(plan, feedActs(), a.date), idx = Object.keys(m).find(i => m[i].id === a.id), day = HP.dayOf(plan, a.date);
+  if (idx == null) return a.date <= TODAY && (a.type === "run" || a.type === "lift") ? {t: "Extra", tone: "mut"} : null;
+  const ss = day.sessions[idx]; if (!ss) return null;
+  const short = ss.type === "easy" ? "Easy run" : ss.type === "long" ? "Long run" : ss.type === "lift" ? "Strength" : ss.type === "workout" ? "Workout" : ss.type === "race" ? "Race" : ss.title.split(" · ")[0];
+  if (m[idx].sub) return {t: "Counted as " + short.toLowerCase(), tone: "ok"};
+  let tone = "ok", word = "done";
+  if (["easy", "long", "workout"].includes(ss.type)){ const v = HP.assess(plan, ss, a); if (v.verdict === "ok") word = "on target"; else if (v.verdict === "hard") { word = ss.type === "workout" ? "slower than target" : "faster than easy"; tone = "warn"; } else if (v.verdict === "easy") { word = "faster than target"; tone = "warn"; } }
+  if (ss.mi > 0 && a.mi > 0 && a.mi < ss.mi * .8){ word = r2(a.mi) + " of " + ss.mi + " mi"; tone = "warn"; }
+  return {t: short + " · " + word, tone};
+}
+function actChips(a){
+  const out = [], z = a.avg_hr ? zoneOf(a.avg_hr) : 0, mx = maxHrNow(), shown = actStats(a).some(([k]) => k === "Avg HR");
+  if (a.avg_hr && (z || !shown)) out.push(['<i class="ac-hr">♥</i>' + a.avg_hr + ' bpm' + (z ? ' · Z' + z : ''), '']);
+  if (a.elev_ft >= 30) out.push(['▲ ' + comma(a.elev_ft) + ' ft', '']);
+  if (a.type !== "lift" && ((a.avg_hr && mx) || a.rpe > 0 || a.feel)){ const e = HP.effortOf(a, mx); out.push([(e <= 4 ? 'Easy' : e <= 6 ? 'Moderate' : e <= 8 ? 'Hard' : 'All-out') + ' effort', '']); }
+  const pv = planVs(a); if (pv) out.push([pv.t, pv.tone]);
+  return out.length ? '<div class="achips">' + out.map(([t, k]) => '<span' + (k ? ' class="' + k + '"' : '') + '>' + t + '</span>').join("") + '</div>' : '';
+}
+// the plan's run miles for a week (Mon..Sun), to show "12.4 of 20 mi"
+function weekPlanMi(ws){ if (!plan) return 0; let t = 0; for (let i = 0; i < 7; i++){ const d = HP.dayOf(plan, addDays(ws, i)); if (d) d.sessions.forEach(x => { if (["easy", "long", "workout", "race"].includes(x.type)) t += x.mi || 0; }); } return Math.round(t * 10) / 10; }
+const weekLabel = ws => ws === mondayOf(TODAY) ? "This week" : ws === addDays(mondayOf(TODAY), -7) ? "Last week" : fmtD(ws) + " – " + fmtD(addDays(ws, 6));
 function actCard(a){
   const pts = ptsOf(a), tone = ACT_TONE[a.type] || "long", src = a.source === "strava" ? "Strava" : a.source === "garmin" ? "Garmin" : a.source === "sample" ? "Sample" : "Logged";
   return '<article class="card actc" style="--tc:var(--' + tone + ')" data-act="actopen" data-id="' + esc(a.id) + '" tabindex="0" role="button" aria-label="Open ' + esc(a.name) + '">' +
     '<div class="ah"><span class="aic">' + ic(ACT_IC[a.type] || "watch") + '</span><div><b>' + esc((me && me.name) || (plan && plan.profile.name) || "You") + '</b><span>' + whenTxt(a) + ' · ' + src + '</span></div></div>' +
-    '<h3>' + esc(a.name) + '</h3>' + (plan && a.type !== "run" && a.type !== "lift" ? '<span class="asub">' + esc(HP.actSummary(plan, feedActs(), a, TODAY, maxHrNow()).headline) + '</span>' : '') + '<div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
+    '<h3>' + esc(a.name) + '</h3>' + (plan && a.type !== "run" && a.type !== "lift" ? '<span class="asub">' + esc(HP.actSummary(plan, feedActs(), a, TODAY, maxHrNow()).headline) + '</span>' : '') + '<div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + actChips(a) +
     (pts && pts.length > 1 ? '<div class="amap" data-map="' + esc(a.id) + '">' + routeSvg(pts) + '</div>' : '') + '</article>';
 }
 function feedActs(){
@@ -1154,15 +1187,20 @@ function renderActivities(){
   const ws = mondayOf(TODAY), wk = all.filter(a => a.date >= ws && a.date <= TODAY);
   const wmi = wk.reduce((t, a) => t + (a.type === "run" ? a.mi || 0 : 0), 0), wmin = wk.reduce((t, a) => t + (a.minutes || 0), 0);
   let h = '<h2 class="sec-t">Activities</h2>';
+  const pmi = weekPlanMi(ws), pct = pmi > 0 ? Math.min(100, Math.round(wmi / pmi * 100)) : 0;
   h += '<section class="card" style="--tone:var(--lift)"><div class="card-h">' + ic("bars") + '<span class="lbl">This week</span><span class="r">' + wk.length + ' activit' + (wk.length === 1 ? 'y' : 'ies') + '</span></div>' +
-    '<div class="wsum"><div><span>Run miles</span><b>' + r2(wmi) + '</b></div><div><span>Time</span><b>' + durTxt(wmin) + '</b></div><div><span>Activities</span><b>' + wk.length + '</b></div></div></section>';
+    '<div class="wsum"><div><span>Run miles</span><b>' + r2(wmi) + (pmi > 0 ? '<small> / ' + pmi + '</small>' : '') + '</b></div><div><span>Time</span><b>' + durTxt(wmin) + '</b></div><div><span>Activities</span><b>' + wk.length + '</b></div></div>' +
+    (pmi > 0 ? '<div class="wbar" role="img" aria-label="' + r2(wmi) + ' of ' + pmi + ' planned run miles"><i style="width:' + pct + '%"></i></div><p class="wnote">' + (wmi >= pmi ? 'Planned miles done this week.' : r2(Math.max(0, pmi - wmi)) + ' mi left on the plan this week.') + '</p>' : '') + '</section>';
   const F = [["all", "All"], ["run", "Runs"], ["lift", "Strength"], ["other", "Other"]];
-  h += '<div class="afilt" role="group" aria-label="Filter activities">' + F.map(([k, l]) => '<button type="button" data-act="afilt" data-k="' + k + '" aria-pressed="' + (actFilter === k) + '">' + l + '</button>').join("") + '</div>';
-  const list = all.filter(a => actFilter === "all" || (actFilter === "other" ? !["run", "lift"].includes(a.type) : a.type === actFilter));
-  if (!list.length) h += '<section class="card"><p class="sub">' + (all.length ? 'Nothing here for this filter.' :
+  const inF = (a, k) => k === "all" || (k === "other" ? !["run", "lift"].includes(a.type) : a.type === k);
+  h += '<div class="afilt" role="group" aria-label="Filter activities">' + F.map(([k, l]) => { const n = all.filter(a => inF(a, k)).length; return '<button type="button" data-act="afilt" data-k="' + k + '" aria-pressed="' + (actFilter === k) + '">' + l + (all.length ? ' <em>' + n + '</em>' : '') + '</button>'; }).join("") + '</div>';
+  const list = all.filter(a => inF(a, actFilter));
+  const EMPTY = {run: "No runs here yet. They come in from Strava or Garmin, or log one on the Today tab.", lift: "No strength sessions yet. Log one on the Today tab after you lift.", other: "Rides, swims, walks and other sports show up here."};
+  if (!list.length) h += '<section class="card"><p class="sub">' + (all.length ? EMPTY[actFilter] || 'Nothing here for this filter.' :
     mode === "account" && strava.available && !strava.connected ? 'Connect Strava and your runs show up here with a map of your route. Garmin, COROS and Apple Watch work through Strava too.</p><button class="stbtn" type="button" data-act="stconnect" aria-label="Connect with Strava"><img src="brand/strava-connect.svg" alt="Connect with Strava" width="237" height="48"></button><p class="sub">You can also log workouts by hand on the Today tab.' :
-    'No activities yet. Log a workout on the Today tab' + (mode === "account" ? ' or sync Strava' : '') + '.') + '</p></section>';
-  else h += list.slice(0, 40).map(actCard).join("");
+    'No activities yet. Log a workout on the Today tab' + (mode === "account" ? ' or sync Strava' : '') + '.') + '</p>' + (all.length ? '<button class="linkbtn" type="button" data-act="afilt" data-k="all">Show all activities</button>' : '') + '</section>';
+  else { let lastW = ""; list.slice(0, 40).forEach(a => { const w = a.date ? mondayOf(a.date) : ""; if (w && w !== lastW){ lastW = w; const wa = list.filter(x => x.date && mondayOf(x.date) === w), rm = wa.reduce((t, x) => t + (x.type === "run" ? x.mi || 0 : 0), 0);
+      h += '<h3 class="awk"><span>' + weekLabel(w) + '</span><em>' + wa.length + ' · ' + (rm > 0 ? r2(rm) + ' mi' : durTxt(wa.reduce((t, x) => t + (x.minutes || 0), 0))) + '</em></h3>'; } h += actCard(a); }); }
   if (strava.connected) h += '<button class="linkbtn" type="button" data-act="stsync" style="justify-self:center">Sync Strava now · ' + agoText(strava.last_sync) + '</button>';
   if (strava.connected || garmin.connected) h += '<div class="badges">' + (strava.connected ? '<i class="cws"><img src="brand/compatible-strava-orange.svg" alt="Compatible with Strava" width="437" height="37"></i>' : '') + (garmin.connected ? '<i class="cws gbadge"><img src="brand/garmin-black.png" alt="Garmin" width="463" height="72"></i>' : '') + '</div>';
   h += crewCardHtml();
@@ -3286,7 +3324,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "103";
+const APP_VERSION = "104";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3408,8 +3446,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-18.5";
+const NEW_ID = "2026-11-18.6";
 const NEWS = [
+  ["bars", "More in every workout", "Activities now shows heart rate and zone, climb, effort, and how each run lined up with your plan. This week's box shows planned miles left, and the list is grouped by week.", "activities", null, "2026-11-18.6"],
   ["share", "See-through share stickers", "Open a workout, tap Share image and pick a style: stats, big numbers, route, splits or heart rate. They're see-through, so they sit right on your Instagram Story or photo.", "activities", null, "2026-11-18.5"],
   ["pencil", "Name it right after", "After a synced run, the app opens with it at the bottom: give it a name, share it, or open the full workout.", null, null, "2026-11-18.5"],
   ["share", "Share your run as an image", "Open a workout and tap Share image: a picture with your route, distance, pace and time, ready for your story or a group chat.", "activities", null, "2026-11-18.4"],
