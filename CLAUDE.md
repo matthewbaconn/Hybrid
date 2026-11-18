@@ -54,7 +54,8 @@ a member-facing PR without a NEWS/NEW_ID update gets one added (or is sent back)
 - Bugs (Matthew, Nov 17: "The bugs should always be instantly fixed and tested and then sent to all members"): fix
   right away, test, and open the fix as its OWN pull request from main, ready (not a draft), never stacked behind or
   bundled with a feature, so the ship gate (oldest ready PR first) takes it on its next hourly run.
-- In preview now: nothing.
+- In preview now: `liftdays` (pick which days you lift in setup), `rough` ("Rough night: adjust today" chip in the coach bar: the coach offers an easier day as buttons;
+  no drink logging. The safety guidance in the coach's prompt applies to every member who types it themselves).
 - Released: `rename` (Nov 17, Matthew: "Release rename". Activities: open a workout, tap the pencil, give it your own name;
   the original stays underneath in `activities.name`, the member's name lives in `activities.title`).
 - Released: `ask`, the coach bar (Nov 17, after its stress test passed: `tests/ask_stress.mjs`,
@@ -67,6 +68,11 @@ a member-facing PR without a NEWS/NEW_ID update gets one added (or is sent back)
    Schema changes go through new migrations that keep existing rows intact.
 2. Matthew's own "Strong at 180" plan and his separate `garmin-sync` repo are off limits.
 3. Strava data never goes into AI prompts and is shown only to the athlete it belongs to.
+   When Garmin and Strava both have a workout, the GARMIN copy is the one kept (Nov 17), so the coach can read it.
+   Never copy a field or a review from a Strava row onto a Garmin row; only what the member typed (name, effort) moves.
+   AI is the member's choice (Nov 17, Garmin's developer terms): `settings.ai`, read through `aiState()` in api/worker.js.
+   A Garmin-linked member who was never asked is OFF until they answer the card on Today. Every new place that sends a
+   member's training or health data to the AI must check `aiState(...).on` first (tests/ask.mjs, tests/one_push.mjs).
 4. Never fabricate features, numbers, testimonials or results in any copy.
 5. No cold DMs, bulk follows or engagement automation on Instagram. It gets the account banned.
 

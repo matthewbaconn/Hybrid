@@ -77,12 +77,50 @@ try {
   const said = JSON.parse(seen[seen.length - 1].messages.slice(-1)[0].content);
   ok(said.coach_note_they_are_asking_about === "Go easier today. HRV is below your normal." && said.member_says === "Why did you say this?", "a coach note the member asks about travels with the question");
 
+  // a screen id the model writes in its words (the real-AI test, Nov 17: "the t-paces screen") reaches the member as the screen's name
+  reply = {answer: "See them on the t-paces screen, or change your race in set-train. Your set-up is fine.", actions: []};
+  const jS = await (await call(owner, "POST", "/api/ask", {q: "Where do my paces come from?"})).json();
+  ok(jS.answer === "See them on the Training paces screen, or change your race in Coaching and training. Your set-up is fine.", "screen ids in the answer become the names members see: " + jS.answer);
+
   // 3. a reply that isn't JSON still comes back as plain text with no actions; an empty question is refused
   reply = "Just rest today.";
   const jP = await (await call(owner, "POST", "/api/ask", {q: "Should I rest?"})).json();
   ok(jP.answer === "Just rest today." && Array.isArray(jP.actions) && jP.actions.length === 0, "a plain-text reply is passed through with no actions");
+  ok(!("garmin" in jP), "no Garmin data went in, so the answer carries no Garmin attribution mark");
   ok((await call(owner, "POST", "/api/ask", {q: " "})).status === 400, "an empty question is refused");
-  ok(sql("SELECT count FROM ai_usage WHERE user_id = '" + uid + "' AND day LIKE 'ask:%'")[0].count === 3, "each answered question is counted toward the daily cap");
+  ok(sql("SELECT count FROM ai_usage WHERE user_id = '" + uid + "' AND day LIKE 'ask:%'")[0].count === 4, "each answered question is counted toward the daily cap");
+
+  // 3b. rough night (preview "rough", owner only): the chip is offered and the coach is told the situation
+  reply = {answer: "Take it easy today.", actions: []};
+  const meR = await (await call(owner, "GET", "/api/me")).json(), memR = await (await call(member, "GET", "/api/me")).json();
+  ok(meR.features.rough === true && memR.features.rough === false, "rough night: on for the owner, off for other members while in preview");
+  await call(owner, "POST", "/api/ask", {q: "Rough night: adjust today", kind: "rough"});
+  const roughSent = seen[seen.length - 1], roughMsg = JSON.parse(roughSent.messages.slice(-1)[0].content);
+  ok(roughMsg.situation === "rough_night" && /ROUGH NIGHT/.test(roughSent.system) && /never judge/.test(roughSent.system) && /medical help/.test(roughSent.system) && /Never suggest medicines/.test(roughSent.system), "rough night: the coach is told the situation and the safety rules");
+  await call(owner, "POST", "/api/ask", {q: "What's today?"});
+  ok(!("situation" in JSON.parse(seen[seen.length - 1].messages.slice(-1)[0].content)), "rough night: an ordinary question carries no situation");
+
+  // 4. the AI coach is the member's own choice (Nov 17). No Garmin link and never asked: on, as before.
+  const me = async () => (await (await call(owner, "GET", "/api/me")).json());
+  let m = await me();
+  ok(m.ai && m.ai.on === true && m.ai.needs === false && m.ai.asked === false && m.coach === true, "AI coach: no Garmin, never asked -> on, nothing to answer");
+  const sentBefore = seen.length;
+  const off = await (await call(owner, "PUT", "/api/settings", {ai: false})).json();
+  ok(off.ai && off.ai.on === false && off.ai.asked === true && typeof off.settings.ai_at === "string", "AI coach: switching it off is saved, with the time");
+  const refused = await call(owner, "POST", "/api/ask", {q: "What's my workout today?"}), rj = await refused.json();
+  ok(refused.status === 403 && /AI coach is off/.test(rj.error || "") && seen.length === sentBefore, "AI coach off: the coach bar is refused and nothing is sent to the AI (" + refused.status + ")");
+  ok((await call(owner, "POST", "/api/mealplan", {})).status === 403 && (await call(owner, "POST", "/api/review/feel", {feel: "hard", activity_id: "x"})).status === 403 && seen.length === sentBefore, "AI coach off: meal prep ideas and 'how did it feel' coaching are refused too");
+  m = await me();
+  ok(m.ai.on === false && m.coach === false && m.features.ask === true, "AI coach off: the app is told it is off");
+  // a Garmin link and never asked: paused until they answer
+  sql("UPDATE settings SET data = json_remove(data, '$.ai', '$.ai_at') WHERE user_id = '" + uid + "'; INSERT INTO garmin_links (user_id, garmin_user_id, access_token, refresh_token, expires_at, connected) VALUES ('" + uid + "', 'g-ask', 't', 'r', " + (Math.floor(Date.now() / 1000) + 86400) + ", '" + new Date().toISOString().slice(0, 10) + "')");
+  m = await me();
+  ok(m.ai.on === false && m.ai.needs === true && m.ai.asked === false, "AI coach: Garmin linked and never asked -> paused, and the app is told to ask");
+  ok((await call(owner, "POST", "/api/ask", {q: "Hello?"})).status === 403 && seen.length === sentBefore, "AI coach: until they answer, nothing of a Garmin member's goes to the AI");
+  const on = await (await call(owner, "PUT", "/api/settings", {ai: true})).json();
+  const back = await call(owner, "POST", "/api/ask", {q: "And now?"});
+  ok(on.ai.on === true && on.ai.needs === false && back.status === 200 && seen.length === sentBefore + 1, "AI coach: after they say yes it works again");
+  ok(sql("SELECT COUNT(*) AS n FROM events WHERE kind = 'ai_consent'")[0].n === 2, "AI coach: each yes or no is written to the event log");
 } catch(e){ ok(false, "test crashed: " + (e && e.stack || e)); }
 finally { stop(); }
 console.log(failed ? failed + " problem(s)" : "ALL PASS");
