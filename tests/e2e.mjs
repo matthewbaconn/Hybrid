@@ -7,11 +7,18 @@ const SITE = process.env.SITE || "https://app.hybrdrunning.com/";
 const SHOTS = process.env.SHOTS || "e2e-shots";
 const FAST = !!process.env.LOCAL;          // local runs: no internet weather/AI waits
 fs.mkdirSync(SHOTS, {recursive: true});
-const iPhone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+// " Playwright MilesetTest" marks this as test traffic: the live visit counter (api/worker.js BOT_UA) skips it, so the
+// nightly runs stop showing up as website visits (B2b, Nov 17). "iPhone" stays in it, so the app still treats it as an iPhone.
+const iPhone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1 Playwright MilesetTest";
 const results = [], problems = [];
 let step = "";
 const ok = (name, detail) => { results.push("✅ " + name + (detail ? " — " + detail : "")); console.log("ok   " + name + (detail ? " — " + detail : "")); };
 const fail = (name, detail) => { problems.push(name + ": " + detail); results.push("❌ " + name + " — " + detail); console.log("FAIL " + name + " — " + detail); };
+// B2b guard: this browser's identity must be one the live visit counter skips (api/worker.js BOT_UA), or every
+// run inflates the website visit numbers again. It must still read as an iPhone to the app.
+{ const w = fs.readFileSync(new URL("../api/worker.js", import.meta.url), "utf8"), m = w.match(/const BOT_UA = \/(.+)\/i;/), bot = m && new RegExp(m[1], "i");
+  if (bot && bot.test(iPhone) && /iPhone/.test(iPhone)) ok("Test traffic is marked, so it is never counted as a website visit");
+  else fail("Test traffic is marked, so it is never counted as a website visit", "the visit counter's bot filter does not match this test's user agent"); }
 // One failed check must not break the ones after it (Nov 14: three nightly runs each had ONE real failure that
 // cascaded into 4-14, because the page was left on a stuck screen). After any failure the app is reloaded to its
 // home screen (and signed back in if needed). A check that continues from a failed one is reported as "not run",
