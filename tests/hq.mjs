@@ -3,7 +3,8 @@
 // and fails on any script error, sideways scrolling, or a private room showing without the owner's key.
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
-const page = 'file://' + fileURLToPath(new URL('../hq/index.html', import.meta.url));
+// HQ_PAGE picks which copy to check (hq/index.html by default; tests/hq_release.mjs runs it on every copy).
+const page = 'file://' + fileURLToPath(new URL('../' + (process.env.HQ_PAGE || 'hq/index.html'), import.meta.url));
 const b = await chromium.launch(), errs = [];
 for (const [name, w, h] of [['phone', 390, 844], ['desktop', 1280, 900]]) {
   const p = await b.newPage({ viewport: { width: w, height: h } });
@@ -80,4 +81,4 @@ for (const [name, opts] of [['desktop', { viewport: { width: 1280, height: 900 }
 { const p = await b.newPage(); await p.goto(page); if ((await p.getAttribute('#mf', 'href')) !== 'manifest.webmanifest') errs.push('no key: manifest must stay plain'); await p.close(); }
 await b.close();
 if (errs.length) { console.error(errs.join('\n')); process.exit(1); }
-console.log('HQ OK: 5 rooms, phone + desktop, private rooms locked without the key, private link installs unlocked, every open refreshes, Refresh button');
+console.log((process.env.HQ_PAGE || 'hq/index.html') + ' OK: 5 rooms, phone + desktop, private rooms locked without the key, private link installs unlocked, every open refreshes, Refresh button');

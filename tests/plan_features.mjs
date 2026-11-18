@@ -58,4 +58,32 @@ const old5 = HP.buildPlan({goal: "5k", days: DAYSETS[5], longDay: 6, weekly: 8, 
 t(old5.weeks[0].days.filter(d => d.sessions.some(s => s.mi)).length === 5, "weeks before the change keep their run days (check-offs stay put)");
 const s20 = HP.buildPlan({goal: "half", days: DAYSETS[5], longDay: 6, weekly: 20, longest: 8, raceDate: "2027-02-28"}, "2026-11-16");
 t(s20.weeks.every(w => /Race week/.test(w.phase) || w.days.filter(d => d.sessions.some(s => s.mi)).length === 5), "20 mi/week on 5 days still runs all 5 days");
+// Pinned lifting days (Nov 17, preview "liftdays"): lifts stay on the days the athlete picked, the count stays theirs
+const liftOn = (w) => w.days.map((d, i) => d.sessions.some(s => s.type === "lift") ? i : -1).filter(i => i >= 0);
+const pinRun = HP.buildPlan({goal: "half", raceDate: "2027-03-07", days: [0, 2, 4, 6], longDay: 6, weekly: 20, longest: 8, lifts: 2, liftDays: [1, 3]}, today);
+t(pinRun.weeks.filter(w => !/Race week/.test(w.phase)).every(w => liftOn(w).join() === "1,3"), "half plan: lifts on the pinned Tue + Thu every week before race week");
+const rw = pinRun.weeks[pinRun.weeks.length - 1], rIdx = rw.days.findIndex(d => d.sessions.some(s => s.type === "race"));
+t(!rw.days.slice(Math.max(0, rIdx - 1), rIdx + 1).some(d => d.sessions.some(s => s.type === "lift")), "no lift on race day or the day before, even if pinned");
+const pinOne = HP.buildPlan({goal: "10k", raceDate: "2027-02-07", days: [0, 2, 4, 6], longDay: 6, weekly: 20, longest: 8, lifts: 3, liftDays: [5]}, today);
+t(pinOne.weeks[1].days[5].sessions.some(s => s.type === "lift") && liftOn(pinOne.weeks[1]).length === 3, "one pinned day + the plan picks the other two");
+const pinMore = HP.buildPlan({goal: "10k", raceDate: "2027-02-07", days: [0, 2, 4, 6], longDay: 6, weekly: 20, longest: 8, lifts: 1, liftDays: [1, 3, 5]}, today);
+t(liftOn(pinMore.weeks[1]).length === 1, "more pins than lifting days never adds lifts");
+const pinBad = HP.buildPlan({goal: "half", raceDate: "2027-03-07", days: [0, 2, 4, 6], longDay: 6, weekly: 20, longest: 8, lifts: 2, liftDays: ["x", 9, -1, 2.5]}, today);
+const pinNone = HP.buildPlan({goal: "half", raceDate: "2027-03-07", days: [0, 2, 4, 6], longDay: 6, weekly: 20, longest: 8, lifts: 2}, today);
+t(JSON.stringify(pinBad.weeks) === JSON.stringify(pinNone.weeks), "junk pins are ignored (same plan as no pins)");
+for (const goal of ["hyrox", "tri_olympic", "everyday"]){
+  const pm = HP.buildPlan({goal, raceDate: goal === "everyday" ? null : "2027-03-07", days: [0, 1, 3, 4, 6], longDay: 6, weekly: 15, longest: 6, hours: 6, lifts: 2, fitLevel: "some", liftDays: [1, 4]}, today);
+  t(pm.weeks.slice(0, 4).every(w => [1, 4].every(d => w.days[d].sessions.some(s => s.type === "lift"))), goal + ": lifts land on the pinned Tue + Fri");
+}
+// Nov 17: easy pace is optional in setup ("leave it blank"). Blank = paces from current miles, slower for fewer miles;
+// older profiles without a pace keep the 10:00 default (their plans don't change).
+{ const base = {goal: "5k", raceDate: HP.addDays(today, 70), days: [1, 3, 6], longDay: 6, longest: 3, prDist: "none", prSec: null, easyPace: null};
+  const E = q => HP.fitnessFrom ? HP.fitnessFrom(q).pace.E[0] : null;
+  const pl0 = HP.buildPlan({...base, weekly: 5, paceUnknown: true}, today);
+  t(pl0 && pl0.weeks.length > 0, "a plan builds with no race and no pace");
+  if (HP.fitnessFrom){
+    t(E({...base, weekly: 5, paceUnknown: true}) > E({...base, weekly: 30, paceUnknown: true}), "blank pace: fewer miles = slower easy pace");
+    t(Math.abs(E({...base, weekly: 5}) - E({...base, weekly: 30})) < 1, "older profiles without a pace keep the same default");
+  }
+}
 console.log(bad ? bad + " failed" : "ALL PASS"); process.exit(bad ? 1 : 0);

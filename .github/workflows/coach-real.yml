@@ -22,7 +22,18 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: "22"}
       - name: Install tools
-        run: cd api && npm install --no-audit --no-fund >/dev/null && npm install --no-save --no-audit --no-fund wrangler@4 >/dev/null
+        # The npm registry sometimes resets the connection (run 44099437840): retry instead of failing the test.
+        env:
+          npm_config_fetch_retries: "5"
+          npm_config_fetch_retry_mintimeout: "10000"
+          npm_config_fetch_retry_maxtimeout: "60000"
+        run: |
+          cd api
+          for i in 1 2 3; do
+            npm install --no-audit --no-fund >/dev/null && npm install --no-save --no-audit --no-fund wrangler@4 >/dev/null && exit 0
+            echo "::warning::npm install failed (try $i of 3), retrying in 20s"; sleep 20
+          done
+          exit 1
       - name: Real coach answers (local API, throwaway database, the real model)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
