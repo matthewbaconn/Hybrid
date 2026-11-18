@@ -23,6 +23,7 @@ try {
   ok(!!token, "signed up a throwaway local member");
   const step = () => sql(`SELECT setup_step AS s FROM users WHERE email = '${email}'`)[0].s;
   ok(step() === null, "a new member starts with no step recorded");
+  ok((await call(token, {step: 0})).ok && step() === 0, "step 0 (reached the goal screen) is recorded, so it reads apart from never leaving the welcome screen");
   ok((await call(token, {step: 2})).ok && step() === 2, "step 2 is recorded");
   ok((await call(token, {step: 1})).ok && step() === 2, "going Back never lowers the furthest step");
   ok((await call(token, {step: 4})).ok && step() === 4, "building the plan records step 4");
@@ -34,7 +35,7 @@ try {
   ok((await call(token, {step: 9})).status === 400 && (await call(token, {step: "x"})).status === 400 && step() === 4, "junk steps are refused");
   ok((await call(null, {step: 3})).status === 401, "only a signed-in member can record a step");
   const app = readFileSync(join(HERE, "..", "index.html"), "utf8");
-  ok(/mode === "account" && !plan && setup\.step >= 1\) api\("POST", "\/api\/account\/setup-step"/.test(app), "the app records the step only for signed-in members building their first plan");
+  ok(/mode === "account" && !plan && setup\.step >= 0\) api\("POST", "\/api\/account\/setup-step"/.test(app), "the app records the step only for signed-in members building their first plan");
 } catch(e){ ok(false, "test crashed: " + (e && e.message || e)); }
 finally { try { process.kill(-dev.pid); } catch(e){} rmSync(dir, {recursive: true, force: true}); }
 console.log(failed ? failed + " setup step check(s) failed" : "setup step: all checks pass");
