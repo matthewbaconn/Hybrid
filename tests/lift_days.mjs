@@ -1,3 +1,4 @@
+// Released to all members Nov 18; PREVIEW_ADD puts it back in preview so the owner-only switch stays tested.
 // Pinned lifting days (Nov 17, in preview as "liftdays"). Runs its own local API against a throwaway local database,
 // so it never touches live data. Checks that:
 //   - /api/me tells only the owner's account the lift-day picker is on
@@ -16,7 +17,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const dir = mkdtempSync(join(tmpdir(), "lift-"));
 const sql = q => JSON.parse(execFileSync("npx", ["wrangler", "d1", "execute", "hybrid", "--local", "--persist-to", dir, "--json", "--command", q], {encoding: "utf8", stdio: ["ignore", "pipe", "ignore"]}))[0].results;
 execFileSync("npx", ["wrangler", "d1", "migrations", "apply", "hybrid", "--local", "--persist-to", dir], {stdio: "ignore", env: {...process.env, CI: "1"}});
-const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--local-upstream", "127.0.0.1:" + PORT, "--persist-to", dir, "--var", "OWNER_EMAIL:" + OWNER], {stdio: "ignore", detached: true});
+const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--local-upstream", "127.0.0.1:" + PORT, "--persist-to", dir, "--var", "OWNER_EMAIL:" + OWNER, "--var", "PREVIEW_ADD:liftdays"], {stdio: "ignore", detached: true});
 const stop = () => { try { process.kill(-dev.pid); } catch(e){} rmSync(dir, {recursive: true, force: true}); };
 try {
   for (let i = 0; i < 40; i++){ try { if ((await fetch(API + "/api/health")).ok) break; } catch(e){} await sleep(1500); }

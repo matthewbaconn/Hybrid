@@ -1,3 +1,4 @@
+// Released to all members Nov 18; PREVIEW_ADD puts it back in preview so the owner-only switch stays tested.
 // Referral reward test (backlog 13, audit P1-8): "bring 2 training partners -> a personal plan review from Matthew".
 // Runs its own local API on a throwaway local database (no live data, no mail). Checks: preview only (the owner sees
 // it, members don't, and the endpoint refuses them); it counts partners who joined through your link AND built a
@@ -18,7 +19,7 @@ const dir = mkdtempSync(join(tmpdir(), "rr-"));
 const sql = q => JSON.parse(execFileSync("npx", ["wrangler", "d1", "execute", "hybrid", "--local", "--persist-to", dir, "--json", "--command", q], {encoding: "utf8", stdio: ["ignore", "pipe", "ignore"]}))[0].results;
 execFileSync("npx", ["wrangler", "d1", "migrations", "apply", "hybrid", "--local", "--persist-to", dir], {stdio: "ignore", env: {...process.env, CI: "1"}});
 const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--local-upstream", "127.0.0.1:" + PORT, "--persist-to", dir,
-  "--var", "OUTBOX_URL:http://127.0.0.1:1/none"], {stdio: process.env.RR_DEBUG ? "inherit" : "ignore", detached: true});
+  "--var", "OUTBOX_URL:http://127.0.0.1:1/none", "--var", "PREVIEW_ADD:refreward"], {stdio: process.env.RR_DEBUG ? "inherit" : "ignore", detached: true});
 const stop = () => { try { process.kill(-dev.pid); } catch(e){} rmSync(dir, {recursive: true, force: true}); };
 const H = {"Content-Type": "application/json", Origin: "http://localhost:8000"};
 const call = async (method, path, tok, body) => { const r = await fetch(API + path, {method, headers: {...H, Authorization: "Bearer " + tok}, body: body ? JSON.stringify(body) : undefined}); let j = {}; try { j = await r.json(); } catch(e){} return {status: r.status, j}; };

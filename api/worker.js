@@ -104,7 +104,7 @@ async function ownerIdRaw(env){
    "ask" (the coach bar) was released Nov 17 after its stress test passed, so the list is empty for now.
    PREVIEW_ADD is for tests only (tests/ask.mjs sets it to "ask" so the owner-only switch stays tested); it can only
    narrow who sees a feature, never widen it. */
-const PREVIEW = new Set(["liftdays", "rough", "refreward", "source"]);   // ready2 (new readiness card) released Nov 17: Matthew, "release card";   // source: one-time "How did you hear about Mileset?" (Nov 18)   // "refreward": bring 2 training partners -> a plan review from Matthew (built Nov 17, audit P1-8);   // rough = "Rough night: adjust today" in the coach bar (Nov 17), Matthew's account first;   // liftdays: pin which days you lift (setup, "When can you run?"), Nov 17. "rename" was released Nov 17 on Matthew's word ("Release rename")
+const PREVIEW = new Set([]);   // Nov 18 6:13am, Matthew: "Everything should be live for all clients": liftdays, rough, refreward and source released; ready2, rename and ask released Nov 17
 const REWARD_NEED = 2;   // referral reward: training partners who joined through your link and built a plan
 const previewOk = async (env, user, k) => !(PREVIEW.has(k) || String(env.PREVIEW_ADD || "").split(",").includes(k)) || user.id === await ownerId(env);
 
