@@ -14,5 +14,7 @@ CREATE TABLE IF NOT EXISTS funnel_daily (
   returned INTEGER NOT NULL DEFAULT 0,   -- came back: any activity (check-off, food, check-in, workout, login) on a later day than sign-up
   via_invite INTEGER NOT NULL DEFAULT 0, -- joined through a member's invite link
   referrers INTEGER NOT NULL DEFAULT 0,  -- members who brought at least one member
+  act72_eligible INTEGER NOT NULL DEFAULT 0, -- built a plan and joined 3+ days ago (activation denominator)
+  act72 INTEGER NOT NULL DEFAULT 0,          -- of those, trained within 3 days of joining: check-off OR synced/logged workout
   updated TEXT NOT NULL
 );
