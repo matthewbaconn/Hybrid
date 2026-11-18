@@ -42,14 +42,17 @@ last looked; "Show me" goes to the screen with a pill to come back; More > What'
 entries older than about two weeks. Bug fixes and invisible changes don't go in. The ship gate checks this before merging:
 a member-facing PR without a NEWS/NEW_ID update gets one added (or is sent back) first.
 
-## Preview: Matthew tries it first (Matthew, Nov 16, 2026: "treat my account as the test account so I can try things out before you put them live")
-- A NEW member-facing feature ships dark. It goes through the ship gate like any app change, but only the owner's
-  account sees it. The switch is one list, `PREVIEW` in `api/worker.js`: `/api/me` tells the app (`features.<name>`),
-  and the feature's own endpoint refuses every other account. Test both sides (see `tests/ask.mjs`, which uses the
-  test-only `PREVIEW_ADD` variable to put a released feature back in preview on its local API).
-- No What's new entry while a feature is in preview. Tell Matthew it is on his account and what to try.
-- It goes live for members only when Matthew says so: delete its name from `PREVIEW`, add the What's new entry,
-  and ship that through the gate. If the feature costs money per use (AI calls), say what it will cost when you ask.
+## New features go live for everyone (Matthew, Nov 18, 2026: "I should only get the new update/feature first if I state that, if not I always want it to go live when it is released so you don't have to release it then I approve. Claude should be going over it before releasing to public anyway")
+- Default: a new member-facing feature is released to ALL members when it merges. No preview, no "release" step,
+  no waiting for Matthew. Its What's new entry ships in the same PR. The ship gate's independent test and review
+  is the check before the public sees it, so build and test as if every member gets it on merge.
+- Preview is the exception, only when Matthew says so for that feature ("me first", "on my account first", "let me
+  try it"). Then it ships dark: its name goes in `PREVIEW` in `api/worker.js`, `/api/me` tells the app
+  (`features.<name>`), its endpoint refuses every other account, there is no What's new entry yet, and it goes live
+  when he says release (remove it from `PREVIEW`, add the What's new entry). Test both sides with the test-only
+  `PREVIEW_ADD` variable (see `tests/ask.mjs`).
+- Still say what a feature will cost if it costs money per use (AI calls), and still ask first for anything that
+  spends money, as everywhere else.
 - Bug fixes, security fixes and invisible changes do not wait in preview: they go live for everyone.
 - Bugs (Matthew, Nov 17: "The bugs should always be instantly fixed and tested and then sent to all members"): fix
   right away, test, and open the fix as its OWN pull request from main, ready (not a draft), never stacked behind or
