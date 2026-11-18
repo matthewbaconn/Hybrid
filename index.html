@@ -2370,7 +2370,7 @@ function renderTraining(part){
     (p.goal !== "swim" && p.goal !== "bike" ? '<dt>Running now</dt><dd>' + (p.weekly || 0) + ' mi/week · long ' + (p.longest || 0) + ' mi</dd>' : '') +
     (plan.multi ? '<dt>Training now</dt><dd>' + (p.hours || '–') + ' h/week' + (p.swimLevel ? ' · swim: ' + {new: "learning", ok: "comfortable", strong: "strong"}[p.swimLevel] : '') + (p.longRide ? ' · longest ride ' + p.longRide + ' mi' : '') + '</dd>' : '') +
     '<dt>' + (plan.multi ? 'Training days' : 'Run days') + '</dt><dd>' + p.days.map(d => DAYS[d]).join(", ") + '</dd><dt>' + (plan.multi ? 'Long session' : 'Long run') + '</dt><dd>' + DAYF[p.longDay] + '</dd>' +
-    '<dt>Lifting</dt><dd>' + (p.lifts ? p.lifts + ' × a week' : 'None') + '</dd>' + (p.weight ? '<dt>Weight</dt><dd>' + p.weight + ' lb' + (p.goalWeight ? ' → ' + p.goalWeight + ' lb' : '') + '</dd>' : '') +
+    '<dt>Lifting</dt><dd>' + (p.lifts ? p.lifts + ' × a week' + (feat.liftdays && p.liftDays && p.liftDays.length ? ' · ' + p.liftDays.map(d => DAYS[d]).join(", ") : '') : 'None') + '</dd>' + (p.weight ? '<dt>Weight</dt><dd>' + p.weight + ' lb' + (p.goalWeight ? ' → ' + p.goalWeight + ' lb' : '') + '</dd>' : '') +
     '</dl><button class="btn block" type="button" data-act="edit">Edit goals and rebuild plan</button></section>';
   if (part) return S[part] || '';
   const aw = avgWeight(TODAY), row = (k, label, sub, icon) => '<button class="srow" type="button" data-act="go" data-scr="t-' + k + '">' + ic(icon) + '<div><b>' + label + '</b><span>' + sub + '</span></div><i>›</i></button>';
@@ -2547,7 +2547,7 @@ function progressHtml(){
 
 /* ============ setup flow ============ */
 function blankProfile(){ return {name:"", goal:"half", raceDate: addDays(TODAY, 84), goalSec:null, weekly:15, longest:6, prDist:"5k", prSec:null, easyPace:null, weight:null, goalWeight:null, lifts:2, liftExp:"Some", days:[0,2,4,6], longDay:6}; }
-function optList(name, items, cur, type){ return '<div class="opts' + (name === "days" ? ' days' : '') + '" role="group">' + items.map(([v, l]) => '<label class="opt"><input type="' + (type || "radio") + '" name="' + name + '" value="' + v + '"' + ((type === "checkbox" ? cur.includes(+v) : String(cur) === String(v)) ? ' checked' : '') + '><span>' + l + '</span></label>').join("") + '</div>'; }
+function optList(name, items, cur, type){ return '<div class="opts' + (name === "days" || name === "liftDays" ? ' days' : '') + '" role="group">' + items.map(([v, l]) => '<label class="opt"><input type="' + (type || "radio") + '" name="' + name + '" value="' + v + '"' + ((type === "checkbox" ? cur.includes(+v) : String(cur) === String(v)) ? ' checked' : '') + '><span>' + l + '</span></label>').join("") + '</div>'; }
 function renderSetup(){
   const st = setup, p = st.p;
   if (st.step === -1){
@@ -2604,6 +2604,7 @@ function renderSetup(){
     body = '<h2 class="sec-t">' + (fit ? 'When can you work out?' : mk ? 'When can you train?' : 'When can you run?') + '</h2>' +
       '<div class="q"><span class="ql">' + (mk ? 'Training days' : 'Run days') + ' (pick 3–6)</span>' + optList("days", DAYS.map((d, i) => [i, d]), p.days, "checkbox") + '</div>' +
       '<div class="q"><label for="s-long">' + (fit ? 'Day for a longer session' : mk ? 'Long session day' : 'Long run day') + '</label><select id="s-long">' + p.days.slice().sort((a, b) => a - b).map(d => '<option value="' + d + '"' + (d === p.longDay ? ' selected' : '') + '>' + DAYF[d] + '</option>').join("") + '</select></div>' +
+      (feat.liftdays && p.lifts > 0 ? '<div class="q" id="s-liftdays"><span class="ql">Lifting days <small>Optional</small></span><p class="hint" style="margin-top:0">Gym on set days? Pick up to ' + p.lifts + (mk ? ' from your training days' : '') + ' and the plan keeps your lifts there and builds the running around them. Leave blank and we pick.</p>' + optList("liftDays", DAYS.map((d, i) => [i, d]), p.liftDays || [], "checkbox") + '</div>' : '') +
       '<div class="q"><label for="s-city">Where do you usually train? <small>Optional</small></label><small class="hint" style="margin:0">Used for the weather, the best time to run, and heat-adjusted paces.</small>' +
       '<div class="cityrow"><input id="s-city" autocomplete="address-level2" placeholder="City, e.g. Vero Beach, FL" value="' + esc(st.city != null ? st.city : ((wxLoc() || {}).place || "")) + '"><button class="btn" type="button" data-act="sgeo">' + (st.geoBusy ? 'Finding…' : 'Use my location') + '</button></div></div>';
   }
@@ -2638,12 +2639,19 @@ function readStep(){
       p.easyPace = t || null; p.paceUnknown = !t; p.prSec = null; p.prDist = "none"; }
   } else if (st.step === 2){
     p.lifts = +(radio("lifts") || 0); p.liftExp = radio("liftExp") || p.liftExp;
+    if (p.liftDays){ p.liftDays = p.liftDays.slice(0, p.lifts); if (!p.liftDays.length) delete p.liftDays; }
     const be = readBody(p, "s"); if (be) return be;
   } else if (st.step === 3){
     p.days = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(e => +e.value);
     const ld = document.getElementById("s-long"); p.longDay = ld ? +ld.value : p.longDay;
     if (p.days.length < 3 || p.days.length > 6) return "Pick between 3 and 6 days.";
     if (!p.days.includes(p.longDay)) p.longDay = p.days.includes(6) ? 6 : p.days.includes(5) ? 5 : p.days[p.days.length - 1];
+    if (document.getElementById("s-liftdays")){
+      const ldays = Array.from(document.querySelectorAll('input[name="liftDays"]:checked')).map(e => +e.value).sort((a, b) => a - b);
+      if (ldays.length) p.liftDays = ldays; else delete p.liftDays;   // kept even on an error below, so the picks survive the re-render
+      if (ldays.length > p.lifts) return "You lift " + p.lifts + " day" + (p.lifts === 1 ? "" : "s") + " a week: pick up to " + p.lifts + ", or change that on the Strength step.";
+      if ((RACES[p.goal] || {}).kind && ldays.some(d => !p.days.includes(d))) return "Pick lifting days from your training days.";
+    }
     const ce = document.getElementById("s-city"); if (ce){ setup.city = ce.value.trim().slice(0, 80); if (setup.city !== "Your location") delete setup.geo; }
   }
   return "";
@@ -3024,7 +3032,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "87";
+const APP_VERSION = "88";
 let reportView = null, isOwner = false, reports = [], feat = {};
 function reportForm(){
   const v = reportView || (reportView = {text: ""});
