@@ -102,16 +102,38 @@ async function analyze(env, user, b){
   const content = [];
   if (image) content.push({type: "image", source: {type: "base64", media_type: mediaType, data: image}});
   content.push({type: "text", text: text.trim() ? "What I ate: " + text : "Estimate the food in this photo."});
-  const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {
+  // Nov 17: 6 failed food reads in 3 days. A busy or overloaded API (429/5xx/529), a dropped connection or a reply
+  // without JSON now gets one more try; a bad request (4xx) does not. A read that fails on our side gives the
+  // member's daily read back, so a hiccup never costs them one of their 30.
+  const ask = nudge => fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-    body: JSON.stringify({model: env.MODEL || "claude-sonnet-5-5", max_tokens: 2000, system: PROMPT, messages: [{role: "user", content}]})
-  });
-  if (!r.ok){ const t = (await r.text()).slice(0, 300); console.log("anthropic error", r.status, t); await logEvent(env, "ai_food", false, r.status + " " + apiErrType(t)); throw new HttpError(502, "Couldn't read that right now. Try again in a minute."); }
-  const out = await r.json();
-  const raw = (out.content || []).filter(c => c.type === "text").map(c => c.text).join("");
-  let parsed;
-  try { parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); await logEvent(env, "ai_food", true); } catch { await logEvent(env, "ai_food", false, "unreadable reply " + raw.length + " chars"); throw new HttpError(502, "Couldn't read that. Try a clearer photo or add a few words."); }
+    body: JSON.stringify({model: env.MODEL || "claude-sonnet-5-5", max_tokens: 2000, system: PROMPT + (nudge ? " Reply with the JSON object only, no other text." : ""), messages: [{role: "user", content}]})
+  }).catch(() => null);
+  const refund = () => env.DB.prepare("UPDATE ai_usage SET count = MAX(count - 1, 0) WHERE user_id = ? AND day = ?").bind(user.id, day).run().catch(() => {});
+  let parsed = null, fail = null;
+  for (let tries = 0; tries < 2 && !parsed; tries++){
+    const r = await ask(tries > 0 && fail && fail.kind === "unreadable");
+    if (!r){ fail = {kind: "net", why: "network"}; continue; }
+    if (!r.ok){
+      const t = (await r.text()).slice(0, 300); console.log("anthropic error", r.status, t);
+      fail = {kind: "api", why: r.status + " " + apiErrType(t)};
+      if (r.status === 429 || r.status >= 500) continue;
+      break;                                   // a bad request won't get better on a second try
+    }
+    const out = await r.json().catch(() => ({}));
+    const raw = (out.content || []).filter(c => c.type === "text").map(c => c.text).join("");
+    try { parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); }
+    catch { fail = {kind: "unreadable", why: "unreadable reply " + raw.length + " chars"}; }
+  }
+  if (!parsed){
+    // give the read back only when the failure was on our side (provider busy, network, a bad request we built);
+    // an unreadable reply can come from the photo itself, so it still counts: junk photos can't skip the daily cap
+    if (fail && fail.kind !== "unreadable") await refund();
+    await logEvent(env, "ai_food", false, fail ? fail.why : "no reply");
+    throw new HttpError(502, fail && fail.kind === "unreadable" ? "Couldn't read that. Try a clearer photo or add a few words." : "Couldn't read that right now. Try again in a minute.");
+  }
+  await logEvent(env, "ai_food", true);
   const items = (Array.isArray(parsed.items) ? parsed.items : []).slice(0, 12)
     .map(x => ({name: String(x.name || "").slice(0, 80), cal: n0(x.cal), protein: n0(x.protein), carbs: n0(x.carbs), fat: n0(x.fat)})).filter(x => x.name);
   return {items, note: typeof parsed.note === "string" ? parsed.note.slice(0, 200) : ""};
@@ -1306,7 +1328,8 @@ async function route(req, env, path, ctx){
     if (day.n >= 200) throw new HttpError(429, "Too many reports today. Try again tomorrow.");
     const info = {screen: String(b.screen || "").slice(0, 30), version: String(b.version || "").slice(0, 20), device: (req.headers.get("User-Agent") || "").slice(0, 160), installed: !!b.installed};
     await env.DB.prepare("INSERT INTO reports (id, user_id, email, text, info, created) VALUES (?, ?, ?, ?, ?, ?)").bind(rand(10), who ? who.id : null, who ? who.email : null, text, JSON.stringify(info), now()).run();
-    await logEvent(env, "report", true, who ? "signed in" : "not signed in");
+    // the hourly smoke test files its own report: log it apart so member reports stand out (tools/signals.py, Nov 17)
+    await logEvent(env, text.startsWith("Nightly test report.") ? "report_test" : "report", true, who ? "signed in" : "not signed in");
     const own = await ownerId(env);
     if (own && ctx && !text.startsWith("Nightly test report.")) ctx.waitUntil(pushTo(env, own, {title: "Mileset: problem reported", body: clip(text, 120), tag: "report"}).catch(() => {}));
     return {ok: true};
