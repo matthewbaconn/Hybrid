@@ -65,14 +65,14 @@ async function auth(req, env){
 }
 /* Source question (funnel question 1, Matthew Nov 17 1:35pm; product/log.md queued priority). Members whose sign-up has no
    source (no ?src= tag) are asked ONCE, optionally: "How did you hear about Mileset?". The answer (or "skip") goes in
-   users.src_answer (add-only migration 0029) and never overwrites the tagged src. Owner-only while in PREVIEW. */
+   users.src_answer (add-only migration 0030) and never overwrites the tagged src. Owner-only while in PREVIEW. */
 const SRC_ANSWERS = ["friend", "matthew", "instagram", "search", "club", "other", "skip"];
 async function askSource(env, user){
   if (!(await previewOk(env, user, "source"))) return false;
   try {
     const r = await env.DB.prepare("SELECT src, src_answer FROM users WHERE id = ?").bind(user.id).first();
     return !!r && !r.src_answer && (!r.src || r.src === "unknown");
-  } catch(e){ return false; }   // before migration 0029 runs
+  } catch(e){ return false; }   // before migration 0030 runs
 }
 /* When the app last saw each member (Nov 17: "last active" only knew the last log-in, so anyone who stayed logged in
    looked inactive). One write per member per 10 minutes per worker; never blocks or breaks a request. */
