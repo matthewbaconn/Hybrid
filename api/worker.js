@@ -1423,6 +1423,13 @@ async function route(req, env, path, ctx){
     const t = now(); await env.DB.prepare("UPDATE users SET terms_at = ? WHERE id = ?").bind(t, user.id).run();
     return {terms_at: t};
   }
+  if (M === "POST" && path === "/api/account/setup-step"){
+    // furthest plan-setup step reached (funnel question 4): only ever moves forward, a number 0-4, nothing else stored
+    const st = Math.floor(Number((await body(req)).step));
+    if (!(st >= 0 && st <= 4)) throw new HttpError(400, "Bad step.");
+    await env.DB.prepare("UPDATE users SET setup_step = ? WHERE id = ? AND (setup_step IS NULL OR setup_step < ?)").bind(st, user.id, st).run();
+    return {ok: true};
+  }
   if (M === "POST" && path === "/api/account/password"){
     await limit(env, "auth:" + (req.headers.get("CF-Connecting-IP") || "x"));
     const b = await body(req), cur = String(b.current || ""), next = String(b.next || "");
@@ -1452,6 +1459,8 @@ async function route(req, env, path, ctx){
     const s = JSON.stringify(b.profile || null);
     if (!b.profile || typeof b.profile !== "object" || s.length > 60000) throw new HttpError(400, "Bad plan settings.");   // room for changed workouts
     await env.DB.batch([
+      // time to first plan (Nov 17): stamped once, only when this member had no plan before (older members stay NULL)
+      env.DB.prepare("UPDATE users SET first_plan_at = ? WHERE id = ? AND first_plan_at IS NULL AND NOT EXISTS (SELECT 1 FROM profiles WHERE user_id = ?)").bind(now(), user.id, user.id),
       env.DB.prepare("INSERT INTO profiles (user_id, data, updated) VALUES (?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET data = excluded.data, updated = excluded.updated").bind(user.id, s, now()),
       ...(isDate(b.resetFrom) ? [env.DB.prepare("DELETE FROM done WHERE user_id = ? AND key >= ?").bind(user.id, b.resetFrom)] : [])
     ]);

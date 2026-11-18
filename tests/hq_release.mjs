@@ -56,7 +56,7 @@ const FIX = {v: 1, t: iso(1), o: {streak: [1, 7], working: [], attention: ['audi
     partners: [['P1', 'TEST partner', 'awaiting Matthew']], outreach: {total: 1, by_status: {held: 1}, sent_total: 0, paused: false, pause_reason: ''}, overnight: ['2026-11-16 · TEST overnight'], sevenday: null, merged: [], runs: []}};
 // Upgrade order fixture (GitHub's public PR list): a feature, a newer bug fix (goes first), a held product PR, a draft, one merged.
 const pr = (n, t, ref, o) => ({number: n, title: t, html_url: 'https://github.com/matthewbaconn/Hybrid/pull/' + n, head: {ref}, draft: false, state: 'open', created_at: iso(500 - n), merged_at: null, ...o});
-const PULLS = JSON.stringify([pr(2, 'PUBLIC PR feature', 'claude/feature'), pr(4, 'Fix: PUBLIC PR bug', 'claude/fix'), pr(1, 'PUBLIC PR held', 'claude/product-x'),
+const PULLS = JSON.stringify([pr(2, 'PUBLIC PR feature', 'claude/feature'), pr(4, 'Fix: PUBLIC PR bug', 'claude/fix'), pr(1, 'PUBLIC PR held', 'claude/product-x', {body: 'NEEDS MATTHEW: spends money'}),
   pr(3, 'PUBLIC PR draft', 'claude/draft', {draft: true}), pr(5, 'PUBLIC PR shipped', 'claude/done', {state: 'closed', merged_at: iso(20)})]);
 const PRIVJ = await enc(FIX, KEYB), PRIVJ0 = await enc({...FIX, x: undefined}, KEYB);   // before and after Vesper's feed update
 const feedAt = m => JSON.stringify({v: 1, t: iso(m), ok: true, sk: [1, 7], r: [['audit', 'f', iso(30), iso(-600), 1], ['worker', 'i', iso(90), iso(-30), 3]], tl: [[iso(90), 'worker', 'ok']]});
