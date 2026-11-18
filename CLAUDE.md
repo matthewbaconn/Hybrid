@@ -42,16 +42,26 @@ last looked; "Show me" goes to the screen with a pill to come back; More > What'
 entries older than about two weeks. Bug fixes and invisible changes don't go in. The ship gate checks this before merging:
 a member-facing PR without a NEWS/NEW_ID update gets one added (or is sent back) first.
 
-## Preview: Matthew tries it first (Matthew, Nov 16, 2026: "treat my account as the test account so I can try things out before you put them live")
-- A NEW member-facing feature ships dark. It goes through the ship gate like any app change, but only the owner's
-  account sees it. The switch is one list, `PREVIEW` in `api/worker.js`: `/api/me` tells the app (`features.<name>`),
-  and the feature's own endpoint refuses every other account. Test both sides (see `tests/ask.mjs`, which uses the
-  test-only `PREVIEW_ADD` variable to put a released feature back in preview on its local API).
-- No What's new entry while a feature is in preview. Tell Matthew it is on his account and what to try.
-- It goes live for members only when Matthew says so: delete its name from `PREVIEW`, add the What's new entry,
-  and ship that through the gate. If the feature costs money per use (AI calls), say what it will cost when you ask.
+## New features go live for everyone (Matthew, Nov 18, 2026: "I should only get the new update/feature first if I state that, if not I always want it to go live when it is released so you don't have to release it then I approve. Claude should be going over it before releasing to public anyway")
+- Default: a new member-facing feature is released to ALL members when it merges. No preview, no "release" step,
+  no waiting for Matthew. Its What's new entry ships in the same PR. The ship gate's independent test and review
+  is the check before the public sees it, so build and test as if every member gets it on merge.
+- Preview is the exception, only when Matthew says so for that feature ("me first", "on my account first", "let me
+  try it"). Then it ships dark: its name goes in `PREVIEW` in `api/worker.js`, `/api/me` tells the app
+  (`features.<name>`), its endpoint refuses every other account, there is no What's new entry yet, and it goes live
+  when he says release (remove it from `PREVIEW`, add the What's new entry). Test both sides with the test-only
+  `PREVIEW_ADD` variable (see `tests/ask.mjs`).
+- Still say what a feature will cost if it costs money per use (AI calls), and still ask first for anything that
+  spends money, as everywhere else.
 - Bug fixes, security fixes and invisible changes do not wait in preview: they go live for everyone.
-- In preview now: nothing. Released: `ask`, the coach bar (Nov 17, after its stress test passed: `tests/ask_stress.mjs`,
+- Bugs (Matthew, Nov 17: "The bugs should always be instantly fixed and tested and then sent to all members"): fix
+  right away, test, and open the fix as its OWN pull request from main, ready (not a draft), never stacked behind or
+  bundled with a feature, so the ship gate (oldest ready PR first) takes it on its next hourly run.
+- Released Nov 17: `ready2` (new readiness card on Today; Matthew: "release card").
+- In preview now: nothing. Released Nov 18 (Matthew: "Everything should be live for all clients"): `liftdays`, `rough`, `refreward`, `source`.
+- Released: `rename` (Nov 17, Matthew: "Release rename". Activities: open a workout, tap the pencil, give it your own name;
+  the original stays underneath in `activities.name`, the member's name lives in `activities.title`).
+- Released: `ask`, the coach bar (Nov 17, after its stress test passed: `tests/ask_stress.mjs`,
   the e2e stress check, and the real-AI run `tests/ask_real.mjs` via the "Coach bar, real AI stress test" workflow.
   Re-run that workflow after any change to the coach's prompt). Cost: one Haiku call per question on Mileset's key,
   40 answered questions a day per account at most.
@@ -61,6 +71,11 @@ a member-facing PR without a NEWS/NEW_ID update gets one added (or is sent back)
    Schema changes go through new migrations that keep existing rows intact.
 2. Matthew's own "Strong at 180" plan and his separate `garmin-sync` repo are off limits.
 3. Strava data never goes into AI prompts and is shown only to the athlete it belongs to.
+   When Garmin and Strava both have a workout, the GARMIN copy is the one kept (Nov 17), so the coach can read it.
+   Never copy a field or a review from a Strava row onto a Garmin row; only what the member typed (name, effort) moves.
+   AI is the member's choice (Nov 17, Garmin's developer terms): `settings.ai`, read through `aiState()` in api/worker.js.
+   A Garmin-linked member who was never asked is OFF until they answer the card on Today. Every new place that sends a
+   member's training or health data to the AI must check `aiState(...).on` first (tests/ask.mjs, tests/one_push.mjs).
 4. Never fabricate features, numbers, testimonials or results in any copy.
 5. No cold DMs, bulk follows or engagement automation on Instagram. It gets the account banned.
 
@@ -74,10 +89,30 @@ Then report what you did in one line.
   `.github/`. Put it on a `claude/<name>` branch and open a pull request. Then stop.
 - The ship gate is the hourly Claude worker. It tests each PR independently, merges it, and checks the live app.
   No other session merges an app PR or writes a comment starting "Ship gate:", not even its own PR, not even
-  when Matthew says "ship it" in the chat: tell him it lands within the hour, or that texting Vesper
-  "SHIP IT <n>" approves a held PR. The session that wrote a change cannot be its independent test.
+  when Matthew says "ship it" in the chat: tell him it lands within the hour, or, only for a HOLD PR, that
+  texting Vesper "SHIP IT <n>" approves it. The session that wrote a change cannot be its independent test.
 - `.github/workflows/ship-gate-guard.yml` turns red on any app commit that reaches `main` another way, and Vesper
   alerts Matthew. A red guard is never "fixed" by changing the guard.
+- No "SHIP IT" for normal work (Matthew, Nov 18, 2026: "1" = drop it). Every claude/ PR, product-team features
+  included, goes live once the gate's independent test passes. Only a HOLD item (spends money or adds a paid
+  service, changes existing member data, security/auth/secrets/DNS/.github/infrastructure, first contact or a new
+  kind of bulk email, anything irreversible) starts its body with "NEEDS MATTHEW: <why>" and waits for his
+  "SHIP IT <n>".
+
+**Going live: tell Matthew, and let him undo it (Matthew, Nov 18, 2026: "I should be notified when things go live
+and what they are and I should be allowed to say something like 'I don't like that' or take that back or undo that")**
+- Every time the gate puts a PR live, the inbox report says in plain words what changed for members and how to
+  undo it, e.g. "🚢 Live: Rough night chip in the coach bar for everyone (#91). Don't like it? Reply 'undo 91'."
+  Invisible changes (tests, CI, docs, HQ-only) can be one short line. Between 9pm and 6am ET, write it as a dated
+  line in vesper-relay ceo/overnight.md instead, so it arrives in his morning brief, not at night.
+- When Matthew says "undo <n>", "take that back", "I don't like that" (the most recent live change, or the one he
+  names), or similar: open a revert PR from main on branch claude/undo-<n> that reverts that PR's squash commit
+  (`git revert --no-edit <sha>`), with APP_VERSION/CACHE bumped one above main so phones pick it up, and its
+  What's new entry removed. Title "Fix: undo <original title> (Matthew asked)", body "Matthew asked to undo #<n>"
+  plus what he said. It is a ready PR, ranked with bug fixes, so the gate takes it on its next run. Never revert
+  member data: a reverted add-only migration leaves its empty column or table in place. Tell him "Undoing #<n>:
+  it'll be gone within the hour", and again when it's live. If he wants it changed rather than removed, say what
+  you'll change and build that as a normal PR.
 
 **Still ask first** for:
 - anything that spends money (Meta Ads budgets, new ad spend, paid plans or services)

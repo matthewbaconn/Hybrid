@@ -66,6 +66,15 @@ console.log(failed ? failed + " webhook check(s) failed" : "webhooks: all checks
 // The event-log privacy test (Nov 17) runs here: pr-checks.yml is a protected file, so it has no step of its own yet.
 try { execFileSync("node", [new URL("./events_privacy.mjs", import.meta.url).pathname], {stdio: "inherit"}); }
 catch(e){ failed++; console.log("::error::event-log privacy test failed"); }
+// The setup-step test (Nov 17) runs here too, for the same reason.
+try { execFileSync("node", [new URL("./setup_step.mjs", import.meta.url).pathname], {stdio: "inherit"}); }
+catch(e){ failed++; console.log("::error::setup step test failed"); }
+// The food-read retry test (Nov 17) runs here too, for the same reason.
+try { execFileSync("node", [new URL("./food_retry.mjs", import.meta.url).pathname], {stdio: "inherit"}); }
+catch(e){ failed++; console.log("::error::food-read retry test failed"); }
+// The report-kind test (Nov 17) runs here too, for the same reason.
+try { execFileSync("node", [new URL("./report_kind.mjs", import.meta.url).pathname], {stdio: "inherit"}); }
+catch(e){ failed++; console.log("::error::report kind test failed"); }
 // The visitor-kind diagnostic test (Nov 17) rides along for the same reason.
 try { execFileSync("node", [new URL("./visits.mjs", import.meta.url).pathname], {stdio: "inherit"}); }
 catch(e){ failed++; console.log("::error::visitor-kind test failed"); }
