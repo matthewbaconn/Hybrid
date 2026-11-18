@@ -548,7 +548,7 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 .cio button{min-height:34px;border-radius:4px;border:1px solid transparent;background:transparent;font:600 12px/1.1 var(--f-body);color:var(--muted);padding:0 1px;transition:background-color .15s,color .15s}
 .ci .btn{min-height:40px}
 .ci-done{padding:14px 16px;gap:10px}
-.rcard{padding:14px 16px;gap:10px}
+.rcard{padding:12px 14px;gap:8px}
 .rtop{display:flex;align-items:center;gap:14px}
 .rscore{position:relative;width:60px;height:60px;flex:none} .rscore b{position:absolute;inset:0;display:grid;place-items:center;font:800 22px/1 var(--f-display);color:var(--ink)}
 .rring{width:60px;height:60px;transform:rotate(-90deg)} .rr-bg{fill:none;stroke:var(--line);stroke-width:6} .rr-fg{fill:none;stroke-width:6;stroke-linecap:round}
@@ -960,19 +960,18 @@ function readyRing(score, tone){
   const r = 26, c = 2 * Math.PI * r, f = Math.max(0, Math.min(100, score)) / 100;
   return '<svg class="rring" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="' + r + '" class="rr-bg"/><circle cx="32" cy="32" r="' + r + '" class="rr-fg" style="stroke:var(--' + tone + ')" stroke-dasharray="' + (c * f).toFixed(1) + ' ' + c.toFixed(1) + '"/></svg>';
 }
-function readyChip(label, val, cmp){   // cmp: 1 better than your normal, -1 worse, 0 about the same or unknown
-  return '<span class="rchip' + (cmp > 0 ? ' up' : cmp < 0 ? ' dn' : '') + '"><small>' + label + '</small><b>' + val + (cmp ? '<i aria-hidden="true">' + (cmp > 0 ? '▲' : '▼') + '</i>' : '') + '</b></span>';
+function readyChip(label, val, cmp, norm){   // cmp: 1 better than your normal, -1 worse, 0 about the same or unknown; norm: your normal, said on long-press and to screen readers
+  return '<span class="rchip' + (cmp > 0 ? ' up' : cmp < 0 ? ' dn' : '') + '"' + (norm ? ' title="Your normal: ' + norm + '" aria-label="' + label + ' ' + val + ', your normal ' + norm + '"' : '') + '><small>' + label + '</small><b>' + val + (cmp ? '<i aria-hidden="true">' + (cmp > 0 ? '▲' : '▼') + '</i>' : '') + '</b></span>';
 }
 function readyCard2(r, sg, fromGarmin, mn){
   const n1 = x => Math.round(x * 10) / 10, vs = (v, a, higherBetter) => !v || !a || Math.abs(v - a) / a < 0.05 ? 0 : ((v > a) === higherBetter ? 1 : -1);
   const chips = [sg.sleep_h ? readyChip("Sleep", n1(sg.sleep_h) + ' h', sg.sleep_h >= 7 ? 1 : sg.sleep_h < 6 ? -1 : 0) : '',
-    sg.hrv ? readyChip("HRV", Math.round(sg.hrv) + ' ms', vs(sg.hrv, sg.hrvA, true)) : '',
-    sg.rhr ? readyChip("Resting HR", Math.round(sg.rhr), vs(sg.rhr, sg.rhrA, false)) : ''].filter(Boolean).join('');
-  const why = [sg.hrv && sg.hrvA ? 'HRV normal ' + Math.round(sg.hrvA) : '', sg.rhr && sg.rhrA ? 'resting HR normal ' + Math.round(sg.rhrA) : ''].filter(Boolean).join(' · ');
+    sg.hrv ? readyChip("HRV", Math.round(sg.hrv) + ' ms', vs(sg.hrv, sg.hrvA, true), sg.hrvA ? Math.round(sg.hrvA) + ' ms' : '') : '',
+    sg.rhr ? readyChip("Resting HR", Math.round(sg.rhr), vs(sg.rhr, sg.rhrA, false), sg.rhrA ? String(Math.round(sg.rhrA)) : '') : ''].filter(Boolean).join('');
   return '<section class="card rcard" style="--tone:var(--' + r.tone + ')" aria-label="Readiness ' + r.score + ' out of 100: ' + esc(r.word) + '">' +
     '<div class="rtop"><div class="rscore">' + readyRing(r.score, r.tone) + '<b>' + r.score + '</b></div><div class="rtxt"><strong>' + esc(r.word) + '</strong><p>' + READY_SAY[r.level] + '</p></div></div>' +
     (chips ? '<div class="rchips">' + chips + '</div>' : '<p class="sub">Waiting for last night\'s watch numbers.</p>') +
-    (why ? '<p class="rwhy">Arrows compare with your normal: ' + esc(why) + '</p>' : '') + gAttr(fromGarmin && !!chips) +
+    gAttr(fromGarmin && !!chips) +
     (mn ? '<details class="rnote"><summary>' + ic("spark") + '<span>Coach: ' + esc(mn.headline) + '</span></summary><p>' + esc((mn.lines || []).join(" ")) + '</p></details>' : '') +
     (askOn() ? '<button class="linkbtn rfeel" type="button" data-act="askfeel">Tell your coach how you feel ›</button>' : '') + '</section>';
 }
@@ -3078,7 +3077,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "94";
+const APP_VERSION = "96";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
