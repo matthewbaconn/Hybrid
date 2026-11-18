@@ -1053,18 +1053,15 @@ function explain(a){
 }
 function renderApprovals(){
   const el = document.getElementById("approvals"); if (!el) return;
-  if (!PRIV){ el.innerHTML = `<div class="vh"><div><h1>Approvals</h1><p>Pending decisions, deployments and spending requests.</p></div></div>${lockedNote}`; return; }
-  const ap = asks(PRIV.a), ex = ap.map(a => [a, explain(a)]);
-  const grp = (k, t, empty) => { const g = ex.filter(([a, e]) => e.kind === k || (k === "Deployment" && e.kind === "Vesper upgrade"));
-    return `<h2>${t} <span class="pill">${g.length}</span></h2>` + (g.length ? `<div class="cards">${g.map(([a, e]) => `<div class="card"><h4>${esc(e.kind)}${a.k === "pr" ? ` <i>${esc(a.repo)} #${esc(a.n)}</i>` : ` <i>backlog ${esc(a.n)}</i>`}</h4>
-      <div style="font-size:15px;font-weight:650;line-height:1.35">${a.url ? linkify(a.title, a.url) : esc(a.title)}</div>
-      <div class="note"><b style="color:var(--ink)">What approving authorizes:</b> ${esc(e.what)}</div>
-      <div class="note"><b style="color:var(--ink)">How to approve:</b> ${esc(e.how)}</div>
-      <div style="margin-top:8px">${e.sec ? `<span class="pill r">security-sensitive</span>` : ""}${e.money ? `<span class="pill a">money</span>` : ""}${a.why && a.why !== "SHIP IT" ? `<span class="pill">${esc(a.why)}</span>` : ""}${tag("sys")}</div></div>`).join("")}</div>` : `<div class="empty card" style="padding:14px">${empty}</div>`); };
-  el.innerHTML = `<div class="vh"><div><h1>Approvals</h1><p>HQ never approves anything. Every approval happens in Telegram (SHIP IT or Vesper's signed card), so the signed owner check stays the only way in.</p></div></div>`
-    + grp("Spending", "Spending requests", "No spending requests are waiting. Vesper's caps stay as they are.")
-    + grp("Deployment", "Deployment approvals", "No deployments are waiting for you.")
-    + grp("Decision", "Decisions and important actions", "No decisions are waiting for you.");
+  if (!PRIV){ el.innerHTML = `<div class="vh"><div><h1>Waiting for you</h1><p>Only the things that need your yes or no.</p></div></div>${lockedNote}`; return; }
+  const qs = asks(PRIV.a).map(a => [a, askOf(a)]).filter(([a, q]) => q);
+  el.innerHTML = `<div class="vh"><div><h1>Waiting for you</h1><p>Only the things that need your yes or no. Answer in Telegram; everything else is handled.</p></div></div>`
+    + (qs.length ? `<div class="cards">${qs.map(([a, q]) => `<div class="card">
+      <div style="font-size:16px;font-weight:650;line-height:1.35">${esc(q.t)}</div>
+      <div class="note" style="margin-top:6px">${esc(q.s)}</div>
+      ${explain(a).money ? `<div style="margin-top:8px"><span class="pill a">costs money</span></div>` : ""}
+      ${a.url ? `<div class="note" style="margin-top:6px"><a href="${esc(a.url)}" target="_blank" rel="noopener">Details</a></div>` : ""}</div>`).join("")}</div>`
+      : `<div class="empty card" style="padding:14px">Nothing needs you right now.</div>`);
 }
 
 // ---------- operations ----------
@@ -1343,25 +1340,36 @@ if (!/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)) document
 // ---------- alerts: what changed since you last looked (on this device), plus optional desktop notifications ----------
 let SEEN = new Set(), firstAlerts = true;
 try { SEEN = new Set(JSON.parse(localStorage.getItem("hq-seen") || "[]")); } catch(e){}
+// Matthew, Nov 18 3:04pm: "it should be more simplified ... if I need to upgrade just explain the upgrade in simple terms
+// then I can say yes or no ... it shouldn't be so many different words and unnecessary alerts". Alerts now list ONLY
+// what needs him, one plain question each with the exact reply. Team problems (errors, failed checks, stale feeds, a
+// role's failed run) are the team's job and stay off this list; what shipped is one quiet line underneath.
+const plainT = t => String(t || "").replace(/\s*\([^)]*\)/g, "").split(/[:;—]|\s-\s/)[0].replace(/#\d+/g, "").replace(/\s+/g, " ").trim();
+function askOf(a){
+  const tag = String(a.tag || ""), n = (tag.match(/\d+/) || [""])[0], t = plainT(a.title);
+  if (/^upgrade/i.test(tag)) return {t: `Install: ${t}?`, s: `Reply "install ${n}" to Vesper for yes. Ignore it for no.`};
+  if (/^SHIP IT/i.test(tag)) return {t: `Put live: ${t}?`, s: `Reply "ship it ${n}" to Vesper for yes. Ignore it for no.`};
+  if (/^release/i.test(tag)) return {t: clip(a.title, 80), s: "Try it, then tell Vesper keep it or undo it."};
+  if (/^Stark/i.test(tag)) return {t: `Laptop job: ${clip(a.title, 70)}`, s: "Yes or no on its card in Telegram."};
+  if (/^founder/i.test(tag)) return null;                // optional extras, never an alert
+  return {t: clip(a.title, 80), s: "Answer Vesper in Telegram."};
+}
 function computeAlerts(){
-  const out = [], x = X(), P = PRIV;
-  if (!feed && feedErr) out.push({id: "offline", lvl: "r", t: "Live feed unreachable", s: "Nothing on HQ is live until it comes back.", go: "ops"});
-  else if (feed && mins(feed.t) > 40) out.push({id: "stale:" + feed.t, lvl: "a", t: "Live feed is stale", s: "Last published " + ago(feed.t) + ".", go: "ops"});
-  if (feed && feed.ok === false) out.push({id: "site:" + feed.t.slice(0, 13), lvl: "r", t: "Site or app needs attention", s: "Vesper is on it.", go: "ops"});
-  agents.filter(a => ["f", "x"].includes(a.code)).forEach(a => out.push({id: "role:" + a.id + ":" + ((rows[a.id] || [])[2] || ""), lvl: "r", t: `${a.t.n} ${a.code === "x" ? "looks stuck" : "failed its last run"}`, s: "Open the employee for details.", go: "team"}));
-  if (P) (P.a || []).forEach(a => out.push({id: "appr:" + (a.repo || "b") + a.n, lvl: "a", t: "Waiting for you: " + clip(a.title, 70), s: explain(a).how, go: "approvals"}));
-  if (x && x.health && x.health.errors_24h) out.push({id: "health:" + x.health.at, lvl: "a", t: `Vesper logged ${x.health.errors_24h} error${x.health.errors_24h === 1 ? "" : "s"} in 24 h`, s: x.health.status, go: "ops"});
-  if (x) (x.verify || []).filter(v => v[4] === "fail").forEach(v => out.push({id: "vfail:" + v[0], lvl: "r", t: "Failed verification: " + clip(v[3], 70), s: v[5] || "", go: "team"}));
-  if (x) (x.merged || []).slice(0, 3).forEach(m => out.push({id: "ship:" + m[1], lvl: "g", t: `Shipped #${m[1]}: ${clip(m[2], 70)}`, s: fmtT(m[0]), go: "ops"}));
+  const out = [], P = PRIV;
+  if (P) asks(P.a).forEach(a => { const q = askOf(a); if (q) out.push({id: "appr:" + (a.tag || (a.repo || "b") + a.n), lvl: "a", t: q.t, s: q.s, go: "approvals"}); });
   return out;
+}
+function shippedToday(){
+  const x = X(), since = Date.now() - 24 * 3600e3;
+  return ((x && x.merged) || []).filter(m => Date.parse(m[0]) > since).slice(0, 4).map(m => plainT(m[2])).filter(Boolean);
 }
 function renderAlerts(){
   const al = computeAlerts(), unseen = al.filter(a => !SEEN.has(a.id)), n = document.getElementById("belln");
   n.textContent = unseen.length; n.classList.toggle("on", unseen.length > 0);
   const box = document.getElementById("alerts");
   box.innerHTML = `<div class="ah"><b>Alerts</b><span><button type="button" id="seenAll">Mark all seen</button> ${"Notification" in window ? `<button type="button" id="notifyMe">${Notification.permission === "granted" && localStorage.getItem("hq-notify") === "1" ? "Desktop alerts on" : "Desktop alerts"}</button>` : ""}</span></div>`
-    + (al.length ? al.map(a => `<div class="al${SEEN.has(a.id) ? "" : " new"}" data-go="${a.go}"><span class="d ${a.lvl}"></span><div><b>${esc(a.t)}</b><small>${esc(a.s || "")}</small></div></div>`).join("") : `<div class="empty">Nothing needs attention.</div>`)
-    + `<div class="empty" style="font-size:11.5px">"New" is since you last looked on this device. Vesper still sends anything urgent to Telegram.</div>`;
+    + (al.length ? al.map(a => `<div class="al${SEEN.has(a.id) ? "" : " new"}" data-go="${a.go}"><span class="d ${a.lvl}"></span><div><b>${esc(a.t)}</b><small>${esc(a.s || "")}</small></div></div>`).join("") : `<div class="empty">Nothing needs you. The team has everything else.</div>`)
+    + (shippedToday().length ? `<div class="empty" style="font-size:12px;text-align:left">Went live today: ${esc(shippedToday().join(" · "))}</div>` : "");
   if (!firstAlerts && localStorage.getItem("hq-notify") === "1" && "Notification" in window && Notification.permission === "granted")
     unseen.filter(a => !NOTIFIED.has(a.id) && a.lvl !== "g").slice(0, 3).forEach(a => { NOTIFIED.add(a.id); try { new Notification("Mileset HQ", {body: a.t, tag: a.id}); } catch(e){} });
   if (firstAlerts && (feed || feedErr)){ firstAlerts = false; unseen.forEach(a => NOTIFIED.add(a.id)); }
