@@ -13,6 +13,12 @@ const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const DAYF = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const fmtD = s => { const d = parseD(s); return MON[d.getUTCMonth()] + " " + d.getUTCDate(); };
+// A server time (UTC, "2026-11-18T01:30:00.000Z") as the calendar day on this device; a plain "YYYY-MM-DD" stays as it is.
+// Nov 17: the Members screen cut UTC times at the date, so an evening sign-up in Florida showed as the next day.
+const localDay = s => !s ? null : /T/.test(s) ? isoLocal(new Date(s)) : String(s).slice(0, 10);
+// The member's last active day: the newest of when the app last saw them and their last logged day (never a future day).
+const lastActiveDay = (m, today) => [localDay(m.last_seen), m.last_day && m.last_day <= today ? m.last_day : null]
+  .filter(Boolean).sort().pop() || null;
 const r5 = x => Math.round(x / 5) * 5;
 const half = x => Math.round(x * 2) / 2;
 const fmtPace = s => { s = Math.round(s); return Math.floor(s / 60) + ":" + pad(s % 60); };
@@ -52,6 +58,10 @@ function raceName(p){
 }
 const isMulti = goal => !!(RACES[goal] && RACES[goal].kind);
 const LOWVOL_FROM = "2026-11-16";   // first week with the low-mileage run-day cap
+// Plan version, stamped on a profile when its plan is built (p.pv). 2 (Nov 18): runners under 8 mi/week start at about
+// what they run now (week 1 at most +20% or +2 mi), with shorter runs and walk breaks, instead of a flat 8-9 mi week.
+// Plans built before keep their shape (members' check-offs are keyed to their sessions) until they rebuild.
+const PLAN_V = 2;
 const LONG_CAP = {"5k":9, "10k":11, "half":13, "marathon":20, "50k":22, "fitness":10};
 const LONG_GOAL = {"5k":7, "10k":9, "half":12, "marathon":20, "50k":22, "fitness":7};   // longest run reached at peak
 const PEAK = {"5k":[1.25,18,40], "10k":[1.3,22,45], "half":[1.35,28,50], "marathon":[1.4,35,55], "50k":[1.45,38,60], "fitness":[1.2,15,35]};
@@ -62,7 +72,10 @@ function fitnessFrom(p){
   // seconds per mile at each effort, from a recent race (Riegel) or a typical easy pace
   let base;
   if (p.prDist && p.prSec) base = {d: RACES[p.prDist].mi, t: p.prSec};
-  else { const easy = p.easyPace || 600; base = {d: 26.219, t: (easy - 80) * 26.219}; }
+  // no race and no pace given (setup's "leave it blank", Nov 17): start from current miles, slower for lower mileage,
+  // so a beginner's easy days really are easy; older profiles without a pace keep the 10:00 default unchanged
+  else { const easy = p.easyPace || (p.paceUnknown ? (p.weekly == null || p.weekly < 10 ? 690 : p.weekly < 25 ? 630 : 570) : 600);
+    base = {d: 26.219, t: (easy - 80) * 26.219}; }
   const T = d => riegel(base.t, base.d, d);
   const pred = {"5k": T(3.107), "10k": T(6.214), "half": T(13.109), "marathon": T(26.219)};
   const p5 = pred["5k"] / 3.107, p10 = pred["10k"] / 6.214, pH = pred.half / 13.109, pM = pred.marathon / 26.219;
@@ -121,9 +134,12 @@ function buildPlan(p, today){
   const tw = TAPER[goal].length, short = !!raceDate && N <= tw, B = short ? 0 : Math.max(1, N - tw);
   const tIdx = i => short ? tw - N + i : i - B;
   const m0 = Math.max(8, p.weekly || 0), [mul, floorM, cap] = PEAK[goal];
+  const w0 = Math.max(2, p.weekly || 0), lowStart = (p.pv || 1) >= 2 && (p.weekly || 0) < 8;
+  const s0 = lowStart ? Math.min(m0, Math.max(w0 * 1.2, w0 + 2)) : m0;   // week 1 for a low-mileage start
   let peak = Math.min(cap, Math.max(m0 * mul, Math.min(floorM, m0 * 1.6)));
   peak = Math.min(peak, m0 * Math.pow(1.1, Math.max(1, B - 1)));
-  if (short) peak = m0;
+  if (short) peak = s0;
+  let prevM = null, topM = s0;
   const runDays = p.days.slice().sort((a, b) => a - b), longDay = p.longDay;
   // quality days: furthest from the long run, 2+ days away
   const gap = (a, b) => Math.min(Math.abs(a - b), 7 - Math.abs(a - b));
@@ -137,115 +153,135 @@ function buildPlan(p, today){
     let phase, miles;
     if (i < B){
       phase = i < B * .4 ? "Base" : i < B * .85 ? "Build" : "Peak";
-      miles = m0 + (peak - m0) * (B === 1 ? 1 : i / (B - 1));
+      miles = s0 + (peak - s0) * (B === 1 ? (lowStart ? 0 : 1) : i / (B - 1));
+      if (lowStart && prevM != null) miles = Math.min(miles, Math.max(prevM * 1.15, prevM + 1.5));   // gentle climb from what was planned
+      if (lowStart) topM = Math.max(topM, miles);
       if (i % 4 === 3 && i < B - 1) { miles *= .8; phase = phase + " · lighter"; }
-    } else { phase = i === N - 1 && goal !== "fitness" ? "Race week" : "Taper"; miles = peak * TAPER[goal][tIdx(i)]; }
+    } else { phase = i === N - 1 && goal !== "fitness" ? "Race week" : "Taper"; miles = (lowStart ? Math.min(peak, topM) : peak) * TAPER[goal][tIdx(i)]; }
     miles = half(miles);
     const isLight = /lighter/.test(phase), ph = phase.split(" ·")[0];
-    const days = Array.from({length: 7}, (_, d) => ({date: addDays(ws, d), sessions: []}));
-    const raceIdx = raceDate && raceDate >= ws && raceDate <= addDays(ws, 6) ? dow(raceDate) : null;
-    const lastFit = goal === "fitness" && i === N - 1;
-    let used = 0;
-    // long run (or the race)
-    if (raceIdx != null){
-      const r = RACES[goal];
-      days[raceIdx].sessions.push({type:"race", title:"Race day · " + (p.raceName || r.name), mi: r.mi, k:"G",
-        steps:[["Warm up 10–15 min easy + 4 strides", null, null], [r.name + (goalSec ? " · goal " + fmtTime(goalSec) : ""), null, "G"], ["Start 5 s/mi slower than goal for the first mile, then settle in", null, null]],
-        why:"Everything in the plan builds to this. Trust the taper; you will feel fresh."});
-      used += r.mi;
-    } else if (lastFit){
-      days[longDay].sessions.push({type:"race", title:"5K time trial", mi:5, k:"I", steps:[["Warm up 1.5 mi easy + 4 strides", 1.5, "E"], ["5K all-out, even effort", 3.1, null], ["Cool down easy", 0.5, "E"]], why:"See how far you have come. The result sets your next plan's paces."});
-      used += 5;
-    } else {
-      const capL = LONG_CAP[goal];
-      const l0 = Math.max(3, p.longest || 3), lg = Math.max(l0, LONG_GOAL[goal]);
-      const ramp = l0 + (lg - l0) * Math.min(1, B === 1 ? 1 : i / Math.max(1, B - 1 - (goal === "marathon" ? 1 : 0)));
-      let L = Math.min(capL, Math.max(Math.round(miles * .28), Math.round(ramp)), prevLong + 2, Math.max(4, Math.round(miles * (goal === "marathon" ? .5 : .45))));
-      if (ph === "Taper") L = Math.max(3, Math.round(prevLong * [.65, .45, .35][Math.min(2, tIdx(i))]));
-      if (isLight) L = Math.max(3, Math.round(L * .8));
-      L = half(L); if (!isLight && ph !== "Taper") prevLong = Math.max(prevLong, L);
-      const mpFinish = goal === "marathon" && (ph === "Build" || ph === "Peak") && i % 2 === 1;
-      const halfFinish = goal === "half" && ph === "Peak";
-      const steps = goal === "50k" && ph !== "Taper" && !isLight ? [["Easy on trails or hills if you can, walk the steep climbs", L, "L"], ["Practise eating every 30–40 min (what you'll use on race day)", null, null]]
-        : mpFinish ? [["Easy " + half(L - 4) + " mi", L - 4, "L"], ["Last 4 mi at marathon pace", 4, "M"]]
-        : halfFinish ? [["Easy " + half(L - 3) + " mi", L - 3, "L"], ["Last 3 mi at half pace", 3, "H"]]
-        : [["Easy, conversational the whole way", L, "L"]];
-      days[longDay].sessions.push({type:"long", title:"Long run · " + L + " mi", mi: L, k:"L", steps,
-        why: mpFinish || halfFinish ? "Practising race pace on tired legs is the most race-specific thing you can do." : "Builds the aerobic engine and leg durability. Slow is correct here."});
-      used += L;
-    }
-    // quality sessions
-    const qDays = [];
-    if (!lastFit && runDays.length >= 3 && q1 != null && !(raceIdx != null && Math.abs(q1 - raceIdx) < 3) && q1 !== raceIdx) qDays.push(q1);
-    if (q2 != null && (ph === "Build" || ph === "Peak") && !isLight && raceIdx == null) qDays.push(q2);
-    if (raceIdx != null && qDays.length === 0){ const sh = runDays.find(d => d <= raceIdx - 3) ?? null; if (sh != null) qDays.push(sh); }
-    qDays.forEach((d, qi) => {
-      let w;
-      if (qi === 1) w = {name:"Tempo", cont: Math.min(5, Math.max(2, Math.round(miles * .1))), k:"T"};
-      else if (raceIdx != null) w = {name:"Sharpener", reps:4, m:400, k:"G", rest:"2 min easy"};
-      else w = workoutFor(goal, ph, wIdx[ph === "Base" ? "b" : "q"]++, P);
-      if (isLight && w.reps) w = {...w, reps: Math.max(2, w.reps - 2)};
-      let steps, mi;
-      if (w.kind === "base"){
-        const e = Math.max(3, half(miles * .15));
-        steps = w.steps.map(s => s[0] === "Easy" ? ["Easy " + e + " mi", e, "E"] : s);
-        mi = e + (w.work || 0);
-        if (w.work) steps = [["Easy " + half(e) + " mi", e, "E"], [w.steps[1][0], w.work, w.steps[1][2], w.steps[1][3]]];
-        if (w.name === "Fartlek") steps = [["Warm up 1 mi easy", 1, "E"], ["8 × 1 min quick / 1 min easy", 2, "I"], ["Easy to finish", Math.max(1, e - 2), "E"]], mi = Math.max(4, e + 1);
+    // A week is built normally; if a plan built from Nov 18 on (p.pv 2) comes out well over the week's target because of
+    // the 3 mi run floors and the workout, it is rebuilt short: shorter runs with walk breaks, strides instead of a workout.
+    const keepState = {wIdx: {...wIdx}, prevLong};
+    const makeWeek = lowWeek => {
+      const days = Array.from({length: 7}, (_, d) => ({date: addDays(ws, d), sessions: []}));
+      const raceIdx = raceDate && raceDate >= ws && raceDate <= addDays(ws, 6) ? dow(raceDate) : null;
+      const lastFit = goal === "fitness" && i === N - 1;
+      // too few miles for the 3 mi run floors (any plan built from Nov 18): shorter runs, strides instead of a workout
+      const fl = x => Math.floor(x * 2) / 2;
+      let used = 0;
+      // long run (or the race)
+      if (raceIdx != null){
+        const r = RACES[goal];
+        days[raceIdx].sessions.push({type:"race", title:"Race day · " + (p.raceName || r.name), mi: r.mi, k:"G",
+          steps:[["Warm up 10–15 min easy + 4 strides", null, null], [r.name + (goalSec ? " · goal " + fmtTime(goalSec) : ""), null, "G"], ["Start 5 s/mi slower than goal for the first mile, then settle in", null, null]],
+          why:"Everything in the plan builds to this. Trust the taper; you will feel fresh."});
+        used += r.mi;
+      } else if (lastFit){
+        days[longDay].sessions.push({type:"race", title:"5K time trial", mi:5, k:"I", steps:[["Warm up 1.5 mi easy + 4 strides", 1.5, "E"], ["5K all-out, even effort", 3.1, null], ["Cool down easy", 0.5, "E"]], why:"See how far you have come. The result sets your next plan's paces."});
+        used += 5;
       } else {
-        const capW = Math.max(2.5, Math.min(goal === "marathon" ? 9 : 6, miles * (w.k === "M" || w.k === "H" ? .3 : .18)));
-        if (w.reps){ while (w.reps > 2 && w.reps * w.m / 1609.34 > capW) w = {...w, reps: w.reps - 1}; }
-        else if (w.cont > capW) w = {...w, cont: Math.max(2, Math.floor(capW))};
-        const work = w.cont ? w.cont : w.reps * w.m / 1609.34;
-        mi = half(1.5 + work + 1);
-        steps = [["Warm up 1.5 mi easy + 4 strides", 1.5, "E"],
-                 [w.cont ? w.cont + " mi at " + PNAME[w.k] : w.reps + " × " + (w.m >= 1600 ? (w.m === 1609 ? "1 mi" : half(w.m / 1609.34) + " mi") : w.m + " m") + " at " + PNAME[w.k] + (w.rest ? ", " + w.rest + " between" : ""), work, w.k],
-                 ["Cool down 1 mi easy", 1, "E"]];
+        const capL = LONG_CAP[goal];
+        const l0 = Math.max(3, p.longest || 3), lg = Math.max(l0, LONG_GOAL[goal]);
+        const ramp = l0 + (lg - l0) * Math.min(1, B === 1 ? 1 : i / Math.max(1, B - 1 - (goal === "marathon" ? 1 : 0)));
+        let L = Math.min(capL, Math.max(Math.round(miles * .28), Math.round(ramp)), prevLong + 2, Math.max(4, Math.round(miles * (goal === "marathon" ? .5 : .45))));
+        if (ph === "Taper") L = Math.max(3, Math.round(prevLong * [.65, .45, .35][Math.min(2, tIdx(i))]));
+        if (isLight) L = Math.max(3, Math.round(L * .8));
+        if (lowWeek) L = Math.max(1.5, fl(Math.min(L, miles * .45)));
+        L = half(L); if (!isLight && ph !== "Taper") prevLong = Math.max(prevLong, L);
+        const mpFinish = goal === "marathon" && (ph === "Build" || ph === "Peak") && i % 2 === 1;
+        const halfFinish = goal === "half" && ph === "Peak";
+        const steps = goal === "50k" && ph !== "Taper" && !isLight ? [["Easy on trails or hills if you can, walk the steep climbs", L, "L"], ["Practise eating every 30–40 min (what you'll use on race day)", null, null]]
+          : mpFinish ? [["Easy " + half(L - 4) + " mi", L - 4, "L"], ["Last 4 mi at marathon pace", 4, "M"]]
+          : halfFinish ? [["Easy " + half(L - 3) + " mi", L - 3, "L"], ["Last 3 mi at half pace", 3, "H"]]
+          : [["Easy, conversational the whole way", L, "L"]];
+        days[longDay].sessions.push({type:"long", title:"Long run · " + L + " mi", mi: L, k:"L", steps,
+          why: mpFinish || halfFinish ? "Practising race pace on tired legs is the most race-specific thing you can do." : "Builds the aerobic engine and leg durability. Slow is correct here."});
+        used += L;
       }
-      mi = half(mi);
-      days[d].sessions.push({type:"workout", title: w.name + " · " + mi + " mi", mi, k: w.k || "T", base: w.kind === "base", steps,
-        why: w.kind === "base" ? "Base weeks build strength and form before the harder work starts." : w.k === "T" ? "Threshold work raises the pace you can hold for a long time." : w.k === "M" || w.k === "H" || w.k === "G" ? "Locks in the rhythm of race pace." : "Short, fast reps build speed and running economy."});
-      used += mi;
-    });
-    // easy runs fill the rest
-    let easyDays = runDays.filter(d => !days[d].sessions.some(s => s.type !== "lift"));
-    // low mileage on many days: every easy run is at least 3 mi, so 8 mi/week on 5 days would plan 15.
-    // Run fewer days that week (about one per 2.75 mi, never under 3) and leave the rest as rest days,
-    // spread so runs don't land back to back. Weeks before LOWVOL_FROM keep their old shape (check-offs).
-    const allowed = Math.max(3, Math.floor(miles / 2.75)), runs = runDays.length - easyDays.length;
-    if (raceIdx == null && ws >= LOWVOL_FROM && runDays.length > allowed && easyDays.length > Math.max(0, allowed - runs)){
-      const keep = [], busy = runDays.filter(d => !easyDays.includes(d));
-      for (let n = Math.max(0, allowed - runs); n > 0; n--){
-        const pick = easyDays.filter(d => !keep.includes(d)).map(d => [d, Math.min(7, ...busy.concat(keep).map(b => gap(d, b)))]).sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
-        if (pick) keep.push(pick[0]);
-      }
-      easyDays = easyDays.filter(d => keep.includes(d));
-    }
-    const left = Math.max(0, miles - used);
-    easyDays.forEach((d, k) => {
-      let e = raceIdx != null ? (d === raceIdx - 1 ? 2 : (d > raceIdx ? 0 : 3)) : Math.max(3, half(left / Math.max(1, easyDays.length)));
-      if (!e) return;
-      const strides = k === 0 && ph !== "Race week" && !lastFit;
-      days[d].sessions.push({type:"easy", title:(raceIdx != null && d === raceIdx - 1 ? "Shakeout · " : "Easy run · ") + e + " mi", mi: e, k:"E",
-        steps:[["Easy, you should be able to talk", e, "E"]].concat(strides ? [["Finish with 6 × 20 s strides, full recovery", null, null]] : []),
-        why: "Easy miles build your base without adding fatigue. Most runs should feel this easy."});
-    });
-    // lifts
-    const nL = Math.min(4, p.lifts || 0);
-    if (nL){
-      const names = LIFT_SETS[nL], order = [];
-      qDays.forEach(d => order.push(d));
-      for (let d = 0; d < 7; d++) if (!order.includes(d) && d !== longDay && d !== raceIdx && (raceIdx == null || d < raceIdx - 1)) order.push(d);
-      const picks = order.slice(0, nL).sort((a, b) => a - b);
-      picks.forEach((d, k) => {
-        let key = names[k];
-        if ((key === "lower" || key === "dura") && (d + 1) % 7 === longDay){ const sw = names.findIndex(n => n === "upper" || n === "size"); if (sw > -1){ key = names[sw]; names[sw] = names[k]; } }
-        const L = LIFTS[key], taper = ph === "Taper" || ph === "Race week" || isLight;
-        days[d].sessions.push({type:"lift", title: L.title + (taper ? " · light" : ""), mi: 0, steps: L.steps.map(s => [taper ? s.replace(/^(.*?)(\d) ×/, (m, a, n) => a + Math.max(2, n - 1) + " ×") : s, null, null]),
-          why: days[d].sessions.some(s => s.type === "workout") ? "Lift after the run, same day, so your easy days stay easy." : "Strength keeps you durable and holds on to muscle while running volume climbs."});
+      // quality sessions
+      const qDays = [];
+      if (!lastFit && !lowWeek && runDays.length >= 3 && q1 != null && !(raceIdx != null && Math.abs(q1 - raceIdx) < 3) && q1 !== raceIdx) qDays.push(q1);
+      if (q2 != null && !lowWeek && (ph === "Build" || ph === "Peak") && !isLight && raceIdx == null) qDays.push(q2);
+      if (raceIdx != null && qDays.length === 0){ const sh = runDays.find(d => d <= raceIdx - 3) ?? null; if (sh != null) qDays.push(sh); }
+      qDays.forEach((d, qi) => {
+        let w;
+        if (qi === 1) w = {name:"Tempo", cont: Math.min(5, Math.max(2, Math.round(miles * .1))), k:"T"};
+        else if (raceIdx != null) w = {name:"Sharpener", reps:4, m:400, k:"G", rest:"2 min easy"};
+        else w = workoutFor(goal, ph, wIdx[ph === "Base" ? "b" : "q"]++, P);
+        if (isLight && w.reps) w = {...w, reps: Math.max(2, w.reps - 2)};
+        let steps, mi;
+        if (w.kind === "base"){
+          const e = Math.max(3, half(miles * .15));
+          steps = w.steps.map(s => s[0] === "Easy" ? ["Easy " + e + " mi", e, "E"] : s);
+          mi = e + (w.work || 0);
+          if (w.work) steps = [["Easy " + half(e) + " mi", e, "E"], [w.steps[1][0], w.work, w.steps[1][2], w.steps[1][3]]];
+          if (w.name === "Fartlek") steps = [["Warm up 1 mi easy", 1, "E"], ["8 × 1 min quick / 1 min easy", 2, "I"], ["Easy to finish", Math.max(1, e - 2), "E"]], mi = Math.max(4, e + 1);
+        } else {
+          const capW = Math.max(2.5, Math.min(goal === "marathon" ? 9 : 6, miles * (w.k === "M" || w.k === "H" ? .3 : .18)));
+          if (w.reps){ while (w.reps > 2 && w.reps * w.m / 1609.34 > capW) w = {...w, reps: w.reps - 1}; }
+          else if (w.cont > capW) w = {...w, cont: Math.max(2, Math.floor(capW))};
+          const work = w.cont ? w.cont : w.reps * w.m / 1609.34;
+          mi = half(1.5 + work + 1);
+          steps = [["Warm up 1.5 mi easy + 4 strides", 1.5, "E"],
+                   [w.cont ? w.cont + " mi at " + PNAME[w.k] : w.reps + " × " + (w.m >= 1600 ? (w.m === 1609 ? "1 mi" : half(w.m / 1609.34) + " mi") : w.m + " m") + " at " + PNAME[w.k] + (w.rest ? ", " + w.rest + " between" : ""), work, w.k],
+                   ["Cool down 1 mi easy", 1, "E"]];
+        }
+        mi = half(mi);
+        days[d].sessions.push({type:"workout", title: w.name + " · " + mi + " mi", mi, k: w.k || "T", base: w.kind === "base", steps,
+          why: w.kind === "base" ? "Base weeks build strength and form before the harder work starts." : w.k === "T" ? "Threshold work raises the pace you can hold for a long time." : w.k === "M" || w.k === "H" || w.k === "G" ? "Locks in the rhythm of race pace." : "Short, fast reps build speed and running economy."});
+        used += mi;
       });
+      // easy runs fill the rest
+      let easyDays = runDays.filter(d => !days[d].sessions.some(s => s.type !== "lift"));
+      // low mileage on many days: every easy run is at least 3 mi, so 8 mi/week on 5 days would plan 15.
+      // Run fewer days that week (about one per 2.75 mi, never under 3) and leave the rest as rest days,
+      // spread so runs don't land back to back. Weeks before LOWVOL_FROM keep their old shape (check-offs).
+      const allowed = lowWeek ? Math.max(2, Math.floor(miles / 2)) : Math.max(3, Math.floor(miles / 2.75)), runs = runDays.length - easyDays.length;
+      if (raceIdx == null && ws >= LOWVOL_FROM && runDays.length > allowed && easyDays.length > Math.max(0, allowed - runs)){
+        const keep = [], busy = runDays.filter(d => !easyDays.includes(d));
+        for (let n = Math.max(0, allowed - runs); n > 0; n--){
+          const pick = easyDays.filter(d => !keep.includes(d)).map(d => [d, Math.min(7, ...busy.concat(keep).map(b => gap(d, b)))]).sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
+          if (pick) keep.push(pick[0]);
+        }
+        easyDays = easyDays.filter(d => keep.includes(d));
+      }
+      const left = Math.max(0, miles - used);
+      easyDays.forEach((d, k) => {
+        let e = raceIdx != null ? (d === raceIdx - 1 ? 2 : (d > raceIdx ? 0 : 3)) : lowWeek ? Math.max(1, fl(left / Math.max(1, easyDays.length))) : Math.max(3, half(left / Math.max(1, easyDays.length)));
+        if (!e) return;
+        const strides = k === 0 && ph !== "Race week" && !lastFit;
+        days[d].sessions.push({type:"easy", title:(raceIdx != null && d === raceIdx - 1 ? "Shakeout · " : "Easy run · ") + e + " mi", mi: e, k:"E",
+          steps:[[lowWeek ? "Easy, walk breaks are fine" : "Easy, you should be able to talk", e, "E"]].concat(strides ? [["Finish with 6 × 20 s strides, full recovery", null, null]] : []),
+          why: "Easy miles build your base without adding fatigue. Most runs should feel this easy."});
+      });
+      // lifts
+      // pinned lifting days (p.liftDays, picked in setup) go first; the rest are placed as before. Never on race day or the day before.
+      const pinL = liftPins(p).filter(d => d !== raceIdx && (raceIdx == null || d < raceIdx - 1));
+      const nL = Math.min(4, p.lifts || 0);
+      if (nL){
+        const names = LIFT_SETS[nL], order = pinL.slice(0, nL);
+        qDays.forEach(d => { if (!order.includes(d)) order.push(d); });
+        for (let d = 0; d < 7; d++) if (!order.includes(d) && d !== longDay && d !== raceIdx && (raceIdx == null || d < raceIdx - 1)) order.push(d);
+        const picks = order.slice(0, nL).sort((a, b) => a - b);
+        picks.forEach((d, k) => {
+          let key = names[k];
+          if ((key === "lower" || key === "dura") && (d + 1) % 7 === longDay){ const sw = names.findIndex(n => n === "upper" || n === "size"); if (sw > -1){ key = names[sw]; names[sw] = names[k]; } }
+          const L = LIFTS[key], taper = ph === "Taper" || ph === "Race week" || isLight;
+          days[d].sessions.push({type:"lift", title: L.title + (taper ? " · light" : ""), mi: 0, steps: L.steps.map(s => [taper ? s.replace(/^(.*?)(\d) ×/, (m, a, n) => a + Math.max(2, n - 1) + " ×") : s, null, null]),
+            why: days[d].sessions.some(s => s.type === "workout") ? "Lift after the run, same day, so your easy days stay easy." : "Strength keeps you durable and holds on to muscle while running volume climbs."});
+        });
+      }
+      return days;
+    };
+    let days = makeWeek(false);
+    const total = d => d.reduce((a, x) => a + x.sessions.reduce((b, y) => b + (y.mi || 0), 0), 0);
+    if ((p.pv || 1) >= 2 && total(days) > miles + 0.5 && (lowStart || miles < 12) && !days.some(d => d.sessions.some(x => x.type === "race"))){
+      wIdx = {...keepState.wIdx}; prevLong = keepState.prevLong; days = makeWeek(true);
     }
-    weeks.push({n: i + 1, start: ws, phase, miles: half(days.reduce((a, d) => a + d.sessions.reduce((b, s) => b + (s.mi || 0), 0), 0)), days});
+    const wkMi = half(days.reduce((a, d) => a + d.sessions.reduce((b, s) => b + (s.mi || 0), 0), 0));
+    if (lowStart && i < B && !isLight) prevM = wkMi;   // the next week grows from what this week really planned
+    weeks.push({n: i + 1, start: ws, phase, miles: wkMi, days});
   }
   return applyVenues(applySwaps(applyCustom({profile: p, P, pred: fit.pred, weeks, start, raceDate, created: today})));
 }
@@ -260,6 +296,8 @@ const TAPER_W = {everyday: [], hyrox: [.6], tri_sprint: [.6], tri_olympic: [.65]
 const LONG_RIDE = {tri_sprint: 100, tri_olympic: 150, tri_half: 225, tri_full: 330};   // peak long ride, minutes
 const LONG_RUN_CAP = {hyrox: 9, tri_sprint: 6, tri_olympic: 9, tri_half: 13, tri_full: 18};
 const hm = m => { m = Math.round(m / 5) * 5; return m >= 60 ? Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60) + " min" : "") : m + " min"; };
+/* Lifting days the athlete pinned in setup (0 = Mon … 6 = Sun), cleaned: whole days, no repeats, at most 4. Empty = the plan picks. */
+const liftPins = p => Array.isArray(p.liftDays) ? [...new Set(p.liftDays.map(Number).filter(d => Number.isInteger(d) && d >= 0 && d <= 6))].slice(0, 4) : [];
 function buildMulti(p, today){
   const goal = p.goal, R = RACES[goal], kind = R.kind, fit = fitnessFrom(p), P = {...fit.pace};
   P.G = P.T;
@@ -405,13 +443,14 @@ function buildMulti(p, today){
       if (L1){ put(longDay, L1.s); if (brick) put(longDay, brick.s); }
       if (L2){ const d2 = free.find(d => d !== longDay && gap(d, longDay) === 1) ?? free.filter(d => d !== longDay).sort((a, b) => gap(b, longDay) - gap(a, longDay))[0]; put(d2 != null ? d2 : longDay, L2.s); }
       const hardDays = [longDay];
+      const pins = liftPins(p).filter(d => free.includes(d)), pinOf = (x, d) => x.s.type === "lift" && pins.length ? (pins.includes(d) && !wk[d].sessions.some(s => s.type === "lift") ? 0 : 1) : 0;
       list.filter(x => x.hard && !x.long && !x.long2).forEach(x => {
-        const d = free.filter(d => d !== longDay && wk[d].sessions.length < 2).sort((a, b) => (Math.min(...hardDays.map(h => gap(b, h))) - Math.min(...hardDays.map(h => gap(a, h)))) || (wk[a].sessions.length - wk[b].sessions.length))[0];
+        const d = free.filter(d => d !== longDay && wk[d].sessions.length < 2).sort((a, b) => (pinOf(x, a) - pinOf(x, b)) || (Math.min(...hardDays.map(h => gap(b, h))) - Math.min(...hardDays.map(h => gap(a, h)))) || (wk[a].sessions.length - wk[b].sessions.length))[0];
         if (d != null){ put(d, x.s); hardDays.push(d); }
       });
       list.filter(x => !x.hard && !x.long && !x.long2 && x.with !== "long").forEach(x => {
-        const d = free.filter(d => wk[d].sessions.length < 2 && !(x.s.type === "lift" && d === longDay) && !wk[d].sessions.some(s => s.type === x.s.type))
-          .sort((a, b) => (wk[a].sessions.length - wk[b].sessions.length) || (gap(b, longDay) - gap(a, longDay)))[0];
+        const d = free.filter(d => wk[d].sessions.length < 2 && !(x.s.type === "lift" && d === longDay && !pins.includes(d)) && !wk[d].sessions.some(s => s.type === x.s.type))
+          .sort((a, b) => (pinOf(x, a) - pinOf(x, b)) || (wk[a].sessions.length - wk[b].sessions.length) || (gap(b, longDay) - gap(a, longDay)))[0];
         if (d != null) put(d, x.s);
       });
     }
@@ -437,6 +476,38 @@ function devSignals(dev, date){
   if (d.rhr && rhrA){ const df = d.rhr - rhrA; if (df >= 5){ pen += 6; notes.push("resting HR " + Math.round(df) + " bpm above normal"); } else if (df <= -3) notes.push("resting HR below normal"); }
   if (d.sleep_score != null && d.sleep_score < 60){ pen += 5; notes.push("sleep score " + d.sleep_score); }
   return {sleep_h: d.sleep_h || null, sleep_score: d.sleep_score != null ? d.sleep_score : null, rhr: d.rhr || null, hrv: d.hrv || null, steps: d.steps || null, active_cal: d.active_cal || null, hrvA, rhrA, pen, notes};
+}
+/* Sleep outlier (Matthew, Nov 18): last night far outside the member's own normal (median of up to 28 earlier nights,
+   at least 7) gets a plain morning note: how far off, and what it usually means for training. Not medical advice.
+   dev: {date: {sleep_h, ...}}. Returns null when last night was normal or there isn't enough history. */
+function sleepOutlier(dev, date){
+  const d = dev && dev[date]; if (!d || !(d.sleep_h > 0)) return null;
+  const hist = Object.keys(dev).filter(k => k < date && k >= addDays(date, -28)).map(k => dev[k].sleep_h).filter(x => x > 0).sort((a, b) => a - b);
+  if (hist.length < 7) return null;
+  const med = hist[Math.floor(hist.length / 2)], spread = hist[Math.floor(hist.length * .75)] - hist[Math.floor(hist.length * .25)];
+  const diff = d.sleep_h - med, lim = Math.max(1.25, 1.5 * spread);
+  if (Math.abs(diff) < lim) return null;
+  const h = x => (Math.round(x * 10) / 10) + " h", lowest = d.sleep_h <= hist[0], most = d.sleep_h >= hist[hist.length - 1];
+  const short = diff < 0;
+  const text = short
+    ? `You slept ${h(d.sleep_h)}, about ${h(-diff)} less than your usual ${h(med)}${lowest ? " (your shortest night in 4 weeks)" : ""}. After a short night your heart rate tends to run higher and runs feel harder than they should, so keep today's effort easy and aim for an earlier night.`
+    : `You slept ${h(d.sleep_h)}, about ${h(diff)} more than your usual ${h(med)}${most ? " (your longest night in 4 weeks)" : ""}. A long night often means your body is catching up after hard training or a rough stretch. If you feel flat, keep today easy.`;
+  return {hours: d.sleep_h, usual: med, diff: Math.round(diff * 10) / 10, dir: short ? "short" : "long", text};
+}
+/* Stress nudge (Matthew, Nov 18: "let them know to breathe or to relax or to take the day off, kind of like how Garmin
+   does"). Input: today's Garmin daily summary so far (high-stress seconds, average, Garmin's own qualifier), the member's
+   usual average stress (median of earlier days, or null) and today's readiness level (0 good .. 2 low). At most one
+   nudge a day is sent by the worker; this only says whether and what. */
+function stressNudge(t, usualAvg, readinessLevel){
+  if (!t) return null;
+  const high = (t.high_s || 0) / 60, avg = t.avg, q = String(t.qualifier || "").toLowerCase();
+  const stressful = high >= 45 || (/stressful/.test(q) && avg >= 40 && (usualAvg == null || avg >= usualAvg + 10));
+  if (!stressful) return null;
+  const veryHard = /very_stressful/.test(q) || high >= 120;
+  if (veryHard && readinessLevel === 2)
+    return {kind: "rest", title: "Big stress day", body: "Your watch shows a very stressful day and your readiness is low. Your body counts all stress the same, so today is a good day to rest: swap the run for an easy walk or take it off."};
+  const mins = high >= 45 ? `about ${high >= 90 ? Math.round(high / 60 * 10) / 10 + " hours" : Math.round(high / 5) * 5 + " minutes"} of high stress so far today` : "a stressful stretch today";
+  return {kind: "breathe", title: "Take a breath", body: `Your watch shows ${mins}. Take two minutes: breathe in for 4, out for 6, ten times.` + (veryHard ? " If it keeps up, make today's run easy." : "")};
 }
 function readiness(c, sig){
   // no check-in yet: a first read from the watch alone (sleep, sleep score, HRV, resting HR); the check-in refines it
@@ -1054,5 +1125,5 @@ function swapCheck(plan, a, b, dropA){        // dropA: a is a missed day, so wh
   return scan().filter(m => !before.includes(m));   // only what this move adds, not what the week already had
 }
 
-root.HP = {zonesFrom, hrFor, targetOf, HR_PCT, cyclePhase, cycleAdvice, cyclePattern, CYCLE, CYCLE_SYM, applyVenues, mph, sportOf, effortOf, loadOf, actSummary, SPORTS, PLAN_RPE, cleanSession, alternatives, library, exAlts, exAll, exGroup, applySwaps, swapCheck, isHard, garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, pad, isoLocal, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
+root.HP = {zonesFrom, hrFor, targetOf, HR_PCT, cyclePhase, cycleAdvice, cyclePattern, CYCLE, CYCLE_SYM, applyVenues, mph, sportOf, effortOf, loadOf, actSummary, SPORTS, PLAN_RPE, cleanSession, alternatives, library, exAlts, exAll, exGroup, applySwaps, swapCheck, isHard, garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, PLAN_V, sleepOutlier, stressNudge, pad, isoLocal, localDay, lastActiveDay, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
 })(typeof globalThis !== "undefined" ? globalThis : self);

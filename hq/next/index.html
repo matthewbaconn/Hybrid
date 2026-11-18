@@ -68,7 +68,7 @@ h2{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut
 .item{padding:9px 12px;border-top:1px solid var(--line);font-size:13.5px}.item:first-child{border-top:0}
 .item .h{display:flex;justify-content:space-between;gap:8px}.item small{color:var(--mut);font-size:11.5px}
 .item .why{color:var(--mut);font-size:12px;margin-top:2px}
-.tag{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:9px;background:var(--line);color:var(--ink);margin-right:6px;white-space:nowrap}
+.tag.live{background:#1f3a2a;color:#8fe0a8;font-weight:600}.tag{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:9px;background:var(--line);color:var(--ink);margin-right:6px;white-space:nowrap}
 .tag.ship{background:#3a1a20;color:#ff9aa0}.tag.you{background:#2a2412;color:var(--amber)}
 a.lnk{color:#ff9aa0;text-decoration:none}.jl{color:#ff9aa0;cursor:pointer;white-space:nowrap;font-size:12.5px}
 .hist{margin-top:8px;border-top:1px solid var(--line)}.hist .item{padding:7px 0}
@@ -378,7 +378,7 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 <div class="streak"><span id="streakText"></span><div class="pips" id="pips"></div></div>
 <div class="install" id="install">Put HQ on your home screen: tap <b>Share</b>, then <b>Add to Home Screen</b>.</div>
 </div>
-<div class="b-office"><div class="lock" id="lock">🔒 Assignments, history, approvals and decisions are private. Open the link Vesper sent you once on this device to unlock them.</div>
+<div class="b-office"><h2>Upgrade order</h2><div class="list" id="order"></div><h2 style="margin-top:18px">Private office</h2><div class="lock" id="lock">🔒 Assignments, history, approvals and decisions are private. Open the link Vesper sent you once on this device to unlock them.</div>
 <div class="priv" id="priv">
 <h2>Vesper · CEO office</h2><div class="exec" id="exec"></div>
 <div class="tabs" id="tabs"><button data-t="appr" class="on">Approvals</button><button data-t="jobs">Assignments</button><button data-t="cfeed">Activity</button><button data-t="dec">Decisions</button></div>
@@ -407,10 +407,53 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 <div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
 <script>
 "use strict";
-const HQ_BUILD = "2026-11-17.r2";   // the self-update check compares this with the published page
+const HQ_BUILD = "2026-11-18.r1";   // the self-update check compares this with the published page
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const DEMO = /demo/.test(location.search + location.hash);
 let DEMO_HOLD = true;   // the first load sets everyone's state; only later changes are real events
+// ---------- upgrade order (Matthew, Nov 17: "tell me the order of upgrades") ----------
+// Public data: Hybrid is a public repo, so this shows without the key. One GitHub call every 15 min (the last good list
+// is kept on this device, so a busy GitHub never blanks it). The ship gate merges one ready PR an hour, bug fixes first,
+// then oldest first; drafts aren't ready; PRs off the claude/ branches (or claude/product-*) wait for "SHIP IT <n>".
+const ORDER_API = "https://api.github.com/repos/matthewbaconn/Hybrid/pulls?state=all&sort=updated&direction=desc&per_page=40";
+let ORDER = null, orderAt = 0, orderErr = false, orderTry = 0;
+try { const c = JSON.parse(localStorage.getItem("hq-order") || "null"); if (c && c.at && Array.isArray(c.list)){ ORDER = c.list; orderAt = c.at; } } catch(e){}
+const isHeld = p => !/^claude\//.test(p.ref) || /^NEEDS MATTHEW/.test(p.b || "");   // the gate takes every claude/ PR except HOLD ones ("NEEDS MATTHEW"); since Nov 18 product-team PRs need no SHIP IT
+const isFix = p => /^fix\b/i.test(p.t);
+function orderGroups(){
+  const L = ORDER || [], open = L.filter(p => p.open);
+  const q = open.filter(p => !p.draft && !isHeld(p)).sort((a, b) => (isFix(b) - isFix(a)) || (a.c < b.c ? -1 : 1));
+  return {q, held: open.filter(p => !p.draft && isHeld(p)), drafts: open.filter(p => p.draft).sort((a, b) => a.c < b.c ? -1 : 1),
+          live: L.filter(p => p.m && Date.now() - Date.parse(p.m) < 864e5).sort((a, b) => a.m < b.m ? 1 : -1).slice(0, 4)};
+}
+async function loadOrder(){ orderTry = Date.now();
+  try { const r = await fetch(ORDER_API, {cache: "no-store"}); if (!r.ok) throw new Error(r.status);
+    ORDER = (await r.json()).map(p => ({n: p.number, t: p.title, url: p.html_url, ref: (p.head && p.head.ref) || "", draft: !!p.draft, open: p.state === "open", c: p.created_at, m: p.merged_at, b: String(p.body || "").slice(0, 20)}));
+    orderAt = Date.now(); orderErr = false; try { localStorage.setItem("hq-order", JSON.stringify({at: orderAt, list: ORDER})); } catch(e){}
+  } catch(e){ orderErr = true; }
+  renderOrder(); if (typeof renderPriv === "function" && PRIV) try { renderPriv(); } catch(e){}
+}
+function renderOrder(){
+  const el = document.getElementById("order"); if (!el) return;
+  if (!ORDER){ el.innerHTML = `<div class="empty">${orderErr ? "GitHub isn't answering right now (it limits how often a phone can ask). The queue shows here within 15 minutes." : "Loading the queue from GitHub…"}</div>`; return; }
+  const G = orderGroups(), hm = d => d.toLocaleTimeString([], {hour: "numeric", minute: "2-digit"}).replace(" ", "").toLowerCase();
+  const next = new Date(); next.setMinutes(20, 0, 0); if (next <= new Date()) next.setHours(next.getHours() + 1);
+  const row = (tag, cls, p, why, when) => `<div class="item"><div class="h"><span><span class="tag ${cls}">${esc(tag)}</span>${linkify("#" + p.n + " " + p.t, p.url)}</span>${when ? `<small>${esc(when)}</small>` : ""}</div>${why ? `<div class="why">${esc(why)}</div>` : ""}</div>`;
+  const out = [];
+  G.q.forEach((p, i) => out.push(row(String(i + 1), "", p, (isFix(p) ? "Bug fix, so it goes ahead of features. " : "") + (i ? "Then the gate tests it and puts it live." : "Next: the gate tests it and puts it live."), "~" + hm(new Date(+next + i * 36e5)))));
+  G.held.forEach(p => out.push(row("SHIP IT " + p.n, "ship", p, `Needs your OK (money, member data, security or something irreversible): text Vesper "SHIP IT ${p.n}" when you want it live.`)));
+  G.drafts.forEach(p => out.push(row("draft", "", p, "Not ready yet (still being finished or waiting on the PR before it). Nothing for you to do.")));
+  G.live.forEach(p => out.push(row("live " + hm(new Date(p.m)), "live", p, "")));
+  el.innerHTML = `<div class="item"><div class="why" style="-webkit-line-clamp:unset">The ship gate puts one upgrade live about every hour: bug fixes first, then oldest first. Times are estimates. Nothing here needs you unless it says SHIP IT. When one goes live, Vesper tells you; reply \"undo <n>\" to take it back.${orderAt ? " Checked " + esc(fmtT(new Date(orderAt).toISOString())) + "." : ""}</div></div>`
+    + (out.length ? out.join("") : `<div class="empty">No upgrades waiting.</div>`);
+}
+// Only what truly waits on Matthew. Ready app PRs are the gate's job (they're in Upgrade order) and drafts aren't
+// ready, so neither is an approval. Once Vesper's owner queue (vesper-relay #170) is installed, every item carries a
+// tag and is already a real ask, so it's shown as is.
+function asks(ap){ ap = ap || []; if (ap.some(a => a.tag)) return ap;
+  return ap.filter(a => { if (a.k !== "pr") return true; if (/^draft/.test(a.why || "")) return false;
+    if (a.repo !== "Hybrid") return true; const p = (ORDER || []).find(x => x.n === a.n);
+    return p ? isHeld(p) : a.why === "SHIP IT"; }); }   // Vesper's feed still calls every product-team PR "SHIP IT"; since Nov 18 only NEEDS MATTHEW ones wait for him
 const FEED_API = "https://api.github.com/repos/matthewbaconn/Hybrid/contents/hq.json?ref=vesper/hq-data";
 const FEED_RAW = "https://raw.githubusercontent.com/matthewbaconn/Hybrid/vesper/hq-data/hq.json";
 const W = 360, H = 540;
@@ -752,14 +795,14 @@ function renderPriv(){
     <div class="kpis"><div class="kpi"><b>${o.streak ? o.streak[0] + "/" + o.streak[1] : "–"}</b><span>days, no silent failures</span></div>
       <div class="kpi"><b>${o.ok_today ?? 0}<small style="font-size:12px;color:var(--mut)"> / ${o.runs_today ?? 0}</small></b><span>runs that reported a result / runs today</span></div>
       <div class="kpi"><b style="color:${(o.attention || []).length ? "var(--red)" : "var(--green)"}">${(o.attention || []).length}</b><span>employees need a look</span></div>
-      <div class="kpi"><b>${o.approvals ?? 0}</b><span>waiting for you</span></div>
+      <div class="kpi"><b>${asks(PRIV.a).length}</b><span>waiting for you</span></div>
       <div class="kpi"><b>${(o.working || []).length}</b><span>working now</span></div>
       <div class="kpi"><b style="color:${o.failed_today ? "var(--red)" : "inherit"}">${o.failed_today ?? 0}</b><span>failed runs today</span></div></div>
     <div class="rl" style="margin-top:8px">${(o.attention || []).length ? "Needs a look: " + esc(o.attention.map(nm).join(", ")) + ". " : ""}${(o.working || []).length ? "Working: " + esc(o.working.map(nm).join(", ")) + "." : "Nobody is mid-run."}
     ${(() => { const G = growthNow(); return G && (G.members !== null || G.accounts !== null) ? "<br>Mileset: " + (G.members !== null ? G.members + " real members" : G.accounts + " accounts") + (G.n7 !== null ? " · +" + G.n7 + " in 7 days" : "") + (G.left !== null ? " · " + G.left + " founding spots left" : "") : "<br>Mileset numbers: not measured yet (first nightly count pending)."; })()}</div>
     ${spendLine(o)}`;
-  const ap = PRIV.a || [];
-  document.getElementById("appr").innerHTML = capped("appr", ap.map(a => `<div class="item"><div class="h"><span>${a.k === "pr" ? `<span class="tag ${a.why === "SHIP IT" ? "ship" : "you"}">${esc(a.why === "SHIP IT" ? "SHIP IT " + a.n : a.repo + " #" + a.n)}</span>` + linkify(a.title, a.url) : `<span class="tag you">backlog ${esc(a.n)}</span>` + esc(a.title)}</span></div>
+  const ap = asks(PRIV.a);
+  document.getElementById("appr").innerHTML = capped("appr", ap.map(a => `<div class="item"><div class="h"><span>${a.k === "pr" ? `<span class="tag ${a.why === "SHIP IT" ? "ship" : "you"}">${esc(a.why === "SHIP IT" ? "SHIP IT " + a.n : a.repo + " #" + a.n)}</span>` + linkify(a.title, a.url) : `<span class="tag you">${esc(a.tag || "backlog " + a.n)}</span>` + esc(a.title)}</span></div>
     ${a.k === "backlog" && a.why ? `<div class="why">${esc(a.why)}</div>` : a.k === "pr" && a.why !== "SHIP IT" ? `<div class="why">${esc(a.why)}</div>` : ""}</div>`), "Nothing waiting on you.");
   const tb = document.querySelector('#tabs [data-t="appr"]'); tb.innerHTML = "Approvals" + (ap.length ? `<span class="n">${ap.length}</span>` : "");
   
@@ -857,7 +900,7 @@ function renderPanels(){
     if (o.failed_today) A.push(`<span class="bad">${o.failed_today} failed run${o.failed_today === 1 ? "" : "s"} today.</span>${tag("rep")}${jump("cfeed", "activity")}`);
     const ap = P.a || [];
     if (ap.length){ A.push(`<b>${ap.length}</b> decision${ap.length === 1 ? "" : "s"} waiting for you. You approve only in Telegram: SHIP IT or the signed card.${tag("sys")}${jump("appr", "approvals")}`);
-      ap.slice(0, 3).forEach(a => A.push(a.k === "pr" ? `<span class="tag ${a.why === "SHIP IT" ? "ship" : "you"}">${esc(a.repo + " #" + a.n)}</span>${linkify(clip(a.title, 120), a.url)}` : `<span class="tag you">backlog ${esc(a.n)}</span>${esc(clip(a.title, 120))}`)); }
+      ap.slice(0, 3).forEach(a => A.push(a.k === "pr" ? `<span class="tag ${a.why === "SHIP IT" ? "ship" : "you"}">${esc(a.repo + " #" + a.n)}</span>${linkify(clip(a.title, 120), a.url)}` : `<span class="tag you">${esc(a.tag || "backlog " + a.n)}</span>${esc(clip(a.title, 120))}`)); }
     const M = P.money; if (M && M.month_cap && M.month / M.month_cap >= .75) A.push(`API budget ${Math.round(M.month / M.month_cap * 100)}% used this month.${tag("sys")}${jump("money", "money")}`);
     const od = P.me && P.me.overdue ? P.me.overdue.length : 0; if (od) A.push(`${od} overdue deadline${od === 1 ? "" : "s"}.${tag("rep")}${jump("me", "my week")}`);
   }
@@ -968,7 +1011,7 @@ function renderKpis(){
     + kt("Founding spots left", LIVE ? LIVE.left : G && G.left !== null ? G.left : "–", "of 100 · ends Jan 1", "sys", "rgba(190,56,62,.3)")
     + kt("Working now", feed ? work : "–", feed ? `${agents.filter(a => ["f", "x"].includes(a.code)).length} need a look` : "feed offline", "rep", "rgba(242,179,61,.25)")
     + kt("Runs today", PRIV ? (o.runs_today ?? 0) : runsPub ?? "–", PRIV ? `${o.ok_today ?? 0} reported a result` : "from the run log", "rep", "rgba(91,141,239,.28)")
-    + kt("Waiting on you", PRIV ? (PRIV.a || []).length : "🔒", PRIV ? "approve only in Telegram" : "unlock to see", PRIV ? "sys" : null, "rgba(242,179,61,.3)")
+    + kt("Waiting on you", PRIV ? asks(PRIV.a).length : "🔒", PRIV ? "approve only in Telegram" : "unlock to see", PRIV ? "sys" : null, "rgba(242,179,61,.3)")
     + kt("Vesper API today", sp ? usd(sp.spent) : M ? usd(M.today) : "?", sp ? `cap ${usd(sp.cap)}` : M ? `cap ${usd(M.today_cap)}` : "not in this feed", sp || M ? "sys" : "na", "rgba(79,195,201,.25)");
 }
 function renderObjectives(){
@@ -994,7 +1037,7 @@ function renderPrioDecisions(){
   if (!PRIV){ p.innerHTML = d.innerHTML = `<div class="empty">Private. Unlock HQ to see this.</div>`; return; }
   const fix = PRIV.fix ? li(`<span class="pill r">Growth fix</span>${esc(PRIV.fix.replace(/^GROWTH FIX OF THE WEEK:?\s*/i, ""))}`, "Set by the analyst from the numbers; graded next Monday.", "") : "";
   p.innerHTML = fix + (realJobs().slice(0, 6).map(j => li(`<span class="pill">#${esc(j[0])}</span>${esc(clip(j[1], 150))}`, esc(clip((j[2] ? j[2] + " · " : "") + (j[3] || ""), 120)))).join("") || `<div class="empty">The backlog is empty.</div>`);
-  const ap = (PRIV.a || []).length;
+  const ap = asks(PRIV.a).length;
   d.innerHTML = (ap ? li(`<b>${ap}</b> decision${ap === 1 ? "" : "s"} waiting for you`, `<span class="jl" data-go="approvals">Open approvals ›</span>`) : "")
     + ((PRIV.dec || []).slice(0, 6).map(r => li(esc(clip(r[1], 130)), `<span class="pill ${/implemented and verified/i.test(r[2]) ? "g" : /broken|fail/i.test(r[2]) ? "r" : "a"}">${esc(r[2])}</span>`, esc(r[0]))).join("") || `<div class="empty">No decisions recorded yet.</div>`);
 }
@@ -1011,7 +1054,7 @@ function explain(a){
 function renderApprovals(){
   const el = document.getElementById("approvals"); if (!el) return;
   if (!PRIV){ el.innerHTML = `<div class="vh"><div><h1>Approvals</h1><p>Pending decisions, deployments and spending requests.</p></div></div>${lockedNote}`; return; }
-  const ap = PRIV.a || [], ex = ap.map(a => [a, explain(a)]);
+  const ap = asks(PRIV.a), ex = ap.map(a => [a, explain(a)]);
   const grp = (k, t, empty) => { const g = ex.filter(([a, e]) => e.kind === k || (k === "Deployment" && e.kind === "Vesper upgrade"));
     return `<h2>${t} <span class="pill">${g.length}</span></h2>` + (g.length ? `<div class="cards">${g.map(([a, e]) => `<div class="card"><h4>${esc(e.kind)}${a.k === "pr" ? ` <i>${esc(a.repo)} #${esc(a.n)}</i>` : ` <i>backlog ${esc(a.n)}</i>`}</h4>
       <div style="font-size:15px;font-weight:650;line-height:1.35">${a.url ? linkify(a.title, a.url) : esc(a.title)}</div>
@@ -1216,7 +1259,7 @@ function renderMoney2(){
     ${card("Claude plan time, last 7 days", tag("rep"), plan ? stackBars(plan, [["min", "#5B8DEF", "minutes on your Claude plan (no extra money)"]]) : `<div class="none">${PRIV ? "Arrives with the feed update." : "Private."}</div>`)}
     ${card("Budget limits", tag("sys"), `<div class="list" style="border:0;background:none">${li("Vesper API: daily cap", h && /daily_budget=([\d.]+)/.test(h.spend) ? "$" + h.spend.match(/daily_budget=([\d.]+)/)[1] + " a day; Vesper stops itself at the cap" : "Shown in Vesper's health report")}${li("Vesper API: monthly budget", PRIV.money ? usd(PRIV.money.month_cap) : h && /month_budget=([\d.]+)/.test(h.spend) ? "$" + h.spend.match(/month_budget=([\d.]+)/)[1] : "?")}${li("Paid ads", "None. Free promotion only (your standing rule).")}${li("New paid services", "None without your approval.")}</div>`)}
     ${card("Infrastructure costs", tag("na"), `<div class="none">Server, domains and subscriptions aren't tracked in HQ yet. Nothing here is estimated.</div>`)}
-    ${card("Pending spending approvals", tag("sys"), (() => { const m = (PRIV.a || []).filter(a => explain(a).money); return m.length ? m.map(a => li(linkify(a.title, a.url), "")).join("") : `<div class="none">None waiting.</div>`; })())}
+    ${card("Pending spending approvals", tag("sys"), (() => { const m = asks(PRIV.a).filter(a => explain(a).money); return m.length ? m.map(a => li(linkify(a.title, a.url), "")).join("") : `<div class="none">None waiting.</div>`; })())}
   </div>`;
 }
 
@@ -1341,7 +1384,7 @@ function renderSideFoot(){ const el = document.getElementById("sidefoot"); if (!
 function renderAll(){
   for (const f of [renderHero, renderKpis, renderObjectives, renderPrioDecisions, renderApprovals, renderOps, renderEmployees, renderDeptsView, renderGrowth2, renderMoney2, renderSideFoot, renderAlerts]){
     try { f(); } catch(e){ console.warn("HQ render", f.name, e); } }
-  const ap = PRIV ? (PRIV.a || []).length : 0, ab = document.querySelector('#nav [data-v="approvals"]');
+  const ap = PRIV ? asks(PRIV.a).length : 0, ab = document.querySelector('#nav [data-v="approvals"]');
   if (ab){ const old = ab.querySelector(".n"); if (old) old.remove(); if (ap) ab.insertAdjacentHTML("beforeend", `<span class="n">${ap}</span>`); }
 }
 document.addEventListener("click", e => { const g = e.target.closest(".jl[data-go]"); if (g) go(g.dataset.go); });
@@ -1423,7 +1466,7 @@ function renderBrief(){
   // 6. next
   if (PRIV){ const j = (PRIV.jobs || []).find(openJob); Q.push(["n", "What happens next", PRIV.fix ? PRIV.fix.replace(/^GROWTH FIX OF THE WEEK:?\s*/i, "") : j ? j[1] : "The backlog is empty.", PRIV.fix ? "This week's growth fix" : j ? `Top of the backlog${j[2] ? " · " + j[2] : ""}` : "", "hq"]); }
   // 7. need anything from me
-  if (PRIV){ const n = (PRIV.a || []).length; Q.push([n ? "a" : "g", "Do you need me?", n ? `Yes: ${n} decision${n === 1 ? "" : "s"} waiting for you.` : "No. Nothing is waiting on you.", n ? (PRIV.a[0].title || "") : "", "appr"]); }
+  if (PRIV){ const n = asks(PRIV.a).length; Q.push([n ? "a" : "g", "Do you need me?", n ? `Yes: ${n} decision${n === 1 ? "" : "s"} waiting for you.` : "No. Nothing is waiting on you.", n ? (asks(PRIV.a)[0].title || "") : "", "appr"]); }
   else Q.push(["n", "Do you need me?", "Private. Unlock HQ to see approvals.", "", "hq"]);
   el.innerHTML = Q.map((q, i) => `<div class="q${i === 0 ? " lead" : i === 1 || (i === Q.length - 1 && Q.length % 2 === 1) ? " full" : ""}" data-go="${q[4]}"><span class="dot ${q[0]}"></span><div><small>${esc(q[1])}</small><b${i === 0 ? ' id="answerText"' : ""}>${esc(q[2])}</b>${q[3] ? `<span class="sub">${esc(q[3])}</span>` : ""}</div></div>`).join("");
 }
@@ -1516,6 +1559,7 @@ function renderMe(){
    <div class="card wide"><div class="note" style="margin:0">School deadlines and work shifts show here once Vesper knows them. Tell Vesper in Telegram or by voice, for example: "pharm exam Thursday at 9" or "I work Mondays and Thursdays 4:30 to 12:30".</div></div>
   </div>`;
 }
+loadOrder(); setInterval(loadOrder, 900000);
 loadPriv(); loadLive(); setInterval(loadPriv, 120000); setInterval(loadLive, 120000);
 resize(); requestAnimationFrame(frame); load(); tick();
 setInterval(load, 120000); setInterval(tick, 20000);
@@ -1529,7 +1573,7 @@ async function newerBuild(){
   try { const r = await fetch(location.pathname + "?b=" + Date.now(), {cache:"no-store"}); if (!r.ok) return false;
     const m = (await r.text()).match(/HQ_BUILD = "([^"]+)"/); return !!(m && m[1] !== HQ_BUILD); } catch(e){ return false; }
 }
-async function refreshAll(force){
+async function refreshAll(force){ if (force || Date.now() - Math.max(orderAt, orderTry) > 3e5) loadOrder();
   const t = Date.now(); if (!force && t - lastRefresh < 3000) return; lastRefresh = t; last = performance.now();
   if (force || t - lastBuildCheck > 60000){ lastBuildCheck = t; if (await newerBuild()){ location.reload(); return; } }
   await Promise.all([load(), loadPriv(), loadLive()]); tick();

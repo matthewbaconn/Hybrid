@@ -43,7 +43,9 @@ const T0 = Date.now(), iso = m => new Date(T0 - m * 60000).toISOString().slice(0
 const FIX = {v: 1, t: iso(1), o: {streak: [1, 7], working: [], attention: ['audit'], runs_today: 4, ok_today: 2, failed_today: 1, approvals: 1, plan_min_today: 30, spend: null},
   d: [{id: 'audit', s: 'f', last: iso(30), next: iso(-600), sum: 'TEST FIXTURE audit run', art: '', hist: [], jobs: [], runs: 1, min: 12, model: 'claude-opus-5-5', ok7: 0, fail7: 1}],
   f: [[iso(30), 'audit', 'failed', 'TEST FIXTURE failure'], [iso(90), 'worker', 'ok', 'TEST FIXTURE shipped a change']],
-  a: [{k: 'pr', repo: 'Hybrid', n: 1, title: 'TEST FIXTURE approval', url: 'https://github.com/matthewbaconn/Hybrid/pull/1', why: 'needs your review'}],
+  a: [{k: 'pr', repo: 'Hybrid', n: 1, title: 'TEST FIXTURE approval', url: 'https://github.com/matthewbaconn/Hybrid/pull/1', why: 'SHIP IT'},
+      {k: 'pr', repo: 'Hybrid', n: 2, title: 'TEST FIXTURE gate item', url: 'https://github.com/matthewbaconn/Hybrid/pull/2', why: 'needs your review'},
+      {k: 'pr', repo: 'Hybrid', n: 3, title: 'TEST FIXTURE draft item', url: 'https://github.com/matthewbaconn/Hybrid/pull/3', why: 'draft, needs your review'}],
   dec: [['Nov 16', 'TEST FIXTURE verified item', 'Implemented and verified', 'evidence']], done: [['Nov 16', 'TEST FIXTURE verified item', 'Implemented and verified', 'evidence']],
   jobs: [['0', 'PLAN OF RECORD (TEST)', '', ''], ['B1', 'TEST FIXTURE top job', 'product lead', 'building']],
   g: {asof: '2026-11-16', src7: {unknown: 2, ig: 1}, src_all: {unknown: 3, ig: 1}, funnel: {signed_up: 4, plan: 3, workout: 0, d7_eligible: 0, active_d7: 0}, members: [['2026-11-15', 3], ['2026-11-16', 4]]},
@@ -52,6 +54,10 @@ const FIX = {v: 1, t: iso(1), o: {streak: [1, 7], working: [], attention: ['audi
     health: {at: '2026-11-16 23:00', status: 'TEST FIXTURE health line', services: 'bot=active', code: 'drift=in sync', server: '', connections: '', spend: '', errors_24h: 0},
     verify: [['V9', '2026-11-16', 'audit', 'TEST FIXTURE verified item', 'pass', '2026-11-17 audit: pass']], exps: [['E1', 'running', 'TEST experiment', '>=1 sign-up', 'Nov 30', 'running']],
     partners: [['P1', 'TEST partner', 'awaiting Matthew']], outreach: {total: 1, by_status: {held: 1}, sent_total: 0, paused: false, pause_reason: ''}, overnight: ['2026-11-16 · TEST overnight'], sevenday: null, merged: [], runs: []}};
+// Upgrade order fixture (GitHub's public PR list): a feature, a newer bug fix (goes first), a held product PR, a draft, one merged.
+const pr = (n, t, ref, o) => ({number: n, title: t, html_url: 'https://github.com/matthewbaconn/Hybrid/pull/' + n, head: {ref}, draft: false, state: 'open', created_at: iso(500 - n), merged_at: null, ...o});
+const PULLS = JSON.stringify([pr(2, 'PUBLIC PR feature', 'claude/feature'), pr(4, 'Fix: PUBLIC PR bug', 'claude/fix'), pr(1, 'PUBLIC PR held', 'claude/product-x', {body: 'NEEDS MATTHEW: spends money'}),
+  pr(3, 'PUBLIC PR draft', 'claude/draft', {draft: true}), pr(5, 'PUBLIC PR shipped', 'claude/done', {state: 'closed', merged_at: iso(20)})]);
 const PRIVJ = await enc(FIX, KEYB), PRIVJ0 = await enc({...FIX, x: undefined}, KEYB);   // before and after Vesper's feed update
 const feedAt = m => JSON.stringify({v: 1, t: iso(m), ok: true, sk: [1, 7], r: [['audit', 'f', iso(30), iso(-600), 1], ['worker', 'i', iso(90), iso(-30), 3]], tl: [[iso(90), 'worker', 'ok']]});
 import http from 'node:http';
@@ -68,6 +74,7 @@ async function open(opts){
   p.on('request', r => reqs.push(r));
   await p.route(/hq\.json/, r => opts.feed === null ? r.fulfill({status: 404, body: ''}) : r.fulfill({status: 200, contentType: 'application/json', headers: {'Access-Control-Allow-Origin': '*'}, body: feedAt(opts.feed ?? 2)}));
   await p.route(/hq-full\.json/, r => r.fulfill({status: 200, contentType: 'application/json', headers: {'Access-Control-Allow-Origin': '*'}, body: opts.oldFeed ? PRIVJ0 : PRIVJ}));
+  await p.route(/\/pulls\?/, r => r.fulfill({status: 200, contentType: 'application/json', headers: {'Access-Control-Allow-Origin': '*'}, body: PULLS}));
   await p.route(/api\/founding/, r => r.fulfill({status: 200, contentType: 'application/json', headers: {'Access-Control-Allow-Origin': '*'}, body: '{"left":96,"max":100,"members":4}'}));
   if (opts.key) await p.addInitScript(k => localStorage.setItem('hq-k', k), KEY);
   await p.goto(BASE + NEW); await p.waitForTimeout(1500);
@@ -92,6 +99,13 @@ async function open(opts){
   if (/TEST FIXTURE shipped/.test(ver)) errs.push('office: a self-reported run must never appear as verified');
   const att = await p.textContent('#panels [data-p="attention"]');
   if (!/failed run/.test(att) || !/TEST FIXTURE approval/.test(att) || !/Telegram/.test(att)) errs.push('office: attention panel must show failed runs and waiting approvals (approved only in Telegram)');
+  if (/TEST FIXTURE gate item|TEST FIXTURE draft item/.test(att)) errs.push('office: a PR the gate handles (or a draft) is not something Matthew must approve');
+  { const ord = await p.$$eval('#order .item', xs => xs.map(x => x.textContent));
+    const at = t => ord.findIndex(x => x.includes(t));
+    if (!(at('Fix: PUBLIC PR bug') > 0 && at('Fix: PUBLIC PR bug') < at('PUBLIC PR feature'))) errs.push('order: bug fixes must come first in the upgrade order: ' + ord.join(' | '));
+    if (!/SHIP IT 1/.test(ord[at('PUBLIC PR held')] || '')) errs.push('order: a held PR must say it waits for SHIP IT');
+    if (!/Nothing for you to do/.test(ord[at('PUBLIC PR draft')] || '')) errs.push('order: a draft must say nothing is needed');
+    if (!/live /.test(ord[at('PUBLIC PR shipped')] || '')) errs.push('order: a PR merged today must show as live'); }
   if (/PLAN OF RECORD/.test((await p.textContent('#brief')) + (await p.textContent('#panels')))) errs.push('office: the plan-of-record header is not a backlog item to recommend');
   if (!/^Live/.test(await p.textContent('#fresh'))) errs.push('freshness: a 2-minute-old feed must read Live');
   await p.click('#nav [data-v="growth"]');
@@ -113,6 +127,7 @@ async function open(opts){
   await p.click('#nav [data-v="approvals"]');
   const apv = await p.textContent('#approvals');
   if (!/What approving authorizes/.test(apv) || !/How to approve/.test(apv) || !/TEST FIXTURE approval/.test(apv)) errs.push('approvals: each approval must explain what it authorizes and how to approve');
+  if (/TEST FIXTURE gate item|TEST FIXTURE draft item/.test(apv)) errs.push('approvals: PRs the gate merges by itself, and drafts, must not be listed as approvals');
   if (await p.locator('#approvals button').count()) errs.push('approvals: HQ must not have approve buttons');
   await p.click('#nav [data-v="ops"]');
   const ops = await p.textContent('#ops');
