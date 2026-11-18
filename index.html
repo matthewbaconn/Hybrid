@@ -3404,7 +3404,7 @@ document.addEventListener("click", ev => {
     if (setup.step >= 0){ const e = readStep(); if (e){ setup.err = e; render(); const el = $("#s-err"); if (el) el.scrollIntoView({block:"center"}); return; } }
     setup.err = ""; setup.step++;
     if (setup.step === 4){
-      const prof = {...setup.p, start: mondayOf(TODAY)}; delete prof.sample; delete prof.swaps;   // a new plan starts with no moved days
+      const prof = {...setup.p, start: mondayOf(TODAY), pv: HP.PLAN_V}; delete prof.sample; delete prof.swaps;   // a new plan starts with no moved days
       // training location: from "Use my location", or look up the typed city (doesn't hold up the plan)
       const cur = (wxLoc() || {}).place || "", city = setup.city || "";
       const geo = setup.geo;
