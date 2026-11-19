@@ -409,7 +409,7 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 <div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
 <script>
 "use strict";
-const HQ_BUILD = "2026-11-17.r3";   // the self-update check compares this with the published page
+const HQ_BUILD = "2026-11-18.r1";   // the self-update check compares this with the published page
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const DEMO = /demo/.test(location.search + location.hash);
 let DEMO_HOLD = true;   // the first load sets everyone's state; only later changes are real events
@@ -420,7 +420,7 @@ let DEMO_HOLD = true;   // the first load sets everyone's state; only later chan
 const ORDER_API = "https://api.github.com/repos/matthewbaconn/Hybrid/pulls?state=all&sort=updated&direction=desc&per_page=40";
 let ORDER = null, orderAt = 0, orderErr = false, orderTry = 0;
 try { const c = JSON.parse(localStorage.getItem("hq-order") || "null"); if (c && c.at && Array.isArray(c.list)){ ORDER = c.list; orderAt = c.at; } } catch(e){}
-const isHeld = p => !/^claude\//.test(p.ref) || /^claude\/product/.test(p.ref);
+const isHeld = p => !/^claude\//.test(p.ref) || /^NEEDS MATTHEW/.test(p.b || "");   // the gate takes every claude/ PR except HOLD ones ("NEEDS MATTHEW"); since Nov 18 product-team PRs need no SHIP IT
 const isFix = p => /^fix\b/i.test(p.t);
 function orderGroups(){
   const L = ORDER || [], open = L.filter(p => p.open);
@@ -430,7 +430,7 @@ function orderGroups(){
 }
 async function loadOrder(){ orderTry = Date.now();
   try { const r = await fetch(ORDER_API, {cache: "no-store"}); if (!r.ok) throw new Error(r.status);
-    ORDER = (await r.json()).map(p => ({n: p.number, t: p.title, url: p.html_url, ref: (p.head && p.head.ref) || "", draft: !!p.draft, open: p.state === "open", c: p.created_at, m: p.merged_at}));
+    ORDER = (await r.json()).map(p => ({n: p.number, t: p.title, url: p.html_url, ref: (p.head && p.head.ref) || "", draft: !!p.draft, open: p.state === "open", c: p.created_at, m: p.merged_at, b: String(p.body || "").slice(0, 20)}));
     orderAt = Date.now(); orderErr = false; try { localStorage.setItem("hq-order", JSON.stringify({at: orderAt, list: ORDER})); } catch(e){}
   } catch(e){ orderErr = true; }
   renderOrder(); if (typeof renderPriv === "function" && PRIV) try { renderPriv(); } catch(e){}
@@ -443,18 +443,19 @@ function renderOrder(){
   const row = (tag, cls, p, why, when) => `<div class="item"><div class="h"><span><span class="tag ${cls}">${esc(tag)}</span>${linkify("#" + p.n + " " + p.t, p.url)}</span>${when ? `<small>${esc(when)}</small>` : ""}</div>${why ? `<div class="why">${esc(why)}</div>` : ""}</div>`;
   const out = [];
   G.q.forEach((p, i) => out.push(row(String(i + 1), "", p, (isFix(p) ? "Bug fix, so it goes ahead of features. " : "") + (i ? "Then the gate tests it and puts it live." : "Next: the gate tests it and puts it live."), "~" + hm(new Date(+next + i * 36e5)))));
-  G.held.forEach(p => out.push(row("SHIP IT " + p.n, "ship", p, `Optional, only if you want it live: text Vesper "SHIP IT ${p.n}" in Telegram. Until then it just waits.`)));
+  G.held.forEach(p => out.push(row("SHIP IT " + p.n, "ship", p, `Needs your OK (money, member data, security or something irreversible): text Vesper "SHIP IT ${p.n}" when you want it live.`)));
   G.drafts.forEach(p => out.push(row("draft", "", p, "Not ready yet (still being finished or waiting on the PR before it). Nothing for you to do.")));
   G.live.forEach(p => out.push(row("live " + hm(new Date(p.m)), "live", p, "")));
-  el.innerHTML = `<div class="item"><div class="why" style="-webkit-line-clamp:unset">The ship gate puts one upgrade live about every hour: bug fixes first, then oldest first. Times are estimates. Nothing here needs you unless it says SHIP IT.${orderAt ? " Checked " + esc(fmtT(new Date(orderAt).toISOString())) + "." : ""}</div></div>`
+  el.innerHTML = `<div class="item"><div class="why" style="-webkit-line-clamp:unset">The ship gate puts one upgrade live about every hour: bug fixes first, then oldest first. Times are estimates. Nothing here needs you unless it says SHIP IT. When one goes live, Vesper tells you; reply \"undo <n>\" to take it back.${orderAt ? " Checked " + esc(fmtT(new Date(orderAt).toISOString())) + "." : ""}</div></div>`
     + (out.length ? out.join("") : `<div class="empty">No upgrades waiting.</div>`);
 }
 // Only what truly waits on Matthew. Ready app PRs are the gate's job (they're in Upgrade order) and drafts aren't
 // ready, so neither is an approval. Once Vesper's owner queue (vesper-relay #170) is installed, every item carries a
 // tag and is already a real ask, so it's shown as is.
 function asks(ap){ ap = ap || []; if (ap.some(a => a.tag)) return ap;
-  return ap.filter(a => { if (a.k !== "pr") return true; if (a.why === "SHIP IT") return true; if (/^draft/.test(a.why || "")) return false;
-    if (a.repo !== "Hybrid") return true; const p = (ORDER || []).find(x => x.n === a.n); return !!(p && isHeld(p)); }); }
+  return ap.filter(a => { if (a.k !== "pr") return true; if (/^draft/.test(a.why || "")) return false;
+    if (a.repo !== "Hybrid") return true; const p = (ORDER || []).find(x => x.n === a.n);
+    return p ? isHeld(p) : a.why === "SHIP IT"; }); }   // Vesper's feed still calls every product-team PR "SHIP IT"; since Nov 18 only NEEDS MATTHEW ones wait for him
 const FEED_API = "https://api.github.com/repos/matthewbaconn/Hybrid/contents/hq.json?ref=vesper/hq-data";
 const FEED_RAW = "https://raw.githubusercontent.com/matthewbaconn/Hybrid/vesper/hq-data/hq.json";
 const W = 360, H = 540;
@@ -946,6 +947,19 @@ function renderRooms(){ const el = document.getElementById("rooms"); if (!el) re
 // Everything below reads only what Vesper already publishes (the encrypted office, plus its release-2 block "x" once that
 // feed update is installed) and the public member count. When a number isn't in the feed, the page says so.
 const X = () => (PRIV && PRIV.x) || null;
+// Incidents (Nov 17): the detector (tools/signals.py on the cloud, the incident watch on Vesper's server) opens one
+// when a business signal crosses its line, gives it an owner, links the fix PR and closes it only after 24 h clear.
+const INC_STATE = {open: "open, no fix yet", fixing: "fix in progress", verifying: "fixed, being verified (24 h clear)", closed: "closed by the detector"};
+function incBody(P){
+  if (!P) return `<div class="none">Private: open your HQ link once on this device.</div>`;
+  if (!P.inc) return `<div class="none">The incident tracker isn't in this feed yet.</div>${NEEDS_FEED}`;
+  if (!P.inc.rows.length) return `<div class="none">No incidents in the last 7 days. The detector checks member-facing failures, sign-ups vs welcome emails, problem reports, the site, onboarding, activation and engagement.</div>`;
+  return `<div class="list" style="border:0;background:none">${P.inc.rows.map(r => li(
+    `<span class="pill ${r[2] === "closed" ? "g" : r[1] === "critical" || r[1] === "high" ? "r" : "a"}">${esc(r[1])}</span><b>${esc(r[5])}</b>`,
+    `${esc(r[6])}<br>${esc(INC_STATE[r[2]] || r[2])} · owner: ${esc(r[3])} (${esc(r[4])})${r[9] ? " · " + linkify("fix PR", r[9]) : ""}${r[10] ? ` · <span class="bad">escalated ${r[10]}x</span>` : ""}${r[11] ? ` · came back ${r[11]}x` : ""}`,
+    esc(r[2] === "closed" ? "closed " + fmtT(r[13]) : r[8] ? "due " + fmtT(r[8]) : ""))).join("")}</div>
+    <div class="note">${tag("sys")} Checked ${esc(fmtT(P.inc.t))} by ${P.inc.src === "server" ? "Vesper's server" : "the cloud detector"}. Nobody closes their own fix: an incident closes only after the signal stays clear for 24 hours.</div>`;
+}
 const NEEDS_FEED = `<span class="src na">Not available yet</span> <small class="w">arrives when Vesper's HQ feed update is installed</small>`;
 const roleName = id => TEAM[id] ? TEAM[id].n : id === "drill" ? "Recovery drill" : id === "claude-session" ? "Claude sessions" : id;
 const pctS = (a, b) => b ? Math.round(a / b * 100) + "%" : "–";
@@ -1098,6 +1112,7 @@ function renderOps(){
       ${card("Active jobs", `right now ${tag("rep")}`, working.length ? working.map(a => li(`<b>${esc(a.t.n)}</b> ${esc(nowText(a))}`, "", esc("since " + fmtT(rows[a.id] && rows[a.id][2])))).join("") : `<div class="none">Nobody is mid-run. Idle is shown as idle.</div>`)}
       ${card("Scheduled work", `next runs ${tag("sys")}`, next.length ? `<div class="list" style="border:0;background:none">${next.slice(0, 8).map(([t, a]) => li(`<b>${esc(a.t.n)}</b>`, esc(x && x.roles && x.roles[a.id] ? x.roles[a.id].name : a.t.t), esc(fmtT(t)))).join("")}</div>` : `<div class="none">No schedule in the feed.</div>`)}
       ${card("System health", "Vesper's own report", healthBody, "hero")}
+      ${card("Incidents", P && P.inc ? `${P.inc.rows.filter(r => r[2] !== "closed").length} open ${tag("sys")}` : "", incBody(P))}
       ${card("Alerts", `${alerts.length}`, alerts.length ? `<div class="list" style="border:0;background:none">${alerts.join("")}</div>` : `<div class="none">No alerts.</div>`)}
       ${card("Completed in 24 h", `${done.length} ${tag("rep")}`, done.length ? `<div class="list" style="border:0;background:none">${done.slice(0, 8).map(e => li(`<b>${esc(roleName(e[1]))}</b> ${esc(clip(e[3] || "finished a run", 130))}`, "", esc(fmtT(e[0])))).join("")}</div>` : `<div class="none">Nothing completed in the last 24 hours.</div>`)}
       ${card("Failed in 24 h", `${failed.length} ${tag("rep")}`, failed.length ? `<div class="list" style="border:0;background:none">${failed.map(e => li(`<span class="bad">${esc(roleName(e[1]))}</span> ${esc(clip(e[3] || e[2], 130))}`, "", esc(fmtT(e[0])))).join("")}</div>` : `<div class="none">No failed runs in the last 24 hours.</div>`)}
@@ -1353,6 +1368,8 @@ function computeAlerts(){
   if (P) (P.a || []).forEach(a => out.push({id: "appr:" + (a.repo || "b") + a.n, lvl: "a", t: "Waiting for you: " + clip(a.title, 70), s: explain(a).how, go: "approvals"}));
   if (x && x.health && x.health.errors_24h) out.push({id: "health:" + x.health.at, lvl: "a", t: `Vesper logged ${x.health.errors_24h} error${x.health.errors_24h === 1 ? "" : "s"} in 24 h`, s: x.health.status, go: "ops"});
   if (x) (x.verify || []).filter(v => v[4] === "fail").forEach(v => out.push({id: "vfail:" + v[0], lvl: "r", t: "Failed verification: " + clip(v[3], 70), s: v[5] || "", go: "team"}));
+  if (P && P.inc) P.inc.rows.filter(r => r[2] !== "closed").forEach(r => out.push({id: "inc:" + r[0] + ":" + r[2] + ":" + r[10] + ":" + r[11], lvl: r[1] === "critical" || r[1] === "high" ? "r" : "a",
+    t: `${r[1] === "critical" ? "Critical: " : ""}${clip(r[5], 70)}`, s: `${INC_STATE[r[2]] || r[2]} · ${r[3]}${r[10] ? " · escalated" : ""}${r[11] ? " · came back" : ""}`, go: "ops"}));
   if (x) (x.merged || []).slice(0, 3).forEach(m => out.push({id: "ship:" + m[1], lvl: "g", t: `Shipped #${m[1]}: ${clip(m[2], 70)}`, s: fmtT(m[0]), go: "ops"}));
   return out;
 }
@@ -1505,12 +1522,16 @@ function renderGrowth(){
    <div class="card"><h4>Where sign-ups came from <i>last 7 days ${tag("sys")}</i></h4>${bars(g.src7, "No sign-ups in the last 7 days.")}
      <h4 style="margin-top:14px">All time</h4>${bars(g.src_all, "No data yet.")}</div>
    <div class="card"><h4>Activation funnel <i>all real members ${tag("sys")}</i></h4>${typeof f.signed_up !== "number" ? `<div class="none">Not measured yet.</div>` :
-     step("Signed up", f.signed_up, f.signed_up) + step("Built a plan", f.plan || 0, f.signed_up) + step("Workout (in app)", f.workout || 0, f.signed_up) +
-     `<div class="note"><span style="color:var(--amber)">Workouts synced from Strava or Garmin aren't counted here yet, so the workout line undercounts.</span><br>${pct(f.plan || 0, f.signed_up)} build a plan · ${pct(f.workout || 0, f.signed_up)} check off a workout in the app.<br>Still active after day 7: <b style="color:var(--ink)">${f.active_d7 || 0} of ${f.d7_eligible || 0}</b> who have been here a week (${pct(f.active_d7 || 0, f.d7_eligible || 0)}).</div>`}</div>
+     step("Signed up", f.signed_up, f.signed_up) + step("Built a plan", f.plan || 0, f.signed_up) +
+     (typeof f.trained === "number" ? step("Trained (check-off or synced run)", f.trained, f.signed_up) + step("Trained in the last 7 days", f.trained_7d || 0, f.signed_up) +
+       (typeof f.returned === "number" ? step("Came back on a later day", f.returned, f.signed_up) + step("Joined through an invite", f.via_invite || 0, f.signed_up) + step("Brought someone", f.referrers || 0, f.signed_up) : "")
+       : step("Workout (in app)", f.workout || 0, f.signed_up)) +
+     `<div class="note">${typeof f.trained === "number" ? `${pct(f.plan || 0, f.signed_up)} build a plan · ${pct(f.trained, f.signed_up)} have trained (${f.checked_off ?? f.workout ?? 0} checked off in the app).`
+       : `<span style="color:var(--amber)">Workouts synced from Strava or Garmin aren't counted here yet, so the workout line undercounts.</span><br>${pct(f.plan || 0, f.signed_up)} build a plan · ${pct(f.workout || 0, f.signed_up)} check off a workout in the app.`}<br>Still active after day 7: <b style="color:var(--ink)">${f.active_d7 || 0} of ${f.d7_eligible || 0}</b> who have been here a week (${pct(f.active_d7 || 0, f.d7_eligible || 0)}).</div>`}</div>
    <div class="card"><h4>This week's growth fix <i>${tag("rep")}</i></h4>${PRIV.fix ? `<div style="font-size:14px">${esc(PRIV.fix.replace(/^GROWTH FIX OF THE WEEK:?\s*/i, ""))}</div>` : `<div class="none">None assigned yet. The analyst picks one fix a week from these numbers and grades last week's.</div>`}</div>
    ${g.visits7 ? `<div class="card"><h4>Website visits <i>${visitsFull() ? "last 7 days" : "since " + esc(dstr(VISITS_SINCE))} · page loads, bots filtered${tag("sys")}</i></h4>${bars(Object.fromEntries(Object.entries(g.visits7).map(([k, v]) => [k === "/" ? "Home page" : k === "app:/" ? "App front door" : k.replace(/^\//, ""), v])), "No visits counted yet.")}
      ${!visitsFull() ? `<div class="note">Counting began ${esc(dstr(VISITS_SINCE))}, so this is not a full week yet. Visits against sign-ups shows from ${esc(dstr(VISITS_FULL))}, when both cover the same 7 days.</div>` : G.n7 !== null ? `<div class="note">${sum(Object.fromEntries(Object.entries(g.visits7).filter(([k]) => k !== "app:/")))} site visits → <b style="color:var(--ink)">${G.n7}</b> sign-up${G.n7 === 1 ? "" : "s"} in the same 7 days.</div>` : ""}</div>` : ""}
-   <div class="card"><h4>Not measured yet</h4><div class="note" style="margin:0">${g.visits7 ? "" : "Website visits (counter is being added) · "}Instagram reach · search rankings · synced workouts · day-30 retention · revenue (the app is free for founding members). These show here once they are tracked; nothing is estimated.</div></div>
+   <div class="card"><h4>Not measured yet</h4><div class="note" style="margin:0">${g.visits7 ? "" : "Website visits (counter is being added) · "}Instagram reach · search rankings · ${typeof f.trained === "number" ? "" : "synced workouts · "}day-30 retention · revenue (the app is free for founding members). These show here once they are tracked; nothing is estimated.</div></div>
   </div>`;
 }
 function renderMoney(){

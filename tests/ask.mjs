@@ -1,3 +1,4 @@
+// Released to all members Nov 18; PREVIEW_ADD puts it back in preview so the owner-only switch stays tested.
 // Ask-bar test (Nov 16; released to members Nov 17, so this test puts it back in preview with PREVIEW_ADD). Runs its own local API against a stand-in AI and a throwaway local
 // database, so it never touches live data or spends anything. Checks that:
 //   - only the owner's account can use /api/ask while "ask" is in PREVIEW (everyone else gets 404, features.ask false)
@@ -26,7 +27,7 @@ const dir = mkdtempSync(join(tmpdir(), "ask-"));
 const sql = q => JSON.parse(execFileSync("npx", ["wrangler", "d1", "execute", "hybrid", "--local", "--persist-to", dir, "--json", "--command", q], {encoding: "utf8", stdio: ["ignore", "pipe", "ignore"]}))[0].results;
 execFileSync("npx", ["wrangler", "d1", "migrations", "apply", "hybrid", "--local", "--persist-to", dir], {stdio: "ignore", env: {...process.env, CI: "1"}});
 const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--local-upstream", "127.0.0.1:" + PORT, "--persist-to", dir,
-  "--var", "ANTHROPIC_URL:http://127.0.0.1:" + MOCK, "--var", "ANTHROPIC_API_KEY:test-key", "--var", "OWNER_EMAIL:" + OWNER, "--var", "PREVIEW_ADD:ask"], {stdio: "ignore", detached: true});
+  "--var", "ANTHROPIC_URL:http://127.0.0.1:" + MOCK, "--var", "ANTHROPIC_API_KEY:test-key", "--var", "OWNER_EMAIL:" + OWNER, "--var", "PREVIEW_ADD:ask,rough"], {stdio: "ignore", detached: true});
 const stop = () => { try { process.kill(-dev.pid); } catch(e){} mock.close(); rmSync(dir, {recursive: true, force: true}); };
 const iso = d => d.toISOString().slice(0, 10), addDays = (s, n) => { const d = new Date(s + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return iso(d); };
 
@@ -86,8 +87,41 @@ try {
   reply = "Just rest today.";
   const jP = await (await call(owner, "POST", "/api/ask", {q: "Should I rest?"})).json();
   ok(jP.answer === "Just rest today." && Array.isArray(jP.actions) && jP.actions.length === 0, "a plain-text reply is passed through with no actions");
+  ok(!("garmin" in jP), "no Garmin data went in, so the answer carries no Garmin attribution mark");
   ok((await call(owner, "POST", "/api/ask", {q: " "})).status === 400, "an empty question is refused");
   ok(sql("SELECT count FROM ai_usage WHERE user_id = '" + uid + "' AND day LIKE 'ask:%'")[0].count === 4, "each answered question is counted toward the daily cap");
+
+  // 3b. rough night (preview "rough", owner only): the chip is offered and the coach is told the situation
+  reply = {answer: "Take it easy today.", actions: []};
+  const meR = await (await call(owner, "GET", "/api/me")).json(), memR = await (await call(member, "GET", "/api/me")).json();
+  ok(meR.features.rough === true && memR.features.rough === false, "rough night: on for the owner, off for other members while in preview");
+  await call(owner, "POST", "/api/ask", {q: "Rough night: adjust today", kind: "rough"});
+  const roughSent = seen[seen.length - 1], roughMsg = JSON.parse(roughSent.messages.slice(-1)[0].content);
+  ok(roughMsg.situation === "rough_night" && /ROUGH NIGHT/.test(roughSent.system) && /never judge/.test(roughSent.system) && /medical help/.test(roughSent.system) && /Never suggest medicines/.test(roughSent.system), "rough night: the coach is told the situation and the safety rules");
+  await call(owner, "POST", "/api/ask", {q: "What's today?"});
+  ok(!("situation" in JSON.parse(seen[seen.length - 1].messages.slice(-1)[0].content)), "rough night: an ordinary question carries no situation");
+
+  // 4. the AI coach is the member's own choice (Nov 17). No Garmin link and never asked: on, as before.
+  const me = async () => (await (await call(owner, "GET", "/api/me")).json());
+  let m = await me();
+  ok(m.ai && m.ai.on === true && m.ai.needs === false && m.ai.asked === false && m.coach === true, "AI coach: no Garmin, never asked -> on, nothing to answer");
+  const sentBefore = seen.length;
+  const off = await (await call(owner, "PUT", "/api/settings", {ai: false})).json();
+  ok(off.ai && off.ai.on === false && off.ai.asked === true && typeof off.settings.ai_at === "string", "AI coach: switching it off is saved, with the time");
+  const refused = await call(owner, "POST", "/api/ask", {q: "What's my workout today?"}), rj = await refused.json();
+  ok(refused.status === 403 && /AI coach is off/.test(rj.error || "") && seen.length === sentBefore, "AI coach off: the coach bar is refused and nothing is sent to the AI (" + refused.status + ")");
+  ok((await call(owner, "POST", "/api/mealplan", {})).status === 403 && (await call(owner, "POST", "/api/review/feel", {feel: "hard", activity_id: "x"})).status === 403 && seen.length === sentBefore, "AI coach off: meal prep ideas and 'how did it feel' coaching are refused too");
+  m = await me();
+  ok(m.ai.on === false && m.coach === false && m.features.ask === true, "AI coach off: the app is told it is off");
+  // a Garmin link and never asked: paused until they answer
+  sql("UPDATE settings SET data = json_remove(data, '$.ai', '$.ai_at') WHERE user_id = '" + uid + "'; INSERT INTO garmin_links (user_id, garmin_user_id, access_token, refresh_token, expires_at, connected) VALUES ('" + uid + "', 'g-ask', 't', 'r', " + (Math.floor(Date.now() / 1000) + 86400) + ", '" + new Date().toISOString().slice(0, 10) + "')");
+  m = await me();
+  ok(m.ai.on === false && m.ai.needs === true && m.ai.asked === false, "AI coach: Garmin linked and never asked -> paused, and the app is told to ask");
+  ok((await call(owner, "POST", "/api/ask", {q: "Hello?"})).status === 403 && seen.length === sentBefore, "AI coach: until they answer, nothing of a Garmin member's goes to the AI");
+  const on = await (await call(owner, "PUT", "/api/settings", {ai: true})).json();
+  const back = await call(owner, "POST", "/api/ask", {q: "And now?"});
+  ok(on.ai.on === true && on.ai.needs === false && back.status === 200 && seen.length === sentBefore + 1, "AI coach: after they say yes it works again");
+  ok(sql("SELECT COUNT(*) AS n FROM events WHERE kind = 'ai_consent'")[0].n === 2, "AI coach: each yes or no is written to the event log");
 } catch(e){ ok(false, "test crashed: " + (e && e.stack || e)); }
 finally { stop(); }
 console.log(failed ? failed + " problem(s)" : "ALL PASS");
