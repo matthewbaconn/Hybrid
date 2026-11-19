@@ -1,6 +1,7 @@
 import "../plan.js";
 import { buildPushPayload } from "@block65/webcrypto-web-push";
 import { safeDetail, errName, apiErrType, routeOf, GARMIN_TYPES } from "./events_safe.mjs";
+import { visitKind } from "./visits.mjs";
 const HP = globalThis.HP;
 // Hybrid API: accounts, saved plans, workout check-offs, food log and AI food reading.
 // Runs on Cloudflare Workers with a D1 database (binding DB). Secrets: ANTHROPIC_API_KEY.
@@ -104,7 +105,7 @@ async function ownerIdRaw(env){
    "ask" (the coach bar) was released Nov 17 after its stress test passed, so the list is empty for now.
    PREVIEW_ADD is for tests only (tests/ask.mjs sets it to "ask" so the owner-only switch stays tested); it can only
    narrow who sees a feature, never widen it. */
-const PREVIEW = new Set(["liftdays", "rough", "refreward", "source"]);   // ready2 (new readiness card) released Nov 17: Matthew, "release card";   // source: one-time "How did you hear about Mileset?" (Nov 18)   // "refreward": bring 2 training partners -> a plan review from Matthew (built Nov 17, audit P1-8);   // rough = "Rough night: adjust today" in the coach bar (Nov 17), Matthew's account first;   // liftdays: pin which days you lift (setup, "When can you run?"), Nov 17. "rename" was released Nov 17 on Matthew's word ("Release rename")
+const PREVIEW = new Set([]);   // Nov 18 6:13am, Matthew: "Everything should be live for all clients": liftdays, rough, refreward and source released; ready2, rename and ask released Nov 17
 const REWARD_NEED = 2;   // referral reward: training partners who joined through your link and built a plan
 const previewOk = async (env, user, k) => !(PREVIEW.has(k) || String(env.PREVIEW_ADD || "").split(",").includes(k)) || user.id === await ownerId(env);
 
@@ -205,11 +206,15 @@ function viewPath(host, pathname){
 function countView(env, ctx, req, host, u, r){
   try {
     if (req.method !== "GET" || r.status !== 200 || !/text\/html/i.test(r.headers.get("Content-Type") || "")) return;
-    const ua = req.headers.get("User-Agent") || "";
-    if (!ua || BOT_UA.test(ua) || /prefetch|prerender/i.test(req.headers.get("Purpose") || req.headers.get("Sec-Purpose") || "")) return;
+    const ua = req.headers.get("User-Agent") || "", purpose = req.headers.get("Purpose") || req.headers.get("Sec-Purpose") || "";
     const p = viewPath(host, u.pathname); if (!p) return;
+    const day = new Date().toISOString().slice(0, 10);
+    // Nov 17 diagnostic: every page load (robots and tests too) as one broad label; only the label is stored (api/visits.mjs)
+    ctx.waitUntil(env.DB.prepare("INSERT INTO page_view_kinds (day, path, kind, n) VALUES (?, ?, ?, 1) ON CONFLICT(day, path, kind) DO UPDATE SET n = n + 1")
+      .bind(day, p, visitKind(ua, purpose)).run().catch(() => {}));
+    if (!ua || BOT_UA.test(ua) || /prefetch|prerender/i.test(purpose)) return;
     ctx.waitUntil(env.DB.prepare("INSERT INTO page_views (day, path, n) VALUES (?, ?, 1) ON CONFLICT(day, path) DO UPDATE SET n = n + 1")
-      .bind(new Date().toISOString().slice(0, 10), p).run().catch(() => {}));
+      .bind(day, p).run().catch(() => {}));
   } catch(e){}
 }
 async function stravaToken(env, link){
@@ -280,9 +285,9 @@ async function stravaSync(env, user, ctx){
   // a Strava copy stored before its Garmin twin was known (older data): what the member added to it moves to the
   // Garmin copy, then the Strava copy and its review go (garminPush does the same when the Garmin copy arrives second)
   const SAME = "s.user_id = g.user_id AND s.date = g.date AND s.type = g.type AND ABS(s.minutes - g.minutes) <= 3 AND ABS(s.mi - g.mi) <= 0.2";
-  const twins = (await env.DB.prepare("SELECT g.id AS gid, s.id AS sid, s.title AS title, s.rpe AS rpe, s.venue AS venue FROM activities g JOIN activities s ON " + SAME + " AND s.source = 'strava' WHERE g.user_id = ? AND g.source = 'garmin'").bind(user.id).all()).results;
+  const twins = (await env.DB.prepare("SELECT g.id AS gid, s.id AS sid, s.title AS title, s.rpe AS rpe, s.venue AS venue, s.descr AS descr, s.type_set AS type_set, s.tag AS tag, s.note AS note, s.gear_id AS gear_id FROM activities g JOIN activities s ON " + SAME + " AND s.source = 'strava' WHERE g.user_id = ? AND g.source = 'garmin'").bind(user.id).all()).results;
   for (const x of twins) await env.DB.batch([
-    env.DB.prepare("UPDATE activities SET title = COALESCE(title, ?), rpe = COALESCE(rpe, ?), venue = COALESCE(venue, ?) WHERE id = ?").bind(x.title, x.rpe, x.venue, x.gid),
+    env.DB.prepare("UPDATE activities SET title = COALESCE(title, ?), rpe = COALESCE(rpe, ?), venue = COALESCE(venue, ?), descr = COALESCE(descr, ?), type_set = COALESCE(type_set, ?), tag = COALESCE(tag, ?), note = COALESCE(note, ?), gear_id = COALESCE(gear_id, ?) WHERE id = ?").bind(x.title, x.rpe, x.venue, x.descr, x.type_set, x.tag, x.note, x.gear_id, x.gid),
     env.DB.prepare("DELETE FROM reviews WHERE activity_id = ?").bind(x.sid),   // written from Strava's numbers: it does not move onto a copy the AI can read
     env.DB.prepare("DELETE FROM activities WHERE id = ? AND user_id = ? AND source = 'strava'").bind(x.sid, user.id)]);
   // lap splits for runs from the last 2 weeks that don't have them yet (needed to check workout reps)
@@ -356,7 +361,7 @@ async function garminPush(env, data, ctx){
     const local = gDate(a.startTimeInSeconds, a.startTimeOffsetInSeconds), date = local.slice(0, 10), type = G_TYPE(a.activityType), mi = Math.round((a.distanceInMeters || 0) / 1609.34 * 100) / 100, min = Math.round((a.durationInSeconds || 0) / 60);
     // same workout already came in from Strava (the person has both linked): the Garmin copy replaces it (Nov 17), so
     // the coach can read the run. Strava data can never go to the AI; Garmin data may.
-    const twin = await env.DB.prepare("SELECT id, title, rpe, venue FROM activities WHERE user_id = ? AND source = 'strava' AND date = ? AND type = ? AND ABS(minutes - ?) <= 3 AND ABS(mi - ?) <= 0.2 LIMIT 1").bind(u, date, type, min, mi).first();
+    const twin = await env.DB.prepare("SELECT id, title, rpe, venue, descr, type_set, tag, note, gear_id FROM activities WHERE user_id = ? AND source = 'strava' AND date = ? AND type = ? AND ABS(minutes - ?) <= 3 AND ABS(mi - ?) <= 0.2 LIMIT 1").bind(u, date, type, min, mi).first();
     const known = await env.DB.prepare("SELECT 1 FROM activities WHERE user_id = ? AND source = 'garmin' AND ext_id = ?").bind(u, ext).first();
     await env.DB.prepare("INSERT INTO activities (id, user_id, source, ext_id, date, type, name, mi, minutes, cal, avg_hr, start_local, elev_ft, sport, max_hr, created) VALUES (?, ?, 'garmin', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
       (a._fromDetail ? "ON CONFLICT (user_id, source, ext_id) DO NOTHING" : "ON CONFLICT (user_id, source, ext_id) DO UPDATE SET date = excluded.date, type = excluded.type, name = excluded.name, mi = excluded.mi, minutes = excluded.minutes, cal = excluded.cal, avg_hr = excluded.avg_hr, start_local = excluded.start_local, elev_ft = excluded.elev_ft, sport = excluded.sport, max_hr = excluded.max_hr"))
@@ -368,7 +373,7 @@ async function garminPush(env, data, ctx){
       // Strava copy was already announced, this second review is silent (one run, one notification).
       const had = await env.DB.prepare("SELECT 1 FROM reviews WHERE activity_id = ?").bind(twin.id).first();
       await env.DB.batch([
-        env.DB.prepare("UPDATE activities SET title = COALESCE(title, ?), rpe = COALESCE(rpe, ?), venue = COALESCE(venue, ?) WHERE user_id = ? AND source = 'garmin' AND ext_id = ?").bind(twin.title, twin.rpe, twin.venue, u, ext),
+        env.DB.prepare("UPDATE activities SET title = COALESCE(title, ?), rpe = COALESCE(rpe, ?), venue = COALESCE(venue, ?), descr = COALESCE(descr, ?), type_set = COALESCE(type_set, ?), tag = COALESCE(tag, ?), note = COALESCE(note, ?), gear_id = COALESCE(gear_id, ?) WHERE user_id = ? AND source = 'garmin' AND ext_id = ?").bind(twin.title, twin.rpe, twin.venue, twin.descr, twin.type_set, twin.tag, twin.note, twin.gear_id, u, ext),
         env.DB.prepare("DELETE FROM reviews WHERE activity_id = ?").bind(twin.id),
         env.DB.prepare("DELETE FROM activities WHERE id = ? AND user_id = ? AND source = 'strava'").bind(twin.id, u)]);
       if (had) (quiet[u] = quiet[u] || []).push(ext);
@@ -405,6 +410,7 @@ async function garminPush(env, data, ctx){
     const r = d.restingHeartRateInBeatsPerMinute, st = d.averageStressLevel;
     await saveHealth(env, u, d.calendarDate, {rhr: r >= 25 && r <= 150 ? Math.round(r) : null, steps: d.steps >= 0 && d.steps <= 150000 ? Math.round(d.steps) : null,
       active_cal: d.activeKilocalories >= 0 && d.activeKilocalories <= 8000 ? Math.round(d.activeKilocalories) : null, stress: st >= 0 && st <= 100 ? Math.round(st) : null}, "garmin");
+    if (st >= 0) ctx.waitUntil(stressCheck(env, u, d.calendarDate, {high_s: d.highStressDurationInSeconds, avg: st, qualifier: d.stressQualifier}).catch(e => console.log("stress", e && e.message)));
   }
   for (const v of data.hrv || []){
     const u = uid(v); if (!u) continue; seen[u] = 1;
@@ -441,11 +447,17 @@ async function garminForget(env, userId, tellGarmin){
 }
 
 /* ---------- each person's data, in their own time zone ---------- */
-const DEFAULT_SETTINGS = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", run_time: "07:00", n_morning: true, n_run: true, n_weekly: true, n_bed: true};
+const DEFAULT_SETTINGS = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", run_time: "07:00", n_morning: true, n_run: true, n_weekly: true, n_bed: true, n_stress: true};
 function localNow(tz){
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false, weekday: "short"})
     .formatToParts(new Date()).map(p => [p.type, p.value]));
   return {date: parts.year + "-" + parts.month + "-" + parts.day, hm: (parts.hour === "24" ? "00" : parts.hour) + ":" + parts.minute, weekday: parts.weekday};
+}
+const ACT_TAGS = ["race", "long", "workout", "easy", "recovery", "treadmill", "commute", "group"];
+// a member's shoes with the miles on each: what they started with plus every workout they're set on
+async function gearOf(env, userId){
+  return (await env.DB.prepare("SELECT g.id, g.name, g.start_mi, g.retired, g.start_mi + COALESCE((SELECT SUM(a.mi) FROM activities a WHERE a.user_id = g.user_id AND a.gear_id = g.id), 0) AS mi FROM gear g WHERE g.user_id = ? ORDER BY g.retired, g.created").bind(userId).all()).results
+    .map(g => ({...g, mi: Math.round(g.mi * 10) / 10, retired: !!g.retired}));
 }
 /* crew leaderboard: nickname + one weekly total per member. Nothing else about anyone is shared. */
 async function crewsFor(env, userId, weekOf){
@@ -792,9 +804,27 @@ async function wakeUp(env, userId, date){
   if (!U.checkins[L.date] && (await aiState(env, userId, st)).on && (await coachUsage(env, userId))) await morningNote(env, userId, L.date).catch(e => console.log("wake note", e && e.message));
   if (st.n_morning){
     const fbk = HP.feedback(U.plan, U.acts, L.date), adj = ["Train as planned", "Today's session is trimmed", "Easy day or rest today"][r.level];
-    await pushTo(env, userId, {title: "Readiness " + r.score + " · " + r.word, body: adj + ". Today: " + sessionsText(U, L.date, fbk) + ".", tag: "morning-" + L.date});   // the watch already sent the numbers: no "check in" ask
+    const odd = HP.sleepOutlier(U.dev, L.date);   // Nov 18: a night far outside their normal is named, with what it usually means
+    if (odd) await logEvent(env, "sleep_outlier", true, odd.dir + " " + odd.diff);
+    await pushTo(env, userId, {title: (odd ? (odd.dir === "short" ? "Short night · " : "Long night · ") : "") + "Readiness " + r.score + " · " + r.word,
+      body: (odd ? odd.text + " " : "") + adj + ". Today: " + sessionsText(U, L.date, fbk) + ".", tag: "morning-" + L.date});   // the watch already sent the numbers: no "check in" ask
     await once(env, userId, "morning", L.date);   // no second morning reminder
   }
+}
+/* Stress nudges (Matthew, Nov 18). Each Garmin daily summary for today (it arrives every time the watch syncs) is checked;
+   a stressful stretch gets one push a day, between 8am and 9pm local, if the member allows it (settings n_stress). */
+async function stressCheck(env, userId, date, today){
+  const st = await settingsOf(env, userId), L = localNow(st.tz);
+  if (st.n_stress === false || date !== L.date || L.hm < "08:00" || L.hm >= "21:00") return;
+  if (await env.DB.prepare("SELECT 1 FROM notif_log WHERE user_id = ? AND kind = 'stress' AND day = ?").bind(userId, L.date).first()) return;
+  const hist = (await env.DB.prepare("SELECT stress FROM health_daily WHERE user_id = ? AND date < ? AND date >= ? AND stress IS NOT NULL ORDER BY stress").bind(userId, L.date, HP.addDays(L.date, -28)).all()).results.map(x => x.stress);
+  const usual = hist.length >= 5 ? hist[Math.floor(hist.length / 2)] : null;
+  let level = null;
+  try { const U = await loadUser(env, userId, L.date); const r = U ? HP.readiness(U.checkins[L.date], HP.devSignals(U.dev, L.date)) : null; level = r ? r.level : null; } catch(e){}
+  const n = HP.stressNudge(today, usual, level); if (!n) return;
+  if (!(await once(env, userId, "stress", L.date))) return;
+  await logEvent(env, "stress_nudge", true, n.kind);
+  await pushTo(env, userId, {title: n.title, body: n.body, tag: "stress-" + L.date});
 }
 /* ---------- push notifications ---------- */
 async function pushTo(env, userId, msg){
@@ -842,17 +872,65 @@ function weeklySummary(U, today){
   ].filter(Boolean);
   return {title: "Week done: " + Math.round(extraMi * 10) / 10 + " of " + Math.round(plannedMi * 10) / 10 + " mi", body: lines.join("\n"), tag: "weekly-" + today};
 }
+// Activation funnel, real members only, COUNTS only (audit P1-2). "workout"/"trained" = built a plan and ever trained:
+// a check-off in the app OR a synced/logged workout. "checked_off" counts in-app check-offs alone.
+async function funnelCounts(env){
+  const d7 = "date(u.created, '+7 days')", cut = new Date(Date.now() - 7 * 864e5).toISOString(), wk = cut.slice(0, 10);
+  const P = "EXISTS(SELECT 1 FROM profiles p WHERE p.user_id = u.id)", D0 = "substr(u.created, 1, 10)";
+  const f = await env.DB.prepare(
+    "SELECT COUNT(*) AS signed_up, SUM(" + P + ") AS plan, " +
+    "SUM(" + P + " AND EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id)) AS checked_off, " +
+    // A synced workout counts only if it happened on or after the sign-up day (a Strava/Garmin history import of
+    // older runs is not training WITH Mileset; Matthew, Nov 18: "accurate measurements of actual member behavior").
+    "SUM(" + P + " AND (EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id) OR EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.date >= " + D0 + "))) AS trained, " +
+    // Activation (docs/STRATEGY.md #4): plan holders who joined 3+ days ago, and how many of them trained (check-off
+    // OR synced/logged workout) within their first 3 days.
+    "SUM(" + P + " AND u.created <= ?3) AS act72_eligible, " +
+    "SUM(" + P + " AND u.created <= ?3 AND (EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id AND substr(d.key, 1, 10) BETWEEN " + D0 + " AND date(u.created, '+3 days')) OR " +
+    "EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.date BETWEEN " + D0 + " AND date(u.created, '+3 days')))) AS act72, " +
+    "SUM(" + P + " AND (EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id AND substr(d.key, 1, 10) >= ?2) OR EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.date >= ?2))) AS trained_7d, " +
+    "SUM(u.created <= ?1) AS d7_eligible, SUM(u.created <= ?1 AND (" +
+    "EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id AND substr(d.key, 1, 10) >= " + d7 + ") OR " +
+    "EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.source = 'manual' AND a.date >= " + d7 + ") OR " +
+    "EXISTS(SELECT 1 FROM food x WHERE x.user_id = u.id AND x.date >= " + d7 + ") OR " +
+    "EXISTS(SELECT 1 FROM checkins c WHERE c.user_id = u.id AND c.date >= " + d7 + ") OR " +
+    "EXISTS(SELECT 1 FROM sessions s WHERE s.user_id = u.id AND substr(s.created, 1, 10) >= " + d7 + "))) AS active_d7, " +
+    "SUM(EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id AND substr(d.key, 1, 10) > " + D0 + ") OR " +
+    "EXISTS(SELECT 1 FROM food x WHERE x.user_id = u.id AND x.date > " + D0 + ") OR " +
+    "EXISTS(SELECT 1 FROM checkins c WHERE c.user_id = u.id AND c.date > " + D0 + ") OR " +
+    "EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.date > " + D0 + ") OR " +
+    "EXISTS(SELECT 1 FROM sessions s WHERE s.user_id = u.id AND substr(s.created, 1, 10) > " + D0 + ")) AS returned, " +
+    "SUM(u.ref IS NOT NULL AND u.ref != u.id) AS via_invite, " +
+    "SUM(EXISTS(SELECT 1 FROM users r WHERE r.ref = u.id AND r.id != u.id AND " + REAL("r.") + ")) AS referrers " +
+    "FROM users u WHERE " + REAL("u.")).bind(cut, wk, new Date(Date.now() - 3 * 864e5).toISOString()).first();
+  const n = k => f[k] || 0;
+  return {signed_up: n("signed_up"), plan: n("plan"), workout: n("trained"), checked_off: n("checked_off"), trained: n("trained"),
+          trained_7d: n("trained_7d"), d7_eligible: n("d7_eligible"), active_d7: n("active_d7"),
+          returned: n("returned"), via_invite: n("via_invite"), referrers: n("referrers"),
+          act72_eligible: n("act72_eligible"), act72: n("act72")};
+}
+
+// Today's counts into funnel_daily (one row per UTC day, totals only) so Vesper's reports can read them without
+// ever touching activities or Strava/Garmin tables.
+async function saveFunnelDaily(env){
+  const f = await funnelCounts(env), now = new Date().toISOString();
+  await env.DB.prepare("INSERT OR REPLACE INTO funnel_daily (day, signed_up, plan, checked_off, trained, trained_7d, d7_eligible, active_d7, returned, via_invite, referrers, act72_eligible, act72, updated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+    .bind(now.slice(0, 10), f.signed_up, f.plan, f.checked_off, f.trained, f.trained_7d, f.d7_eligible, f.active_d7, f.returned, f.via_invite, f.referrers, f.act72_eligible, f.act72, now).run();
+}
+
 async function cron(env, ctx){
   await logEvent(env, "cron", true);
   await outbox(env).catch(e => logEvent(env, "bulk_mail", false, "outbox " + errName(e)));
   await day7Nudges(env).catch(e => logEvent(env, "nudge_mail", false, "cron " + errName(e)));
   await firstWorkoutNudges(env).catch(e => logEvent(env, "first_workout", false, "cron " + errName(e)));
+  await saveFunnelDaily(env).catch(e => logEvent(env, "funnel_daily", false, "cron " + errName(e)));
   // once a day (after 4 am local) refresh the next 7 days of workouts on each athlete's Garmin
   for (const {user_id} of (await env.DB.prepare("SELECT user_id FROM garmin_links WHERE permissions LIKE '%WORKOUT_IMPORT%'").all()).results){
     try { const L = localNow((await settingsOf(env, user_id)).tz); if (L.hm >= "04:00" && await once(env, user_id, "gwork", L.date)) await garminWorkouts(env, user_id); }
     catch(e){ await logEvent(env, "garmin_workout", false, "cron " + errName(e)); }
   }
   await env.DB.prepare("DELETE FROM events WHERE ts < ?").bind(new Date(Date.now() - 21 * 864e5).toISOString()).run();
+  await env.DB.prepare("DELETE FROM page_view_kinds WHERE day < ?").bind(new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)).run().catch(() => {});   // diagnostic counts: 30 days
   await env.DB.prepare("DELETE FROM notif_log WHERE day < ?").bind(new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)).run();
   const users = (await env.DB.prepare("SELECT DISTINCT u.id FROM users u LEFT JOIN push_subs p ON p.user_id = u.id LEFT JOIN strava_links s ON s.user_id = u.id WHERE p.user_id IS NOT NULL OR s.user_id IS NOT NULL").all()).results;
   for (const {id} of users){
@@ -960,16 +1038,17 @@ async function day7Nudges(env){
   }
 }
 /* first-workout reminder (B7, Matthew approved Nov 15: "Let's do 1"; member contact policy): once per member ever,
-   3+ days after they built (or last changed) a plan that has had sessions since, when they have never checked off a
+   3+ days after they signed up, once their plan has been unchanged for a day (Nov 18: 7 of 12 plan holders had changed
+   their plan in the last 3 days, and each change used to restart the 3-day wait) and has had sessions since, when they have never checked off a
    workout and nothing has synced. One push if they turned notifications on, otherwise one email (never to unsubscribed,
    test or owner accounts, never within 48 h of another email). 9 am-7 pm their time. Uses the plan only, never Strava data. */
 async function firstWorkoutNudges(env){
   const t = Date.now(), iso = d => new Date(t - d * 864e5).toISOString();
   const rows = (await env.DB.prepare(
-    "SELECT u.id, u.name, u.email, u.no_mail FROM users u JOIN profiles p ON p.user_id = u.id WHERE " + REAL("u.") + " AND p.updated <= ? " +
+    "SELECT u.id, u.name, u.email, u.no_mail FROM users u JOIN profiles p ON p.user_id = u.id WHERE " + REAL("u.") + " AND u.created <= ? AND p.updated <= ? " +
     "AND NOT EXISTS (SELECT 1 FROM done d WHERE d.user_id = u.id) AND NOT EXISTS (SELECT 1 FROM activities a WHERE a.user_id = u.id) " +
     "AND NOT EXISTS (SELECT 1 FROM lifecycle_mail l WHERE l.user_id = u.id AND l.kind = 'first_workout') LIMIT 20"
-  ).bind(iso(3)).all()).results;
+  ).bind(iso(3), iso(1)).all()).results;   // 3+ days a member, plan unchanged for a day: tweaking the plan no longer pushes it back 3 days
   if (!rows.length) return;
   const bulk = await env.DB.prepare("SELECT 1 FROM mail_sent WHERE sent_at > ? AND sent > 0").bind(iso(2)).first();
   for (const u of rows){
@@ -1387,7 +1466,7 @@ async function route(req, env, path, ctx){
     const [c, w, a, s] = await env.DB.batch([
       env.DB.prepare("SELECT date, sleep_h, sleep_q, soreness, energy, stress FROM checkins WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since),
       env.DB.prepare("SELECT date, lb FROM weights WHERE user_id = ? AND date >= ? ORDER BY date").bind(user.id, since120),
-      env.DB.prepare("SELECT id, source, ext_id, date, type, COALESCE(title, name) AS name, CASE WHEN title IS NOT NULL THEN name END AS src_name, mi, minutes, cal, avg_hr, work_pace, CASE WHEN date >= ? THEN laps END AS laps, CASE WHEN date >= ? THEN poly END AS poly, start_local, elev_ft, sport, max_hr, rpe, venue FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(since, since, user.id, since120),
+      env.DB.prepare("SELECT id, source, ext_id, date, COALESCE(type_set, type) AS type, CASE WHEN type_set IS NOT NULL THEN type END AS src_type, COALESCE(title, name) AS name, CASE WHEN title IS NOT NULL THEN name END AS src_name, descr, tag, note, gear_id, mi, minutes, cal, avg_hr, work_pace, CASE WHEN date >= ? THEN laps END AS laps, CASE WHEN date >= ? THEN poly END AS poly, start_local, elev_ft, sport, max_hr, rpe, venue FROM activities WHERE user_id = ? AND date >= ? ORDER BY date, created").bind(since, since, user.id, since120),
       env.DB.prepare("SELECT athlete_name, last_sync FROM strava_links WHERE user_id = ?").bind(user.id)
     ]);
     const [rv, cn, ps, ik, hd, ll, mp, gl] = await env.DB.batch([
@@ -1403,8 +1482,8 @@ async function route(req, env, path, ctx){
     const prof = p.results[0] ? JSON.parse(p.results[0].data) : null;
     const owner = await ownerId(env) === user.id, founding = await foundingNo(env, user.id);
     const reports = owner ? (await env.DB.prepare("SELECT id, email, text, info, created FROM reports ORDER BY created DESC LIMIT 50").all()).results : undefined;
-    const meSet = await settingsOf(env, user.id), meAi = await aiState(env, user.id, meSet);
-    return {user: {...userOut(user), terms_at: user.terms_at || null}, profile: prof, done: d.results.map(r => r.key), food: f.results, checkins: c.results, weights: w.results, activities: a.results,
+    const meSet = await settingsOf(env, user.id), meAi = await aiState(env, user.id, meSet), gear = await gearOf(env, user.id);
+    return {user: {...userOut(user), terms_at: user.terms_at || null}, profile: prof, done: d.results.map(r => r.key), food: f.results, checkins: c.results, weights: w.results, activities: a.results, gear,
       strava: {available: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!s.results[0], name: s.results[0] ? s.results[0].athlete_name : "", last_sync: s.results[0] ? s.results[0].last_sync : null},
       garmin: {available: !!(env.GARMIN_CLIENT_ID && env.GARMIN_CLIENT_SECRET), connected: !!gl.results[0], last_push: gl.results[0] ? gl.results[0].last_push : null,
         workouts: gl.results[0] ? (/WORKOUT_IMPORT/.test(gl.results[0].permissions || "") ? gl.results[0].wk : (gl.results[0].permissions ? -1 : null)) : null},
@@ -1422,6 +1501,13 @@ async function route(req, env, path, ctx){
     const b = await body(req); if (b.agree !== true) throw new HttpError(400, "Please confirm to continue.");
     const t = now(); await env.DB.prepare("UPDATE users SET terms_at = ? WHERE id = ?").bind(t, user.id).run();
     return {terms_at: t};
+  }
+  if (M === "POST" && path === "/api/account/setup-step"){
+    // furthest plan-setup step reached (funnel question 4): only ever moves forward, a number 0-4, nothing else stored
+    const st = Math.floor(Number((await body(req)).step));
+    if (!(st >= 0 && st <= 4)) throw new HttpError(400, "Bad step.");
+    await env.DB.prepare("UPDATE users SET setup_step = ? WHERE id = ? AND (setup_step IS NULL OR setup_step < ?)").bind(st, user.id, st).run();
+    return {ok: true};
   }
   if (M === "POST" && path === "/api/account/password"){
     await limit(env, "auth:" + (req.headers.get("CF-Connecting-IP") || "x"));
@@ -1452,6 +1538,8 @@ async function route(req, env, path, ctx){
     const s = JSON.stringify(b.profile || null);
     if (!b.profile || typeof b.profile !== "object" || s.length > 60000) throw new HttpError(400, "Bad plan settings.");   // room for changed workouts
     await env.DB.batch([
+      // time to first plan (Nov 17): stamped once, only when this member had no plan before (older members stay NULL)
+      env.DB.prepare("UPDATE users SET first_plan_at = ? WHERE id = ? AND first_plan_at IS NULL AND NOT EXISTS (SELECT 1 FROM profiles WHERE user_id = ?)").bind(now(), user.id, user.id),
       env.DB.prepare("INSERT INTO profiles (user_id, data, updated) VALUES (?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET data = excluded.data, updated = excluded.updated").bind(user.id, s, now()),
       ...(isDate(b.resetFrom) ? [env.DB.prepare("DELETE FROM done WHERE user_id = ? AND key >= ?").bind(user.id, b.resetFrom)] : [])
     ]);
@@ -1543,13 +1631,54 @@ async function route(req, env, path, ctx){
     await env.DB.prepare("UPDATE activities SET rpe = ? WHERE id = ? AND user_id = ?").bind(rpe, m[1], user.id).run();
     return {ok: true, rpe};
   }
+  // Edit a workout (Matthew, Nov 18 11:36am, like Strava's Edit Activity): description, sport type, tag, how it felt, private
+  // notes, shoes. Only the owner's own row; each field is optional and an empty value clears it. Sync never touches these.
+  m = path.match(/^\/api\/activity\/([a-f0-9]{20})\/details$/);
+  if (M === "PUT" && m){
+    await limit(env, "actedit:" + user.id);
+    const b = await body(req), row = await env.DB.prepare("SELECT type FROM activities WHERE id = ? AND user_id = ?").bind(m[1], user.id).first();
+    if (!row) throw new HttpError(404, "That workout isn't here any more.");
+    const sets = [], vals = [], txt = (v, n) => String(v || "").replace(/[\u0000-\u0008\u000B-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2066-\u2069<>]/g, " ").replace(/[ \t]+/g, " ").trim().slice(0, n) || null;
+    if ("descr" in b){ sets.push("descr = ?"); vals.push(txt(b.descr, 600)); }
+    if ("note" in b){ sets.push("note = ?"); vals.push(txt(b.note, 600)); }
+    if ("tag" in b){ if (b.tag && !ACT_TAGS.includes(b.tag)) throw new HttpError(400, "Pick a tag from the list."); sets.push("tag = ?"); vals.push(b.tag || null); }
+    if ("type" in b){ if (b.type && !["run", "lift", "bike", "swim", "other"].includes(b.type)) throw new HttpError(400, "Pick a type from the list."); sets.push("type_set = ?"); vals.push(b.type && b.type !== row.type ? b.type : null); }
+    if ("rpe" in b){ const r = n0(b.rpe); if (b.rpe != null && b.rpe !== "" && (r < 1 || r > 10)) throw new HttpError(400, "Pick 1 to 10."); sets.push("rpe = ?"); vals.push(r >= 1 && r <= 10 ? r : null); }
+    if ("gear_id" in b){
+      if (b.gear_id && !(await env.DB.prepare("SELECT 1 FROM gear WHERE id = ? AND user_id = ?").bind(String(b.gear_id), user.id).first())) throw new HttpError(400, "Those shoes aren't in your gear.");
+      sets.push("gear_id = ?"); vals.push(b.gear_id ? String(b.gear_id) : null);
+    }
+    if (!sets.length) throw new HttpError(400, "Nothing to save.");
+    await env.DB.prepare("UPDATE activities SET " + sets.join(", ") + " WHERE id = ? AND user_id = ?").bind(...vals, m[1], user.id).run();
+    const out = await env.DB.prepare("SELECT COALESCE(type_set, type) AS type, CASE WHEN type_set IS NOT NULL THEN type END AS src_type, descr, tag, note, gear_id, rpe FROM activities WHERE id = ? AND user_id = ?").bind(m[1], user.id).first();
+    return {ok: true, activity: out, gear: await gearOf(env, user.id)};
+  }
+  // shoes (gear): add a pair with the miles already on them; rename or retire it. Miles add up from the workouts they're on.
+  if (M === "POST" && path === "/api/gear"){
+    await limit(env, "gear:" + user.id);
+    const b = await body(req), name = String(b.name || "").replace(/[\u0000-\u001F\u007F<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, 40);
+    if (!name) throw new HttpError(400, "Give your shoes a name.");
+    if ((await env.DB.prepare("SELECT COUNT(*) AS n FROM gear WHERE user_id = ?").bind(user.id).first("n")) >= 30) throw new HttpError(400, "You can have up to 30 pairs.");
+    const start = Math.max(0, Math.min(3000, Math.round((+b.start_mi || 0) * 10) / 10)), id = rand(8);
+    await env.DB.prepare("INSERT INTO gear (id, user_id, name, start_mi, retired, created) VALUES (?, ?, ?, ?, 0, ?)").bind(id, user.id, name, start, now()).run();
+    return {ok: true, id, gear: await gearOf(env, user.id)};
+  }
+  m = path.match(/^\/api\/gear\/([a-f0-9]{16})$/);
+  if (M === "PUT" && m){
+    const b = await body(req), sets = [], vals = [];
+    if (typeof b.name === "string"){ const n = b.name.replace(/[\u0000-\u001F\u007F<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, 40); if (!n) throw new HttpError(400, "Give your shoes a name."); sets.push("name = ?"); vals.push(n); }
+    if (typeof b.retired === "boolean"){ sets.push("retired = ?"); vals.push(b.retired ? 1 : 0); }
+    if (!sets.length) throw new HttpError(400, "Nothing to save.");
+    await env.DB.prepare("UPDATE gear SET " + sets.join(", ") + " WHERE id = ? AND user_id = ?").bind(...vals, m[1], user.id).run();
+    return {ok: true, gear: await gearOf(env, user.id)};
+  }
   if (M === "PUT" && path === "/api/settings"){
     const b = await body(req), cur = await settingsOf(env, user.id), next = {...cur};
     if (typeof b.tz === "string" && b.tz.length < 60){ try { new Intl.DateTimeFormat("en", {timeZone: b.tz}); next.tz = b.tz; } catch(e){} }
     for (const k of ["morning", "bedtime", "run_time"]) if (/^([01]\d|2[0-3]):[0-5]\d$/.test(b[k] || "")) next[k] = b[k];
     if (b.lat === null){ delete next.lat; delete next.lon; }
     else if (Number.isFinite(+b.lat) && Number.isFinite(+b.lon) && Math.abs(+b.lat) <= 90 && Math.abs(+b.lon) <= 180){ next.lat = Math.round(+b.lat * 100) / 100; next.lon = Math.round(+b.lon * 100) / 100; if (typeof b.place === "string") next.place = b.place.slice(0, 60); }
-    for (const k of ["n_morning", "n_run", "n_weekly", "n_bed"]) if (typeof b[k] === "boolean") next[k] = b[k];
+    for (const k of ["n_morning", "n_run", "n_weekly", "n_bed", "n_stress"]) if (typeof b[k] === "boolean") next[k] = b[k];
     // heart rate zones: % of max HR or of lactate threshold HR
     if (b.hr_method === "max" || b.hr_method === "lthr") next.hr_method = b.hr_method;
     if (b.sweat_oz === null) delete next.sweat_oz; else if (b.sweat_oz >= 5 && b.sweat_oz <= 80) next.sweat_oz = Math.round(b.sweat_oz);
@@ -1782,18 +1911,7 @@ async function route(req, env, path, ctx){
   }
   if (M === "GET" && path === "/api/admin/funnel"){   // activation funnel, real members only, read-only counts
     if (user.id !== (await ownerId(env))) throw new HttpError(403, "Not allowed.");
-    const d7 = "date(u.created, '+7 days')", cut = new Date(Date.now() - 7 * 864e5).toISOString();
-    const f = await env.DB.prepare(
-      "SELECT COUNT(*) AS signed_up, SUM(EXISTS(SELECT 1 FROM profiles p WHERE p.user_id = u.id)) AS plan, " +
-      "SUM(EXISTS(SELECT 1 FROM profiles p WHERE p.user_id = u.id) AND (EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id) OR EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id))) AS workout, " +
-      "SUM(u.created <= ?1) AS d7_eligible, SUM(u.created <= ?1 AND (" +
-      "EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id AND substr(d.key, 1, 10) >= " + d7 + ") OR " +
-      "EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.source = 'manual' AND a.date >= " + d7 + ") OR " +
-      "EXISTS(SELECT 1 FROM food x WHERE x.user_id = u.id AND x.date >= " + d7 + ") OR " +
-      "EXISTS(SELECT 1 FROM checkins c WHERE c.user_id = u.id AND c.date >= " + d7 + ") OR " +
-      "EXISTS(SELECT 1 FROM sessions s WHERE s.user_id = u.id AND substr(s.created, 1, 10) >= " + d7 + "))) AS active_d7 " +
-      "FROM users u WHERE " + REAL("u.")).bind(cut).first();
-    return {funnel: {signed_up: f.signed_up || 0, plan: f.plan || 0, workout: f.workout || 0, d7_eligible: f.d7_eligible || 0, active_d7: f.active_d7 || 0}};
+    return {funnel: await funnelCounts(env)};
   }
   if (M === "GET" && path === "/api/admin/members"){
     if (user.id !== (await ownerId(env))) throw new HttpError(403, "Not allowed.");
@@ -1815,7 +1933,7 @@ async function route(req, env, path, ctx){
     const link = await env.DB.prepare("SELECT * FROM strava_links WHERE user_id = ?").bind(user.id).first();
     if (link){ try { const tok = await stravaToken(env, link); await fetch((env.STRAVA_BASE || STRAVA) + "/oauth/deauthorize", {method: "POST", headers: {Authorization: "Bearer " + tok}}); } catch(e){} }
     await garminForget(env, user.id, true);
-    await env.DB.batch(["sessions", "pw_resets", "garmin_workouts", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily", "reports", "link_keys", "lift_logs", "meal_plans", "crew_members", "plan_reviews"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
+    await env.DB.batch(["sessions", "pw_resets", "garmin_workouts", "profiles", "done", "food", "ai_usage", "checkins", "weights", "activities", "strava_links", "oauth_states", "reviews", "coach_notes", "push_subs", "settings", "notif_log", "import_keys", "health_daily", "reports", "link_keys", "lift_logs", "meal_plans", "crew_members", "plan_reviews", "gear"].map(t => env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(user.id))
       .concat([env.DB.prepare("DELETE FROM crews WHERE id NOT IN (SELECT crew_id FROM crew_members)"),
         env.DB.prepare("UPDATE crews SET owner_id = (SELECT user_id FROM crew_members m WHERE m.crew_id = crews.id ORDER BY joined LIMIT 1) WHERE owner_id = ?").bind(user.id),
         env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id)]));

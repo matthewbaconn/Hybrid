@@ -477,6 +477,38 @@ function devSignals(dev, date){
   if (d.sleep_score != null && d.sleep_score < 60){ pen += 5; notes.push("sleep score " + d.sleep_score); }
   return {sleep_h: d.sleep_h || null, sleep_score: d.sleep_score != null ? d.sleep_score : null, rhr: d.rhr || null, hrv: d.hrv || null, steps: d.steps || null, active_cal: d.active_cal || null, hrvA, rhrA, pen, notes};
 }
+/* Sleep outlier (Matthew, Nov 18): last night far outside the member's own normal (median of up to 28 earlier nights,
+   at least 7) gets a plain morning note: how far off, and what it usually means for training. Not medical advice.
+   dev: {date: {sleep_h, ...}}. Returns null when last night was normal or there isn't enough history. */
+function sleepOutlier(dev, date){
+  const d = dev && dev[date]; if (!d || !(d.sleep_h > 0)) return null;
+  const hist = Object.keys(dev).filter(k => k < date && k >= addDays(date, -28)).map(k => dev[k].sleep_h).filter(x => x > 0).sort((a, b) => a - b);
+  if (hist.length < 7) return null;
+  const med = hist[Math.floor(hist.length / 2)], spread = hist[Math.floor(hist.length * .75)] - hist[Math.floor(hist.length * .25)];
+  const diff = d.sleep_h - med, lim = Math.max(1.25, 1.5 * spread);
+  if (Math.abs(diff) < lim) return null;
+  const h = x => (Math.round(x * 10) / 10) + " h", lowest = d.sleep_h <= hist[0], most = d.sleep_h >= hist[hist.length - 1];
+  const short = diff < 0;
+  const text = short
+    ? `You slept ${h(d.sleep_h)}, about ${h(-diff)} less than your usual ${h(med)}${lowest ? " (your shortest night in 4 weeks)" : ""}. After a short night your heart rate tends to run higher and runs feel harder than they should, so keep today's effort easy and aim for an earlier night.`
+    : `You slept ${h(d.sleep_h)}, about ${h(diff)} more than your usual ${h(med)}${most ? " (your longest night in 4 weeks)" : ""}. A long night often means your body is catching up after hard training or a rough stretch. If you feel flat, keep today easy.`;
+  return {hours: d.sleep_h, usual: med, diff: Math.round(diff * 10) / 10, dir: short ? "short" : "long", text};
+}
+/* Stress nudge (Matthew, Nov 18: "let them know to breathe or to relax or to take the day off, kind of like how Garmin
+   does"). Input: today's Garmin daily summary so far (high-stress seconds, average, Garmin's own qualifier), the member's
+   usual average stress (median of earlier days, or null) and today's readiness level (0 good .. 2 low). At most one
+   nudge a day is sent by the worker; this only says whether and what. */
+function stressNudge(t, usualAvg, readinessLevel){
+  if (!t) return null;
+  const high = (t.high_s || 0) / 60, avg = t.avg, q = String(t.qualifier || "").toLowerCase();
+  const stressful = high >= 45 || (/stressful/.test(q) && avg >= 40 && (usualAvg == null || avg >= usualAvg + 10));
+  if (!stressful) return null;
+  const veryHard = /very_stressful/.test(q) || high >= 120;
+  if (veryHard && readinessLevel === 2)
+    return {kind: "rest", title: "Big stress day", body: "Your watch shows a very stressful day and your readiness is low. Your body counts all stress the same, so today is a good day to rest: swap the run for an easy walk or take it off."};
+  const mins = high >= 45 ? `about ${high >= 90 ? Math.round(high / 60 * 10) / 10 + " hours" : Math.round(high / 5) * 5 + " minutes"} of high stress so far today` : "a stressful stretch today";
+  return {kind: "breathe", title: "Take a breath", body: `Your watch shows ${mins}. Take two minutes: breathe in for 4, out for 6, ten times.` + (veryHard ? " If it keeps up, make today's run easy." : "")};
+}
 function readiness(c, sig){
   // no check-in yet: a first read from the watch alone (sleep, sleep score, HRV, resting HR); the check-in refines it
   if (!c){
@@ -1093,5 +1125,5 @@ function swapCheck(plan, a, b, dropA){        // dropA: a is a missed day, so wh
   return scan().filter(m => !before.includes(m));   // only what this move adds, not what the week already had
 }
 
-root.HP = {zonesFrom, hrFor, targetOf, HR_PCT, cyclePhase, cycleAdvice, cyclePattern, CYCLE, CYCLE_SYM, applyVenues, mph, sportOf, effortOf, loadOf, actSummary, SPORTS, PLAN_RPE, cleanSession, alternatives, library, exAlts, exAll, exGroup, applySwaps, swapCheck, isHard, garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, PLAN_V, pad, isoLocal, localDay, lastActiveDay, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
+root.HP = {zonesFrom, hrFor, targetOf, HR_PCT, cyclePhase, cycleAdvice, cyclePattern, CYCLE, CYCLE_SYM, applyVenues, mph, sportOf, effortOf, loadOf, actSummary, SPORTS, PLAN_RPE, cleanSession, alternatives, library, exAlts, exAll, exGroup, applySwaps, swapCheck, isHard, garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, PLAN_V, sleepOutlier, stressNudge, pad, isoLocal, localDay, lastActiveDay, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
 })(typeof globalThis !== "undefined" ? globalThis : self);

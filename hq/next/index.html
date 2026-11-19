@@ -348,6 +348,7 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 <span class="ng">Company</span>
 <button data-v="team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.700 6 6M16 5.200a3.200 3.200 0 010 5.600M18 14.300c1.800.800 3 2.600 3 4.700"/></svg><span>Employees</span></button>
 <button data-v="depts"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg><span>Departments</span></button>
+<button data-v="members"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 11h6M15 15h6M17 7h4"/></svg><span>Members</span></button>
 <button data-v="growth"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Growth</span></button>
 <button data-v="money"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.800 9.200c-.500-.900-1.500-1.400-2.800-1.400-1.700 0-3 .900-3 2.200 0 3 6 1.300 6 4.200 0 1.300-1.300 2.200-3 2.200-1.400 0-2.500-.600-3-1.500M12 6v1.800M12 16.400V18"/></svg><span>Finance</span></button>
 <span class="ng">Personal</span>
@@ -401,6 +402,7 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 <section class="view" id="v-team"><div class="vh"><div><h1>Employees</h1><p>Every AI employee, what they're assigned, what they reported and what was independently verified. Minutes are cost on your Claude plan, never a score.</p></div></div>
 <div id="roster" class="emps"></div></section>
 <section class="view" id="v-depts"><div id="depts"></div><h2>Rooms being built</h2><div class="rooms" id="rooms"></div></section>
+<section class="view" id="v-members"><div class="vh"><div><h1>Members</h1><p>Every real member: when they joined, when they were last active, their goal, where they came from and whether they've trained. Your own accounts and test accounts are left out.</p></div></div><div id="members"></div></section>
 <section class="view" id="v-growth"><div class="vh"><div><h1>Growth</h1><p>Real members, where they came from, where they stall, and every experiment, partner and ambassador draft.</p></div></div><div id="growth"></div><div id="growth2"></div></section>
 <section class="view" id="v-money"><div class="vh"><div><h1>Finance</h1><p>Two pools, never added together: extra money (Vesper's Anthropic API) and your Claude plan's usage.</p></div></div><div id="money"></div><div id="money2"></div></section>
 <section class="view" id="v-me"><div class="vh"><div><h1>Personal</h1><p>Your own week from Vesper's agenda, reminders and calendar. Kept separate from company data.</p></div></div><div id="me"></div></section>
@@ -413,7 +415,7 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 <div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
 <script>
 "use strict";
-const HQ_BUILD = "2026-11-17.r3";   // the self-update check compares this with the published page
+const HQ_BUILD = "2026-11-18.r1";   // the self-update check compares this with the published page
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const DEMO = /demo/.test(location.search + location.hash);
 let DEMO_HOLD = true;   // the first load sets everyone's state; only later changes are real events
@@ -424,7 +426,7 @@ let DEMO_HOLD = true;   // the first load sets everyone's state; only later chan
 const ORDER_API = "https://api.github.com/repos/matthewbaconn/Hybrid/pulls?state=all&sort=updated&direction=desc&per_page=40";
 let ORDER = null, orderAt = 0, orderErr = false, orderTry = 0;
 try { const c = JSON.parse(localStorage.getItem("hq-order") || "null"); if (c && c.at && Array.isArray(c.list)){ ORDER = c.list; orderAt = c.at; } } catch(e){}
-const isHeld = p => !/^claude\//.test(p.ref) || /^claude\/product/.test(p.ref);
+const isHeld = p => !/^claude\//.test(p.ref) || /^NEEDS MATTHEW/.test(p.b || "");   // the gate takes every claude/ PR except HOLD ones ("NEEDS MATTHEW"); since Nov 18 product-team PRs need no SHIP IT
 const isFix = p => /^fix\b/i.test(p.t);
 function orderGroups(){
   const L = ORDER || [], open = L.filter(p => p.open);
@@ -434,7 +436,7 @@ function orderGroups(){
 }
 async function loadOrder(){ orderTry = Date.now();
   try { const r = await fetch(ORDER_API, {cache: "no-store"}); if (!r.ok) throw new Error(r.status);
-    ORDER = (await r.json()).map(p => ({n: p.number, t: p.title, url: p.html_url, ref: (p.head && p.head.ref) || "", draft: !!p.draft, open: p.state === "open", c: p.created_at, m: p.merged_at}));
+    ORDER = (await r.json()).map(p => ({n: p.number, t: p.title, url: p.html_url, ref: (p.head && p.head.ref) || "", draft: !!p.draft, open: p.state === "open", c: p.created_at, m: p.merged_at, b: String(p.body || "").slice(0, 20)}));
     orderAt = Date.now(); orderErr = false; try { localStorage.setItem("hq-order", JSON.stringify({at: orderAt, list: ORDER})); } catch(e){}
   } catch(e){ orderErr = true; }
   renderOrder(); if (typeof renderPriv === "function" && PRIV) try { renderPriv(); } catch(e){}
@@ -447,18 +449,19 @@ function renderOrder(){
   const row = (tag, cls, p, why, when) => `<div class="item"><div class="h"><span><span class="tag ${cls}">${esc(tag)}</span>${linkify("#" + p.n + " " + p.t, p.url)}</span>${when ? `<small>${esc(when)}</small>` : ""}</div>${why ? `<div class="why">${esc(why)}</div>` : ""}</div>`;
   const out = [];
   G.q.forEach((p, i) => out.push(row(String(i + 1), "", p, (isFix(p) ? "Bug fix, so it goes ahead of features. " : "") + (i ? "Then the gate tests it and puts it live." : "Next: the gate tests it and puts it live."), "~" + hm(new Date(+next + i * 36e5)))));
-  G.held.forEach(p => out.push(row("SHIP IT " + p.n, "ship", p, `Optional, only if you want it live: text Vesper "SHIP IT ${p.n}" in Telegram. Until then it just waits.`)));
+  G.held.forEach(p => out.push(row("SHIP IT " + p.n, "ship", p, `Needs your OK (money, member data, security or something irreversible): text Vesper "SHIP IT ${p.n}" when you want it live.`)));
   G.drafts.forEach(p => out.push(row("draft", "", p, "Not ready yet (still being finished or waiting on the PR before it). Nothing for you to do.")));
   G.live.forEach(p => out.push(row("live " + hm(new Date(p.m)), "live", p, "")));
-  el.innerHTML = `<div class="item"><div class="why" style="-webkit-line-clamp:unset">The ship gate puts one upgrade live about every hour: bug fixes first, then oldest first. Times are estimates. Nothing here needs you unless it says SHIP IT.${orderAt ? " Checked " + esc(fmtT(new Date(orderAt).toISOString())) + "." : ""}</div></div>`
+  el.innerHTML = `<div class="item"><div class="why" style="-webkit-line-clamp:unset">The ship gate puts one upgrade live about every hour: bug fixes first, then oldest first. Times are estimates. Nothing here needs you unless it says SHIP IT. When one goes live, Vesper tells you; reply \"undo <n>\" to take it back.${orderAt ? " Checked " + esc(fmtT(new Date(orderAt).toISOString())) + "." : ""}</div></div>`
     + (out.length ? out.join("") : `<div class="empty">No upgrades waiting.</div>`);
 }
 // Only what truly waits on Matthew. Ready app PRs are the gate's job (they're in Upgrade order) and drafts aren't
 // ready, so neither is an approval. Once Vesper's owner queue (vesper-relay #170) is installed, every item carries a
 // tag and is already a real ask, so it's shown as is.
 function asks(ap){ ap = ap || []; if (ap.some(a => a.tag)) return ap;
-  return ap.filter(a => { if (a.k !== "pr") return true; if (a.why === "SHIP IT") return true; if (/^draft/.test(a.why || "")) return false;
-    if (a.repo !== "Hybrid") return true; const p = (ORDER || []).find(x => x.n === a.n); return !!(p && isHeld(p)); }); }
+  return ap.filter(a => { if (a.k !== "pr") return true; if (/^draft/.test(a.why || "")) return false;
+    if (a.repo !== "Hybrid") return true; const p = (ORDER || []).find(x => x.n === a.n);
+    return p ? isHeld(p) : a.why === "SHIP IT"; }); }   // Vesper's feed still calls every product-team PR "SHIP IT"; since Nov 18 only NEEDS MATTHEW ones wait for him
 const FEED_API = "https://api.github.com/repos/matthewbaconn/Hybrid/contents/hq.json?ref=vesper/hq-data";
 const FEED_RAW = "https://raw.githubusercontent.com/matthewbaconn/Hybrid/vesper/hq-data/hq.json";
 const W = 360, H = 540;
@@ -791,7 +794,7 @@ document.getElementById("priv").addEventListener("click", e => { const m = e.tar
   const it = e.target.closest(".item"); if (it && !e.target.closest("a")) it.classList.toggle("open"); });
 function renderPriv(){
   const box = document.getElementById("priv"), lock = document.getElementById("lock");
-  renderBrief(); renderNeeds(); renderGrowth(); renderMoney(); renderMe(); renderPanels(); renderFresh(); renderAll();
+  renderBrief(); renderNeeds(); renderGrowth(); renderMoney(); renderMe(); renderMembers(); renderPanels(); renderFresh(); renderAll();
   if (!PRIV){ box.classList.remove("on"); lock.style.display = "block"; if (!lock.querySelector(".unlock") || lock.dataset.err !== privErr){ lock.dataset.err = privErr; lock.innerHTML = "🔒 " + esc(privErr || "Assignments, history, approvals and decisions are private.") + UNLOCK; } return; }
   box.classList.add("on"); lock.style.display = "none";
   const o = PRIV.o || {}, nm = id => TEAM[id] ? TEAM[id].n : id === "drill" ? "Recovery drill (test)" : id, k = o.kpis || null;
@@ -950,6 +953,19 @@ function renderRooms(){ const el = document.getElementById("rooms"); if (!el) re
 // Everything below reads only what Vesper already publishes (the encrypted office, plus its release-2 block "x" once that
 // feed update is installed) and the public member count. When a number isn't in the feed, the page says so.
 const X = () => (PRIV && PRIV.x) || null;
+// Incidents (Nov 17): the detector (tools/signals.py on the cloud, the incident watch on Vesper's server) opens one
+// when a business signal crosses its line, gives it an owner, links the fix PR and closes it only after 24 h clear.
+const INC_STATE = {open: "open, no fix yet", fixing: "fix in progress", verifying: "fixed, being verified (24 h clear)", closed: "closed by the detector"};
+function incBody(P){
+  if (!P) return `<div class="none">Private: open your HQ link once on this device.</div>`;
+  if (!P.inc) return `<div class="none">The incident tracker isn't in this feed yet.</div>${NEEDS_FEED}`;
+  if (!P.inc.rows.length) return `<div class="none">No incidents in the last 7 days. The detector checks member-facing failures, sign-ups vs welcome emails, problem reports, the site, onboarding, activation and engagement.</div>`;
+  return `<div class="list" style="border:0;background:none">${P.inc.rows.map(r => li(
+    `<span class="pill ${r[2] === "closed" ? "g" : r[1] === "critical" || r[1] === "high" ? "r" : "a"}">${esc(r[1])}</span><b>${esc(r[5])}</b>`,
+    `${esc(r[6])}<br>${esc(INC_STATE[r[2]] || r[2])} · owner: ${esc(r[3])} (${esc(r[4])})${r[9] ? " · " + linkify("fix PR", r[9]) : ""}${r[10] ? ` · <span class="bad">escalated ${r[10]}x</span>` : ""}${r[11] ? ` · came back ${r[11]}x` : ""}`,
+    esc(r[2] === "closed" ? "closed " + fmtT(r[13]) : r[8] ? "due " + fmtT(r[8]) : ""))).join("")}</div>
+    <div class="note">${tag("sys")} Checked ${esc(fmtT(P.inc.t))} by ${P.inc.src === "server" ? "Vesper's server" : "the cloud detector"}. Nobody closes their own fix: an incident closes only after the signal stays clear for 24 hours.</div>`;
+}
 const NEEDS_FEED = `<span class="src na">Not available yet</span> <small class="w">arrives when Vesper's HQ feed update is installed</small>`;
 const roleName = id => TEAM[id] ? TEAM[id].n : id === "drill" ? "Recovery drill" : id === "claude-session" ? "Claude sessions" : id;
 const pctS = (a, b) => b ? Math.round(a / b * 100) + "%" : "–";
@@ -1102,6 +1118,7 @@ function renderOps(){
       ${card("Active jobs", `right now ${tag("rep")}`, working.length ? working.map(a => li(`<b>${esc(a.t.n)}</b> ${esc(nowText(a))}`, "", esc("since " + fmtT(rows[a.id] && rows[a.id][2])))).join("") : `<div class="none">Nobody is mid-run. Idle is shown as idle.</div>`)}
       ${card("Scheduled work", `next runs ${tag("sys")}`, next.length ? `<div class="list" style="border:0;background:none">${next.slice(0, 8).map(([t, a]) => li(`<b>${esc(a.t.n)}</b>`, esc(x && x.roles && x.roles[a.id] ? x.roles[a.id].name : a.t.t), esc(fmtT(t)))).join("")}</div>` : `<div class="none">No schedule in the feed.</div>`)}
       ${card("System health", "Vesper's own report", healthBody, "hero")}
+      ${card("Incidents", P && P.inc ? `${P.inc.rows.filter(r => r[2] !== "closed").length} open ${tag("sys")}` : "", incBody(P))}
       ${card("Alerts", `${alerts.length}`, alerts.length ? `<div class="list" style="border:0;background:none">${alerts.join("")}</div>` : `<div class="none">No alerts.</div>`)}
       ${card("Completed in 24 h", `${done.length} ${tag("rep")}`, done.length ? `<div class="list" style="border:0;background:none">${done.slice(0, 8).map(e => li(`<b>${esc(roleName(e[1]))}</b> ${esc(clip(e[3] || "finished a run", 130))}`, "", esc(fmtT(e[0])))).join("")}</div>` : `<div class="none">Nothing completed in the last 24 hours.</div>`)}
       ${card("Failed in 24 h", `${failed.length} ${tag("rep")}`, failed.length ? `<div class="list" style="border:0;background:none">${failed.map(e => li(`<span class="bad">${esc(roleName(e[1]))}</span> ${esc(clip(e[3] || e[2], 130))}`, "", esc(fmtT(e[0])))).join("")}</div>` : `<div class="none">No failed runs in the last 24 hours.</div>`)}
@@ -1357,6 +1374,8 @@ function computeAlerts(){
   if (P) (P.a || []).forEach(a => out.push({id: "appr:" + (a.repo || "b") + a.n, lvl: "a", t: "Waiting for you: " + clip(a.title, 70), s: explain(a).how, go: "approvals"}));
   if (x && x.health && x.health.errors_24h) out.push({id: "health:" + x.health.at, lvl: "a", t: `Vesper logged ${x.health.errors_24h} error${x.health.errors_24h === 1 ? "" : "s"} in 24 h`, s: x.health.status, go: "ops"});
   if (x) (x.verify || []).filter(v => v[4] === "fail").forEach(v => out.push({id: "vfail:" + v[0], lvl: "r", t: "Failed verification: " + clip(v[3], 70), s: v[5] || "", go: "team"}));
+  if (P && P.inc) P.inc.rows.filter(r => r[2] !== "closed").forEach(r => out.push({id: "inc:" + r[0] + ":" + r[2] + ":" + r[10] + ":" + r[11], lvl: r[1] === "critical" || r[1] === "high" ? "r" : "a",
+    t: `${r[1] === "critical" ? "Critical: " : ""}${clip(r[5], 70)}`, s: `${INC_STATE[r[2]] || r[2]} · ${r[3]}${r[10] ? " · escalated" : ""}${r[11] ? " · came back" : ""}`, go: "ops"}));
   if (x) (x.merged || []).slice(0, 3).forEach(m => out.push({id: "ship:" + m[1], lvl: "g", t: `Shipped #${m[1]}: ${clip(m[2], 70)}`, s: fmtT(m[0]), go: "ops"}));
   return out;
 }
@@ -1526,12 +1545,16 @@ function renderGrowth(){
    <div class="card"><h4>Where sign-ups came from <i>last 7 days ${tag("sys")}</i></h4>${bars(g.src7, "No sign-ups in the last 7 days.")}
      <h4 style="margin-top:14px">All time</h4>${bars(g.src_all, "No data yet.")}</div>
    <div class="card"><h4>Activation funnel <i>all real members ${tag("sys")}</i></h4>${typeof f.signed_up !== "number" ? `<div class="none">Not measured yet.</div>` :
-     step("Signed up", f.signed_up, f.signed_up) + step("Built a plan", f.plan || 0, f.signed_up) + step("Workout (in app)", f.workout || 0, f.signed_up) +
-     `<div class="note"><span style="color:var(--amber)">Workouts synced from Strava or Garmin aren't counted here yet, so the workout line undercounts.</span><br>${pct(f.plan || 0, f.signed_up)} build a plan · ${pct(f.workout || 0, f.signed_up)} check off a workout in the app.<br>Still active after day 7: <b style="color:var(--ink)">${f.active_d7 || 0} of ${f.d7_eligible || 0}</b> who have been here a week (${pct(f.active_d7 || 0, f.d7_eligible || 0)}).</div>`}</div>
+     step("Signed up", f.signed_up, f.signed_up) + step("Built a plan", f.plan || 0, f.signed_up) +
+     (typeof f.trained === "number" ? step("Trained (check-off or synced run)", f.trained, f.signed_up) + step("Trained in the last 7 days", f.trained_7d || 0, f.signed_up) +
+       (typeof f.returned === "number" ? step("Came back on a later day", f.returned, f.signed_up) + step("Joined through an invite", f.via_invite || 0, f.signed_up) + step("Brought someone", f.referrers || 0, f.signed_up) : "")
+       : step("Workout (in app)", f.workout || 0, f.signed_up)) +
+     `<div class="note">${typeof f.trained === "number" ? `${pct(f.plan || 0, f.signed_up)} build a plan · ${pct(f.trained, f.signed_up)} have trained (${f.checked_off ?? f.workout ?? 0} checked off in the app).`
+       : `<span style="color:var(--amber)">Workouts synced from Strava or Garmin aren't counted here yet, so the workout line undercounts.</span><br>${pct(f.plan || 0, f.signed_up)} build a plan · ${pct(f.workout || 0, f.signed_up)} check off a workout in the app.`}<br>Still active after day 7: <b style="color:var(--ink)">${f.active_d7 || 0} of ${f.d7_eligible || 0}</b> who have been here a week (${pct(f.active_d7 || 0, f.d7_eligible || 0)}).</div>`}</div>
    <div class="card"><h4>This week's growth fix <i>${tag("rep")}</i></h4>${PRIV.fix ? `<div style="font-size:14px">${esc(PRIV.fix.replace(/^GROWTH FIX OF THE WEEK:?\s*/i, ""))}</div>` : `<div class="none">None assigned yet. The analyst picks one fix a week from these numbers and grades last week's.</div>`}</div>
    ${g.visits7 ? `<div class="card"><h4>Website visits <i>${visitsFull() ? "last 7 days" : "since " + esc(dstr(VISITS_SINCE))} · page loads, bots filtered${tag("sys")}</i></h4>${bars(Object.fromEntries(Object.entries(g.visits7).map(([k, v]) => [k === "/" ? "Home page" : k === "app:/" ? "App front door" : k.replace(/^\//, ""), v])), "No visits counted yet.")}
      ${!visitsFull() ? `<div class="note">Counting began ${esc(dstr(VISITS_SINCE))}, so this is not a full week yet. Visits against sign-ups shows from ${esc(dstr(VISITS_FULL))}, when both cover the same 7 days.</div>` : G.n7 !== null ? `<div class="note">${sum(Object.fromEntries(Object.entries(g.visits7).filter(([k]) => k !== "app:/")))} site visits → <b style="color:var(--ink)">${G.n7}</b> sign-up${G.n7 === 1 ? "" : "s"} in the same 7 days.</div>` : ""}</div>` : ""}
-   <div class="card"><h4>Not measured yet</h4><div class="note" style="margin:0">${g.visits7 ? "" : "Website visits (counter is being added) · "}Instagram reach · search rankings · synced workouts · day-30 retention · revenue (the app is free for founding members). These show here once they are tracked; nothing is estimated.</div></div>
+   <div class="card"><h4>Not measured yet</h4><div class="note" style="margin:0">${g.visits7 ? "" : "Website visits (counter is being added) · "}Instagram reach · search rankings · ${typeof f.trained === "number" ? "" : "synced workouts · "}day-30 retention · revenue (the app is free for founding members). These show here once they are tracked; nothing is estimated.</div></div>
   </div>`;
 }
 function renderMoney(){
@@ -1554,6 +1577,32 @@ function renderMoney(){
      <div class="note">All employees run on your Claude subscription. This uses its usage limits, not dollars, and is never added to the API number above.</div>
      ${plan.length ? `<div class="list" style="border:0;margin-top:6px">${plan.slice(0, 6).map(d => `<div class="row"><span>${esc(TEAM[d.id] ? TEAM[d.id].n : d.id)}</span><small>${d.min} min · ${d.runs} run${d.runs === 1 ? "" : "s"}</small></div>`).join("")}</div>` : ""}</div>
    <div class="card"><h4>Not shown here</h4><div class="note" style="margin:0">The Mileset app's own AI (food logging, coach) is billed to the same $20 Anthropic limit and isn't in Vesper's count. Server, domain and subscription fees aren't tracked yet. Revenue: none yet (founding members are free).</div></div>
+  </div>`;
+}
+/* Members (Matthew, Nov 17 10:23pm). From the encrypted private office only (PRIV.mem, built by Vesper from the
+   read-only database): names never appear in the public feed. Days are already his local days. */
+const MEM_GOAL = {"5k": "5K", "10k": "10K", half: "Half marathon", marathon: "Marathon", "50k": "50K", hyrox: "HYROX",
+  tri_sprint: "Sprint tri", tri_olympic: "Olympic tri", tri_half: "70.3", tri_full: "Ironman", swim: "Swim", bike: "Bike", general: "General fitness"};
+function memDays(d){ if (!d) return null; const t = new Date(), t0 = new Date(t - t.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  return Math.round((Date.parse(t0) - Date.parse(d)) / 864e5); }
+function memAgo(d){ const n = memDays(d); return n == null ? "never" : n <= 0 ? "today" : n === 1 ? "yesterday" : n + " days ago"; }
+function memDate(d){ return d ? new Date(d + "T12:00:00").toLocaleDateString([], {month: "short", day: "numeric"}) : "–"; }
+function renderMembers(){
+  const el = document.getElementById("members"); if (!el) return;
+  if (!PRIV){ if (!el.querySelector(".unlock")) el.innerHTML = LOCKED; return; }
+  const M = PRIV.mem;
+  if (!M || !M.rows){ el.innerHTML = `<div class="cards"><div class="card wide"><h4>Members</h4><div class="none">Not available yet. It arrives with Vesper's next update.</div>${tag("na")}</div></div>`; return; }
+  const R = M.rows.map(r => ({name: r[0], joined: r[1], active: r[2], goal: r[3], race: r[4], src: r[5], done: r[6], meals: r[7], inv: r[8]}));
+  const n = f => R.filter(f).length, wk = m => { const x = memDays(m); return x != null && x < 7; };
+  const stat = (k, v, s) => `<div class="card"><h4>${k}</h4><div style="font-size:28px;font-weight:800">${v}</div>${s ? `<div class="note">${s}</div>` : ""}</div>`;
+  const src = {}; R.forEach(m => { const k = m.src || "unknown"; src[k] = (src[k] || 0) + 1; });
+  el.innerHTML = `<div class="cards">
+    ${stat("Members", R.length, "real members only")}${stat("New this week", n(m => wk(m.joined)))}${stat("Active this week", n(m => wk(m.active)), "used the app or logged something")}
+    ${stat("Trained", n(m => m.done > 0), "checked off a workout in the app")}${stat("With a goal", n(m => m.goal), R.length ? Math.round(n(m => m.goal) / R.length * 100) + "% built a plan" : "")}
+    <div class="card wide"><h4>Where they came from</h4><div style="font-size:14px">${Object.keys(src).sort((a, b) => src[b] - src[a]).map(k => `${esc(k)} <b>${src[k]}</b>`).join(" · ")}</div>${tag("sys")}</div>
+    <div class="card wide" style="overflow:auto"><h4>Everyone <i>newest first</i></h4><table class="kt2"><tr><th>Member</th><th>Joined</th><th>Last active</th><th>Goal</th><th>Source</th><th>Workouts</th><th>Meals</th><th>Invited</th></tr>
+      ${R.map(m => `<tr><td><b>${esc(m.name)}</b></td><td>${esc(memDate(m.joined))}</td><td>${esc(memAgo(m.active))}</td><td>${m.goal ? esc(MEM_GOAL[m.goal] || m.goal) + (m.race ? " · " + esc(memDate(m.race)) : "") : `<span style="color:var(--mut)">no plan yet</span>`}</td><td>${esc(m.src || "–")}</td><td>${m.done}</td><td>${m.meals}</td><td>${m.inv || "–"}</td></tr>`).join("")}
+    </table><div class="note">From Vesper's read-only look at the database, ${esc(M.t)}. Workouts = check-offs in the app (synced runs aren't read here). No emails, no Strava or Garmin data.</div>${tag("sys")}</div>
   </div>`;
 }
 function renderMe(){

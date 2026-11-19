@@ -15,6 +15,7 @@
 <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1290x2796.png">
 <link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1179x2556.png">
 <link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1206x2622.png">
+<link rel="apple-touch-startup-image" media="(device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1260x2736.png">
 <link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1320x2868.png">
 <link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1284x2778.png">
 <link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/launch-1170x2532.png">
@@ -27,7 +28,9 @@
 <link rel="icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+<!-- the font file no longer holds up the first paint (Nov 18: white screen on open with a slow connection) -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap"></noscript>
 <style>
 /* Layout idea: a phone-first training app on a dark canvas. Raised cards, one colour per workout type,
    a floating four-tab bar (Today · Plan · Recovery · Training), and a setup flow that builds the plan. */
@@ -209,6 +212,10 @@ button{cursor:pointer}
 .pz em{font-style:normal;font:700 16px/1.2 var(--f-display);color:var(--tc);white-space:nowrap}
 .chart{display:block;width:100%;height:auto}
 .chart text{fill:var(--muted);font:500 10px var(--f-body)}
+.chart text.v{fill:var(--ink);font:600 10.5px var(--f-body)} .chart text.cur{fill:var(--ink);font-weight:700} .chart text.d{font-size:9px;opacity:.8}
+.chart line.base{stroke:var(--line);stroke-width:1}
+.wm-now{margin:2px 0 10px;font-size:14px;color:var(--muted)} .wm-now b{color:var(--ink);font-size:20px;margin-right:2px}
+.wm-now span{display:block;font-size:12px;margin-top:2px} .wm-key{margin:8px 0 0;font-size:11.5px;color:var(--muted)}
 .legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12.5px;color:var(--muted)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend i{width:10px;height:10px;border-radius:3px;background:var(--c)}
@@ -250,6 +257,31 @@ button{cursor:pointer}
 .wsum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .wsum div{background:var(--sunk);border-radius:6px;padding:12px}
 .wsum span{display:block;font-size:12px;color:var(--muted)} .wsum b{font:800 21px/1.2 var(--f-display);white-space:nowrap}
+.apl-f{display:grid;gap:10px}
+.apl-in{width:100%;min-height:46px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:500 16px/1.35 var(--f-body);resize:vertical}
+.apl-name{font:700 18px/1.2 var(--f-body)} textarea.apl-in{min-height:72px}
+.apl-s{margin:6px 0 0;font:800 18px/1.2 var(--f-display)}
+.apl-row{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--card)} .apl-row .ic{flex:none;width:20px;height:20px;color:var(--muted)}
+.apl-row select{flex:1;min-width:0;min-height:46px;border:0;background:transparent;color:var(--ink);font:600 16px var(--f-body)}
+.apl-g{display:flex;flex-wrap:wrap;gap:6px} .apl-g button{border:1px solid var(--line);border-radius:999px;padding:8px 12px;background:var(--card);color:var(--muted);font:600 13.5px var(--f-body)}
+.apl-g button[aria-pressed="true"]{background:#800000;border-color:#BE383E;color:#fff}
+.apl-feel{display:grid;gap:8px} .apl-feel > span{font:600 14px var(--f-body);color:var(--muted)} .apl-feel b{color:var(--ink)}
+.apl-feel div{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px} .apl-feel button{min-height:40px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:700 14px var(--f-body);padding:0}
+.apl-feel button[aria-pressed="true"]{background:#BE383E;border-color:#BE383E;color:#fff}
+.apl-note{position:relative;display:block} .apl-note svg{position:absolute;left:12px;top:14px;width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:2} .apl-note textarea{padding-left:38px}
+.apl-shoe{display:grid;grid-template-columns:1fr 110px auto;gap:6px} .apl-add{justify-self:start} .apl-priv{margin:0;font-size:12.5px;color:var(--muted)}
+.adescr{margin:0;font-size:15.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere} .adet-chips{padding:0;margin:0}
+.anote{margin:0;padding:12px 14px;border-radius:10px;background:var(--sunk);font-size:14.5px;white-space:pre-wrap;overflow-wrap:anywhere} .anote b{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.actc .acd{margin:6px 18px 0;font-size:14.5px;line-height:1.4;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.adet-b{display:flex;gap:8px} .adet-b .btn{flex:1;min-height:46px}
+.achips{display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 14px;margin-top:-4px}
+.achips span{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:var(--sunk);color:var(--ink);font:600 12.5px/1.2 var(--f-body);max-width:100%;overflow-wrap:anywhere}
+.achips .ok{color:var(--good)} .achips .warn{color:var(--warn)} .achips .mut{color:var(--muted)} .achips .ac-hr{font-style:normal;color:#FF5A5F}
+.wsum small{font:700 13px var(--f-body);color:var(--muted)}
+.wbar{height:6px;border-radius:3px;background:var(--sunk);overflow:hidden;margin-top:12px} .wbar i{display:block;height:100%;background:linear-gradient(90deg,#800000,#BE383E)}
+.wnote{margin:8px 0 0;font-size:13px;color:var(--muted)}
+.afilt button em{font-style:normal;opacity:.7;margin-left:2px}
+.awk{display:flex;justify-content:space-between;align-items:baseline;margin:6px 2px -4px;font:700 13px/1.2 var(--f-body);color:var(--muted);text-transform:uppercase;letter-spacing:.04em} .awk em{font-style:normal;text-transform:none;letter-spacing:0}
 .actc{cursor:pointer;padding:0;overflow:hidden;gap:0}
 .actc .ah{display:flex;gap:12px;align-items:center;padding:18px 18px 0}
 .actc .aic{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--tc) 18%,transparent);color:var(--tc)}
@@ -271,6 +303,14 @@ button{cursor:pointer}
 .adet-h .an-edit svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .an-form{display:grid;gap:8px;margin:0 0 4px} .an-form input{width:100%;min-height:48px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:700 18px/1.2 var(--f-body)}
 .an-form .an-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap} .an-form .an-row .btn{min-height:44px} .an-form .err{margin:0}
+.shs h2,.apls h2{margin:0;font:800 22px/1.2 var(--f-head)} .shs .sub{margin:0}
+:root{--chk:repeating-conic-gradient(#2a2c33 0 25%,#1c1e24 0 50%)}
+.shs-g{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.shs-t{display:grid;gap:6px;padding:0;border:0;background:none;color:var(--ink);font:700 14px/1.2 var(--f-body);text-align:center;cursor:pointer}
+.shs-i{display:block;aspect-ratio:4/5;border-radius:12px;border:1px solid var(--line);background-image:var(--chk);background-size:22px 22px;background-repeat:no-repeat,repeat;background-position:center,0 0}
+.shs-i[style]{background-size:contain,22px 22px} .shs-i.solid[style]{background-size:cover} .shs-t:focus-visible .shs-i{outline:2px solid var(--accent-2);outline-offset:2px}
+.apls .kick{margin:0} .apls .lbl{font:700 13px/1.2 var(--f-body);color:var(--sub)} .apl-map{height:150px} .apl-map svg{width:100%;height:100%}
+.apl-b{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between} .apl-b .btn{flex:1;min-height:46px}
 .agrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 10px}
 .agrid span{display:block;font-size:12.5px;color:var(--muted)} .agrid b{font:700 20px/1.25 var(--f-display)}
 .splits{display:grid;gap:6px;font-size:14px}
@@ -461,7 +501,8 @@ a.srow{text-decoration:none;box-sizing:border-box}
 .zr div{flex:1;min-width:0} .zr b{display:block;font-weight:600} .zr span{font-size:13px;color:var(--muted)}
 .zr .zp{width:52px;min-height:30px;padding:0 6px;font-size:14px;text-align:center;display:inline-block;margin:0 2px}
 .zr em{font-style:normal;font-weight:700;white-space:nowrap}
-.dark-tiles{filter:invert(1) hue-rotate(180deg) brightness(1.05) contrast(1.05) saturate(.5)}
+.dark-tiles{filter:invert(1) hue-rotate(180deg) brightness(1.45) contrast(.92) saturate(.75)}   /* Nov 18: a little brighter */
+.shbtn{display:flex;align-items:center;justify-content:center;gap:8px}.shbtn svg{width:18px;height:18px}
 
 /* setup */
 .setup{display:grid;gap:22px}
@@ -690,6 +731,24 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .rs-item div{flex:1;min-width:0}.rs-item b{display:block;font-size:15px}.rs-item span{display:block;font-size:13px;color:var(--muted);margin-top:3px}.rs-item em{font-style:normal;flex:none}
 .liftlog{display:grid;gap:12px;margin-top:12px;padding-top:14px;border-top:1px solid var(--line)}
 .lrow{display:grid;grid-template-columns:1fr 84px 74px;gap:8px;align-items:center}
+.mywhero{gap:14px} .mywhero .btn{justify-self:start}
+.mywl{display:grid;border:1px solid #262A35;border-radius:16px;overflow:hidden;background:var(--surface)}
+.mywc{display:flex;align-items:center;gap:13px;padding:15px 16px;border:0;border-top:1px solid #22252E;background:none;color:var(--ink);text-align:left;font:inherit;cursor:pointer;width:100%}
+.mywc:first-child{border-top:0} .mywc:active{background:#1A1D24} .mywc .t{flex:1;display:grid;gap:3px;min-width:0} .mywc b{font-size:16px;font-weight:600} .mywc small{font-size:13px;color:var(--muted)} .mywc i{font-style:normal;color:var(--muted);font-size:20px}
+.myw-ic{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--lift) 26%,#20232C);color:#fff} .myw-ic .ic{width:18px;height:18px;display:block}
+.myws-h{display:flex;align-items:center;gap:12px} .myws-h > div{display:grid;gap:3px;min-width:0;flex:1} .myws-h b{font:700 18px/1.15 var(--f-display)} .myws-h span{font-size:13px;color:var(--muted)}
+.myws-x{flex:none;width:34px;height:34px;border-radius:50%;border:0;background:#20232C;color:var(--muted);display:grid;place-items:center;cursor:pointer} .myws-x svg{width:16px;height:16px}
+.sheet.myws:before{content:"";justify-self:center;width:38px;height:4px;border-radius:4px;background:#363B48;margin:-4px 0 2px}
+.mywdo{gap:14px} .mywdo .lrow{padding-top:12px;border-top:1px solid #22252E}
+.mywp{display:grid;gap:8px;padding:12px 0;border-top:1px solid #22252E} .mywp:first-of-type{border-top:0;padding-top:0}
+.mywp-h{display:flex;align-items:center;gap:10px} .mywp-h b{flex:1;font-size:15.5px;font-weight:600;min-width:0} .mywp-h .spk{width:80px;height:24px;flex:none}
+.mywp-h em{font-style:normal;font-size:13px;font-weight:700;padding:3px 9px;border-radius:999px;background:#20232C;color:var(--muted);flex:none} .mywp-h em.up{background:color-mix(in srgb,var(--long) 18%,#14161C);color:var(--long)} .mywp-h em.dn{color:var(--accent-2)}
+.mywh{list-style:none;margin:0;padding:0;display:grid;gap:4px} .mywh li{display:grid;grid-template-columns:60px 1fr 18px;gap:8px;font-size:14px;align-items:center} .mywh li span{color:var(--muted);font-size:13px} .mywh li b{font-weight:600} .mywh li i{font-style:normal;color:var(--long)}
+.sheet.myws{max-width:560px;gap:14px;border-radius:22px 22px 0 0;background:#121419;padding:16px 18px calc(14px + env(safe-area-inset-bottom,0px));margin-bottom:0}
+.fl{display:grid;gap:6px} .fl span{font-size:13px;color:var(--muted)} .fl input{min-height:46px}
+.mywe{display:grid;gap:8px} .mywe-h,.mywe-r{display:grid;grid-template-columns:1fr 54px 58px 34px;gap:8px;align-items:center} .mywe-h span{font-size:12px;color:var(--muted)}
+.mywe-r input{min-height:44px;min-width:0;padding:0 10px} .mywe-r input + input,.mywe-r input:nth-child(3){text-align:center}
+.mywe-x{width:34px;height:34px;border-radius:50%;border:0;background:#20232C;color:var(--muted);font-size:18px;cursor:pointer}
 .prs .pr .spk{width:60px;height:20px;flex:none} .prs .pr em.up{color:var(--good,#4CAF7A);font-size:15px} .prs .pr em.dn{color:var(--warn,#E8A33D);font-size:15px} .prs .pr em.sx{color:var(--muted);font-size:14px}
 .steps li.exl{display:flex;align-items:center;gap:10px} .steps li.exl > span{flex:1;min-width:0}
 .exwas{display:block;font-style:normal;font-size:12.5px;color:var(--muted);margin-top:2px}
@@ -807,6 +866,63 @@ a.scard{text-decoration:none;color:var(--ink)}
 .asum{margin-top:12px;padding:12px 14px;border-left:3px solid var(--tc,var(--accent));background:color-mix(in srgb,var(--accent) 6%,transparent);border-radius:0 8px 8px 0}
 .asum b{display:block;margin-bottom:4px}.asum p{margin:4px 0;font-size:14px;color:var(--ink-2,var(--muted))}
 .asub{display:block;font-size:13px;color:var(--muted);margin:-2px 0 6px}
+
+/* ===== Full-screen layout (Matthew, Nov 18 11:56am: "a legit app that takes up the whole screen ... similar to Runna, Strava
+   and Endorphins ... it's so instant and boxy ... make it smooth"). Same information, same order. Sections run edge to edge
+   with a thin canvas gap between them (like a feed), labels are sentence case, the tab bar sits flush at the bottom, sheets
+   rise from the bottom edge, and things move when you act on them. Undo = revert this PR. ===== */
+:root{--bg:#07080B;--surface:#111318;--sunk:#1A1D24;--line:rgba(255,255,255,.07);--ease:cubic-bezier(.2,.8,.2,1)}
+.wrap{max-width:none;padding:0 0 calc(92px + env(safe-area-inset-bottom,0px));gap:6px}
+.wrap > .view{gap:8px}
+.view > *{margin-inline:0}
+.view > :not(.card):not(.hub-hero):not(.days):not(.pc.wide):not(.tl.wide):not(.scards):not(svg){padding-inline:20px}
+.view > .card,.view > .pc.wide,.view > .tl.wide,.days > .card{border-radius:0;border:0;box-shadow:none;padding-inline:20px}
+.view > .scards{gap:0;padding:0}
+.view > .scards > .scard{border-radius:0;border:0;border-bottom:1px solid var(--line);padding:18px 20px;background:var(--surface)}
+.view > .scards > .scard:last-child{border-bottom:0}
+.view > .card.actc,.days > .card.day{padding-inline:0}
+.days{gap:8px}
+.hub-hero{margin-inline:0;padding:28px 20px 26px}
+.view > .sec-t{padding-top:10px;font-size:28px;letter-spacing:-.03em}
+.view > svg.pchart{padding-inline:12px}
+.view > .hello{padding-top:6px;padding-bottom:0}
+.view > .hello > .wxs,.view > .hello > .racecd{width:calc(100% + 40px);max-width:none;margin-inline:-20px;border-radius:0;border-left:0;border-right:0;padding-inline:20px}
+.view > .hello > .wxs{border-top:1px solid var(--line);border-bottom:0;margin-top:16px;background:transparent}
+.view > .hello > .racecd{margin-top:0;border-bottom:0;padding-top:18px;padding-bottom:18px}
+.view > .segsw{margin-inline:20px;padding:4px}
+.card > .wsum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+/* header: sticky, see-through */
+.wrap > .top{position:sticky;top:0;z-index:25;padding:max(10px,env(safe-area-inset-top,0px)) 20px 10px;margin-top:calc(-1 * env(safe-area-inset-top,0px));
+  background:color-mix(in srgb,var(--bg) 84%,transparent);-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%)}
+.iconbtn{background:transparent;border-radius:50%;transition:background-color .2s var(--ease)} .iconbtn:active{background:var(--sunk)}
+/* tab bar: flush with the bottom edge */
+.tabbar{left:0;right:0;bottom:0;max-width:none;margin:0;border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;gap:0;
+  padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,#0C0D11 86%,transparent);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%)}
+.tabbar button{padding:8px 0 6px;border-radius:0;transition:color .2s var(--ease)}
+.tabbar button[aria-current="page"]{background:none!important}
+.tabbar button:not(.tb-today)[aria-current="page"]::after{content:"";width:18px;height:3px;border-radius:2px;background:var(--tabc);margin-top:-1px}
+.tabbar .tb-today{margin-top:-14px}
+.tabbar .tb-today .ic{padding:13px;border-radius:50%;background:linear-gradient(160deg,#BE383E,#800000);box-shadow:0 6px 16px rgba(128,0,0,.45),0 0 0 4px var(--bg)!important}
+/* sentence-case labels instead of tracked capitals */
+.hello .kick,.rc-top small,.pc .ph,.mvpv-h,.mealh,.wx-best b,.pl-top,.pl-now small,.wnew .kick,.chgl,.awk,.groc h3,.apps h3,.meal em,.rg > span,.coach small.ai,.fbanner b,.chg .mvo .ty{text-transform:none;letter-spacing:0}
+.hello .kick{font-size:14px;font-weight:600} .rc-top small,.pc .ph,.mealh,.chgl,.awk{font-size:13.5px;font-weight:600}
+/* sheets rise from the bottom edge */
+.back{padding:0;animation:ui-fade .22s var(--ease)}
+.sheet{max-width:640px;border:0;border-top:1px solid var(--line);border-radius:20px 20px 0 0;padding:14px 20px calc(20px + env(safe-area-inset-bottom,0px));margin-bottom:0;
+  max-height:calc(100dvh - 12px - env(safe-area-inset-top,0px));animation:ui-up .34s var(--ease)}
+.sheet::before{content:"";justify-self:center;width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.2);margin-bottom:4px}
+.sheet.asks{animation:none}   /* the coach sheet follows the keyboard (visual viewport); it appears in place */
+@keyframes ui-up{from{transform:translateY(100%)}} @keyframes ui-fade{from{opacity:0}}
+/* things answer a tap */
+.btn,.card[data-act],.actc,.linkbtn,.tabbar button{transition:transform .18s var(--ease),background-color .2s var(--ease),opacity .2s var(--ease)}
+.btn:active,.card[data-act]:active,.actc:active{transform:scale(.985)}
+.btn{border-radius:10px}
+/* screens arrive with a short cross-fade (the app already uses view transitions to move between screens) */
+::view-transition-old(root){animation:ui-out .16s ease both} ::view-transition-new(root){animation:ui-in .26s var(--ease) both}
+@keyframes ui-out{to{opacity:0}} @keyframes ui-in{from{opacity:0;transform:translateY(8px)}}
+@media (prefers-reduced-motion:reduce){.back,.sheet{animation:none}::view-transition-old(root),::view-transition-new(root){animation:none}.btn:active,.card[data-act]:active,.actc:active{transform:none}}
+/* big screens: keep a centred column, rounded like a phone screen */
+@media (min-width:700px){.wrap{max-width:640px;padding-top:12px}.view > .card,.view > .pc.wide,.days > .card,.hub-hero{border-radius:14px}.tabbar{max-width:640px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}}
 </style>
 </head>
 <body>
@@ -846,6 +962,12 @@ const SAMPLE = {name:"Jordan", sample:true, goal:"half", raceDate: addDays(monda
 const API = "https://hybrid-api.hybridapp.workers.dev";
 const tokenStore = { get(){ try { return localStorage.getItem("hp-token"); } catch(e){ return null; } },
   set(t){ try { t ? localStorage.setItem("hp-token", t) : localStorage.removeItem("hp-token"); } catch(e){} } };
+// plan setup answers, kept on this phone so a member who leaves halfway comes back to the step they were on
+// (onboarding incident, Nov 18: members sign up but don't finish a plan). One account at a time, 30 days, cleared on log out.
+const setupDraft = {
+  get(uid){ try { const d = JSON.parse(localStorage.getItem("hp-setup") || "null"); return d && d.uid === uid && d.p && Date.now() - (d.ts || 0) < 30 * 864e5 ? d : null; } catch(e){ return null; } },
+  set(uid, st){ try { localStorage.setItem("hp-setup", JSON.stringify({uid, step: st.step, p: st.p, ts: Date.now()})); } catch(e){} },
+  clear(){ try { localStorage.removeItem("hp-setup"); } catch(e){} } };
 // the app lives at app.hybrdrunning.com: the old addresses (github.io, app.hybridrunnin.com) forward here and carry the login along
 let movedHere = false;
 try { const rf = new URLSearchParams(location.search).get("ref"); if (/^[a-f0-9]{8}$/.test(rf || "")) localStorage.setItem("hp-ref", rf); } catch(e){}
@@ -884,18 +1006,21 @@ function loadAccount(j){
   clearObj(weights); (j.weights || []).forEach(w => weights[w.date] = w.lb);
   acts = j.activities || []; strava = j.strava || strava; garmin = j.garmin || {available: false, connected: false, last_push: null};
   reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; aiSt = j.ai || {on: true, asked: true, needs: false, available: !!j.coach}; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {}; isOwner = !!j.owner; feat = j.features || {}; founding = j.founding || null; reports = j.reports || [];
-  liftLog = j.lifts || []; mealplan = j.mealplan || null; crews = j.crews || []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null;
+  gear = j.gear || []; liftLog = j.lifts || []; mealplan = j.mealplan || null; crews = j.crews || []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null;
   plan = j.profile ? buildPlan(j.profile) : null;
-  setup = plan ? null : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
+  const dr = plan ? null : setupDraft.get(me.id);
+  if (plan) setupDraft.clear();
+  setup = plan ? null : dr ? {step: Math.min(3, Math.max(0, Math.floor(+dr.step) || 0)), p: {...blankProfile(), ...dr.p}, resumed: true} : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
 }
 function signedOut(){ scr = null; feat = {}; inv = null; revOpen = false; aiSt = {on: true, asked: true, needs: false, available: false}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
 const checkins = S.checkins || {};          // date -> {sleep_h, sleep_q, soreness, energy, stress}
 const weights = S.weights || {};            // date -> lb
+let gear = [];                              // the member's shoes: [{id, name, mi, retired}]
 let acts = S.acts || [];                    // [{id, source, date, type, name, mi, minutes, cal, avg_hr}]
 let strava = {available: false, connected: false, name: "", last_sync: null}, garmin = {available: false, connected: false, last_push: null};
 let ci = null, wf = null, aw = {open: false, err: "", busy: false};
-let reviews = {}, notes = [], uset = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", n_morning: true, n_run: true, n_weekly: true, n_bed: true}, pushInfo = {key: null, devices: 0}, coachOn = false;
+let reviews = {}, notes = [], uset = {tz: "America/New_York", morning: "07:00", bedtime: "21:30", n_morning: true, n_run: true, n_weekly: true, n_bed: true, n_stress: true}, pushInfo = {key: null, devices: 0}, coachOn = false;
 const reviewFor = a => reviews[a.id] || null;
 const VCLS = {ok: "good", easy: "easy", hard: "warn", unknown: "muted", extra: "good"};
 /* Garmin attribution (Garmin API brand guidelines, Nov 17): anything worked out with Garmin device data as an input says
@@ -1119,11 +1244,36 @@ function routeSvg(pts){
   const step = Math.max(1, Math.floor(pts.length / 400)), path = pts.filter((_, i) => i % step === 0 || i === pts.length - 1).map(xy).join(' ');
   return '<svg viewBox="0 0 340 200" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><polyline points="' + path + '" fill="none" stroke="var(--accent)" stroke-width="7" stroke-opacity=".25" stroke-linejoin="round" stroke-linecap="round"/><polyline points="' + path + '" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></svg>';
 }
+/* More in each workout's box (Matthew's Nov 18 list, item 4): heart rate with zone, climb, effort, and how it lined up with the
+   plan, as small chips under the stats. Every chip comes from the member's own workout and plan; nothing is guessed. */
+function planVs(a){
+  if (!plan || !a.date || !HP.dayOf(plan, a.date)) return null;
+  const m = HP.dayMatches(plan, feedActs(), a.date), idx = Object.keys(m).find(i => m[i].id === a.id), day = HP.dayOf(plan, a.date);
+  if (idx == null) return a.date <= TODAY && (a.type === "run" || a.type === "lift") ? {t: "Extra", tone: "mut"} : null;
+  const ss = day.sessions[idx]; if (!ss) return null;
+  const short = ss.type === "easy" ? "Easy run" : ss.type === "long" ? "Long run" : ss.type === "lift" ? "Strength" : ss.type === "workout" ? "Workout" : ss.type === "race" ? "Race" : ss.title.split(" · ")[0];
+  if (m[idx].sub) return {t: "Counted as " + short.toLowerCase(), tone: "ok"};
+  let tone = "ok", word = "done";
+  if (["easy", "long", "workout"].includes(ss.type)){ const v = HP.assess(plan, ss, a); if (v.verdict === "ok") word = "on target"; else if (v.verdict === "hard") { word = ss.type === "workout" ? "slower than target" : "faster than easy"; tone = "warn"; } else if (v.verdict === "easy") { word = "faster than target"; tone = "warn"; } }
+  if (ss.mi > 0 && a.mi > 0 && a.mi < ss.mi * .8){ word = r2(a.mi) + " of " + ss.mi + " mi"; tone = "warn"; }
+  return {t: short + " · " + word, tone};
+}
+function actChips(a){
+  const out = [], z = a.avg_hr ? zoneOf(a.avg_hr) : 0, mx = maxHrNow(), shown = actStats(a).some(([k]) => k === "Avg HR");
+  if (a.avg_hr && (z || !shown)) out.push(['<i class="ac-hr">♥</i>' + a.avg_hr + ' bpm' + (z ? ' · Z' + z : ''), '']);
+  if (a.elev_ft >= 30) out.push(['▲ ' + comma(a.elev_ft) + ' ft', '']);
+  if (a.type !== "lift" && ((a.avg_hr && mx) || a.rpe > 0 || a.feel)){ const e = HP.effortOf(a, mx); out.push([(e <= 4 ? 'Easy' : e <= 6 ? 'Moderate' : e <= 8 ? 'Hard' : 'All-out') + ' effort', '']); }
+  const pv = planVs(a); if (pv) out.push([pv.t, pv.tone]);
+  return out.length ? '<div class="achips">' + out.map(([t, k]) => '<span' + (k ? ' class="' + k + '"' : '') + '>' + t + '</span>').join("") + '</div>' : '';
+}
+// the plan's run miles for a week (Mon..Sun), to show "12.4 of 20 mi"
+function weekPlanMi(ws){ if (!plan) return 0; let t = 0; for (let i = 0; i < 7; i++){ const d = HP.dayOf(plan, addDays(ws, i)); if (d) d.sessions.forEach(x => { if (["easy", "long", "workout", "race"].includes(x.type)) t += x.mi || 0; }); } return Math.round(t * 10) / 10; }
+const weekLabel = ws => ws === mondayOf(TODAY) ? "This week" : ws === addDays(mondayOf(TODAY), -7) ? "Last week" : fmtD(ws) + " – " + fmtD(addDays(ws, 6));
 function actCard(a){
   const pts = ptsOf(a), tone = ACT_TONE[a.type] || "long", src = a.source === "strava" ? "Strava" : a.source === "garmin" ? "Garmin" : a.source === "sample" ? "Sample" : "Logged";
   return '<article class="card actc" style="--tc:var(--' + tone + ')" data-act="actopen" data-id="' + esc(a.id) + '" tabindex="0" role="button" aria-label="Open ' + esc(a.name) + '">' +
     '<div class="ah"><span class="aic">' + ic(ACT_IC[a.type] || "watch") + '</span><div><b>' + esc((me && me.name) || (plan && plan.profile.name) || "You") + '</b><span>' + whenTxt(a) + ' · ' + src + '</span></div></div>' +
-    '<h3>' + esc(a.name) + '</h3>' + (plan && a.type !== "run" && a.type !== "lift" ? '<span class="asub">' + esc(HP.actSummary(plan, feedActs(), a, TODAY, maxHrNow()).headline) + '</span>' : '') + '<div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
+    '<h3>' + esc(a.name) + '</h3>' + (a.descr ? '<p class="acd">' + esc(a.descr) + '</p>' : '') + (plan && a.type !== "run" && a.type !== "lift" ? '<span class="asub">' + esc(HP.actSummary(plan, feedActs(), a, TODAY, maxHrNow()).headline) + '</span>' : '') + '<div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + actChips(a) +
     (pts && pts.length > 1 ? '<div class="amap" data-map="' + esc(a.id) + '">' + routeSvg(pts) + '</div>' : '') + '</article>';
 }
 function feedActs(){
@@ -1137,15 +1287,20 @@ function renderActivities(){
   const ws = mondayOf(TODAY), wk = all.filter(a => a.date >= ws && a.date <= TODAY);
   const wmi = wk.reduce((t, a) => t + (a.type === "run" ? a.mi || 0 : 0), 0), wmin = wk.reduce((t, a) => t + (a.minutes || 0), 0);
   let h = '<h2 class="sec-t">Activities</h2>';
+  const pmi = weekPlanMi(ws), pct = pmi > 0 ? Math.min(100, Math.round(wmi / pmi * 100)) : 0;
   h += '<section class="card" style="--tone:var(--lift)"><div class="card-h">' + ic("bars") + '<span class="lbl">This week</span><span class="r">' + wk.length + ' activit' + (wk.length === 1 ? 'y' : 'ies') + '</span></div>' +
-    '<div class="wsum"><div><span>Run miles</span><b>' + r2(wmi) + '</b></div><div><span>Time</span><b>' + durTxt(wmin) + '</b></div><div><span>Activities</span><b>' + wk.length + '</b></div></div></section>';
+    '<div class="wsum"><div><span>Run miles</span><b>' + r2(wmi) + (pmi > 0 ? '<small> / ' + pmi + '</small>' : '') + '</b></div><div><span>Time</span><b>' + durTxt(wmin) + '</b></div><div><span>Activities</span><b>' + wk.length + '</b></div></div>' +
+    (pmi > 0 ? '<div class="wbar" role="img" aria-label="' + r2(wmi) + ' of ' + pmi + ' planned run miles"><i style="width:' + pct + '%"></i></div><p class="wnote">' + (wmi >= pmi ? 'Planned miles done this week.' : r2(Math.max(0, pmi - wmi)) + ' mi left on the plan this week.') + '</p>' : '') + '</section>';
   const F = [["all", "All"], ["run", "Runs"], ["lift", "Strength"], ["other", "Other"]];
-  h += '<div class="afilt" role="group" aria-label="Filter activities">' + F.map(([k, l]) => '<button type="button" data-act="afilt" data-k="' + k + '" aria-pressed="' + (actFilter === k) + '">' + l + '</button>').join("") + '</div>';
-  const list = all.filter(a => actFilter === "all" || (actFilter === "other" ? !["run", "lift"].includes(a.type) : a.type === actFilter));
-  if (!list.length) h += '<section class="card"><p class="sub">' + (all.length ? 'Nothing here for this filter.' :
+  const inF = (a, k) => k === "all" || (k === "other" ? !["run", "lift"].includes(a.type) : a.type === k);
+  h += '<div class="afilt" role="group" aria-label="Filter activities">' + F.map(([k, l]) => { const n = all.filter(a => inF(a, k)).length; return '<button type="button" data-act="afilt" data-k="' + k + '" aria-pressed="' + (actFilter === k) + '">' + l + (all.length ? ' <em>' + n + '</em>' : '') + '</button>'; }).join("") + '</div>';
+  const list = all.filter(a => inF(a, actFilter));
+  const EMPTY = {run: "No runs here yet. They come in from Strava or Garmin, or log one on the Today tab.", lift: "No strength sessions yet. Log one on the Today tab after you lift.", other: "Rides, swims, walks and other sports show up here."};
+  if (!list.length) h += '<section class="card"><p class="sub">' + (all.length ? EMPTY[actFilter] || 'Nothing here for this filter.' :
     mode === "account" && strava.available && !strava.connected ? 'Connect Strava and your runs show up here with a map of your route. Garmin, COROS and Apple Watch work through Strava too.</p><button class="stbtn" type="button" data-act="stconnect" aria-label="Connect with Strava"><img src="brand/strava-connect.svg" alt="Connect with Strava" width="237" height="48"></button><p class="sub">You can also log workouts by hand on the Today tab.' :
-    'No activities yet. Log a workout on the Today tab' + (mode === "account" ? ' or sync Strava' : '') + '.') + '</p></section>';
-  else h += list.slice(0, 40).map(actCard).join("");
+    'No activities yet. Log a workout on the Today tab' + (mode === "account" ? ' or sync Strava' : '') + '.') + '</p>' + (all.length ? '<button class="linkbtn" type="button" data-act="afilt" data-k="all">Show all activities</button>' : '') + '</section>';
+  else { let lastW = ""; list.slice(0, 40).forEach(a => { const w = a.date ? mondayOf(a.date) : ""; if (w && w !== lastW){ lastW = w; const wa = list.filter(x => x.date && mondayOf(x.date) === w), rm = wa.reduce((t, x) => t + (x.type === "run" ? x.mi || 0 : 0), 0);
+      h += '<h3 class="awk"><span>' + weekLabel(w) + '</span><em>' + wa.length + ' · ' + (rm > 0 ? r2(rm) + ' mi' : durTxt(wa.reduce((t, x) => t + (x.minutes || 0), 0))) + '</em></h3>'; } h += actCard(a); }); }
   if (strava.connected) h += '<button class="linkbtn" type="button" data-act="stsync" style="justify-self:center">Sync Strava now · ' + agoText(strava.last_sync) + '</button>';
   if (strava.connected || garmin.connected) h += '<div class="badges">' + (strava.connected ? '<i class="cws"><img src="brand/compatible-strava-orange.svg" alt="Compatible with Strava" width="437" height="37"></i>' : '') + (garmin.connected ? '<i class="cws gbadge"><img src="brand/garmin-black.png" alt="Garmin" width="463" height="72"></i>' : '') + '</div>';
   h += crewCardHtml();
@@ -1160,6 +1315,12 @@ function actDetail(a){
     : '<h1>' + esc(a.name) + '</h1>') + '<span class="sub">' + whenTxt(a) + ' · ' + (a.source === "strava" ? 'Strava' : a.source === "garmin" ? 'Garmin' : a.source === "sample" ? 'Sample' : 'Logged by hand') + '</span></div>' +
     (canRename(a) && !(actName && actName.id === a.id) ? '<button class="an-edit" type="button" data-act="anedit" aria-label="Rename this workout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 7.5l3 3"/></svg></button>' : '') + '</div>';
   if (pts && pts.length > 1) h += '<div class="amap big" data-map="' + esc(a.id) + '" data-big="1">' + routeSvg(pts) + '</div>';
+  if (a.descr) h += '<p class="adescr">' + esc(a.descr) + '</p>';
+  const meta = [a.tag && (TAGS.find(t => t[0] === a.tag) || [])[1], a.gear_id && (gear.find(g => g.id === a.gear_id) || {}).name, a.rpe && 'Felt ' + a.rpe + '/10'].filter(Boolean);
+  if (meta.length) h += '<div class="achips adet-chips">' + meta.map(t => '<span>' + esc(t) + '</span>').join("") + '</div>';
+  if (a.note) h += '<p class="anote"><b>Private note</b>' + esc(a.note) + '</p>';
+  const shareOk = a.mi > 0 || (pts && pts.length > 1);
+  if (shareOk || canEdit(a)) h += '<div class="adet-b">' + (canEdit(a) ? '<button class="btn shbtn" type="button" data-act="aedit" data-id="' + esc(a.id) + '">' + ic("pencil") + ' Edit</button>' : '') + (shareOk ? '<button class="btn shbtn" type="button" data-act="ashare" data-id="' + esc(a.id) + '">' + ic("share") + ' Share image</button>' : '') + '</div>';
   h += '<section class="card" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv, a) : '') + summaryHtml(a) + '</section>';
   let laps = null; try { laps = a.laps ? (typeof a.laps === "string" ? JSON.parse(a.laps) : a.laps) : null; } catch(e){}
   laps = (laps || []).filter(l => l[0] > 50 && l[1] > 0);
@@ -1172,6 +1333,229 @@ function actDetail(a){
   if (a.source === "manual") h += '<button class="btn block" type="button" data-act="adel" data-id="' + esc(a.id) + '" style="color:var(--crit)">Delete this workout</button>';
   if (a.source === "strava" && a.ext_id) h += '<a class="linkbtn" style="justify-self:center" href="https://www.strava.com/activities/' + esc(a.ext_id) + '" target="_blank" rel="noopener" style="justify-self:center;color:#FC5200">View on Strava</a>';
   return h;
+}
+/* Share image (Matthew, Nov 18: "an overlay for after runs that clients can paste anywhere, similar to Strava"; 10:43am: "something
+   transparent with mileset logo like the attached images"). "Share image" opens a sheet of styles: see-through stickers (stats,
+   big numbers, route, mile splits, heart rate) to drop on an Instagram Story or a photo, plus the full dark card. Each is drawn
+   on the phone from the member's own workout (nothing is uploaded) and goes to the phone's share sheet, or is saved as a PNG. */
+function shareStats(a){
+  const st = [];
+  if (a.mi > 0) st.push(["Distance", r2(a.mi) + " mi"]);
+  if (a.type === "run" && a.mi > 0 && a.minutes > 0) st.push(["Pace", fmtPace(a.minutes * 60 / a.mi) + " /mi"]);
+  else if (a.type === "bike" && a.mi > 0 && a.minutes > 0) st.push(["Speed", (Math.round(a.mi / a.minutes * 600) / 10) + " mph"]);
+  if (a.minutes) st.push(["Time", durTxt(a.minutes)]);
+  if (st.length < 3 && a.elev_ft) st.push(["Elevation", comma(a.elev_ft) + " ft"]);
+  if (st.length < 3 && a.avg_hr) st.push(["Avg HR", a.avg_hr + " bpm"]);
+  return st.slice(0, 3);
+}
+async function drawCard(a){
+  const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  try { await document.fonts.load('800 64px Archivo'); await document.fonts.load('600 32px Inter'); } catch(e){}
+  const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, "#1A080C"); bg.addColorStop(.55, "#0E0F14"); bg.addColorStop(1, "#0A0B0F");
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  const pts = ptsOf(a);
+  if (pts && pts.length > 1){
+    let y0 = 90, y1 = -90, x0 = 180, x1 = -180; pts.forEach(([y, x]) => { y0 = Math.min(y0, y); y1 = Math.max(y1, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); });
+    const k = Math.cos((y0 + y1) / 2 * Math.PI / 180), w = Math.max((x1 - x0) * k, 1e-5), h = Math.max(y1 - y0, 1e-5);
+    const bx = 110, by = 250, bw = W - 220, bh = 640, s = Math.min(bw / w, bh / h);
+    const P = ([y, x]) => [bx + (bw - w * s) / 2 + (x - x0) * k * s, by + (bh - h * s) / 2 + (y1 - y) * s];
+    const step = Math.max(1, Math.floor(pts.length / 1500)), q = pts.filter((_, i) => i % step === 0 || i === pts.length - 1).map(P);
+    const line = (wd, col) => { g.beginPath(); q.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.lineWidth = wd; g.strokeStyle = col; g.lineJoin = g.lineCap = "round"; g.stroke(); };
+    line(34, "rgba(190,56,62,.22)"); line(18, "rgba(255,90,95,.35)"); line(9, "#FF5A5F");
+    const dot = ([x, y], col) => { g.beginPath(); g.arc(x, y, 14, 0, 7); g.fillStyle = col; g.fill(); g.lineWidth = 5; g.strokeStyle = "#0E0F14"; g.stroke(); };
+    dot(q[0], "#FFFFFF"); dot(q[q.length - 1], "#FF5A5F");
+  }
+  const fit = (t, f, max) => { g.font = f; while (g.measureText(t).width > max && t.length > 4) t = t.slice(0, -2).trimEnd() + "…"; return t; };
+  g.textBaseline = "alphabetic";
+  g.fillStyle = "#FFFFFF"; g.fillText(fit(a.name || "Workout", "800 66px Archivo, system-ui, sans-serif", W - 160), 80, 140);
+  const day = a.date ? new Date(a.date + "T12:00:00").toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric", year: "numeric"}) : "";
+  const tm = a.start_local && a.start_local.length >= 16 ? new Date(a.start_local.slice(0, 16) + ":00").toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit"}) : "";
+  g.fillStyle = "#A7ACB8"; g.font = "600 32px Inter, system-ui, sans-serif"; g.fillText(fit([day, tm].filter(Boolean).join(" · ") || whenTxt(a), g.font, W - 160), 82, 192);   // a real date: the picture outlives "yesterday"
+  const st = shareStats(a), cw = (W - 160) / Math.max(1, st.length);
+  st.forEach(([k, v], i) => {
+    const x = 80 + i * cw;
+    g.fillStyle = "#8A90A0"; g.font = "700 26px Inter, system-ui, sans-serif"; g.fillText(k.toUpperCase(), x, 1010);
+    g.fillStyle = "#FFFFFF"; g.fillText(fit(v, "800 " + (st.length > 2 ? 62 : 72) + "px Archivo, system-ui, sans-serif", cw - 24), x, 1085);
+  });
+  g.fillStyle = "#BE383E"; g.fillRect(80, 1170, W - 160, 4);
+  g.fillStyle = "#FFFFFF"; g.font = "800 44px Archivo, system-ui, sans-serif"; g.fillText("MILESET", 80, 1250);
+  g.fillStyle = "#A7ACB8"; g.font = "600 28px Inter, system-ui, sans-serif"; g.textAlign = "right";
+  g.fillText((a.source === "strava" ? "Data via Strava · " : a.source === "garmin" ? "Data via Garmin · " : "") + "Train for anything", W - 80, 1248);
+  g.textAlign = "left";
+  return c;
+}
+const MARK_P = ["M58 -10 L30 95 L52 102 L18 205 L44 212 L26 300", "M30 95 L8 140 M18 205 L4 236"];
+const STF = (w, px) => w + " " + px + "px Archivo, system-ui, sans-serif", STI = (w, px) => w + " " + px + "px Inter, system-ui, sans-serif";
+function stShadow(g, on){ g.shadowColor = on ? "rgba(0,0,0,.55)" : "transparent"; g.shadowBlur = on ? 18 : 0; g.shadowOffsetY = on ? 2 : 0; }
+// the Mileset mark (the bolt) and wordmark, `px` tall, centred on x (or from x when align is "left")
+function stLogo(g, x, y, px, align){
+  const mh = px * 1.3, mw = mh * 92 / 344, gap = px * .32;
+  g.font = STF(800, px); const tw = g.measureText("MILESET").width, all = mw + gap + tw;
+  const x0 = align === "left" ? x : align === "right" ? x - all : x - all / 2;
+  g.save(); g.translate(x0, y - mh * .86); g.scale(mh / 344, mh / 344); g.translate(16, 24);
+  g.lineWidth = 26; g.lineCap = g.lineJoin = "round"; g.strokeStyle = "#FF5A5F"; MARK_P.forEach(d => g.stroke(new Path2D(d))); g.restore();
+  g.fillStyle = "#FFFFFF"; g.textAlign = "left"; g.fillText("MILESET", x0 + mw + gap, y);
+}
+function stLaps(a){
+  let laps = null; try { laps = a.laps ? (typeof a.laps === "string" ? JSON.parse(a.laps) : a.laps) : null; } catch(e){}
+  return (laps || []).filter(l => l[0] > 50 && l[1] > 0).slice(0, 12);
+}
+function stRoute(g, pts, bx, by, bw, bh){
+  let y0 = 90, y1 = -90, x0 = 180, x1 = -180; pts.forEach(([y, x]) => { y0 = Math.min(y0, y); y1 = Math.max(y1, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); });
+  const k = Math.cos((y0 + y1) / 2 * Math.PI / 180), w = Math.max((x1 - x0) * k, 1e-5), h = Math.max(y1 - y0, 1e-5), s = Math.min(bw / w, bh / h);
+  const P = ([y, x]) => [bx + (bw - w * s) / 2 + (x - x0) * k * s, by + (bh - h * s) / 2 + (y1 - y) * s];
+  const step = Math.max(1, Math.floor(pts.length / 1500)), q = pts.filter((_, i) => i % step === 0 || i === pts.length - 1).map(P);
+  g.beginPath(); q.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.lineJoin = g.lineCap = "round";
+  stShadow(g, true); g.lineWidth = 16; g.strokeStyle = "#FF5A5F"; g.stroke(); stShadow(g, false);
+}
+// which stickers this workout can make: [key, label]
+function stickers(a){
+  const L = [["stats", "Stats"], ["stack", "Big numbers"]], pts = ptsOf(a);
+  if (pts && pts.length > 1) L.push(["route", "Route"]);
+  if (a.type === "run" && stLaps(a).length > 1) L.push(["splits", "Splits"]);
+  if (a.avg_hr) L.push(["hr", "Heart rate"]);
+  L.push(["card", "Photo card"]);
+  return L;
+}
+async function drawSticker(a, k){
+  try { await document.fonts.load('800 64px Archivo'); await document.fonts.load('700 32px Inter'); } catch(e){}
+  if (k === "card") return drawCard(a);
+  const st = shareStats(a), W = 1080, H = {stats: 520, stack: 1080, route: 1180, splits: 1080, hr: 560}[k] || 1080;
+  const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");   // never filled: see-through
+  g.textBaseline = "alphabetic"; stShadow(g, true);
+  const lab = (t, x, y, al) => { g.textAlign = al || "left"; g.fillStyle = "rgba(255,255,255,.82)"; g.font = STI(700, 30); g.fillText(t, x, y); };
+  const val = (t, x, y, px, al) => { g.textAlign = al || "left"; g.fillStyle = "#FFFFFF"; g.font = STF(800, px); g.fillText(t, x, y); };
+  if (k === "stats"){
+    stLogo(g, W / 2, 150, 64);
+    const cw = (W - 120) / Math.max(1, st.length);
+    st.forEach(([l, v], i) => { const x = 60 + cw * i + cw / 2; lab(l, x, 330, "center"); val(v, x, 420, st.length > 2 ? 66 : 88, "center"); });
+  } else if (k === "stack"){
+    stLogo(g, W / 2, 150, 60);
+    st.forEach(([l, v], i) => { const y = 330 + i * 260; lab(l, W / 2, y, "center"); val(v, W / 2, y + 130, 128, "center"); });
+  } else if (k === "route"){
+    stRoute(g, ptsOf(a), 120, 60, W - 240, 760); stShadow(g, true);
+    const cw = (W - 120) / Math.max(1, st.length);
+    st.forEach(([l, v], i) => { const x = 60 + cw * i + cw / 2; lab(l, x, 930, "center"); val(v, x, 1010, st.length > 2 ? 64 : 80, "center"); });
+    stLogo(g, W / 2, 1120, 46);
+  } else if (k === "splits"){
+    const laps = stLaps(a), paces = laps.map(l => l[1] / (l[0] / 1609.34)), fast = Math.min(...paces), slow = Math.max(...paces);
+    const mile = laps.every(l => Math.abs(l[0] - 1609.34) < 80 || l === laps[laps.length - 1]);
+    val(mile ? "Mile splits" : "Lap splits", 90, 150, 72);
+    const top = 220, rh = Math.min(64, 640 / laps.length), bw = W - 180 - 300;
+    laps.forEach((l, i) => {
+      const y = top + i * rh, len = slow > fast ? .35 + .65 * (slow - paces[i]) / (slow - fast) : 1;
+      g.fillStyle = "rgba(255,255,255,.85)"; g.font = STI(700, 30); g.textAlign = "left"; g.fillText(String(i + 1), 90, y + rh * .62);
+      g.fillStyle = "#FF5A5F"; g.beginPath(); if (g.roundRect) g.roundRect(160, y + rh * .22, bw * len, rh * .5, rh * .25); else g.rect(160, y + rh * .22, bw * len, rh * .5); g.fill();
+      g.fillStyle = "#FFFFFF"; g.font = STF(800, 38); g.textAlign = "right"; g.fillText(fmtPace(paces[i]), W - 90, y + rh * .66);
+    });
+    stLogo(g, W / 2, Math.min(H - 70, top + laps.length * rh + 150), 50);
+  } else if (k === "hr"){
+    stLogo(g, W / 2, 140, 56);
+    lab("Avg heart rate", W / 2, 290, "center"); val(a.avg_hr + " bpm", W / 2, 430, 140, "center");
+    if (a.max_hr){ lab("Max " + a.max_hr + " bpm", W / 2, 510, "center"); }
+  }
+  g.textAlign = "left"; stShadow(g, false);
+  return c;
+}
+const toBlob = c => new Promise(r => c.toBlob(r, "image/png"));
+async function shareSheet(a){
+  const L = stickers(a), b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
+  b.innerHTML = '<div class="sheet shs" role="dialog" aria-modal="true" aria-labelledby="shs-h"><h2 id="shs-h">Share your workout</h2><p class="sub">See-through stickers: tap one, then add it to an Instagram Story or a photo.</p>' +
+    '<div class="shs-g">' + L.map(([k, l]) => '<button type="button" class="shs-t" data-act="shpick" data-k="' + k + '" data-id="' + esc(a.id) + '" aria-label="Share the ' + l + ' image"><span class="shs-i' + (k === "card" ? ' solid' : '') + '" data-k="' + k + '"></span><b>' + l + '</b></button>').join("") + '</div>' +
+    '<button class="btn block" type="button" data-act="close">Close</button></div>';
+  document.body.appendChild(b);
+  for (const [k] of L){ try { const c = await drawSticker(a, k), el = b.querySelector('.shs-i[data-k="' + k + '"]'); if (el) el.style.backgroundImage = 'url(' + c.toDataURL("image/png") + ')' + (k === "card" ? '' : ', var(--chk)'); } catch(e){} }
+}
+async function shareRun(a, k){
+  let blob; try { blob = await toBlob(await drawSticker(a, k || "card")); } catch(e){ return toast("Couldn't make the image. Try again."); }
+  if (!blob) return toast("Couldn't make the image. Try again.");
+  const name = "mileset-" + (a.date || "workout") + "-" + (k || "card") + ".png", file = new File([blob], name, {type: "image/png"});
+  try { if (navigator.canShare && navigator.canShare({files: [file]})){ await navigator.share({files: [file]}); return; } }
+  catch(e){ if (e && e.name === "AbortError") return; }
+  const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = name; document.body.appendChild(l); l.click(); l.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 10000); toast("Image saved");
+}
+/* After a workout (Matthew, Nov 18 10:43am: "after each activity ... a pop up for the bottom of the page next time it's opened like
+   Strava where they can edit the name and whatever"). The next time the app opens, a new synced workout (Strava or Garmin, last
+   2 days) slides up once: name it, share it, or open it. Seen ids are kept on the phone so each workout shows once. */
+const APL_KEY = "hy-actpop";
+function aplSeen(){ try { return JSON.parse(localStorage.getItem(APL_KEY) || "null"); } catch(e){ return null; } }
+function aplMark(ids){ try { const old = aplSeen() || []; localStorage.setItem(APL_KEY, JSON.stringify([...new Set(ids.concat(old))].slice(0, 60))); } catch(e){} }
+let apl = null;   // {id, fresh, err, busy, f: {fields being edited}, addShoe: {name, mi} | null} while the editor is open
+function actPop(){
+  if (mode !== "account" || !plan || setup || authv || needsConsent() || $(".back")) return;
+  const fresh = acts.filter(a => a.source !== "manual" && a.source !== "sample" && a.date && daysBetween(a.date, TODAY) <= 1);
+  const seen = aplSeen();
+  if (!seen){ aplMark(acts.filter(a => !fresh.includes(a)).map(a => a.id)); }   // first time: older workouts never pop up
+  const a = fresh.filter(x => !(seen || []).includes(x.id)).sort((x, y) => (y.start_local || y.date).localeCompare(x.start_local || x.date))[0];
+  if (!a) return;
+  aplMark(fresh.map(x => x.id));   // shown once, and older ones from the same sync don't stack up behind it
+  aplOpen(a, true);
+}
+/* Edit a workout (Matthew, Nov 18 11:36am, with Strava's Edit Activity screens: "add these features that can be edited"):
+   name, How'd it go?, sport type, tag, how it felt (1-10), private notes, shoes. The same sheet opens by itself after a new
+   synced workout and from the Edit button on a workout's screen. Workouts in Mileset are only ever seen by their owner. */
+const TAGS = [["race", "Race"], ["long", "Long run"], ["workout", "Workout"], ["easy", "Easy"], ["recovery", "Recovery"], ["treadmill", "Treadmill"], ["commute", "Commute"], ["group", "Group run"]];
+const TYPES = [["run", "Run"], ["lift", "Strength"], ["bike", "Ride"], ["swim", "Swim"], ["other", "Other"]];
+const FEEL = ["", "Very easy", "Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very hard", "Max effort", "Max effort"];
+const canEdit = a => mode === "account" && a && a.source !== "sample";
+function aplOpen(a, fresh){ apl = {id: a.id, fresh: !!fresh, err: "", busy: false, addShoe: null, f: {name: a.name, descr: a.descr || "", type: a.type, tag: a.tag || "", rpe: a.rpe || 0, note: a.note || "", gear_id: a.gear_id || ""}}; aplDraw(a); }
+function aplKeep(){   // copy what's typed into the open sheet before it's redrawn
+  if (!apl) return; const v = id => { const e = document.getElementById(id); return e ? e.value : null; };
+  for (const [id, k] of [["apl-q", "name"], ["apl-d", "descr"], ["apl-n", "note"], ["apl-t", "type"], ["apl-g", "gear_id"]]){ const x = v(id); if (x != null) apl.f[k] = x; }
+  if (apl.addShoe){ const n = v("apl-sn"), m = v("apl-sm"); if (n != null) apl.addShoe.name = n; if (m != null) apl.addShoe.mi = m; }
+}
+function aplDraw(a){
+  let b = $(".back.apl"); if (!b){ b = document.createElement("div"); b.className = "back apl"; b.dataset.close = "1"; document.body.appendChild(b); }
+  const pts = ptsOf(a), can = canRename(a), f = apl.f, st = b.querySelector(".apls") ? b.querySelector(".apls").scrollTop : 0;
+  const shoes = gear.filter(g => !g.retired || g.id === f.gear_id);
+  b.innerHTML = '<div class="sheet apls" role="dialog" aria-modal="true" aria-labelledby="apl-h"><p class="kick">' + (apl.fresh ? (a.type === "run" ? 'Nice run' : 'Nice work') + ' · ' : 'Edit workout · ') + whenTxt(a) + '</p>' +
+    '<form id="apl-form" class="apl-f">' +
+    (can ? '<input id="apl-q" class="apl-in apl-name" type="text" maxlength="60" autocomplete="off" enterkeyhint="done" aria-label="Workout name" value="' + esc(f.name) + '">' : '<h2 id="apl-h">' + esc(a.name) + '</h2>') +
+    (can ? '<span id="apl-h" hidden>Edit workout</span>' : '') +
+    '<textarea id="apl-d" class="apl-in" rows="3" maxlength="600" placeholder="How\'d it go? Share more about your workout." aria-label="Description">' + esc(f.descr) + '</textarea>' +
+    (pts && pts.length > 1 ? '<div class="amap apl-map">' + routeSvg(pts) + '</div>' : '') +
+    '<div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
+    '<h3 class="apl-s">Details</h3>' +
+    '<label class="apl-row">' + ic(ACT_IC[f.type] || "watch") + '<select id="apl-t" aria-label="Workout type">' + TYPES.map(([k, l]) => '<option value="' + k + '"' + (f.type === k ? ' selected' : '') + '>' + l + '</option>').join("") + '</select></label>' +
+    '<div class="apl-g" role="group" aria-label="Tag">' + TAGS.map(([k, l]) => '<button type="button" data-act="apltag" data-k="' + k + '" aria-pressed="' + (f.tag === k) + '">' + l + '</button>').join("") + '</div>' +
+    '<div class="apl-feel"><span>How did it feel?' + (f.rpe ? ' <b>' + f.rpe + '/10 · ' + FEEL[f.rpe] + '</b>' : '') + '</span><div role="group" aria-label="How hard it felt, 1 to 10">' +
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => '<button type="button" data-act="aplrpe" data-n="' + n + '" aria-pressed="' + (f.rpe === n) + '" aria-label="' + n + ' of 10, ' + FEEL[n] + '">' + n + '</button>').join("") + '</div></div>' +
+    '<label class="apl-note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><textarea id="apl-n" class="apl-in" rows="2" maxlength="600" placeholder="Private notes. Only you can see these." aria-label="Private notes">' + esc(f.note) + '</textarea></label>' +
+    '<label class="apl-row">' + ic("run") + '<select id="apl-g" aria-label="Shoes"><option value="">' + (shoes.length ? 'No shoes' : 'Shoes: none added yet') + '</option>' + shoes.map(g => '<option value="' + esc(g.id) + '"' + (f.gear_id === g.id ? ' selected' : '') + '>' + esc(g.name) + ' · ' + comma(Math.round(g.mi)) + ' mi</option>').join("") + '</select></label>' +
+    (apl.addShoe ? '<div class="apl-shoe"><input id="apl-sn" class="apl-in" type="text" maxlength="40" placeholder="Shoe name, e.g. Pegasus 41" aria-label="Shoe name" value="' + esc(apl.addShoe.name) + '"><input id="apl-sm" class="apl-in" type="number" inputmode="decimal" min="0" max="3000" placeholder="Miles on them" aria-label="Miles already on them" value="' + esc(apl.addShoe.mi) + '"><button class="btn" type="button" data-act="aplshoeadd">Add</button></div>'
+      : '<button class="linkbtn apl-add" type="button" data-act="aplshoe">+ Add new shoes</button>') +
+    '<p class="apl-priv">Only you can see your workouts in Mileset.</p>' +
+    (apl.err ? '<p class="err" role="alert">' + esc(apl.err) + '</p>' : '') + '</form>' +
+    '<div class="apl-b"><button class="btn primary" type="button" data-act="aplsave"' + (apl.busy ? ' disabled aria-busy="true"' : '') + '>' + (apl.busy ? 'Saving…' : 'Save') + '</button>' +
+    '<button class="btn" type="button" data-act="aplshare">' + ic("share") + ' Share</button></div>' +
+    '<div class="apl-b">' + (apl.fresh ? '<button class="linkbtn" type="button" data-act="aplopen">See the full workout</button>' : '<span></span>') + '<button class="linkbtn" type="button" data-act="close">Close</button></div></div>';
+  const sh = b.querySelector(".apls"); if (sh && st) sh.scrollTop = st;
+}
+async function aplShoe(){
+  aplKeep(); const a = apl && acts.find(x => x.id === apl.id); if (!a || !apl.addShoe) return;
+  const name = (apl.addShoe.name || "").trim(); if (!name){ apl.err = "Give your shoes a name."; return aplDraw(a); }
+  try { const j = await api("POST", "/api/gear", {name, start_mi: +apl.addShoe.mi || 0}); gear = j.gear || gear; apl.f.gear_id = j.id; apl.addShoe = null; apl.err = ""; aplDraw(a); }
+  catch(e){ apl.err = e.message; aplDraw(a); }
+}
+async function aplSave(){
+  aplKeep(); const a = apl && acts.find(x => x.id === apl.id); if (!a || apl.busy) return;
+  const f = apl.f, ch = {};
+  if ((f.descr || "") !== (a.descr || "")) ch.descr = f.descr;
+  if ((f.note || "") !== (a.note || "")) ch.note = f.note;
+  if ((f.tag || "") !== (a.tag || "")) ch.tag = f.tag || null;
+  if (f.type && f.type !== a.type) ch.type = f.type;
+  if ((f.rpe || 0) !== (a.rpe || 0)) ch.rpe = f.rpe || null;
+  if ((f.gear_id || "") !== (a.gear_id || "")) ch.gear_id = f.gear_id || null;
+  const name = canRename(a) ? cleanName(f.name) : a.name, rename = name && name !== a.name;
+  if (!rename && !Object.keys(ch).length){ apl = null; closeMenu(); return; }
+  apl.busy = true; apl.err = ""; aplDraw(a);
+  try {
+    if (rename){ const j = await api("PUT", "/api/activity/" + a.id + "/name", {name}); a.name = j.name; a.src_name = j.src_name || null; }
+    if (Object.keys(ch).length){ const j = await api("PUT", "/api/activity/" + a.id + "/details", ch); Object.assign(a, j.activity || {}); if (j.gear) gear = j.gear; }
+    save(); apl = null; closeMenu(); render(); toast("Saved.");
+  } catch(e){ if (apl){ apl.busy = false; apl.err = e.message || "That didn't save. Try again."; aplDraw(a); } }
 }
 /* maps: the route is drawn right away; dark street tiles load on top when the card scrolls into view */
 let LP = null, mapObs = null;
@@ -1246,6 +1630,7 @@ async function stravaSync(quiet){
     const j = await api("POST", "/api/strava/sync"), me2 = await api("GET", "/api/me");
     const before = JSON.stringify([acts, reviews]); acts = me2.activities || []; strava = me2.strava || strava; reviews = me2.reviews || reviews; notes = me2.notes || notes;
     if (JSON.stringify([acts, reviews]) !== before || !quiet) safeRender();
+    if (j.fresh) setTimeout(actPop, 400);   // a workout that just synced gets its after-workout sheet
     if (j.fresh && coachOn) waitForReview(null);
     else { const r = $(".card-h .r"); if (r && /^Strava/.test(r.textContent)) r.textContent = "Strava · " + agoText(strava.last_sync); }
     if (!quiet) toast(j.synced ? "Strava is up to date." : "No new Strava activities.");
@@ -1748,9 +2133,145 @@ function strengthHtml(){
     const spark = vals.length > 1 ? '<svg class="spk" viewBox="0 0 60 20" aria-hidden="true"><polyline fill="none" stroke="var(--lift)" stroke-width="2" points="' + vals.map((v, i) => (i * 60 / (vals.length - 1)).toFixed(1) + ',' + (18 - (mx === mn ? 8 : (v - mn) / (mx - mn) * 16)).toFixed(1)).join(" ") + '"/></svg>' : '';
     return {date: last.date, h: '<div class="pr"><div><b>' + esc(g.name) + '</b><span>' + (last.weight ? last.weight + ' lb' : 'Bodyweight') + (last.reps ? ' × ' + last.reps : '') + ' · ' + shortD(last.date) + (weeks.length > 1 ? ' · ' + weeks.length + ' weeks logged' : '') + '</span></div>' + spark + ch + '</div>'};
   }).sort((a, b) => b.date.localeCompare(a.date));
-  return '<div class="pc wide prs"><div class="ph">' + ic("dumbbell") + '<span>Strength progress</span></div>' +
+  return '<div class="pc wide prs"><div class="ph">' + ic("dumbbell") + '<span>Strength progress</span><button class="linkbtn" type="button" data-act="go" data-scr="myw" style="margin-left:auto">My workouts</button></div>' +
     (rows.length ? rows.slice(0, 12).map(r => r.h).join("") + '<p class="fine" style="margin:6px 0 0">Change since your first logged week in the last 12 weeks, from your best set each week.</p>'
       : '<div class="pf"><span>Open a strength session and tap "Log weights and reps". Your week-by-week progress shows up here.</span></div>') + '</div>';
+}
+
+/* ============ my workouts: build your own, then track progressive overload ============
+   Nov 18, a member's idea via Matthew: "make our own workout plans and then track our progressive overload ... go back to
+   that same workout the following week and see and track my growth". Saved on the profile (profile.myWorkouts, kept when
+   a plan is rebuilt). Each session is logged with the same per-exercise strength log as plan lifts (PUT /api/lifts), so
+   the suggestions ("Try 45 lb"), Progress > Strength progress and the coach all see it too. */
+const MYW_MAX = 30, MYW_EX_MAX = 15;
+let mywSel = null, mywEd = null, mywOpen = {};
+const mywList = () => (plan && Array.isArray(plan.profile.myWorkouts) ? plan.profile.myWorkouts : []);
+const mywGet = id => mywList().find(w => w.id === id) || null;
+const mywHist = ex => liftLog.filter(x => x.ex.toLowerCase() === String(ex).toLowerCase()).sort((a, b) => a.date.localeCompare(b.date));
+const mywE1 = x => x.weight ? x.weight * (1 + Math.min(12, x.reps || 0) / 30) : (x.reps || 0);
+function mywLast(w){ let d = ""; w.ex.forEach(e => { const h = mywHist(e.n); if (h.length && h[h.length - 1].date > d) d = h[h.length - 1].date; }); return d; }
+function mywChange(e){
+  const h = mywHist(e.n); if (h.length < 2) return null;
+  const f = h[0], l = h[h.length - 1];
+  if (f.weight && l.weight && l.weight !== f.weight) return {txt: (l.weight > f.weight ? '+' : '−') + Math.abs(Math.round(l.weight - f.weight)) + ' lb', up: l.weight > f.weight};
+  if ((l.reps || 0) !== (f.reps || 0)) return {txt: (l.reps > f.reps ? '+' : '−') + Math.abs((l.reps || 0) - (f.reps || 0)) + ' reps', up: l.reps > f.reps};
+  return {txt: 'Same', up: null};
+}
+function mywSave(list, msg){
+  const prof = {...plan.profile}; if (list.length) prof.myWorkouts = list; else delete prof.myWorkouts;
+  const prev = plan; plan = {...plan, profile: prof}; save(); render(); if (msg) toast(msg);
+  if (mode === "account") api("PUT", "/api/profile", {profile: prof}).catch(e => { plan = prev; save(); render(); toast(e.message); });
+}
+function mywListHtml(){
+  const L = mywList();
+  let h = '<section class="card mywhero"><p class="sub" style="margin:0">Make your own workouts, like a shoulder day. Each time you do one, log the weight and reps. Next time Mileset shows what you did and what to try, so you can watch every lift go up.</p>' +
+    '<button class="btn primary" type="button" data-act="mywnew">' + ic("plus") + ' New workout</button></section>';
+  if (!L.length) return h + '<p class="fine" style="text-align:center">No workouts yet. Tap New workout to make your first one.</p>';
+  return h + '<div class="mywl">' + L.map(w => {
+    const last = mywLast(w), ups = w.ex.map(mywChange).filter(c => c && c.up).length;
+    return '<button class="mywc" type="button" data-act="mywopen" data-id="' + esc(w.id) + '"><span class="myw-ic" aria-hidden="true">' + ic("dumbbell") + '</span><span class="t"><b>' + esc(w.name) + '</b><small>' +
+      w.ex.length + (w.ex.length === 1 ? ' exercise' : ' exercises') + ' · ' + (last ? 'last done ' + shortD(last) : 'not done yet') + (ups ? ' · ' + ups + ' going up' : '') + '</small></span><i aria-hidden="true">›</i></button>';
+  }).join("") + '</div>';
+}
+function mywDoHtml(){
+  const w = mywGet(mywSel); if (!w) return '<p class="sub">That workout was deleted.</p>';
+  const doneToday = w.ex.some(e => liftLog.some(x => x.date === TODAY && x.ex.toLowerCase() === e.n.toLowerCase()));
+  let h = '<section class="card mywdo"><div class="card-h"><span class="lbl">' + esc(w.name) + '</span><button class="linkbtn r" type="button" data-act="mywedit" data-id="' + esc(w.id) + '">Edit</button></div>' +
+    '<p class="fine" style="margin:-8px 0 0">' + (doneToday ? 'Logged today. Change any number and save again.' : 'Log each exercise as you go. Leave weight empty for bodyweight.') + '</p>';
+  h += w.ex.map((e, i) => {
+    const tg = {sets: e.s, reps: e.r, unit: "reps"}, hint = liftHint(e.n, tg), today = liftLog.find(x => x.date === TODAY && x.ex.toLowerCase() === e.n.toLowerCase());
+    return '<div class="lrow"><div><b>' + esc(e.n) + '</b><span>' + (e.s ? e.s + ' × ' + (e.r || '?') + ' · ' : '') + esc(hint.text) + '</span></div>' +
+      '<label class="lw"><input inputmode="decimal" id="mw-w-' + i + '" placeholder="' + (hint.next != null ? hint.next : '') + '" value="' + (today && today.weight != null ? today.weight : '') + '" aria-label="' + esc(e.n) + ' weight in pounds"><small>lb</small></label>' +
+      '<label class="lw"><input inputmode="numeric" id="mw-r-' + i + '" placeholder="' + (hint.nextReps != null ? hint.nextReps : '') + '" value="' + (today && today.reps != null ? today.reps : '') + '" aria-label="' + esc(e.n) + ' reps per set"><small>reps</small></label></div>';
+  }).join("") + '<button class="btn primary block" type="button" data-act="mywlog" data-id="' + esc(w.id) + '">' + (doneToday ? 'Save changes' : 'Save workout') + '</button></section>';
+  // progress, exercise by exercise
+  h += '<section class="card"><div class="card-h"><span class="lbl">Your progress</span><span class="r">every time you did it</span></div>';
+  const rows = w.ex.map(e => {
+    const hs = mywHist(e.n); if (!hs.length) return '<div class="mywp"><div class="mywp-h"><b>' + esc(e.n) + '</b><em class="sx">Not logged yet</em></div></div>';
+    const c = mywChange(e), vals = hs.slice(-10).map(mywE1), mx = Math.max(...vals), mn = Math.min(...vals);
+    const spark = vals.length > 1 ? '<svg class="spk" viewBox="0 0 80 24" aria-hidden="true"><polyline fill="none" stroke="var(--lift)" stroke-width="2" stroke-linejoin="round" points="' + vals.map((v, i) => (i * 80 / (vals.length - 1)).toFixed(1) + ',' + (21 - (mx === mn ? 9 : (v - mn) / (mx - mn) * 18)).toFixed(1)).join(" ") + '"/></svg>' : '';
+    const open = mywOpen[e.n.toLowerCase()], list = hs.slice().reverse().slice(0, open ? 20 : 3);
+    return '<div class="mywp"><div class="mywp-h"><b>' + esc(e.n) + '</b>' + spark + (c ? '<em class="' + (c.up ? 'up' : c.up === false ? 'dn' : 'sx') + '">' + c.txt + '</em>' : '<em class="sx">1st log</em>') + '</div>' +
+      '<ul class="mywh">' + list.map(x => '<li><span>' + shortD(x.date) + '</span><b>' + (x.weight ? x.weight + ' lb' : 'Bodyweight') + (x.reps ? ' × ' + x.reps : '') + (x.sets ? ' · ' + x.sets + ' sets' : '') + '</b>' + (x.hit ? '<i aria-label="all reps">✓</i>' : '<i></i>') + '</li>').join("") + '</ul>' +
+      (hs.length > 3 ? '<button class="linkbtn" type="button" data-act="mywmore" data-ex="' + esc(e.n) + '">' + (open ? 'Show less' : 'Show all ' + hs.length) + '</button>' : '') + '</div>';
+  });
+  h += rows.join("") + '<p class="fine" style="margin:4px 0 0">The change is from your first time to your latest. ✓ means you hit all your reps, so Mileset suggests adding weight next time.</p></section>';
+  return h;
+}
+function mywEditOpen(id){
+  const w = id ? mywGet(id) : null;
+  mywEd = {id: w ? w.id : null, name: w ? w.name : "", ex: w ? w.ex.map(e => ({...e})) : [{n: "", s: 3, r: 10}, {n: "", s: 3, r: 10}, {n: "", s: 3, r: 10}], err: ""};
+  closeMenu();
+  const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
+  b.innerHTML = '<div class="sheet myws" role="dialog" aria-modal="true" aria-label="' + (w ? 'Edit workout' : 'New workout') + '"></div>';
+  document.body.appendChild(b); mywEdRender(true);
+}
+function mywEdRead(){
+  if (!mywEd) return;
+  const n = $("#myw-name"); if (n) mywEd.name = n.value;
+  mywEd.ex.forEach((e, i) => { const a = $("#myw-n-" + i), s = $("#myw-s-" + i), r = $("#myw-r-" + i); if (a) e.n = a.value; if (s) e.s = s.value === "" ? null : Math.round(+s.value); if (r) e.r = r.value === "" ? null : Math.round(+r.value); });
+}
+function mywEdRender(focus){
+  const el = $(".sheet.myws"); if (!el || !mywEd) return;
+  const names = [...new Set(HP.exAll().map(x => x.name).concat(liftLog.map(x => x.ex)))].sort();
+  el.innerHTML = '<div class="myws-h"><div><b>' + (mywEd.id ? 'Edit workout' : 'New workout') + '</b><span>Name it, then add your exercises</span></div><button class="myws-x" type="button" data-act="mywcancel" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+    '<label class="fl"><span>Workout name</span><input id="myw-name" maxlength="40" placeholder="Shoulder day" value="' + esc(mywEd.name) + '" autocomplete="off"></label>' +
+    '<datalist id="myw-names">' + names.map(x => '<option value="' + esc(x) + '">').join("") + '</datalist>' +
+    '<div class="mywe"><div class="mywe-h"><span>Exercise</span><span>Sets</span><span>Reps</span><span></span></div>' + mywEd.ex.map((e, i) =>
+      '<div class="mywe-r"><input id="myw-n-' + i + '" list="myw-names" maxlength="60" placeholder="' + (["Overhead press", "Lateral raise", "Face pull", "Rear-delt fly"][i] || "Exercise") + '" value="' + esc(e.n || "") + '" aria-label="Exercise ' + (i + 1) + '" autocomplete="off">' +
+      '<input id="myw-s-' + i + '" inputmode="numeric" maxlength="2" value="' + (e.s || "") + '" aria-label="Sets for exercise ' + (i + 1) + '"><input id="myw-r-' + i + '" inputmode="numeric" maxlength="3" value="' + (e.r || "") + '" aria-label="Reps for exercise ' + (i + 1) + '">' +
+      '<button class="mywe-x" type="button" data-act="mywrm" data-i="' + i + '" aria-label="Remove exercise ' + (i + 1) + '">×</button></div>').join("") + '</div>' +
+    (mywEd.ex.length < MYW_EX_MAX ? '<button class="linkbtn" type="button" data-act="mywadd">' + ic("plus") + ' Add exercise</button>' : '') +
+    (mywEd.err ? '<p class="err" role="alert">' + esc(mywEd.err) + '</p>' : '') +
+    '<div class="fbtns">' + (mywEd.id ? '<button class="btn" type="button" data-act="mywdel" style="color:var(--crit)">' + (mywEd.delArm ? 'Tap again to delete' : 'Delete') + '</button>' : '<span></span>') + '<button class="btn primary" type="button" data-act="mywsave">Save workout</button></div>';
+  fitSheets();
+  if (focus && !mywEd.id){ const i = $("#myw-name"); if (i) i.focus({preventScroll: true}); }
+}
+function mywAct(act, a){
+  if (act === "mywnew"){ if (mywList().length >= MYW_MAX){ toast("You have " + MYW_MAX + " workouts. Delete one to add another."); return true; } mywEditOpen(null); return true; }
+  if (act === "mywedit"){ mywEditOpen(a.dataset.id); return true; }
+  if (act === "mywopen"){ mywSel = a.dataset.id; go("mywdo"); return true; }
+  if (act === "mywcancel"){ mywEd = null; closeMenu(); return true; }
+  if (act === "mywadd"){ mywEdRead(); if (mywEd.ex.length < MYW_EX_MAX) mywEd.ex.push({n: "", s: 3, r: 10}); mywEdRender(); const i = $("#myw-n-" + (mywEd.ex.length - 1)); if (i) i.focus(); return true; }
+  if (act === "mywrm"){ mywEdRead(); mywEd.ex.splice(+a.dataset.i, 1); if (!mywEd.ex.length) mywEd.ex.push({n: "", s: 3, r: 10}); mywEdRender(); return true; }
+  if (act === "mywmore"){ const k = String(a.dataset.ex || "").toLowerCase(); mywOpen[k] = !mywOpen[k]; render(); return true; }
+  if (act === "mywsave"){
+    mywEdRead(); const name = mywEd.name.replace(/\s+/g, " ").trim().slice(0, 40);
+    const seen = {}, ex = mywEd.ex.map(e => ({n: String(e.n || "").replace(/\s+/g, " ").trim().slice(0, 60), s: e.s >= 1 && e.s <= 20 ? e.s : null, r: e.r >= 1 && e.r <= 100 ? e.r : null}))
+      .filter(e => e.n && !seen[e.n.toLowerCase()] && (seen[e.n.toLowerCase()] = 1));
+    if (!name){ mywEd.err = "Give the workout a name, like Shoulder day."; mywEdRender(); return true; }
+    if (!ex.length){ mywEd.err = "Add at least one exercise."; mywEdRender(); return true; }
+    const L = mywList().slice(), id = mywEd.id || ("w" + Date.now().toString(36)), w = {id, name, ex}, k = L.findIndex(x => x.id === id);
+    if (k >= 0) L[k] = w; else L.unshift(w);
+    const isNew = k < 0; mywEd = null; closeMenu();
+    if (isNew){ mywSel = id; scr = "mywdo"; }
+    mywSave(L, isNew ? "Saved. Log it whenever you do it." : "Workout updated.");
+    return true;
+  }
+  if (act === "mywdel"){
+    if (!mywEd || !mywEd.id) return true;
+    if (!mywEd.delArm){ mywEdRead(); mywEd.delArm = true; mywEd.err = ""; mywEdRender(); return true; }   // second tap deletes
+    const L = mywList().filter(x => x.id !== mywEd.id); mywEd = null; closeMenu(); if (scr === "mywdo"){ scr = "myw"; mywSel = null; }
+    mywSave(L, "Workout deleted. Your logged lifts stay in Strength progress.");
+    return true;
+  }
+  if (act === "mywlog"){
+    const w = mywGet(a.dataset.id); if (!w) return true;
+    const sets = []; let bad = "";
+    w.ex.forEach((e, i) => { const raw = (($("#mw-w-" + i) || {}).value || "").trim(), rr = (($("#mw-r-" + i) || {}).value || "").trim(), wt = raw === "" ? null : parseFloat(raw), r = rr === "" ? null : Math.round(parseFloat(rr));
+      if (raw !== "" && !(wt >= 0 && wt <= 2000)) bad = "Weights should be numbers in pounds.";
+      if (rr !== "" && !(r >= 0 && r <= 1000)) bad = "Reps should be a number.";
+      if (raw === "" && rr === "") return;
+      sets.push({ex: e.n, weight: wt, reps: r, sets: e.s || null, hit: r == null || !e.r || r >= e.r}); });
+    if (bad){ toast(bad); return true; }
+    if (!sets.length){ toast("Type a weight or reps for at least one exercise."); return true; }
+    const apply = () => { sets.forEach(x => { liftLog = liftLog.filter(y => !(y.date === TODAY && y.ex.toLowerCase() === x.ex.toLowerCase())); liftLog.push({date: TODAY, ex: x.ex, weight: x.weight, reps: x.reps, sets: x.sets, hit: x.hit ? 1 : 0}); }); save(); render();
+      const ups = sets.filter(x => { const h = mywHist(x.ex).filter(y => y.date < TODAY); const p = h[h.length - 1]; return p && (x.weight > (p.weight || 0) || (x.weight === p.weight && (x.reps || 0) > (p.reps || 0))); }).length;
+      toast(ups ? "Saved. You beat last time on " + ups + (ups === 1 ? " exercise." : " exercises.") : "Saved. Next time you'll see what to try."); };
+    if (mode === "account") api("PUT", "/api/lifts", {date: TODAY, sets}).then(apply).catch(e => toast(e.message)); else apply();
+    return true;
+  }
+  return false;
 }
 
 /* ============ race fueling and hydration ============ */
@@ -1926,6 +2447,7 @@ const IC = {
   spark:'<path d="M9.94 14.06 4 20M14 4l1.5 4.5L20 10l-4.5 1.5L14 16l-1.5-4.5L8 10l4.5-1.5z"/>',
   bell:'<path d="M10.27 21a2 2 0 0 0 3.46 0"/><path d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33"/>',
   download:'<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+  pencil:'<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 7.5l3 3"/>',
   share:'<path d="M12 3v13"/><path d="m7 8 5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',
   camera:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
   cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
@@ -2407,15 +2929,37 @@ function renderTraining(part){
   const Z = [["Easy and long runs","Most of your running. Conversational.","E","easy"],["Marathon pace","Long steady efforts.","M","long"],["Threshold","Comfortably hard, about an hour's race effort.","T","work"],["Interval","Hard reps, 3–5 min.","I","race"],["Fast","Short reps and strides.","R","lift"]];
   S.paces = '<section class="card" style="--tone:var(--work)"><div class="card-h">' + ic("gauge") + '<span class="lbl">Your training paces</span><span class="r">per mile</span></div><div class="paces">' +
     Z.map(z => '<div class="pz" style="--tc:var(--' + z[3] + ')"><div><b>' + z[0] + '</b><span>' + z[1] + '</span></div><em>' + pace(P, z[2]) + '</em></div>').join("") + '</div></section>';
-  // mileage chart
-  const vol = w => plan.multi ? w.hours : w.miles, unit = plan.multi ? ' h' : ' mi';
-  const W = 340, H = 150, n = plan.weeks.length, max = Math.max(...plan.weeks.map(vol)), bw = (W - (n - 1) * 3) / n, cur = weekOf(TODAY);
-  const col = ph => /Race|Taper/.test(ph) ? "var(--race)" : /Peak/.test(ph) ? "var(--work)" : /Build/.test(ph) ? "var(--easy)" : "var(--long)";
-  const bars = plan.weeks.map((w, i) => { const hh = vol(w) / max * (H - 30); const x = i * (bw + 3); return '<rect x="' + x.toFixed(1) + '" y="' + (H - 16 - hh).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hh.toFixed(1) + '" rx="3" fill="' + col(w.phase) + '" opacity="' + (i === cur ? 1 : .72) + '"' + (i === cur ? ' stroke="#fff" stroke-width="1.5"' : '') + '/>' + ((i === 0 || i === n - 1 || i === cur) ? '<text x="' + (i === 0 ? x : i === n - 1 ? x + bw : x + bw / 2).toFixed(1) + '" y="' + (H - 3) + '" text-anchor="' + (i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle') + '">W' + w.n + '</text>' : ''); }).join("");
-  const peakI = plan.weeks.findIndex(w => vol(w) === max), px = peakI * (bw + 3) + bw / 2;
-  S.miles = '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("bars") + '<span class="lbl">' + (plan.multi ? 'Weekly hours' : 'Weekly miles') + '</span><span class="r">peak ' + max + unit + '</span></div>' +
-    '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Planned ' + (plan.multi ? 'hours' : 'miles') + ' per week">' + bars + '<text x="' + Math.min(W - 20, Math.max(20, px)).toFixed(1) + '" y="' + (H - 20 - (H - 30) - 2 + 12).toFixed(1) + '" text-anchor="middle" style="fill:var(--ink);font-weight:600">' + max + '</text></svg>' +
-    '<div class="legend"><span><i style="--c:var(--long)"></i>Base</span><span><i style="--c:var(--easy)"></i>Build</span><span><i style="--c:var(--work)"></i>Peak</span><span><i style="--c:var(--race)"></i>Taper / race</span></div></section>';
+  // mileage chart (Matthew, Nov 18: "refine this"): planned volume as a faded bar, what you've actually done as the
+  // solid part, a value over every bar, labels centred under their bar, the current week marked, and only the
+  // phases this plan has in the legend
+  const vol = w => plan.multi ? w.hours : w.miles, unit = plan.multi ? ' h' : ' mi', r1 = v => Math.round(v * 10) / 10;
+  const actsAll = (typeof feedActs === "function" ? feedActs() : []).filter(a => a.date <= TODAY);
+  const done = w => { const end = addDays(w.start, 6); if (w.start > TODAY) return null;
+    const xs = actsAll.filter(a => a.date >= w.start && a.date <= end);
+    return r1(plan.multi ? xs.reduce((t, a) => t + (a.minutes || 0), 0) / 60 : xs.reduce((t, a) => t + (a.type === "run" ? a.mi || 0 : 0), 0)); };
+  const n = plan.weeks.length, cur = weekOf(TODAY), dn = plan.weeks.map(done);
+  const max = Math.max(...plan.weeks.map(vol)), top = Math.max(max, ...dn.map(v => v || 0)) || 1;
+  const W = 340, H = n <= 6 ? 190 : 172, T = 18, B = n <= 6 ? 34 : 22, ch = H - T - B, slot = W / n, bw = Math.min(44, slot * (n > 20 ? .78 : .62));
+  const ph = w => /Race|Taper/.test(w.phase) ? "race" : /Peak|Push/.test(w.phase) ? "work" : /Build/.test(w.phase) ? "easy" : "long";
+  const every = n <= 10 ? 1 : Math.ceil(n / 8), peakI = plan.weeks.findIndex(w => vol(w) === max);
+  const bars = plan.weeks.map((w, i) => {
+    const cx = slot * i + slot / 2, x = (cx - bw / 2).toFixed(1), c = 'var(--' + ph(w) + ')', hp = vol(w) / top * ch, d = dn[i];
+    const hd = d == null ? 0 : Math.min(d, top) / top * ch, isCur = i === cur, lab = isCur || i === peakI || n <= 10 || i === 0 || i === n - 1;
+    const lx = Math.min(W - 20, Math.max(20, cx)).toFixed(1);
+    let o = '<rect x="' + x + '" y="' + (T + ch - hp + .75).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(hp - .75, 2).toFixed(1) + '" rx="4" fill="' + c + '" fill-opacity="' + (d == null ? .22 : .18) + '" stroke="' + c + '" stroke-opacity="' + (d == null ? .9 : .45) + '" stroke-width="1.5"/>';
+    if (hd > 0) o += '<rect x="' + x + '" y="' + (T + ch - hd).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hd.toFixed(1) + '" rx="4" fill="' + c + '"/>';
+    if (lab) o += '<text x="' + lx + '" y="' + (T + ch - Math.max(hp, hd) - 6).toFixed(1) + '" text-anchor="middle" class="' + (isCur ? 'v cur' : 'v') + '">' + (d != null && d > 0 ? r1(d) + '/' : '') + vol(w) + '</text>';
+    if (isCur || i === n - 1 || (i % every === 0 && n - 1 - i >= every && (cur < 0 || Math.abs(i - cur) >= every))) o += '<text x="' + lx + '" y="' + (T + ch + 14) + '" text-anchor="middle"' + (isCur ? ' class="cur"' : '') + '>' + (isCur ? 'This wk' : 'W' + w.n) + '</text>' +
+      (n <= 6 ? '<text x="' + lx + '" y="' + (T + ch + 27) + '" text-anchor="middle" class="d">' + fmtD(w.start) + '</text>' : '');
+    return o; }).join("");
+  const phases = [["long", "Base"], ["easy", "Build"], ["work", "Peak"], ["race", "Taper / race"]].filter(p => plan.weeks.some(w => ph(w) === p[0]));
+  const cw = cur >= 0 ? plan.weeks[cur] : null, cd = cur >= 0 ? dn[cur] || 0 : 0, total = r1(plan.weeks.reduce((t, w) => t + vol(w), 0));
+  S.miles = '<section class="card wmiles" style="--tone:var(--easy)"><div class="card-h">' + ic("bars") + '<span class="lbl">' + (plan.multi ? 'Weekly hours' : 'Weekly miles') + '</span><span class="r">peak ' + max + unit + '</span></div>' +
+    (cw ? '<p class="wm-now"><b>' + r1(cd) + '</b> of ' + vol(cw) + unit + ' this week<span>' + esc(cw.phase) + ' · week ' + cw.n + ' of ' + n + '</span></p>' : '') +
+    '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + plan.weeks.map((w, i) => 'Week ' + w.n + ': ' + vol(w) + unit + ' planned' + (dn[i] != null ? ', ' + dn[i] + ' done' : '')).join('; ') + '">' +
+    '<line x1="0" x2="' + W + '" y1="' + (T + ch + .5) + '" y2="' + (T + ch + .5) + '" class="base"/>' + bars + '</svg>' +
+    '<div class="legend">' + phases.map(p => '<span><i style="--c:var(--' + p[0] + ')"></i>' + p[1] + '</span>').join("") + '</div>' +
+    '<p class="wm-key">Solid = done · outline = planned · ' + total + unit + ' over ' + n + ' week' + (n === 1 ? '' : 's') + '</p></section>';
   S.body = bodyCards() + calCheckCard();
   S.setup = '<section class="card" style="--tone:var(--lift)"><div class="card-h">' + ic("dumbbell") + '<span class="lbl">Your setup</span></div><dl class="kv">' +
     '<dt>Goal</dt><dd>' + esc(HP.raceName(p)) + (plan.raceDate ? ' · ' + fmtD(plan.raceDate) : '') + '</dd>' +
@@ -2598,7 +3142,7 @@ function progressHtml(){
 }
 
 /* ============ setup flow ============ */
-function blankProfile(){ return {name:"", goal:"half", raceDate: addDays(TODAY, 84), goalSec:null, weekly:15, longest:6, prDist:"5k", prSec:null, easyPace:null, weight:null, goalWeight:null, lifts:2, liftExp:"Some", days:[0,2,4,6], longDay:6}; }
+function blankProfile(){ return {name:"", goal:"half", raceDate: addDays(TODAY, 84), goalSec:null, weekly:15, longest:6, prDist:"none", prSec:null, easyPace:null, weight:null, goalWeight:null, lifts:2, liftExp:"Some", days:[0,2,4,6], longDay:6}; }
 function optList(name, items, cur, type){ return '<div class="opts' + (name === "days" || name === "liftDays" ? ' days' : '') + '" role="group">' + items.map(([v, l]) => '<label class="opt"><input type="' + (type || "radio") + '" name="' + name + '" value="' + v + '"' + ((type === "checkbox" ? cur.includes(+v) : String(cur) === String(v)) ? ' checked' : '') + '><span>' + l + '</span></label>').join("") + '</div>'; }
 function renderSetup(){
   const st = setup, p = st.p;
@@ -2660,7 +3204,8 @@ function renderSetup(){
       '<div class="q"><label for="s-city">Where do you usually train? <small>Optional</small></label><small class="hint" style="margin:0">Used for the weather, the best time to run, and heat-adjusted paces.</small>' +
       '<div class="cityrow"><input id="s-city" autocomplete="address-level2" placeholder="City, e.g. Vero Beach, FL" value="' + esc(st.city != null ? st.city : ((wxLoc() || {}).place || "")) + '"><button class="btn" type="button" data-act="sgeo">' + (st.geoBusy ? 'Finding…' : 'Use my location') + '</button></div></div>';
   }
-  return header() + '<section class="setup view">' + bars + body + '<p class="err" id="s-err" role="alert">' + esc(st.err || "") + '</p><div class="nav"><button class="btn" type="button" data-act="prev">Back</button><button class="btn primary" type="button" data-act="next">' + (st.step === 3 ? 'Build my plan' : 'Next') + '</button></div></section>';
+  const back = st.resumed && st.step > 0 ? '<p class="hint" role="status">Welcome back. Your answers are saved, so you can pick up right here.</p>' : '';
+  return header() + '<section class="setup view">' + bars + back + body + '<p class="err" id="s-err" role="alert">' + esc(st.err || "") + '</p><div class="nav"><button class="btn" type="button" data-act="prev">Back</button><button class="btn primary" type="button" data-act="next">' + (st.step === 3 ? 'Build my plan' : 'Next') + '</button></div></section>';
 }
 function readStep(){
   const st = setup, p = st.p, v = id => { const e = document.getElementById(id); return e ? e.value.trim() : ""; }, num = id => { const x = parseFloat(v(id)); return isFinite(x) ? x : null; };
@@ -2685,7 +3230,7 @@ function readStep(){
     if (p.weekly == null || p.weekly < 0 || p.weekly > 120) return "Enter your miles per week (0 is fine).";
     if (p.longest == null) p.longest = Math.max(2, Math.round(p.weekly * .3));
     if (document.getElementById("s-pr")){ const t = parseTime(v("s-pr")); if (v("s-pr") && !t) return "Type your time as numbers, like 2430 for 24:30."; p.prSec = t; if (!t) return "Add your race time, or pick None yet."; p.easyPace = null; }
-    if (document.getElementById("s-easy")){   // optional (Nov 17): a beginner often doesn't know it; blank = start easy, adjust from runs
+    if (document.getElementById("s-easy") && p.prDist === "none"){   // optional (Nov 17); only while None yet is picked, so switching to a race distance sticks: a beginner often doesn't know it; blank = start easy, adjust from runs
       const raw = v("s-easy"), t = raw ? parseTime(raw) : null;
       if (raw && (!t || t < 300 || t > 1200)) return "Type your easy pace as numbers, like 1030 for 10:30, or leave it blank.";
       p.easyPace = t || null; p.paceUnknown = !t; p.prSec = null; p.prDist = "none"; }
@@ -3086,7 +3631,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "97";
+const APP_VERSION = "111";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3191,7 +3736,7 @@ function notifHtml(){
   if (!pushState.on) return h + '<p class="sub">Morning check-in reminder, a summary after every workout, a Monday recap and a bedtime reminder.</p><button class="btn primary block" type="button" data-act="pushon">Turn on notifications</button></div>';
   const tg = (k, label) => '<label class="tgl"><input type="checkbox" data-set="' + k + '"' + (uset[k] ? ' checked' : '') + '><span>' + label + '</span></label>';
   return h + tg("n_morning", watchFeeding() ? "Morning readiness and today's plan" : "Morning check-in reminder") + '<label class="tm">at<input type="time" data-set="morning" value="' + esc(uset.morning) + '"></label>' +
-    tg("n_run", "Summary after each workout") + tg("n_weekly", "Monday weekly recap") + tg("n_bed", "Bedtime reminder") + '<label class="tm">at<input type="time" data-set="bedtime" value="' + esc(uset.bedtime) + '"></label>' +
+    tg("n_run", "Summary after each workout") + tg("n_stress", "Stress nudges from your Garmin (breathe, or rest on a big stress day)") + tg("n_weekly", "Monday weekly recap") + tg("n_bed", "Bedtime reminder") + '<label class="tm">at<input type="time" data-set="bedtime" value="' + esc(uset.bedtime) + '"></label>' +
     '<div class="fbtns"><button class="btn" type="button" data-act="pushtest">Send a test</button><button class="btn" type="button" data-act="pushoff">Turn off here</button></div></div>';
 }
 function b64uToBytes(s){ s = s.replace(/-/g, "+").replace(/_/g, "/"); const raw = atob(s + "===".slice((s.length + 3) % 4)); return Uint8Array.from(raw, c => c.charCodeAt(0)); }
@@ -3208,8 +3753,22 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-18";
+const NEW_ID = "2026-11-19.2";
 const NEWS = [
+  ["dumbbell", "Your own workouts, with progress", "More > My workouts: build a workout (like a shoulder day), log weight and reps each time, and see every lift go up week to week. Mileset suggests what to try next.", "myw", null, "2026-11-19.2"],
+  ["bars", "A clearer weekly miles chart", "Progress > View plan shows every week's miles, what you've done this week against the plan, and which weeks are base, build, peak or taper.", "t-miles", null, "2026-11-19"],
+  ["spark", "A cleaner, full-screen look", "Every screen now runs edge to edge, the tab bar sits at the bottom, and sheets slide up smoothly. Everything is still where it was.", null, null, "2026-11-18.8"],
+  ["pencil", "Edit any workout", "Open a workout and tap Edit, or use the sheet after a run: name, how it went, type, a tag, how it felt, private notes and your shoes, with the miles on each pair.", "activities", null, "2026-11-18.7"],
+  ["bars", "More in every workout", "Activities now shows heart rate and zone, climb, effort, and how each run lined up with your plan. This week's box shows planned miles left, and the list is grouped by week.", "activities", null, "2026-11-18.6"],
+  ["share", "See-through share stickers", "Open a workout, tap Share image and pick a style: stats, big numbers, route, splits or heart rate. They're see-through, so they sit right on your Instagram Story or photo.", "activities", null, "2026-11-18.5"],
+  ["pencil", "Name it right after", "After a synced run, the app opens with it at the bottom: give it a name, share it, or open the full workout.", null, null, "2026-11-18.5"],
+  ["share", "Share your run as an image", "Open a workout and tap Share image: a picture with your route, distance, pace and time, ready for your story or a group chat.", "activities", null, "2026-11-18.4"],
+  ["watch", "A brighter route map", "Workout maps are easier to read: brighter streets under your route.", "activities", null, "2026-11-18.4"],
+  ["spark", "Stress nudges from your Garmin", "When your watch shows a stressful stretch, you get one short nudge to breathe, or a rest-day suggestion on a very hard day. Turn it off in Settings, Notifications.", "settings", null, "2026-11-18.3"],
+  ["check", "Sleep check in your morning note", "After a night far outside your normal sleep, the morning notification says how far off it was and what it usually means for today's training.", null, null, "2026-11-18.3"],
+  ["spark", "Rough night? Adjust today", "Open the coach bar and tap Rough night: adjust today. The coach offers an easier day as buttons, plus fluids and simple food, and says when to skip training.", null, null, "2026-11-18.2"],
+  ["check", "Pick your lifting days", "In plan setup, choose which days you lift and the running is built around them. To change it, edit your plan.", null, null, "2026-11-18.2"],
+  ["share", "Bring 2 training partners", "Share your invite link from Today. When 2 partners join and build a plan, you can ask Matthew for a personal review of your plan.", null, null, "2026-11-18.2"],
   ["heart", "A clearer readiness score", "Today's readiness now shows as a ring with one sentence on what it means, plus your sleep, HRV and resting heart rate with arrows against your own normal.", null, null, "2026-11-18"],
   ["check", "AI coach: your call", "The coach is AI, and you decide if it may read your data. The switch is in Settings, Coaching and training. Off means nothing of yours goes to AI and the app runs on its fixed rules. If you use Garmin, you are asked once on Today.", "set-train", null, "2026-11-17.3"],
   ["spark", "Your coach can see your runs", "Ask how a run went and it answers from the distance, pace and heart rate your Garmin sent, or that you logged by hand. Runs that only come through Strava can't be read by the coach (Strava's rules), so type those numbers in.", null, null, "2026-11-17.3"],
@@ -3264,10 +3823,10 @@ function askNotif(){
   document.body.appendChild(b);
 }
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
-const SCR_T = {fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
+const SCR_T = {myw: "My workouts", mywdo: "My workout", fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
   settings: "Settings", "set-notif": "Notifications", "set-watch": "Devices and apps", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
   "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Mileset works", "set-email": "Email", "set-password": "Password",  "p-load": "Training load", "p-fit": "Fitness and form", "p-focus": "Training focus and zones", "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", members: "Members", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew", invites: "Your invite link"};
-const SCR_UP = {"set-acct": "settings", "set-train": "settings", "set-help": "settings", "set-health-info": "set-help", "set-terms": "set-help", "set-about": "set-help", "set-report": "set-help", "set-reports": "set-help", "set-profile": "set-acct", "set-email": "set-acct", "set-password": "set-acct", "set-account": "set-acct", "set-hr": "set-train", "set-run": "set-train", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", meals: "fuel", crew: "crews"};
+const SCR_UP = {mywdo: "myw", "set-acct": "settings", "set-train": "settings", "set-help": "settings", "set-health-info": "set-help", "set-terms": "set-help", "set-about": "set-help", "set-report": "set-help", "set-reports": "set-help", "set-profile": "set-acct", "set-email": "set-acct", "set-password": "set-acct", "set-account": "set-acct", "set-hr": "set-train", "set-run": "set-train", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", meals: "fuel", crew: "crews"};
 let navDir = null;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let noVT = false;
@@ -3314,6 +3873,8 @@ function renderScreen(){
   else if (s === "p-fit") h = plan ? fitDetail() : '';
   else if (s === "p-focus") h = plan ? focusDetail() : '';
   else if (s.startsWith("t-")) h = renderTraining(s.slice(2));
+  else if (s === "myw") h = mywListHtml();
+  else if (s === "mywdo") h = mywDoHtml();
   else h = settingsScreen(s);
   return back + h;
 }
@@ -3325,6 +3886,7 @@ function renderMore(){
   let h = '<h2 class="sec-t">More</h2>' + (founding ? '<div class="fcard"><i>' + ic("bolt") + '</i><div><b>Founding Member #' + founding + '</b><span>Mileset is free for you for life, including anything paid we add later. Thanks for being here early.</span></div></div>' : '') + '<div class="scards">';
   if (mode === "account") h += card("racefind", "Find a race", "Search races anywhere in the world and build a plan for it", "flag", "", "hi");
   if (plan && mode !== "sample") h += card("wnopen", "What's new", "The latest features and how to use them", "spark");
+  if (plan) h += card("go", "My workouts", mywList().length ? mywList().length + (mywList().length === 1 ? " workout" : " workouts") + " · log them and watch every lift go up" : "Build your own, like a shoulder day, and track every lift week to week", "dumbbell", "myw");
   h += card("edit", "Change goal or start a new plan", plan ? "Now: " + esc(HP.raceName(plan.profile)) + (plan.raceDate ? " · " + fmtD(plan.raceDate) : "") : "Pick a goal and your training days", "cal");
   if (plan && plan.raceDate) h += card("go", "Race fueling and hydration", "Carbs, fluid and sodium per hour, and a sweat test", "bolt", "fuelplan");
   h += card("go", "Meal prep and grocery list", "Two preps a week, sized to your targets", "fork", "meals");
@@ -3466,9 +4028,12 @@ document.addEventListener("click", ev => {
   const act = a.dataset.act;
   if (act === "next"){
     if (setup.step >= 0){ const e = readStep(); if (e){ setup.err = e; render(); const el = $("#s-err"); if (el) el.scrollIntoView({block:"center"}); return; } }
-    setup.err = ""; setup.step++;
+    setup.err = ""; setup.resumed = false; setup.step++;
+    // funnel question 4 (Nov 17): remember the furthest setup step a member reached, so we can see where people stop
+    if (mode === "account" && !plan && setup.step >= 1) api("POST", "/api/account/setup-step", {step: setup.step}).catch(() => {});
+    if (mode === "account" && !plan && me && setup.step >= 1 && setup.step <= 3) setupDraft.set(me.id, setup);
     if (setup.step === 4){
-      const prof = {...setup.p, start: mondayOf(TODAY), pv: HP.PLAN_V}; delete prof.sample; delete prof.swaps;   // a new plan starts with no moved days
+      const prof = {...setup.p, start: mondayOf(TODAY), pv: HP.PLAN_V}; delete prof.sample; delete prof.swaps; if (plan && plan.profile.myWorkouts && !prof.myWorkouts) prof.myWorkouts = plan.profile.myWorkouts;   // your own workouts survive a new plan   // a new plan starts with no moved days
       // training location: from "Use my location", or look up the typed city (doesn't hold up the plan)
       const cur = (wxLoc() || {}).place || "", city = setup.city || "";
       const geo = setup.geo;
@@ -3482,13 +4047,13 @@ document.addEventListener("click", ev => {
       const saving = mode === "account" ? api("PUT", "/api/profile", {profile: prof, resetFrom: TODAY}) : Promise.resolve();
       Promise.all([wait, saving]).then(() => {
         if (mode === "account") Object.keys(done).forEach(k => { if (k >= TODAY) delete done[k]; });
-        plan = buildPlan(prof); setup = null; save(); setTab("today", true);
+        plan = buildPlan(prof); setup = null; setupDraft.clear(); save(); setTab("today", true);
       }).catch(e => { setup.step = 3; setup.err = e.message; render(); });
       return;
     }
     render(); window.scrollTo(0, 0); return;
   }
-  if (act === "prev"){ setup.err = ""; if (setup.step === 0 && plan){ setup = null; render(); return; } setup.step = Math.max(-1, setup.step - 1); render(); window.scrollTo(0, 0); return; }
+  if (act === "prev"){ setup.err = ""; setup.resumed = false; if (setup.step === 0 && plan){ setup = null; render(); return; } setup.step = Math.max(-1, setup.step - 1); render(); window.scrollTo(0, 0); return; }
   if (act === "sample"){ if (API) mode = "sample"; plan = buildPlan({...SAMPLE}); setup = null; save(); setTab("today", true); toast("Showing a sample runner. Tap the gear to build your own plan."); return; }
   if (act === "done"){
     const k = a.dataset.key, on = !done[k], firstEver = on && !Object.keys(done).length && !acts.length;
@@ -3498,6 +4063,16 @@ document.addEventListener("click", ev => {
     return;
   }
   if (act === "actgo"){ const id = a.dataset.id; nav("fwd", () => { scr = null; tab = "activities"; actSel = id; render(); window.scrollTo(0, 0); }); return; }
+  if (act === "ashare"){ const x = feedActs().find(y => y.id === a.dataset.id); if (x) shareSheet(x); return; }
+  if (act === "shpick"){ const x = feedActs().find(y => y.id === a.dataset.id); if (x) shareRun(x, a.dataset.k); return; }
+  if (act === "aplsave"){ aplSave(); return; }
+  if (act === "apltag" || act === "aplrpe" || act === "aplshoe"){ aplKeep(); const x = apl && acts.find(y => y.id === apl.id); if (!x) return;
+    if (act === "apltag") apl.f.tag = apl.f.tag === a.dataset.k ? "" : a.dataset.k; else if (act === "aplrpe"){ const n = +a.dataset.n; apl.f.rpe = apl.f.rpe === n ? 0 : n; } else apl.addShoe = {name: "", mi: ""};
+    aplDraw(x); if (act === "aplshoe"){ const q = $("#apl-sn"); if (q) q.focus(); } return; }
+  if (act === "aplshoeadd"){ aplShoe(); return; }
+  if (act === "aedit"){ const x = acts.find(y => y.id === a.dataset.id); if (x && canEdit(x)) aplOpen(x, false); return; }
+  if (act === "aplshare"){ aplKeep(); const x = apl && acts.find(y => y.id === apl.id); if (x){ closeMenu(); shareSheet(x); } return; }
+  if (act === "aplopen"){ const id = apl && apl.id; apl = null; closeMenu(); if (id) nav("fwd", () => { scr = null; tab = "activities"; actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actopen"){ const id = a.dataset.id; scrollMem[viewKey()] = window.scrollY; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actback"){ nav("back", () => { actSel = null; actName = null; render(); restoreScroll(viewKey()); }); return; }
   if (act === "anedit"){ const x = acts.find(y => y.id === actSel); if (x && canRename(x)){ actName = {id: x.id, v: x.name, err: "", busy: false}; render(); const q = $("#an-q"); if (q){ q.focus(); q.select(); } } return; }
@@ -3549,6 +4124,7 @@ document.addEventListener("click", ev => {
     Object.assign(setup.p, {raceDate: r.date, raceName: r.name, raceCity: r.city || null, raceUrl: r.url || null}); setup.err = "";
     closeMenu(); render(); window.scrollTo(0, 0); return;
   }
+  if (act.startsWith("myw") && mywAct(act, a)) return;
   if (act === "lopen"){ liftOpen[a.dataset.key] = 1; render(); return; }
   if (act === "lclose"){ delete liftOpen[a.dataset.key]; render(); return; }
   if (act === "lsave"){
@@ -3719,10 +4295,10 @@ document.addEventListener("click", ev => {
   if (act === "authsignup" || act === "authlogin"){ closeMenu(); scr = null; authv = {view: act === "authsignup" ? "signup" : "login", email: authv ? authv.email : ""}; render(); window.scrollTo(0, 0); return; }
   if (act === "authback"){ authv = null; render(); return; }
   if (act === "authforgot"){ const em = ((document.getElementById("a-email") || {}).value || (authv && authv.email) || "").trim(); authv = {view: "forgot", email: em}; render(); window.scrollTo(0, 0); return; }
-  if (act === "logout"){ closeMenu(); scr = null; const t = token; api("POST", "/api/logout").catch(() => {}).finally(() => { if (token === t) signedOut(); }); return; }
+  if (act === "logout"){ closeMenu(); scr = null; setupDraft.clear(); const t = token; api("POST", "/api/logout").catch(() => {}).finally(() => { if (token === t) signedOut(); }); return; }
   if (act === "delacct"){
     if (a.dataset.sure !== "1"){ a.dataset.sure = "1"; a.textContent = "Tap again to delete everything"; return; }
-    closeMenu(); scr = null; api("DELETE", "/api/account").then(() => { signedOut(); toast("Your account and data are deleted."); }).catch(e => toast(e.message)); return;
+    closeMenu(); scr = null; api("DELETE", "/api/account").then(() => { setupDraft.clear(); signedOut(); toast("Your account and data are deleted."); }).catch(e => toast(e.message)); return;
   }
   if (act === "getapp"){
     if (installEvt){ const e = installEvt; installEvt = null; e.prompt(); e.userChoice.then(c => { if (c.outcome !== "accepted") toast("No problem. Tap Get app any time."); render(); }).catch(() => render()); }
@@ -3982,7 +4558,7 @@ document.addEventListener("keydown", ev => { if (ev.key === "Escape") closeMenu(
 document.addEventListener("touchstart", () => {}, {passive: true});
 ["gesturestart", "gesturechange", "gestureend"].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
 document.addEventListener("input", ev => { if (ev.target.id === "an-q" && actName && !actName.busy) actName.v = ev.target.value; });
-document.addEventListener("submit", ev => { if (ev.target.id === "an-form"){ ev.preventDefault(); const q = $("#an-q"); if (actName) saveActName(actName.id, q ? q.value : actName.v); return; } if (ev.target.id === "askform"){ ev.preventDefault(); const q = $("#ask-q"); askSend(q ? q.value : ""); return; } if (ev.target.id === "rs-form"){ ev.preventDefault(); if (!rsv.busy) rsSearch(); return; } if (ev.target.id === "authform"){ ev.preventDefault(); if (!authv.busy) submitAuth(); } });
+document.addEventListener("submit", ev => { if (ev.target.id === "apl-form"){ ev.preventDefault(); aplSave(); return; } if (ev.target.id === "an-form"){ ev.preventDefault(); const q = $("#an-q"); if (actName) saveActName(actName.id, q ? q.value : actName.v); return; } if (ev.target.id === "askform"){ ev.preventDefault(); const q = $("#ask-q"); askSend(q ? q.value : ""); return; } if (ev.target.id === "rs-form"){ ev.preventDefault(); if (!rsv.busy) rsSearch(); return; } if (ev.target.id === "authform"){ ev.preventDefault(); if (!authv.busy) submitAuth(); } });
 window.addEventListener("hashchange", () => { if (!setup && plan) setTab(location.hash.slice(1), true); });
 
 tab = ["today","plan","activities","recovery","training","more"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "today";
@@ -4001,7 +4577,7 @@ function hideSplash(){
 }
 if (splashReady) hideSplash(); else setTimeout(hideSplash, 4000);
 if (!token && mode === "local") setTimeout(whatsNew, 1600);
-if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); garminReturn(); if (location.hash === "#members"){ try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} if (isOwner) go("members"); } if (movedHere) setTimeout(() => toast("Mileset has a new address: app.hybrdrunning.com. If you added it to your Home Screen, add this one again."), 600); autoSync(true); setTimeout(whatsNew, 900); if (pushOK()) checkPush().then(() => { safeRender(); setTimeout(askNotif, 1800); }); })
+if (token) api("GET", "/api/me").then(j => { loadAccount(j); loading = false; render(); if (upd && upd.y) window.scrollTo(0, upd.y); hideSplash(); stravaReturn(); garminReturn(); if (location.hash === "#members"){ try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} if (isOwner) go("members"); } if (movedHere) setTimeout(() => toast("Mileset has a new address: app.hybrdrunning.com. If you added it to your Home Screen, add this one again."), 600); autoSync(true); setTimeout(actPop, 700); setTimeout(whatsNew, 900); if (pushOK()) checkPush().then(() => { safeRender(); setTimeout(askNotif, 1800); }); })
   .catch(e => { loading = false; if (token){ mode = "none"; plan = null; } render(); hideSplash(); toast(e.message); });
 })();
 </script>

@@ -111,4 +111,20 @@ for (const goal of ["hyrox", "tri_olympic", "everyday"]){
   t(nw.miles <= 5 && nw.days.some(d => d.sessions.some(s => /walk breaks/.test(JSON.stringify(s.steps)))) && !nw.days.some(d => d.sessions.some(s => s.type === "workout")),
     "a 3 mi/week beginner's first week: about 5 mi, short runs with walk breaks, no hard workout");
 }
+{ // Sleep outlier + stress nudges (Matthew, Nov 18 list)
+  const dev = {}; for (let i = 1; i <= 14; i++) dev[HP.addDays("2026-11-18", -i)] = {sleep_h: 7 + (i % 3) * 0.2};
+  t(HP.sleepOutlier({...dev, "2026-11-18": {sleep_h: 7.1}}, "2026-11-18") === null, "sleep: a normal night says nothing");
+  const sh = HP.sleepOutlier({...dev, "2026-11-18": {sleep_h: 5}}, "2026-11-18");
+  t(sh && sh.dir === "short" && /5 h/.test(sh.text) && /less than your usual 7\.2 h/.test(sh.text) && /shortest night/.test(sh.text) && /easy/.test(sh.text), "sleep: a short night says how far off and what it means");
+  const lg = HP.sleepOutlier({...dev, "2026-11-18": {sleep_h: 9.6}}, "2026-11-18");
+  t(lg && lg.dir === "long" && /more than your usual/.test(lg.text), "sleep: a long night is named too");
+  t(HP.sleepOutlier({"2026-11-17": {sleep_h: 7}, "2026-11-18": {sleep_h: 4}}, "2026-11-18") === null, "sleep: no note without a week of history");
+  t(HP.stressNudge({high_s: 20 * 60, avg: 30, qualifier: "balanced"}, 28, 0) === null, "stress: a calm day sends nothing");
+  const b = HP.stressNudge({high_s: 50 * 60, avg: 45, qualifier: "stressful"}, 30, 0);
+  t(b && b.kind === "breathe" && /50 minutes of high stress/.test(b.body) && /breathe in for 4/.test(b.body), "stress: a stressful stretch gets a breathing nudge");
+  t(HP.stressNudge({high_s: 0, avg: 52, qualifier: "stressful"}, 35, 1).kind === "breathe" && HP.stressNudge({high_s: 0, avg: 52, qualifier: "stressful"}, 48, 1) === null,
+    "stress: Garmin's 'stressful' counts only when it's well above the member's normal");
+  const r = HP.stressNudge({high_s: 150 * 60, avg: 70, qualifier: "very_stressful"}, 30, 2);
+  t(r && r.kind === "rest" && /rest/.test(r.body), "stress: a very stressful day with low readiness suggests taking the day off");
+}
 console.log(bad ? bad + " failed" : "ALL PASS"); process.exit(bad ? 1 : 0);
