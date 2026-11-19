@@ -210,6 +210,27 @@ await check("Log weights and reps, see strength progress", async () => {
   if (!t.includes(ex) || !/100 lb × 8/.test(t)) throw new Error("progress card: " + t.replace(/\n/g, " ").slice(0, 160));
   await tab("today"); return ex + " 100 lb × 8 saved and shown";
 });
+await check("My workouts: build a shoulder day, log it, it's kept, progress shows, edit and delete", async () => {
+  // a member's idea (Nov 18): your own workouts + progressive overload, week to week
+  await tab("more"); await page.click('.scard[data-scr="myw"]'); await page.waitForSelector('[data-act="mywnew"]'); await noOverflow();
+  await page.click('[data-act="mywnew"]'); await page.waitForSelector(".sheet.myws #myw-name");
+  await page.click('[data-act="mywsave"]'); if (!/name/i.test(await page.innerText(".sheet.myws .err"))) throw new Error("saving without a name wasn't stopped");
+  await page.fill("#myw-name", "Shoulder day"); await page.fill("#myw-n-0", "Overhead press"); await page.fill("#myw-s-0", "4"); await page.fill("#myw-r-0", "8");
+  await page.fill("#myw-n-1", "Lateral raise"); await page.fill("#myw-r-1", "12"); await page.fill("#myw-n-2", "overhead press");   // a duplicate is dropped
+  await noOverflow(); await shot("02h-myw-edit");
+  await page.click('[data-act="mywsave"]'); await page.waitForSelector(".mywdo #mw-w-0");
+  if (await page.locator(".mywdo .lrow").count() !== 2) throw new Error("expected 2 exercises (duplicate dropped), got " + await page.locator(".mywdo .lrow").count());
+  await page.fill("#mw-w-0", "95"); await page.fill("#mw-r-0", "8"); await page.fill("#mw-r-1", "12"); await page.click('[data-act="mywlog"]'); await page.waitForTimeout(900);
+  await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar:not([hidden])", {timeout: 15000}); await page.waitForTimeout(300);
+  await tab("more"); await page.click('.scard[data-scr="myw"]'); await page.waitForSelector(".mywc"); if (!/Shoulder day/.test(await page.innerText(".mywl"))) throw new Error("the workout wasn't kept after a reload");
+  await page.click(".mywc"); await page.waitForSelector(".mywp"); await noOverflow(); await shot("02i-myw-do");
+  const prog = await page.innerText(".mywp >> nth=0"); if (!/95 lb × 8/.test(prog)) throw new Error("progress didn't show the logged set: " + prog.replace(/\n/g, " "));
+  await tab("training"); const sp = await page.locator(".pc:has-text('Strength progress')").innerText(); if (!/Overhead press/.test(sp)) throw new Error("Strength progress doesn't include it");
+  await tab("more"); await page.click('.scard[data-scr="myw"]'); await page.click(".mywc"); await page.click('[data-act="mywedit"]'); await page.waitForSelector(".sheet.myws");
+  await page.click('[data-act="mywdel"]'); await page.click('[data-act="mywdel"]'); await page.waitForSelector(".sheet.myws", {state: "detached"}); await page.waitForTimeout(600);
+  if (await page.locator(".mywc").count()) throw new Error("the workout wasn't deleted");
+  await tab("today"); return "built, logged 95 lb × 8, kept after reload, in Strength progress, deleted";
+});
 await check("Move check flags hard back-to-back days (plan logic)", async () => {
   const r = await page.evaluate(() => { const p = {goal: "half", raceDate: "2027-02-07", goalSec: 6300, weekly: 22, longest: 8, days: [0, 1, 3, 4, 5], longDay: 5, lifts: 3, start: "2026-11-09", prDist: "10k", prSec: 2910, age: 30, weight: 182};
     const pl = HP.buildPlan(p, "2026-11-14"), w = pl.weeks[1].days, wk = pl.weeks[1].miles, sw = HP.buildPlan({...p, swaps: [[w[1].date, w[2].date]]}, "2026-11-14");
@@ -515,7 +536,11 @@ await check("Ask bar stress: hostile replies, bad buttons, a burst of taps, 14 r
     step = "part 7";
     // 7. a 320px phone: nothing runs off the side, the box and Send are on screen
     const vp = page.viewportSize(); await page.setViewportSize({width: 320, height: 568});
-    try { await noOverflow(); const box = await page.locator('.ask-f button[type="submit"]').boundingBox(); if (!box || box.x + box.width > 321 || box.y + box.height > 569) throw new Error("Send is off the screen on a small phone: " + JSON.stringify(box)); }
+    // the sheet follows the visible area through visualViewport "resize", which can land a frame or two after the
+    // screen changes on a slow CI runner (PR checks, Nov 17: Send measured at the old 844px height). Give it up to 2 s.
+    try { await noOverflow(); const send = page.locator('.ask-f button[type="submit"]'), onScreen = b => b && b.x + b.width <= 321 && b.y + b.height <= 569;
+      let box = await send.boundingBox(); for (let i = 0; i < 20 && !onScreen(box); i++){ await page.waitForTimeout(100); box = await send.boundingBox(); }
+      if (!onScreen(box)) throw new Error("Send is off the screen on a small phone: " + JSON.stringify(box)); }
     finally { await page.setViewportSize(vp); }
     return done + " of " + tried + " random moves made and put back; plan unchanged";
   } catch(e){ if (process.env.ASK_DEBUG){ await page.screenshot({path: process.env.ASK_DEBUG}).catch(() => {}); console.log("ASK_DEBUG step=" + step + " | " + await page.evaluate(() => { const b = document.querySelector(".back"), t = document.querySelector(".toast"), a = document.querySelector("#askbar"); return (b ? "sheet " + b.firstElementChild.className : "no sheet") + ", askbar " + (a && !a.hidden ? "shown" : "hidden") + ", toast: " + (t ? t.textContent : "none") + ", " + (document.querySelector(".scrbar") ? "detail screen" : "tab") + ", bubbles " + document.querySelectorAll(".ask-m").length + ", last acts: " + ([...document.querySelectorAll(".ask-acts")].pop() || {textContent: "-"}).textContent.slice(0, 160); }).catch(x => "eval failed " + x.message)); }
@@ -671,7 +696,7 @@ await check("Glitch scan: every screen fits the phone, tab bar never covered", a
     const w = await page.evaluate(() => document.documentElement.scrollWidth); if (w > 392) bad.push(t + " is " + w + "px wide");
   }
   await tab("today");
-  const screens = ["fuel", "workouts", "weather", "weight", "settings", "set-acct", "set-train", "set-help", "set-watch", "set-notif", "set-hr", "set-run", "set-profile", "set-about", "t-races", "t-paces", "t-miles", "t-body", "t-setup", "faq", "fuelplan", "meals", "crews"];
+  const screens = ["fuel", "workouts", "weather", "weight", "settings", "set-acct", "set-train", "set-help", "set-watch", "set-notif", "set-hr", "set-run", "set-profile", "set-about", "t-races", "t-paces", "t-miles", "t-body", "t-setup", "faq", "fuelplan", "meals", "crews", "myw"];
   for (const s of screens){
     await page.evaluate(s => { const x = document.createElement("button"); x.dataset.act = "go"; x.dataset.scr = s; x.hidden = true; document.body.appendChild(x); x.click(); x.remove(); }, s);
     await page.waitForTimeout(250);

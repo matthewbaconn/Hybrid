@@ -35,7 +35,9 @@ try {
   ok((await call(token, {step: 9})).status === 400 && (await call(token, {step: "x"})).status === 400 && step() === 4, "junk steps are refused");
   ok((await call(null, {step: 3})).status === 401, "only a signed-in member can record a step");
   const app = readFileSync(join(HERE, "..", "index.html"), "utf8");
-  ok(/mode === "account" && !plan && setup\.step >= 0\) api\("POST", "\/api\/account\/setup-step"/.test(app), "the app records the step only for signed-in members building their first plan");
+  ok(/mode === "account" && !plan && setup\.step >= 1\) api\("POST", "\/api\/account\/setup-step"/.test(app), "Next records steps 1-4 only for signed-in members building their first plan");
+  const la = (app.match(/function loadAccount\(j\)\{[\s\S]*?\n\}/) || [""])[0];
+  ok(/if \(!plan\) api\("POST", "\/api\/account\/setup-step", \{step: 0\}\)/.test(la), "opening the app signed in with no plan records step 0 (the goal screen they land on)");
 } catch(e){ ok(false, "test crashed: " + (e && e.message || e)); }
 finally { try { process.kill(-dev.pid); } catch(e){} rmSync(dir, {recursive: true, force: true}); }
 console.log(failed ? failed + " setup step check(s) failed" : "setup step: all checks pass");

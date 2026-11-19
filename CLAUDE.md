@@ -101,10 +101,13 @@ Then report what you did in one line.
 
 **Going live: tell Matthew, and let him undo it (Matthew, Nov 18, 2026: "I should be notified when things go live
 and what they are and I should be allowed to say something like 'I don't like that' or take that back or undo that")**
-- Every time the gate puts a PR live, the inbox report says in plain words what changed for members and how to
-  undo it, e.g. "🚢 Live: Rough night chip in the coach bar for everyone (#91). Don't like it? Reply 'undo 91'."
-  Invisible changes (tests, CI, docs, HQ-only) can be one short line. Between 9pm and 6am ET, write it as a dated
-  line in vesper-relay ceo/overnight.md instead, so it arrives in his morning brief, not at night.
+- Every time the gate puts a PR live, it does NOT message Matthew right away (Matthew, Nov 18: "I shouldn't be bombarded
+  with messages"). It appends one dated line to vesper-relay ceo/live-today.md saying in plain words what changed for
+  members and how to undo it, e.g. "- 2:27pm Rough night chip in the coach bar for everyone (#91) · undo: reply 'undo 91'".
+  The first worker run at or after 7pm ET sends ONE inbox note, "What went live today", with those lines (invisible
+  changes such as tests, CI, docs and HQ-only summed in one line), then empties the file. Later releases go to the next
+  evening, or, between 9pm and 6am ET, to vesper-relay ceo/overnight.md so they arrive in his morning brief.
+  Sent right away instead: an undo he asked for, a fix for something he reported himself, and a failed live check or rollback.
 - When Matthew says "undo <n>", "take that back", "I don't like that" (the most recent live change, or the one he
   names), or similar: open a revert PR from main on branch claude/undo-<n> that reverts that PR's squash commit
   (`git revert --no-edit <sha>`), with APP_VERSION/CACHE bumped one above main so phones pick it up, and its
