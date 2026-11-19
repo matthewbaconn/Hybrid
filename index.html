@@ -1064,6 +1064,9 @@ function loadAccount(j){
   const dr = plan ? null : setupDraft.get(me.id);
   if (plan) setupDraft.clear();
   setup = plan ? null : dr ? {step: Math.min(3, Math.max(0, Math.floor(+dr.step) || 0)), p: {...blankProfile(), ...dr.p}, resumed: true} : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
+  // funnel question 4 (Nov 19): a signed-in member with no plan lands straight on the goal screen, so record step 0 here
+  // (it was never sent before: the old trigger was Next on the welcome screen, which account members never see)
+  if (!plan) api("POST", "/api/account/setup-step", {step: 0}).catch(() => {});
 }
 function signedOut(){ scr = null; feat = {}; inv = null; revOpen = false; aiSt = {on: true, asked: true, needs: false, available: false}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
@@ -2245,7 +2248,7 @@ function mywDoHtml(){
     const spark = vals.length > 1 ? '<svg class="spk" viewBox="0 0 80 24" aria-hidden="true"><polyline fill="none" stroke="var(--lift)" stroke-width="2" stroke-linejoin="round" points="' + vals.map((v, i) => (i * 80 / (vals.length - 1)).toFixed(1) + ',' + (21 - (mx === mn ? 9 : (v - mn) / (mx - mn) * 18)).toFixed(1)).join(" ") + '"/></svg>' : '';
     const open = mywOpen[e.n.toLowerCase()], list = hs.slice().reverse().slice(0, open ? 20 : 3);
     return '<div class="mywp"><div class="mywp-h"><b>' + esc(e.n) + '</b>' + spark + (c ? '<em class="' + (c.up ? 'up' : c.up === false ? 'dn' : 'sx') + '">' + c.txt + '</em>' : '<em class="sx">1st log</em>') + '</div>' +
-      '<ul class="mywh">' + list.map(x => '<li><span>' + shortD(x.date) + '</span><b>' + (x.weight ? x.weight + ' lb' : 'Bodyweight') + (x.reps ? ' × ' + x.reps : '') + (x.sets ? ' · ' + x.sets + ' sets' : '') + '</b>' + (x.hit ? '<i aria-label="all reps">✓</i>' : '<i></i>') + '</li>').join("") + '</ul>' +
+      '<ul class="mywh">' + list.map(x => '<li><span>' + shortD(x.date) + '</span><b>' + (x.weight ? x.weight + ' lb' : 'Bodyweight') + (x.reps ? ' × ' + x.reps : (x.weight ? ' · no reps logged' : '')) + (x.sets ? ' · ' + x.sets + ' sets' : '') + '</b>' + (x.hit ? '<i aria-label="all reps">✓</i>' : '<i></i>') + '</li>').join("") + '</ul>' +
       (hs.length > 3 ? '<button class="linkbtn" type="button" data-act="mywmore" data-ex="' + esc(e.n) + '">' + (open ? 'Show less' : 'Show all ' + hs.length) + '</button>' : '') + '</div>';
   });
   h += rows.join("") + '<p class="fine" style="margin:4px 0 0">The change is from your first time to your latest. ✓ means you hit all your reps, so Mileset suggests adding weight next time.</p></section>';
@@ -2320,6 +2323,8 @@ function mywAct(act, a){
     if (!sets.length){ toast("Type a weight or reps for at least one exercise."); return true; }
     const apply = () => { sets.forEach(x => { liftLog = liftLog.filter(y => !(y.date === TODAY && y.ex.toLowerCase() === x.ex.toLowerCase())); liftLog.push({date: TODAY, ex: x.ex, weight: x.weight, reps: x.reps, sets: x.sets, hit: x.hit ? 1 : 0}); }); save(); render();
       const ups = sets.filter(x => { const h = mywHist(x.ex).filter(y => y.date < TODAY); const p = h[h.length - 1]; return p && (x.weight > (p.weight || 0) || (x.weight === p.weight && (x.reps || 0) > (p.reps || 0))); }).length;
+      const noReps = sets.filter(x => x.weight != null && x.reps == null).length;
+      if (noReps) { toast("Saved. " + noReps + (noReps === 1 ? " exercise has" : " exercises have") + " no reps. Type the reps you did to track them."); return; }
       toast(ups ? "Saved. You beat last time on " + ups + (ups === 1 ? " exercise." : " exercises.") : "Saved. Next time you'll see what to try."); };
     if (mode === "account") api("PUT", "/api/lifts", {date: TODAY, sets}).then(apply).catch(e => toast(e.message)); else apply();
     return true;
@@ -2814,7 +2819,9 @@ function canMove(date){
 }
 /* a missed day: up to 7 days back, planned sessions, nothing done or logged. It can move to a day from today on. */
 function untouched(date){ const d = plan && dayOf(date); if (!d) return false; const m = dayMatches(date); return !d.sessions.some((s, i) => sessDone(date, i, m)) && !liftLog.some(x => x.date === date); }
-function missedDay(date){ const d = plan && dayOf(date); return !!d && date < TODAY && date >= addDays(TODAY, -7) && d.sessions.length > 0 && !d.sessions.some(s => s.type === "race") && untouched(date); }
+/* never a day from before the member built this plan (activation incident, Nov 19: a runner who joined on a Thursday
+   opened Today to "Missed Tuesday" on day one, for a week that started before they signed up) */
+function missedDay(date){ const d = plan && dayOf(date); return !!d && date < TODAY && date >= addDays(TODAY, -7) && date >= (plan.profile.built || "") && d.sessions.length > 0 && !d.sessions.some(s => s.type === "race") && untouched(date); }
 const canMoveFrom = date => canMove(date) || missedDay(date);
 function moveTargets(date){
   const out = []; for (let k = -7; k <= 7; k++){ const x = addDays(date, k), d = k && x >= TODAY && dayOf(x); if (d && canMove(x)) out.push(d); }
@@ -3689,7 +3696,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "112";
+const APP_VERSION = "115";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -4109,7 +4116,7 @@ document.addEventListener("click", ev => {
     if (mode === "account" && !plan && setup.step >= 1) api("POST", "/api/account/setup-step", {step: setup.step}).catch(() => {});
     if (mode === "account" && !plan && me && setup.step >= 1 && setup.step <= 3) setupDraft.set(me.id, setup);
     if (setup.step === 4){
-      const prof = {...setup.p, start: mondayOf(TODAY), pv: HP.PLAN_V}; delete prof.sample; delete prof.swaps; if (plan && plan.profile.myWorkouts && !prof.myWorkouts) prof.myWorkouts = plan.profile.myWorkouts;   // your own workouts survive a new plan   // a new plan starts with no moved days
+      const prof = {...setup.p, start: mondayOf(TODAY), built: TODAY, pv: HP.PLAN_V}; delete prof.sample; delete prof.swaps; if (plan && plan.profile.myWorkouts && !prof.myWorkouts) prof.myWorkouts = plan.profile.myWorkouts;   // your own workouts survive a new plan   // a new plan starts with no moved days   // built: the day they made it, so earlier days that week never read as missed
       // training location: from "Use my location", or look up the typed city (doesn't hold up the plan)
       const cur = (wxLoc() || {}).place || "", city = setup.city || "";
       const geo = setup.geo;
