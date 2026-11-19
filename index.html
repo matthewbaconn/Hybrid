@@ -1011,6 +1011,9 @@ function loadAccount(j){
   const dr = plan ? null : setupDraft.get(me.id);
   if (plan) setupDraft.clear();
   setup = plan ? null : dr ? {step: Math.min(3, Math.max(0, Math.floor(+dr.step) || 0)), p: {...blankProfile(), ...dr.p}, resumed: true} : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
+  // funnel question 4 (Nov 19): a signed-in member with no plan lands straight on the goal screen, so record step 0 here
+  // (it was never sent before: the old trigger was Next on the welcome screen, which account members never see)
+  if (!plan) api("POST", "/api/account/setup-step", {step: 0}).catch(() => {});
 }
 function signedOut(){ scr = null; feat = {}; inv = null; revOpen = false; aiSt = {on: true, asked: true, needs: false, available: false}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
@@ -3633,7 +3636,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "112";
+const APP_VERSION = "113";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
