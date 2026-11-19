@@ -1,6 +1,7 @@
 import "../plan.js";
 import { buildPushPayload } from "@block65/webcrypto-web-push";
 import { safeDetail, errName, apiErrType, routeOf, GARMIN_TYPES } from "./events_safe.mjs";
+import { visitKind } from "./visits.mjs";
 const HP = globalThis.HP;
 // Hybrid API: accounts, saved plans, workout check-offs, food log and AI food reading.
 // Runs on Cloudflare Workers with a D1 database (binding DB). Secrets: ANTHROPIC_API_KEY.
@@ -205,11 +206,15 @@ function viewPath(host, pathname){
 function countView(env, ctx, req, host, u, r){
   try {
     if (req.method !== "GET" || r.status !== 200 || !/text\/html/i.test(r.headers.get("Content-Type") || "")) return;
-    const ua = req.headers.get("User-Agent") || "";
-    if (!ua || BOT_UA.test(ua) || /prefetch|prerender/i.test(req.headers.get("Purpose") || req.headers.get("Sec-Purpose") || "")) return;
+    const ua = req.headers.get("User-Agent") || "", purpose = req.headers.get("Purpose") || req.headers.get("Sec-Purpose") || "";
     const p = viewPath(host, u.pathname); if (!p) return;
+    const day = new Date().toISOString().slice(0, 10);
+    // Nov 17 diagnostic: every page load (robots and tests too) as one broad label; only the label is stored (api/visits.mjs)
+    ctx.waitUntil(env.DB.prepare("INSERT INTO page_view_kinds (day, path, kind, n) VALUES (?, ?, ?, 1) ON CONFLICT(day, path, kind) DO UPDATE SET n = n + 1")
+      .bind(day, p, visitKind(ua, purpose)).run().catch(() => {}));
+    if (!ua || BOT_UA.test(ua) || /prefetch|prerender/i.test(purpose)) return;
     ctx.waitUntil(env.DB.prepare("INSERT INTO page_views (day, path, n) VALUES (?, ?, 1) ON CONFLICT(day, path) DO UPDATE SET n = n + 1")
-      .bind(new Date().toISOString().slice(0, 10), p).run().catch(() => {}));
+      .bind(day, p).run().catch(() => {}));
   } catch(e){}
 }
 async function stravaToken(env, link){
@@ -867,17 +872,65 @@ function weeklySummary(U, today){
   ].filter(Boolean);
   return {title: "Week done: " + Math.round(extraMi * 10) / 10 + " of " + Math.round(plannedMi * 10) / 10 + " mi", body: lines.join("\n"), tag: "weekly-" + today};
 }
+// Activation funnel, real members only, COUNTS only (audit P1-2). "workout"/"trained" = built a plan and ever trained:
+// a check-off in the app OR a synced/logged workout. "checked_off" counts in-app check-offs alone.
+async function funnelCounts(env){
+  const d7 = "date(u.created, '+7 days')", cut = new Date(Date.now() - 7 * 864e5).toISOString(), wk = cut.slice(0, 10);
+  const P = "EXISTS(SELECT 1 FROM profiles p WHERE p.user_id = u.id)", D0 = "substr(u.created, 1, 10)";
+  const f = await env.DB.prepare(
+    "SELECT COUNT(*) AS signed_up, SUM(" + P + ") AS plan, " +
+    "SUM(" + P + " AND EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id)) AS checked_off, " +
+    // A synced workout counts only if it happened on or after the sign-up day (a Strava/Garmin history import of
+    // older runs is not training WITH Mileset; Matthew, Nov 18: "accurate measurements of actual member behavior").
+    "SUM(" + P + " AND (EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id) OR EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.date >= " + D0 + "))) AS trained, " +
+    // Activation (docs/STRATEGY.md #4): plan holders who joined 3+ days ago, and how many of them trained (check-off
+    // OR synced/logged workout) within their first 3 days.
+    "SUM(" + P + " AND u.created <= ?3) AS act72_eligible, " +
+    "SUM(" + P + " AND u.created <= ?3 AND (EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id AND substr(d.key, 1, 10) BETWEEN " + D0 + " AND date(u.created, '+3 days')) OR " +
+    "EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.date BETWEEN " + D0 + " AND date(u.created, '+3 days')))) AS act72, " +
+    "SUM(" + P + " AND (EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id AND substr(d.key, 1, 10) >= ?2) OR EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.date >= ?2))) AS trained_7d, " +
+    "SUM(u.created <= ?1) AS d7_eligible, SUM(u.created <= ?1 AND (" +
+    "EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id AND substr(d.key, 1, 10) >= " + d7 + ") OR " +
+    "EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.source = 'manual' AND a.date >= " + d7 + ") OR " +
+    "EXISTS(SELECT 1 FROM food x WHERE x.user_id = u.id AND x.date >= " + d7 + ") OR " +
+    "EXISTS(SELECT 1 FROM checkins c WHERE c.user_id = u.id AND c.date >= " + d7 + ") OR " +
+    "EXISTS(SELECT 1 FROM sessions s WHERE s.user_id = u.id AND substr(s.created, 1, 10) >= " + d7 + "))) AS active_d7, " +
+    "SUM(EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id AND substr(d.key, 1, 10) > " + D0 + ") OR " +
+    "EXISTS(SELECT 1 FROM food x WHERE x.user_id = u.id AND x.date > " + D0 + ") OR " +
+    "EXISTS(SELECT 1 FROM checkins c WHERE c.user_id = u.id AND c.date > " + D0 + ") OR " +
+    "EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.date > " + D0 + ") OR " +
+    "EXISTS(SELECT 1 FROM sessions s WHERE s.user_id = u.id AND substr(s.created, 1, 10) > " + D0 + ")) AS returned, " +
+    "SUM(u.ref IS NOT NULL AND u.ref != u.id) AS via_invite, " +
+    "SUM(EXISTS(SELECT 1 FROM users r WHERE r.ref = u.id AND r.id != u.id AND " + REAL("r.") + ")) AS referrers " +
+    "FROM users u WHERE " + REAL("u.")).bind(cut, wk, new Date(Date.now() - 3 * 864e5).toISOString()).first();
+  const n = k => f[k] || 0;
+  return {signed_up: n("signed_up"), plan: n("plan"), workout: n("trained"), checked_off: n("checked_off"), trained: n("trained"),
+          trained_7d: n("trained_7d"), d7_eligible: n("d7_eligible"), active_d7: n("active_d7"),
+          returned: n("returned"), via_invite: n("via_invite"), referrers: n("referrers"),
+          act72_eligible: n("act72_eligible"), act72: n("act72")};
+}
+
+// Today's counts into funnel_daily (one row per UTC day, totals only) so Vesper's reports can read them without
+// ever touching activities or Strava/Garmin tables.
+async function saveFunnelDaily(env){
+  const f = await funnelCounts(env), now = new Date().toISOString();
+  await env.DB.prepare("INSERT OR REPLACE INTO funnel_daily (day, signed_up, plan, checked_off, trained, trained_7d, d7_eligible, active_d7, returned, via_invite, referrers, act72_eligible, act72, updated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+    .bind(now.slice(0, 10), f.signed_up, f.plan, f.checked_off, f.trained, f.trained_7d, f.d7_eligible, f.active_d7, f.returned, f.via_invite, f.referrers, f.act72_eligible, f.act72, now).run();
+}
+
 async function cron(env, ctx){
   await logEvent(env, "cron", true);
   await outbox(env).catch(e => logEvent(env, "bulk_mail", false, "outbox " + errName(e)));
   await day7Nudges(env).catch(e => logEvent(env, "nudge_mail", false, "cron " + errName(e)));
   await firstWorkoutNudges(env).catch(e => logEvent(env, "first_workout", false, "cron " + errName(e)));
+  await saveFunnelDaily(env).catch(e => logEvent(env, "funnel_daily", false, "cron " + errName(e)));
   // once a day (after 4 am local) refresh the next 7 days of workouts on each athlete's Garmin
   for (const {user_id} of (await env.DB.prepare("SELECT user_id FROM garmin_links WHERE permissions LIKE '%WORKOUT_IMPORT%'").all()).results){
     try { const L = localNow((await settingsOf(env, user_id)).tz); if (L.hm >= "04:00" && await once(env, user_id, "gwork", L.date)) await garminWorkouts(env, user_id); }
     catch(e){ await logEvent(env, "garmin_workout", false, "cron " + errName(e)); }
   }
   await env.DB.prepare("DELETE FROM events WHERE ts < ?").bind(new Date(Date.now() - 21 * 864e5).toISOString()).run();
+  await env.DB.prepare("DELETE FROM page_view_kinds WHERE day < ?").bind(new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)).run().catch(() => {});   // diagnostic counts: 30 days
   await env.DB.prepare("DELETE FROM notif_log WHERE day < ?").bind(new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)).run();
   const users = (await env.DB.prepare("SELECT DISTINCT u.id FROM users u LEFT JOIN push_subs p ON p.user_id = u.id LEFT JOIN strava_links s ON s.user_id = u.id WHERE p.user_id IS NOT NULL OR s.user_id IS NOT NULL").all()).results;
   for (const {id} of users){
@@ -1858,18 +1911,7 @@ async function route(req, env, path, ctx){
   }
   if (M === "GET" && path === "/api/admin/funnel"){   // activation funnel, real members only, read-only counts
     if (user.id !== (await ownerId(env))) throw new HttpError(403, "Not allowed.");
-    const d7 = "date(u.created, '+7 days')", cut = new Date(Date.now() - 7 * 864e5).toISOString();
-    const f = await env.DB.prepare(
-      "SELECT COUNT(*) AS signed_up, SUM(EXISTS(SELECT 1 FROM profiles p WHERE p.user_id = u.id)) AS plan, " +
-      "SUM(EXISTS(SELECT 1 FROM profiles p WHERE p.user_id = u.id) AND (EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id) OR EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id))) AS workout, " +
-      "SUM(u.created <= ?1) AS d7_eligible, SUM(u.created <= ?1 AND (" +
-      "EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id AND substr(d.key, 1, 10) >= " + d7 + ") OR " +
-      "EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.source = 'manual' AND a.date >= " + d7 + ") OR " +
-      "EXISTS(SELECT 1 FROM food x WHERE x.user_id = u.id AND x.date >= " + d7 + ") OR " +
-      "EXISTS(SELECT 1 FROM checkins c WHERE c.user_id = u.id AND c.date >= " + d7 + ") OR " +
-      "EXISTS(SELECT 1 FROM sessions s WHERE s.user_id = u.id AND substr(s.created, 1, 10) >= " + d7 + "))) AS active_d7 " +
-      "FROM users u WHERE " + REAL("u.")).bind(cut).first();
-    return {funnel: {signed_up: f.signed_up || 0, plan: f.plan || 0, workout: f.workout || 0, d7_eligible: f.d7_eligible || 0, active_d7: f.active_d7 || 0}};
+    return {funnel: await funnelCounts(env)};
   }
   if (M === "GET" && path === "/api/admin/members"){
     if (user.id !== (await ownerId(env))) throw new HttpError(403, "Not allowed.");
