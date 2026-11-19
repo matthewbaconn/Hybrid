@@ -15,6 +15,7 @@ const srv = http.createServer((q, r) => { let p = decodeURIComponent(q.url.split
 let bad = 0; const t = (ok, name) => { console.log((ok ? "ok   " : "FAIL ") + name); if (!ok) bad++; };
 const app = fs.readFileSync(path.join(root, "index.html"), "utf8");
 t(/const prof = \{\.\.\.setup\.p, start: mondayOf\(TODAY\), built: TODAY,/.test(app), "building a plan saves the day it was built");
+t(/built: TODAY, pv: HP\.PLAN_V\}; delete prof\.sample; delete prof\.swaps; if \(plan && plan\.profile\.myWorkouts/.test(app), "a new plan still drops the sample/moved days and keeps your own workouts (code not commented out)");
 let profile = null;
 const b = await chromium.launch(), ctx = await b.newContext({viewport: {width: 390, height: 844}}), p = await ctx.newPage();
 await p.route(/fonts\.googleapis|fonts\.gstatic|tile\.openstreetmap|open-meteo/, r => r.abort());

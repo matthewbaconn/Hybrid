@@ -4035,7 +4035,7 @@ document.addEventListener("click", ev => {
     if (mode === "account" && !plan && setup.step >= 1) api("POST", "/api/account/setup-step", {step: setup.step}).catch(() => {});
     if (mode === "account" && !plan && me && setup.step >= 1 && setup.step <= 3) setupDraft.set(me.id, setup);
     if (setup.step === 4){
-      const prof = {...setup.p, start: mondayOf(TODAY), built: TODAY, pv: HP.PLAN_V};   // built: the day they made it, so earlier days that week never read as missed delete prof.sample; delete prof.swaps; if (plan && plan.profile.myWorkouts && !prof.myWorkouts) prof.myWorkouts = plan.profile.myWorkouts;   // your own workouts survive a new plan   // a new plan starts with no moved days
+      const prof = {...setup.p, start: mondayOf(TODAY), built: TODAY, pv: HP.PLAN_V}; delete prof.sample; delete prof.swaps; if (plan && plan.profile.myWorkouts && !prof.myWorkouts) prof.myWorkouts = plan.profile.myWorkouts;   // your own workouts survive a new plan   // a new plan starts with no moved days   // built: the day they made it, so earlier days that week never read as missed
       // training location: from "Use my location", or look up the typed city (doesn't hold up the plan)
       const cur = (wxLoc() || {}).place || "", city = setup.city || "";
       const geo = setup.geo;
