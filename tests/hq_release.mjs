@@ -50,6 +50,7 @@ const FIX = {v: 1, t: iso(1), o: {streak: [1, 7], working: [], attention: ['audi
   jobs: [['0', 'PLAN OF RECORD (TEST)', '', ''], ['B1', 'TEST FIXTURE top job', 'product lead', 'building']],
   g: {asof: '2026-11-16', src7: {unknown: 2, ig: 1}, src_all: {unknown: 3, ig: 1}, funnel: {signed_up: 4, plan: 3, workout: 0, d7_eligible: 0, active_d7: 0}, members: [['2026-11-15', 3], ['2026-11-16', 4]]},
   me: null, money: null, fix: '',
+  mem: {t: '2026-11-17', cols: [], rows: [['TEST Member One', '2026-11-17', '2026-11-17', 'half', '2027-02-07', 'ig', 3, 4, 1], ['TEST Member Two', '2026-11-12', '', '', '', '', 0, 0, 0]]},
   inc: {t: iso(5), src: 'server', rows: [['fail-ai_food', 'high', 'fixing', 'engineering', 'worker job now', 'TEST FIXTURE food reads failing', '6 in 3 days', iso(60), iso(-300), 'https://github.com/matthewbaconn/Hybrid/pull/76', 1, 0, 'fix in progress', ''],
     ['onboarding-no-plan', 'medium', 'closed', 'product', 'product-lead', 'TEST FIXTURE closed incident', '3 of 11', iso(3000), '', '', 0, 0, 'closed by the detector', iso(100)]]},
   x: {roles: {audit: {name: 'TEST audit schedule', cron: '43 2 * * *', model: 'claude-opus-5-5'}}, work7: {audit: {ok: 1, failed: 1, skipped: 0, min: 20}}, results_say: '', results_at: '',
@@ -141,6 +142,9 @@ async function open(opts){
   if (!/aren't counted here yet/.test(await p.textContent('#growth'))) errs.push('growth: the funnel must say synced workouts are not counted yet');
   const g2 = await p.textContent('#growth2'); for (const w of ['Customer funnel', 'Partnerships', 'Ambassadors', 'Campaigns and experiments']) if (!g2.includes(w)) errs.push('growth: missing ' + w);
   if (/someone-private/.test(g2)) errs.push('growth: ambassador names must never reach HQ');
+  await p.click('#nav [data-v="members"]');
+  const mt = await p.textContent('#members');
+  for (const w of ['TEST Member One', 'Half marathon', 'no plan yet', 'Last active', 'never', 'No emails']) if (!mt.includes(w)) errs.push('members: missing ' + w);
   await p.click('#nav [data-v="money"]');
   if (!/Infrastructure costs/.test(await p.textContent('#money2'))) errs.push('finance: infrastructure costs must be listed (as not tracked)');
   // command bar answers from the data and hands the question to Vesper
@@ -176,12 +180,12 @@ for (const [m, want] of [[20, /^Delayed/], [90, /^Stale/], [null, /offline/i]]) 
   await ctx.close(); }
 for (const vp of [{width: 390, height: 844}, {width: 820, height: 1180}, {width: 1366, height: 768}, {width: 1920, height: 1080}]) {   // no sideways scrolling anywhere
   const {ctx, p, bad} = await open({key: true, feed: 2, vp}); errs.push(...bad.map(x => `${vp.width}px: ` + x));
-  for (const v of ['hq', 'approvals', 'ops', 'team', 'depts', 'growth', 'money', 'me']) { await p.click(`#nav [data-v="${v}"]`); await p.waitForTimeout(120);
+  for (const v of ['hq', 'approvals', 'ops', 'team', 'depts', 'members', 'growth', 'money', 'me']) { await p.click(`#nav [data-v="${v}"]`); await p.waitForTimeout(120);
     const over = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth); if (over > 1) errs.push(`${vp.width}px ${v}: scrolls sideways by ${over}px`); }
   await ctx.close(); }
 { // locked: no private words anywhere
   const {ctx, p} = await open({key: false, feed: 2}); const body = await p.textContent('body');
-  if (/TEST FIXTURE/.test(body)) errs.push('locked: private office text visible without the key');
+  if (/TEST FIXTURE|TEST Member/.test(body)) errs.push('locked: private office text visible without the key');
   if (!/Private\. Unlock HQ/.test(await p.textContent('#panels'))) errs.push('locked: private panels must say they are private');
   await ctx.close(); }
 { // the rollback copy says it is the rollback; the current HQ doesn't

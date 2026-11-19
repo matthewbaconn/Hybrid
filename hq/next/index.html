@@ -346,6 +346,7 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 <span class="ng">Company</span>
 <button data-v="team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.700 6 6M16 5.200a3.200 3.200 0 010 5.600M18 14.300c1.800.800 3 2.600 3 4.700"/></svg><span>Employees</span></button>
 <button data-v="depts"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg><span>Departments</span></button>
+<button data-v="members"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 11h6M15 15h6M17 7h4"/></svg><span>Members</span></button>
 <button data-v="growth"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Growth</span></button>
 <button data-v="money"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.800 9.200c-.500-.900-1.500-1.400-2.800-1.400-1.700 0-3 .900-3 2.200 0 3 6 1.300 6 4.200 0 1.300-1.300 2.200-3 2.200-1.400 0-2.500-.600-3-1.500M12 6v1.800M12 16.400V18"/></svg><span>Finance</span></button>
 <span class="ng">Personal</span>
@@ -395,6 +396,7 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 <section class="view" id="v-team"><div class="vh"><div><h1>Employees</h1><p>Every AI employee, what they're assigned, what they reported and what was independently verified. Minutes are cost on your Claude plan, never a score.</p></div></div>
 <div id="roster" class="emps"></div></section>
 <section class="view" id="v-depts"><div id="depts"></div><h2>Rooms being built</h2><div class="rooms" id="rooms"></div></section>
+<section class="view" id="v-members"><div class="vh"><div><h1>Members</h1><p>Every real member: when they joined, when they were last active, their goal, where they came from and whether they've trained. Your own accounts and test accounts are left out.</p></div></div><div id="members"></div></section>
 <section class="view" id="v-growth"><div class="vh"><div><h1>Growth</h1><p>Real members, where they came from, where they stall, and every experiment, partner and ambassador draft.</p></div></div><div id="growth"></div><div id="growth2"></div></section>
 <section class="view" id="v-money"><div class="vh"><div><h1>Finance</h1><p>Two pools, never added together: extra money (Vesper's Anthropic API) and your Claude plan's usage.</p></div></div><div id="money"></div><div id="money2"></div></section>
 <section class="view" id="v-me"><div class="vh"><div><h1>Personal</h1><p>Your own week from Vesper's agenda, reminders and calendar. Kept separate from company data.</p></div></div><div id="me"></div></section>
@@ -786,7 +788,7 @@ document.getElementById("priv").addEventListener("click", e => { const m = e.tar
   const it = e.target.closest(".item"); if (it && !e.target.closest("a")) it.classList.toggle("open"); });
 function renderPriv(){
   const box = document.getElementById("priv"), lock = document.getElementById("lock");
-  renderBrief(); renderGrowth(); renderMoney(); renderMe(); renderPanels(); renderFresh(); renderAll();
+  renderBrief(); renderGrowth(); renderMoney(); renderMe(); renderMembers(); renderPanels(); renderFresh(); renderAll();
   if (!PRIV){ box.classList.remove("on"); lock.style.display = "block"; if (!lock.querySelector(".unlock") || lock.dataset.err !== privErr){ lock.dataset.err = privErr; lock.innerHTML = "🔒 " + esc(privErr || "Assignments, history, approvals and decisions are private.") + UNLOCK; } return; }
   box.classList.add("on"); lock.style.display = "none";
   const o = PRIV.o || {}, nm = id => TEAM[id] ? TEAM[id].n : id === "drill" ? "Recovery drill (test)" : id, k = o.kpis || null;
@@ -1552,6 +1554,32 @@ function renderMoney(){
      <div class="note">All employees run on your Claude subscription. This uses its usage limits, not dollars, and is never added to the API number above.</div>
      ${plan.length ? `<div class="list" style="border:0;margin-top:6px">${plan.slice(0, 6).map(d => `<div class="row"><span>${esc(TEAM[d.id] ? TEAM[d.id].n : d.id)}</span><small>${d.min} min · ${d.runs} run${d.runs === 1 ? "" : "s"}</small></div>`).join("")}</div>` : ""}</div>
    <div class="card"><h4>Not shown here</h4><div class="note" style="margin:0">The Mileset app's own AI (food logging, coach) is billed to the same $20 Anthropic limit and isn't in Vesper's count. Server, domain and subscription fees aren't tracked yet. Revenue: none yet (founding members are free).</div></div>
+  </div>`;
+}
+/* Members (Matthew, Nov 17 10:23pm). From the encrypted private office only (PRIV.mem, built by Vesper from the
+   read-only database): names never appear in the public feed. Days are already his local days. */
+const MEM_GOAL = {"5k": "5K", "10k": "10K", half: "Half marathon", marathon: "Marathon", "50k": "50K", hyrox: "HYROX",
+  tri_sprint: "Sprint tri", tri_olympic: "Olympic tri", tri_half: "70.3", tri_full: "Ironman", swim: "Swim", bike: "Bike", general: "General fitness"};
+function memDays(d){ if (!d) return null; const t = new Date(), t0 = new Date(t - t.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  return Math.round((Date.parse(t0) - Date.parse(d)) / 864e5); }
+function memAgo(d){ const n = memDays(d); return n == null ? "never" : n <= 0 ? "today" : n === 1 ? "yesterday" : n + " days ago"; }
+function memDate(d){ return d ? new Date(d + "T12:00:00").toLocaleDateString([], {month: "short", day: "numeric"}) : "–"; }
+function renderMembers(){
+  const el = document.getElementById("members"); if (!el) return;
+  if (!PRIV){ if (!el.querySelector(".unlock")) el.innerHTML = LOCKED; return; }
+  const M = PRIV.mem;
+  if (!M || !M.rows){ el.innerHTML = `<div class="cards"><div class="card wide"><h4>Members</h4><div class="none">Not available yet. It arrives with Vesper's next update.</div>${tag("na")}</div></div>`; return; }
+  const R = M.rows.map(r => ({name: r[0], joined: r[1], active: r[2], goal: r[3], race: r[4], src: r[5], done: r[6], meals: r[7], inv: r[8]}));
+  const n = f => R.filter(f).length, wk = m => { const x = memDays(m); return x != null && x < 7; };
+  const stat = (k, v, s) => `<div class="card"><h4>${k}</h4><div style="font-size:28px;font-weight:800">${v}</div>${s ? `<div class="note">${s}</div>` : ""}</div>`;
+  const src = {}; R.forEach(m => { const k = m.src || "unknown"; src[k] = (src[k] || 0) + 1; });
+  el.innerHTML = `<div class="cards">
+    ${stat("Members", R.length, "real members only")}${stat("New this week", n(m => wk(m.joined)))}${stat("Active this week", n(m => wk(m.active)), "used the app or logged something")}
+    ${stat("Trained", n(m => m.done > 0), "checked off a workout in the app")}${stat("With a goal", n(m => m.goal), R.length ? Math.round(n(m => m.goal) / R.length * 100) + "% built a plan" : "")}
+    <div class="card wide"><h4>Where they came from</h4><div style="font-size:14px">${Object.keys(src).sort((a, b) => src[b] - src[a]).map(k => `${esc(k)} <b>${src[k]}</b>`).join(" · ")}</div>${tag("sys")}</div>
+    <div class="card wide" style="overflow:auto"><h4>Everyone <i>newest first</i></h4><table class="kt2"><tr><th>Member</th><th>Joined</th><th>Last active</th><th>Goal</th><th>Source</th><th>Workouts</th><th>Meals</th><th>Invited</th></tr>
+      ${R.map(m => `<tr><td><b>${esc(m.name)}</b></td><td>${esc(memDate(m.joined))}</td><td>${esc(memAgo(m.active))}</td><td>${m.goal ? esc(MEM_GOAL[m.goal] || m.goal) + (m.race ? " · " + esc(memDate(m.race)) : "") : `<span style="color:var(--mut)">no plan yet</span>`}</td><td>${esc(m.src || "–")}</td><td>${m.done}</td><td>${m.meals}</td><td>${m.inv || "–"}</td></tr>`).join("")}
+    </table><div class="note">From Vesper's read-only look at the database, ${esc(M.t)}. Workouts = check-offs in the app (synced runs aren't read here). No emails, no Strava or Garmin data.</div>${tag("sys")}</div>
   </div>`;
 }
 function renderMe(){
