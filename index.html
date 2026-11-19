@@ -731,6 +731,24 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .rs-item div{flex:1;min-width:0}.rs-item b{display:block;font-size:15px}.rs-item span{display:block;font-size:13px;color:var(--muted);margin-top:3px}.rs-item em{font-style:normal;flex:none}
 .liftlog{display:grid;gap:12px;margin-top:12px;padding-top:14px;border-top:1px solid var(--line)}
 .lrow{display:grid;grid-template-columns:1fr 84px 74px;gap:8px;align-items:center}
+.mywhero{gap:14px} .mywhero .btn{justify-self:start}
+.mywl{display:grid;border:1px solid #262A35;border-radius:16px;overflow:hidden;background:var(--surface)}
+.mywc{display:flex;align-items:center;gap:13px;padding:15px 16px;border:0;border-top:1px solid #22252E;background:none;color:var(--ink);text-align:left;font:inherit;cursor:pointer;width:100%}
+.mywc:first-child{border-top:0} .mywc:active{background:#1A1D24} .mywc .t{flex:1;display:grid;gap:3px;min-width:0} .mywc b{font-size:16px;font-weight:600} .mywc small{font-size:13px;color:var(--muted)} .mywc i{font-style:normal;color:var(--muted);font-size:20px}
+.myw-ic{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--lift) 26%,#20232C);color:#fff} .myw-ic .ic{width:18px;height:18px;display:block}
+.myws-h{display:flex;align-items:center;gap:12px} .myws-h > div{display:grid;gap:3px;min-width:0;flex:1} .myws-h b{font:700 18px/1.15 var(--f-display)} .myws-h span{font-size:13px;color:var(--muted)}
+.myws-x{flex:none;width:34px;height:34px;border-radius:50%;border:0;background:#20232C;color:var(--muted);display:grid;place-items:center;cursor:pointer} .myws-x svg{width:16px;height:16px}
+.sheet.myws:before{content:"";justify-self:center;width:38px;height:4px;border-radius:4px;background:#363B48;margin:-4px 0 2px}
+.mywdo{gap:14px} .mywdo .lrow{padding-top:12px;border-top:1px solid #22252E}
+.mywp{display:grid;gap:8px;padding:12px 0;border-top:1px solid #22252E} .mywp:first-of-type{border-top:0;padding-top:0}
+.mywp-h{display:flex;align-items:center;gap:10px} .mywp-h b{flex:1;font-size:15.5px;font-weight:600;min-width:0} .mywp-h .spk{width:80px;height:24px;flex:none}
+.mywp-h em{font-style:normal;font-size:13px;font-weight:700;padding:3px 9px;border-radius:999px;background:#20232C;color:var(--muted);flex:none} .mywp-h em.up{background:color-mix(in srgb,var(--long) 18%,#14161C);color:var(--long)} .mywp-h em.dn{color:var(--accent-2)}
+.mywh{list-style:none;margin:0;padding:0;display:grid;gap:4px} .mywh li{display:grid;grid-template-columns:60px 1fr 18px;gap:8px;font-size:14px;align-items:center} .mywh li span{color:var(--muted);font-size:13px} .mywh li b{font-weight:600} .mywh li i{font-style:normal;color:var(--long)}
+.sheet.myws{max-width:560px;gap:14px;border-radius:22px 22px 0 0;background:#121419;padding:16px 18px calc(14px + env(safe-area-inset-bottom,0px));margin-bottom:0}
+.fl{display:grid;gap:6px} .fl span{font-size:13px;color:var(--muted)} .fl input{min-height:46px}
+.mywe{display:grid;gap:8px} .mywe-h,.mywe-r{display:grid;grid-template-columns:1fr 54px 58px 34px;gap:8px;align-items:center} .mywe-h span{font-size:12px;color:var(--muted)}
+.mywe-r input{min-height:44px;min-width:0;padding:0 10px} .mywe-r input + input,.mywe-r input:nth-child(3){text-align:center}
+.mywe-x{width:34px;height:34px;border-radius:50%;border:0;background:#20232C;color:var(--muted);font-size:18px;cursor:pointer}
 .prs .pr .spk{width:60px;height:20px;flex:none} .prs .pr em.up{color:var(--good,#4CAF7A);font-size:15px} .prs .pr em.dn{color:var(--warn,#E8A33D);font-size:15px} .prs .pr em.sx{color:var(--muted);font-size:14px}
 .steps li.exl{display:flex;align-items:center;gap:10px} .steps li.exl > span{flex:1;min-width:0}
 .exwas{display:block;font-style:normal;font-size:12.5px;color:var(--muted);margin-top:2px}
@@ -2115,9 +2133,145 @@ function strengthHtml(){
     const spark = vals.length > 1 ? '<svg class="spk" viewBox="0 0 60 20" aria-hidden="true"><polyline fill="none" stroke="var(--lift)" stroke-width="2" points="' + vals.map((v, i) => (i * 60 / (vals.length - 1)).toFixed(1) + ',' + (18 - (mx === mn ? 8 : (v - mn) / (mx - mn) * 16)).toFixed(1)).join(" ") + '"/></svg>' : '';
     return {date: last.date, h: '<div class="pr"><div><b>' + esc(g.name) + '</b><span>' + (last.weight ? last.weight + ' lb' : 'Bodyweight') + (last.reps ? ' × ' + last.reps : '') + ' · ' + shortD(last.date) + (weeks.length > 1 ? ' · ' + weeks.length + ' weeks logged' : '') + '</span></div>' + spark + ch + '</div>'};
   }).sort((a, b) => b.date.localeCompare(a.date));
-  return '<div class="pc wide prs"><div class="ph">' + ic("dumbbell") + '<span>Strength progress</span></div>' +
+  return '<div class="pc wide prs"><div class="ph">' + ic("dumbbell") + '<span>Strength progress</span><button class="linkbtn" type="button" data-act="go" data-scr="myw" style="margin-left:auto">My workouts</button></div>' +
     (rows.length ? rows.slice(0, 12).map(r => r.h).join("") + '<p class="fine" style="margin:6px 0 0">Change since your first logged week in the last 12 weeks, from your best set each week.</p>'
       : '<div class="pf"><span>Open a strength session and tap "Log weights and reps". Your week-by-week progress shows up here.</span></div>') + '</div>';
+}
+
+/* ============ my workouts: build your own, then track progressive overload ============
+   Nov 18, a member's idea via Matthew: "make our own workout plans and then track our progressive overload ... go back to
+   that same workout the following week and see and track my growth". Saved on the profile (profile.myWorkouts, kept when
+   a plan is rebuilt). Each session is logged with the same per-exercise strength log as plan lifts (PUT /api/lifts), so
+   the suggestions ("Try 45 lb"), Progress > Strength progress and the coach all see it too. */
+const MYW_MAX = 30, MYW_EX_MAX = 15;
+let mywSel = null, mywEd = null, mywOpen = {};
+const mywList = () => (plan && Array.isArray(plan.profile.myWorkouts) ? plan.profile.myWorkouts : []);
+const mywGet = id => mywList().find(w => w.id === id) || null;
+const mywHist = ex => liftLog.filter(x => x.ex.toLowerCase() === String(ex).toLowerCase()).sort((a, b) => a.date.localeCompare(b.date));
+const mywE1 = x => x.weight ? x.weight * (1 + Math.min(12, x.reps || 0) / 30) : (x.reps || 0);
+function mywLast(w){ let d = ""; w.ex.forEach(e => { const h = mywHist(e.n); if (h.length && h[h.length - 1].date > d) d = h[h.length - 1].date; }); return d; }
+function mywChange(e){
+  const h = mywHist(e.n); if (h.length < 2) return null;
+  const f = h[0], l = h[h.length - 1];
+  if (f.weight && l.weight && l.weight !== f.weight) return {txt: (l.weight > f.weight ? '+' : '−') + Math.abs(Math.round(l.weight - f.weight)) + ' lb', up: l.weight > f.weight};
+  if ((l.reps || 0) !== (f.reps || 0)) return {txt: (l.reps > f.reps ? '+' : '−') + Math.abs((l.reps || 0) - (f.reps || 0)) + ' reps', up: l.reps > f.reps};
+  return {txt: 'Same', up: null};
+}
+function mywSave(list, msg){
+  const prof = {...plan.profile}; if (list.length) prof.myWorkouts = list; else delete prof.myWorkouts;
+  const prev = plan; plan = {...plan, profile: prof}; save(); render(); if (msg) toast(msg);
+  if (mode === "account") api("PUT", "/api/profile", {profile: prof}).catch(e => { plan = prev; save(); render(); toast(e.message); });
+}
+function mywListHtml(){
+  const L = mywList();
+  let h = '<section class="card mywhero"><p class="sub" style="margin:0">Make your own workouts, like a shoulder day. Each time you do one, log the weight and reps. Next time Mileset shows what you did and what to try, so you can watch every lift go up.</p>' +
+    '<button class="btn primary" type="button" data-act="mywnew">' + ic("plus") + ' New workout</button></section>';
+  if (!L.length) return h + '<p class="fine" style="text-align:center">No workouts yet. Tap New workout to make your first one.</p>';
+  return h + '<div class="mywl">' + L.map(w => {
+    const last = mywLast(w), ups = w.ex.map(mywChange).filter(c => c && c.up).length;
+    return '<button class="mywc" type="button" data-act="mywopen" data-id="' + esc(w.id) + '"><span class="myw-ic" aria-hidden="true">' + ic("dumbbell") + '</span><span class="t"><b>' + esc(w.name) + '</b><small>' +
+      w.ex.length + (w.ex.length === 1 ? ' exercise' : ' exercises') + ' · ' + (last ? 'last done ' + shortD(last) : 'not done yet') + (ups ? ' · ' + ups + ' going up' : '') + '</small></span><i aria-hidden="true">›</i></button>';
+  }).join("") + '</div>';
+}
+function mywDoHtml(){
+  const w = mywGet(mywSel); if (!w) return '<p class="sub">That workout was deleted.</p>';
+  const doneToday = w.ex.some(e => liftLog.some(x => x.date === TODAY && x.ex.toLowerCase() === e.n.toLowerCase()));
+  let h = '<section class="card mywdo"><div class="card-h"><span class="lbl">' + esc(w.name) + '</span><button class="linkbtn r" type="button" data-act="mywedit" data-id="' + esc(w.id) + '">Edit</button></div>' +
+    '<p class="fine" style="margin:-8px 0 0">' + (doneToday ? 'Logged today. Change any number and save again.' : 'Log each exercise as you go. Leave weight empty for bodyweight.') + '</p>';
+  h += w.ex.map((e, i) => {
+    const tg = {sets: e.s, reps: e.r, unit: "reps"}, hint = liftHint(e.n, tg), today = liftLog.find(x => x.date === TODAY && x.ex.toLowerCase() === e.n.toLowerCase());
+    return '<div class="lrow"><div><b>' + esc(e.n) + '</b><span>' + (e.s ? e.s + ' × ' + (e.r || '?') + ' · ' : '') + esc(hint.text) + '</span></div>' +
+      '<label class="lw"><input inputmode="decimal" id="mw-w-' + i + '" placeholder="' + (hint.next != null ? hint.next : '') + '" value="' + (today && today.weight != null ? today.weight : '') + '" aria-label="' + esc(e.n) + ' weight in pounds"><small>lb</small></label>' +
+      '<label class="lw"><input inputmode="numeric" id="mw-r-' + i + '" placeholder="' + (hint.nextReps != null ? hint.nextReps : '') + '" value="' + (today && today.reps != null ? today.reps : '') + '" aria-label="' + esc(e.n) + ' reps per set"><small>reps</small></label></div>';
+  }).join("") + '<button class="btn primary block" type="button" data-act="mywlog" data-id="' + esc(w.id) + '">' + (doneToday ? 'Save changes' : 'Save workout') + '</button></section>';
+  // progress, exercise by exercise
+  h += '<section class="card"><div class="card-h"><span class="lbl">Your progress</span><span class="r">every time you did it</span></div>';
+  const rows = w.ex.map(e => {
+    const hs = mywHist(e.n); if (!hs.length) return '<div class="mywp"><div class="mywp-h"><b>' + esc(e.n) + '</b><em class="sx">Not logged yet</em></div></div>';
+    const c = mywChange(e), vals = hs.slice(-10).map(mywE1), mx = Math.max(...vals), mn = Math.min(...vals);
+    const spark = vals.length > 1 ? '<svg class="spk" viewBox="0 0 80 24" aria-hidden="true"><polyline fill="none" stroke="var(--lift)" stroke-width="2" stroke-linejoin="round" points="' + vals.map((v, i) => (i * 80 / (vals.length - 1)).toFixed(1) + ',' + (21 - (mx === mn ? 9 : (v - mn) / (mx - mn) * 18)).toFixed(1)).join(" ") + '"/></svg>' : '';
+    const open = mywOpen[e.n.toLowerCase()], list = hs.slice().reverse().slice(0, open ? 20 : 3);
+    return '<div class="mywp"><div class="mywp-h"><b>' + esc(e.n) + '</b>' + spark + (c ? '<em class="' + (c.up ? 'up' : c.up === false ? 'dn' : 'sx') + '">' + c.txt + '</em>' : '<em class="sx">1st log</em>') + '</div>' +
+      '<ul class="mywh">' + list.map(x => '<li><span>' + shortD(x.date) + '</span><b>' + (x.weight ? x.weight + ' lb' : 'Bodyweight') + (x.reps ? ' × ' + x.reps : '') + (x.sets ? ' · ' + x.sets + ' sets' : '') + '</b>' + (x.hit ? '<i aria-label="all reps">✓</i>' : '<i></i>') + '</li>').join("") + '</ul>' +
+      (hs.length > 3 ? '<button class="linkbtn" type="button" data-act="mywmore" data-ex="' + esc(e.n) + '">' + (open ? 'Show less' : 'Show all ' + hs.length) + '</button>' : '') + '</div>';
+  });
+  h += rows.join("") + '<p class="fine" style="margin:4px 0 0">The change is from your first time to your latest. ✓ means you hit all your reps, so Mileset suggests adding weight next time.</p></section>';
+  return h;
+}
+function mywEditOpen(id){
+  const w = id ? mywGet(id) : null;
+  mywEd = {id: w ? w.id : null, name: w ? w.name : "", ex: w ? w.ex.map(e => ({...e})) : [{n: "", s: 3, r: 10}, {n: "", s: 3, r: 10}, {n: "", s: 3, r: 10}], err: ""};
+  closeMenu();
+  const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
+  b.innerHTML = '<div class="sheet myws" role="dialog" aria-modal="true" aria-label="' + (w ? 'Edit workout' : 'New workout') + '"></div>';
+  document.body.appendChild(b); mywEdRender(true);
+}
+function mywEdRead(){
+  if (!mywEd) return;
+  const n = $("#myw-name"); if (n) mywEd.name = n.value;
+  mywEd.ex.forEach((e, i) => { const a = $("#myw-n-" + i), s = $("#myw-s-" + i), r = $("#myw-r-" + i); if (a) e.n = a.value; if (s) e.s = s.value === "" ? null : Math.round(+s.value); if (r) e.r = r.value === "" ? null : Math.round(+r.value); });
+}
+function mywEdRender(focus){
+  const el = $(".sheet.myws"); if (!el || !mywEd) return;
+  const names = [...new Set(HP.exAll().map(x => x.name).concat(liftLog.map(x => x.ex)))].sort();
+  el.innerHTML = '<div class="myws-h"><div><b>' + (mywEd.id ? 'Edit workout' : 'New workout') + '</b><span>Name it, then add your exercises</span></div><button class="myws-x" type="button" data-act="mywcancel" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+    '<label class="fl"><span>Workout name</span><input id="myw-name" maxlength="40" placeholder="Shoulder day" value="' + esc(mywEd.name) + '" autocomplete="off"></label>' +
+    '<datalist id="myw-names">' + names.map(x => '<option value="' + esc(x) + '">').join("") + '</datalist>' +
+    '<div class="mywe"><div class="mywe-h"><span>Exercise</span><span>Sets</span><span>Reps</span><span></span></div>' + mywEd.ex.map((e, i) =>
+      '<div class="mywe-r"><input id="myw-n-' + i + '" list="myw-names" maxlength="60" placeholder="' + (["Overhead press", "Lateral raise", "Face pull", "Rear-delt fly"][i] || "Exercise") + '" value="' + esc(e.n || "") + '" aria-label="Exercise ' + (i + 1) + '" autocomplete="off">' +
+      '<input id="myw-s-' + i + '" inputmode="numeric" maxlength="2" value="' + (e.s || "") + '" aria-label="Sets for exercise ' + (i + 1) + '"><input id="myw-r-' + i + '" inputmode="numeric" maxlength="3" value="' + (e.r || "") + '" aria-label="Reps for exercise ' + (i + 1) + '">' +
+      '<button class="mywe-x" type="button" data-act="mywrm" data-i="' + i + '" aria-label="Remove exercise ' + (i + 1) + '">×</button></div>').join("") + '</div>' +
+    (mywEd.ex.length < MYW_EX_MAX ? '<button class="linkbtn" type="button" data-act="mywadd">' + ic("plus") + ' Add exercise</button>' : '') +
+    (mywEd.err ? '<p class="err" role="alert">' + esc(mywEd.err) + '</p>' : '') +
+    '<div class="fbtns">' + (mywEd.id ? '<button class="btn" type="button" data-act="mywdel" style="color:var(--crit)">' + (mywEd.delArm ? 'Tap again to delete' : 'Delete') + '</button>' : '<span></span>') + '<button class="btn primary" type="button" data-act="mywsave">Save workout</button></div>';
+  fitSheets();
+  if (focus && !mywEd.id){ const i = $("#myw-name"); if (i) i.focus({preventScroll: true}); }
+}
+function mywAct(act, a){
+  if (act === "mywnew"){ if (mywList().length >= MYW_MAX){ toast("You have " + MYW_MAX + " workouts. Delete one to add another."); return true; } mywEditOpen(null); return true; }
+  if (act === "mywedit"){ mywEditOpen(a.dataset.id); return true; }
+  if (act === "mywopen"){ mywSel = a.dataset.id; go("mywdo"); return true; }
+  if (act === "mywcancel"){ mywEd = null; closeMenu(); return true; }
+  if (act === "mywadd"){ mywEdRead(); if (mywEd.ex.length < MYW_EX_MAX) mywEd.ex.push({n: "", s: 3, r: 10}); mywEdRender(); const i = $("#myw-n-" + (mywEd.ex.length - 1)); if (i) i.focus(); return true; }
+  if (act === "mywrm"){ mywEdRead(); mywEd.ex.splice(+a.dataset.i, 1); if (!mywEd.ex.length) mywEd.ex.push({n: "", s: 3, r: 10}); mywEdRender(); return true; }
+  if (act === "mywmore"){ const k = String(a.dataset.ex || "").toLowerCase(); mywOpen[k] = !mywOpen[k]; render(); return true; }
+  if (act === "mywsave"){
+    mywEdRead(); const name = mywEd.name.replace(/\s+/g, " ").trim().slice(0, 40);
+    const seen = {}, ex = mywEd.ex.map(e => ({n: String(e.n || "").replace(/\s+/g, " ").trim().slice(0, 60), s: e.s >= 1 && e.s <= 20 ? e.s : null, r: e.r >= 1 && e.r <= 100 ? e.r : null}))
+      .filter(e => e.n && !seen[e.n.toLowerCase()] && (seen[e.n.toLowerCase()] = 1));
+    if (!name){ mywEd.err = "Give the workout a name, like Shoulder day."; mywEdRender(); return true; }
+    if (!ex.length){ mywEd.err = "Add at least one exercise."; mywEdRender(); return true; }
+    const L = mywList().slice(), id = mywEd.id || ("w" + Date.now().toString(36)), w = {id, name, ex}, k = L.findIndex(x => x.id === id);
+    if (k >= 0) L[k] = w; else L.unshift(w);
+    const isNew = k < 0; mywEd = null; closeMenu();
+    if (isNew){ mywSel = id; scr = "mywdo"; }
+    mywSave(L, isNew ? "Saved. Log it whenever you do it." : "Workout updated.");
+    return true;
+  }
+  if (act === "mywdel"){
+    if (!mywEd || !mywEd.id) return true;
+    if (!mywEd.delArm){ mywEdRead(); mywEd.delArm = true; mywEd.err = ""; mywEdRender(); return true; }   // second tap deletes
+    const L = mywList().filter(x => x.id !== mywEd.id); mywEd = null; closeMenu(); if (scr === "mywdo"){ scr = "myw"; mywSel = null; }
+    mywSave(L, "Workout deleted. Your logged lifts stay in Strength progress.");
+    return true;
+  }
+  if (act === "mywlog"){
+    const w = mywGet(a.dataset.id); if (!w) return true;
+    const sets = []; let bad = "";
+    w.ex.forEach((e, i) => { const raw = (($("#mw-w-" + i) || {}).value || "").trim(), rr = (($("#mw-r-" + i) || {}).value || "").trim(), wt = raw === "" ? null : parseFloat(raw), r = rr === "" ? null : Math.round(parseFloat(rr));
+      if (raw !== "" && !(wt >= 0 && wt <= 2000)) bad = "Weights should be numbers in pounds.";
+      if (rr !== "" && !(r >= 0 && r <= 1000)) bad = "Reps should be a number.";
+      if (raw === "" && rr === "") return;
+      sets.push({ex: e.n, weight: wt, reps: r, sets: e.s || null, hit: r == null || !e.r || r >= e.r}); });
+    if (bad){ toast(bad); return true; }
+    if (!sets.length){ toast("Type a weight or reps for at least one exercise."); return true; }
+    const apply = () => { sets.forEach(x => { liftLog = liftLog.filter(y => !(y.date === TODAY && y.ex.toLowerCase() === x.ex.toLowerCase())); liftLog.push({date: TODAY, ex: x.ex, weight: x.weight, reps: x.reps, sets: x.sets, hit: x.hit ? 1 : 0}); }); save(); render();
+      const ups = sets.filter(x => { const h = mywHist(x.ex).filter(y => y.date < TODAY); const p = h[h.length - 1]; return p && (x.weight > (p.weight || 0) || (x.weight === p.weight && (x.reps || 0) > (p.reps || 0))); }).length;
+      toast(ups ? "Saved. You beat last time on " + ups + (ups === 1 ? " exercise." : " exercises.") : "Saved. Next time you'll see what to try."); };
+    if (mode === "account") api("PUT", "/api/lifts", {date: TODAY, sets}).then(apply).catch(e => toast(e.message)); else apply();
+    return true;
+  }
+  return false;
 }
 
 /* ============ race fueling and hydration ============ */
@@ -3477,7 +3631,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "110";
+const APP_VERSION = "111";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3599,8 +3753,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-19";
+const NEW_ID = "2026-11-19.2";
 const NEWS = [
+  ["dumbbell", "Your own workouts, with progress", "More > My workouts: build a workout (like a shoulder day), log weight and reps each time, and see every lift go up week to week. Mileset suggests what to try next.", "myw", null, "2026-11-19.2"],
   ["bars", "A clearer weekly miles chart", "Progress > View plan shows every week's miles, what you've done this week against the plan, and which weeks are base, build, peak or taper.", "t-miles", null, "2026-11-19"],
   ["spark", "A cleaner, full-screen look", "Every screen now runs edge to edge, the tab bar sits at the bottom, and sheets slide up smoothly. Everything is still where it was.", null, null, "2026-11-18.8"],
   ["pencil", "Edit any workout", "Open a workout and tap Edit, or use the sheet after a run: name, how it went, type, a tag, how it felt, private notes and your shoes, with the miles on each pair.", "activities", null, "2026-11-18.7"],
@@ -3668,10 +3823,10 @@ function askNotif(){
   document.body.appendChild(b);
 }
 function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
-const SCR_T = {fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
+const SCR_T = {myw: "My workouts", mywdo: "My workout", fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
   settings: "Settings", "set-notif": "Notifications", "set-watch": "Devices and apps", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
   "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Mileset works", "set-email": "Email", "set-password": "Password",  "p-load": "Training load", "p-fit": "Fitness and form", "p-focus": "Training focus and zones", "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", members: "Members", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew", invites: "Your invite link"};
-const SCR_UP = {"set-acct": "settings", "set-train": "settings", "set-help": "settings", "set-health-info": "set-help", "set-terms": "set-help", "set-about": "set-help", "set-report": "set-help", "set-reports": "set-help", "set-profile": "set-acct", "set-email": "set-acct", "set-password": "set-acct", "set-account": "set-acct", "set-hr": "set-train", "set-run": "set-train", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", meals: "fuel", crew: "crews"};
+const SCR_UP = {mywdo: "myw", "set-acct": "settings", "set-train": "settings", "set-help": "settings", "set-health-info": "set-help", "set-terms": "set-help", "set-about": "set-help", "set-report": "set-help", "set-reports": "set-help", "set-profile": "set-acct", "set-email": "set-acct", "set-password": "set-acct", "set-account": "set-acct", "set-hr": "set-train", "set-run": "set-train", "set-notif": "settings", "set-watch": "settings", "set-health": "set-watch", meals: "fuel", crew: "crews"};
 let navDir = null;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let noVT = false;
@@ -3718,6 +3873,8 @@ function renderScreen(){
   else if (s === "p-fit") h = plan ? fitDetail() : '';
   else if (s === "p-focus") h = plan ? focusDetail() : '';
   else if (s.startsWith("t-")) h = renderTraining(s.slice(2));
+  else if (s === "myw") h = mywListHtml();
+  else if (s === "mywdo") h = mywDoHtml();
   else h = settingsScreen(s);
   return back + h;
 }
@@ -3729,6 +3886,7 @@ function renderMore(){
   let h = '<h2 class="sec-t">More</h2>' + (founding ? '<div class="fcard"><i>' + ic("bolt") + '</i><div><b>Founding Member #' + founding + '</b><span>Mileset is free for you for life, including anything paid we add later. Thanks for being here early.</span></div></div>' : '') + '<div class="scards">';
   if (mode === "account") h += card("racefind", "Find a race", "Search races anywhere in the world and build a plan for it", "flag", "", "hi");
   if (plan && mode !== "sample") h += card("wnopen", "What's new", "The latest features and how to use them", "spark");
+  if (plan) h += card("go", "My workouts", mywList().length ? mywList().length + (mywList().length === 1 ? " workout" : " workouts") + " · log them and watch every lift go up" : "Build your own, like a shoulder day, and track every lift week to week", "dumbbell", "myw");
   h += card("edit", "Change goal or start a new plan", plan ? "Now: " + esc(HP.raceName(plan.profile)) + (plan.raceDate ? " · " + fmtD(plan.raceDate) : "") : "Pick a goal and your training days", "cal");
   if (plan && plan.raceDate) h += card("go", "Race fueling and hydration", "Carbs, fluid and sodium per hour, and a sweat test", "bolt", "fuelplan");
   h += card("go", "Meal prep and grocery list", "Two preps a week, sized to your targets", "fork", "meals");
@@ -3875,7 +4033,7 @@ document.addEventListener("click", ev => {
     if (mode === "account" && !plan && setup.step >= 1) api("POST", "/api/account/setup-step", {step: setup.step}).catch(() => {});
     if (mode === "account" && !plan && me && setup.step >= 1 && setup.step <= 3) setupDraft.set(me.id, setup);
     if (setup.step === 4){
-      const prof = {...setup.p, start: mondayOf(TODAY), pv: HP.PLAN_V}; delete prof.sample; delete prof.swaps;   // a new plan starts with no moved days
+      const prof = {...setup.p, start: mondayOf(TODAY), pv: HP.PLAN_V}; delete prof.sample; delete prof.swaps; if (plan && plan.profile.myWorkouts && !prof.myWorkouts) prof.myWorkouts = plan.profile.myWorkouts;   // your own workouts survive a new plan   // a new plan starts with no moved days
       // training location: from "Use my location", or look up the typed city (doesn't hold up the plan)
       const cur = (wxLoc() || {}).place || "", city = setup.city || "";
       const geo = setup.geo;
@@ -3966,6 +4124,7 @@ document.addEventListener("click", ev => {
     Object.assign(setup.p, {raceDate: r.date, raceName: r.name, raceCity: r.city || null, raceUrl: r.url || null}); setup.err = "";
     closeMenu(); render(); window.scrollTo(0, 0); return;
   }
+  if (act.startsWith("myw") && mywAct(act, a)) return;
   if (act === "lopen"){ liftOpen[a.dataset.key] = 1; render(); return; }
   if (act === "lclose"){ delete liftOpen[a.dataset.key]; render(); return; }
   if (act === "lsave"){
