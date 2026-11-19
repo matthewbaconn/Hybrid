@@ -945,6 +945,19 @@ function renderRooms(){ const el = document.getElementById("rooms"); if (!el) re
 // Everything below reads only what Vesper already publishes (the encrypted office, plus its release-2 block "x" once that
 // feed update is installed) and the public member count. When a number isn't in the feed, the page says so.
 const X = () => (PRIV && PRIV.x) || null;
+// Incidents (Nov 17): the detector (tools/signals.py on the cloud, the incident watch on Vesper's server) opens one
+// when a business signal crosses its line, gives it an owner, links the fix PR and closes it only after 24 h clear.
+const INC_STATE = {open: "open, no fix yet", fixing: "fix in progress", verifying: "fixed, being verified (24 h clear)", closed: "closed by the detector"};
+function incBody(P){
+  if (!P) return `<div class="none">Private: open your HQ link once on this device.</div>`;
+  if (!P.inc) return `<div class="none">The incident tracker isn't in this feed yet.</div>${NEEDS_FEED}`;
+  if (!P.inc.rows.length) return `<div class="none">No incidents in the last 7 days. The detector checks member-facing failures, sign-ups vs welcome emails, problem reports, the site, onboarding, activation and engagement.</div>`;
+  return `<div class="list" style="border:0;background:none">${P.inc.rows.map(r => li(
+    `<span class="pill ${r[2] === "closed" ? "g" : r[1] === "critical" || r[1] === "high" ? "r" : "a"}">${esc(r[1])}</span><b>${esc(r[5])}</b>`,
+    `${esc(r[6])}<br>${esc(INC_STATE[r[2]] || r[2])} · owner: ${esc(r[3])} (${esc(r[4])})${r[9] ? " · " + linkify("fix PR", r[9]) : ""}${r[10] ? ` · <span class="bad">escalated ${r[10]}x</span>` : ""}${r[11] ? ` · came back ${r[11]}x` : ""}`,
+    esc(r[2] === "closed" ? "closed " + fmtT(r[13]) : r[8] ? "due " + fmtT(r[8]) : ""))).join("")}</div>
+    <div class="note">${tag("sys")} Checked ${esc(fmtT(P.inc.t))} by ${P.inc.src === "server" ? "Vesper's server" : "the cloud detector"}. Nobody closes their own fix: an incident closes only after the signal stays clear for 24 hours.</div>`;
+}
 const NEEDS_FEED = `<span class="src na">Not available yet</span> <small class="w">arrives when Vesper's HQ feed update is installed</small>`;
 const roleName = id => TEAM[id] ? TEAM[id].n : id === "drill" ? "Recovery drill" : id === "claude-session" ? "Claude sessions" : id;
 const pctS = (a, b) => b ? Math.round(a / b * 100) + "%" : "–";
@@ -1097,6 +1110,7 @@ function renderOps(){
       ${card("Active jobs", `right now ${tag("rep")}`, working.length ? working.map(a => li(`<b>${esc(a.t.n)}</b> ${esc(nowText(a))}`, "", esc("since " + fmtT(rows[a.id] && rows[a.id][2])))).join("") : `<div class="none">Nobody is mid-run. Idle is shown as idle.</div>`)}
       ${card("Scheduled work", `next runs ${tag("sys")}`, next.length ? `<div class="list" style="border:0;background:none">${next.slice(0, 8).map(([t, a]) => li(`<b>${esc(a.t.n)}</b>`, esc(x && x.roles && x.roles[a.id] ? x.roles[a.id].name : a.t.t), esc(fmtT(t)))).join("")}</div>` : `<div class="none">No schedule in the feed.</div>`)}
       ${card("System health", "Vesper's own report", healthBody, "hero")}
+      ${card("Incidents", P && P.inc ? `${P.inc.rows.filter(r => r[2] !== "closed").length} open ${tag("sys")}` : "", incBody(P))}
       ${card("Alerts", `${alerts.length}`, alerts.length ? `<div class="list" style="border:0;background:none">${alerts.join("")}</div>` : `<div class="none">No alerts.</div>`)}
       ${card("Completed in 24 h", `${done.length} ${tag("rep")}`, done.length ? `<div class="list" style="border:0;background:none">${done.slice(0, 8).map(e => li(`<b>${esc(roleName(e[1]))}</b> ${esc(clip(e[3] || "finished a run", 130))}`, "", esc(fmtT(e[0])))).join("")}</div>` : `<div class="none">Nothing completed in the last 24 hours.</div>`)}
       ${card("Failed in 24 h", `${failed.length} ${tag("rep")}`, failed.length ? `<div class="list" style="border:0;background:none">${failed.map(e => li(`<span class="bad">${esc(roleName(e[1]))}</span> ${esc(clip(e[3] || e[2], 130))}`, "", esc(fmtT(e[0])))).join("")}</div>` : `<div class="none">No failed runs in the last 24 hours.</div>`)}
@@ -1352,6 +1366,8 @@ function computeAlerts(){
   if (P) (P.a || []).forEach(a => out.push({id: "appr:" + (a.repo || "b") + a.n, lvl: "a", t: "Waiting for you: " + clip(a.title, 70), s: explain(a).how, go: "approvals"}));
   if (x && x.health && x.health.errors_24h) out.push({id: "health:" + x.health.at, lvl: "a", t: `Vesper logged ${x.health.errors_24h} error${x.health.errors_24h === 1 ? "" : "s"} in 24 h`, s: x.health.status, go: "ops"});
   if (x) (x.verify || []).filter(v => v[4] === "fail").forEach(v => out.push({id: "vfail:" + v[0], lvl: "r", t: "Failed verification: " + clip(v[3], 70), s: v[5] || "", go: "team"}));
+  if (P && P.inc) P.inc.rows.filter(r => r[2] !== "closed").forEach(r => out.push({id: "inc:" + r[0] + ":" + r[2] + ":" + r[10] + ":" + r[11], lvl: r[1] === "critical" || r[1] === "high" ? "r" : "a",
+    t: `${r[1] === "critical" ? "Critical: " : ""}${clip(r[5], 70)}`, s: `${INC_STATE[r[2]] || r[2]} · ${r[3]}${r[10] ? " · escalated" : ""}${r[11] ? " · came back" : ""}`, go: "ops"}));
   if (x) (x.merged || []).slice(0, 3).forEach(m => out.push({id: "ship:" + m[1], lvl: "g", t: `Shipped #${m[1]}: ${clip(m[2], 70)}`, s: fmtT(m[0]), go: "ops"}));
   return out;
 }
