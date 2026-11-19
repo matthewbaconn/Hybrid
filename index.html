@@ -74,7 +74,7 @@ button{cursor:pointer}
 .ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
 /* cards */
-.card{background:var(--surface);border:1px solid rgba(255,255,255,.05);border-radius:8px;padding:22px;display:grid;gap:18px;min-width:0}
+.card{background:var(--surface);border:1px solid #262A35;border-radius:16px;padding:22px;display:grid;gap:18px;min-width:0}
 .card-h{display:flex;align-items:center;gap:10px;min-width:0}
 .card-h .ic{display:none}
 .card-h .lbl{font:700 18px/1.2 var(--f-display);letter-spacing:-.01em;color:var(--ink)}
@@ -134,7 +134,7 @@ button{cursor:pointer}
 
 /* fuel tiles */
 .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.tile{background:var(--sunk);border-radius:7px;padding:14px 16px;display:grid;gap:2px;min-width:0}
+.tile{background:var(--sunk);border-radius:12px;padding:14px 16px;display:grid;gap:2px;min-width:0}
 .tile span{font-size:12.5px;color:var(--muted)}
 .tile b{font:800 26px/1.15 var(--f-display);letter-spacing:-.03em}
 .tile small{font-size:12px;color:var(--muted)}
@@ -313,6 +313,10 @@ button{cursor:pointer}
 .apl-b{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between} .apl-b .btn{flex:1;min-height:46px}
 .agrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 10px}
 .agrid span{display:block;font-size:12.5px;color:var(--muted)} .agrid b{font:700 20px/1.25 var(--f-display)}
+/* activity detail (Nov 18): the three numbers that matter big on top, the rest smaller underneath */
+.astats .agrid{gap:16px 10px} .astats .agrid > div:nth-child(-n+3) b{font:800 24px/1.1 var(--f-display);letter-spacing:-.02em;white-space:nowrap}
+.astats .agrid > div:nth-child(-n+3){padding-bottom:16px;border-bottom:1px solid #22252E} .astats .agrid > div:nth-child(n+4) b{font-size:17px;color:#D7DAE2}
+.splits .sp.best b{color:var(--accent-2)} .splits .sp.best i{background:var(--accent-2)} .splits .sp.best span:first-child:after{content:" ★";font-size:10px;color:var(--accent-2)}
 .splits{display:grid;gap:6px;font-size:14px}
 .splits .sp{display:grid;grid-template-columns:34px 52px 1fr 46px;gap:10px;align-items:center}
 .splits .sp.hd{font-size:12px;color:var(--muted)}
@@ -341,11 +345,12 @@ button{cursor:pointer}
 .pchart{display:block;width:100%;height:auto;touch-action:pan-y}
 .pchart text{fill:var(--muted);font:500 11px var(--f-body)}
 .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.pc{background:var(--surface);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:18px;display:grid;gap:10px;align-content:start;min-width:0;text-align:left;color:var(--ink)}
+.pc{background:var(--surface);border:1px solid #262A35;border-radius:16px;padding:18px;display:grid;gap:10px;align-content:start;min-width:0;text-align:left;color:var(--ink)}
 .pc.wide{grid-column:1/-1}
 .pc[data-act]{cursor:pointer}
-.pc .ph{display:flex;align-items:center;gap:8px;font:700 12px/1.2 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);min-width:0}
-.pc .ph .ic{width:16px;height:16px} .pc .ph span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .pc .ph i{margin-left:auto;font-style:normal;font-size:18px;letter-spacing:0}
+.pc .ph{display:flex;align-items:center;gap:8px;font:600 13.5px/1.25 var(--f-body);color:#C9CDD8;min-width:0}
+.pc .ph .ic{width:16px;height:16px;flex:none;color:var(--muted)} .pc .ph span{min-width:0}
+.pc .pm{margin:-6px 0 0;font-size:12.5px;line-height:1.35;color:var(--muted)} .pc .ph i{margin-left:auto;font-style:normal;font-size:18px;letter-spacing:0}
 .pc .pv{font:800 30px/1.05 var(--f-display);letter-spacing:-.03em} .pc .pv small{font:600 15px var(--f-body);color:var(--muted);letter-spacing:0;margin-left:4px}
 .pc .pf{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--muted);min-width:0} .pc .pf b{color:var(--ink);white-space:nowrap}
 .pc .pf b.up{color:var(--long)} .pc .pf b.down{color:var(--accent-2)}
@@ -380,7 +385,7 @@ button{cursor:pointer}
 .legal h3{font:700 16px/1.3 var(--f-display);margin:18px 0 6px} .legal h3:first-child{margin-top:0}
 .legal p,.legal li{font-size:14.5px;line-height:1.55;color:#C9CDD8} .legal p{margin:0 0 8px} .legal ul{margin:0 0 8px;padding-left:20px;display:grid;gap:6px}
 .legal a{color:var(--accent-2)}
-.coach small.ai{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.coach small.ai{display:block;font-size:12px;font-weight:600;color:#C9CDD8;margin:3px 0 4px} .coach small.ai i{font-style:normal;font-weight:400;color:var(--muted)}
 
 .apps{display:grid;gap:4px}
 .apps h3{font:600 13px var(--f-body);color:var(--muted);margin:16px 0 4px} .apps h3:first-child{margin-top:0}
@@ -445,23 +450,61 @@ button{cursor:pointer}
 .hub-hero .hcheck svg{width:16px;height:16px}
 .hub-hero .hfirst{margin:0;font-size:14px;line-height:1.45;color:rgba(255,255,255,.9);background:rgba(10,11,15,.3);border-radius:10px;padding:10px 12px}
 .hub-hero .hadj{font-size:13.5px;color:#FFE9A8}
-.hub-hero + .hub-hero{margin-top:-26px;border-top:1px solid rgba(255,255,255,.08)}
+.hub-hero + .hub-hero{margin-top:0}
+/* Nov 18 (Matthew: "doesn't look so AI"): today's session is a calm dark card with the workout's colour as an accent,
+   not a full-width wash of olive or mauve */
+.hub-hero{margin-inline:0;border-radius:18px;padding:20px 18px 16px;background:#14161C;border:1px solid #262A35;box-shadow:inset 0 3px 0 var(--tc);gap:16px;position:relative;overflow:hidden}
+.hub-hero:before{content:"";position:absolute;inset:0 0 auto 0;height:120px;background:linear-gradient(180deg,color-mix(in srgb,var(--tc) 13%,transparent),transparent);pointer-events:none}
+.hub-hero > *{position:relative}
+.hub-hero .hh{color:var(--muted)} .hub-hero .hh .chip{background:color-mix(in srgb,var(--tc) 18%,#14161C);color:color-mix(in srgb,var(--tc) 75%,#fff);border:1px solid color-mix(in srgb,var(--tc) 35%,transparent)}
+.hub-hero h3{font-size:28px} .hub-hero .hs span{color:var(--muted)} .hub-hero .hs b{color:var(--ink)}
+.hub-hero .hgo{border-top-color:#262A35} .hub-hero .hfirst{background:#1B1E26;color:#D7DAE2;border:1px solid #262A35}
+.hub-hero .hcheck{background:color-mix(in srgb,var(--tc) 22%,#1B1E26);color:#fff;border:1px solid color-mix(in srgb,var(--tc) 45%,transparent)}
 .wxs{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;margin-top:14px;padding:9px 14px;background:var(--surface);border:1px solid rgba(255,255,255,.05);border-radius:8px;color:var(--ink);font-family:inherit;text-align:left;cursor:pointer}
 .wxs .ic{width:20px;height:20px;flex:none;color:var(--work)} .wxs-t{font:700 24px/1 var(--f-display);flex:none} .wxs-c{display:grid;gap:2px;flex:1;min-width:0} .wxs-c b{font-size:14.5px;font-weight:600} .wxs-c span{font-size:13px;color:var(--muted)} .wxs > i{font-style:normal;color:var(--muted);flex:none}
 /* ask bar: one line above the tab bar that opens the coach; the toast and the What's new pill sit above it */
 body.has-ask .toast{bottom:calc(150px + env(safe-area-inset-bottom,0px))} body.has-ask #wnpill{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
-.askbar{position:fixed;left:12px;right:12px;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:29;max-width:616px;margin:0 auto;display:flex;align-items:center;gap:10px;min-height:46px;padding:0 16px;border-radius:999px;background:#1C1F27;border:1px solid var(--line);box-shadow:0 8px 22px rgba(0,0,0,.5);color:var(--muted);font:500 15px/1 var(--f-body);text-align:left;cursor:pointer}
-.askbar .ic{width:18px;height:18px;flex:none;color:var(--accent-2)} .askbar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-body.has-ask .wrap{padding-bottom:calc(176px + env(safe-area-inset-bottom,0px))}
-.sheet.asks{gap:12px;align-content:start} .ask-h{display:flex;align-items:baseline;gap:10px} .ask-h b{font:700 18px/1.1 var(--f-display)} .ask-h .ai{font-size:12px;color:var(--muted)} .ask-h .r{margin-left:auto}
-.ask-log{display:grid;gap:10px;max-height:min(52dvh,max(90px,calc(var(--vvh,100dvh) - 270px)));overflow-y:auto;overscroll-behavior:contain;align-content:start}
-.ask-m{max-width:88%;padding:10px 13px;border-radius:14px;font-size:15px;line-height:1.45;overflow-wrap:anywhere} .ask-m.u{justify-self:end;background:color-mix(in srgb,var(--accent) 34%,#15171D);color:#fff} .ask-m.a{justify-self:start;background:#1F222B;color:var(--ink)} .ask-m.busy{color:var(--muted)}
-.ask-acts{display:grid;gap:8px;justify-self:start;max-width:100%} .ask-acts .btn{justify-content:flex-start;text-align:left;min-height:44px;white-space:normal;height:auto;padding:10px 14px} .ask-acts small{color:var(--muted);font-size:13px}
+.askbar{position:fixed;left:12px;right:12px;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:29;max-width:616px;margin:0 auto;display:flex;align-items:center;gap:11px;min-height:50px;padding:0 8px 0 9px;border-radius:16px;background:#14161C;border:1px solid #2A2E3A;box-shadow:0 10px 24px rgba(0,0,0,.45);color:#C9CDD8;font:500 15px/1 var(--f-body);text-align:left;cursor:pointer;transition:transform .15s ease,background .15s ease}
+.askbar:active{transform:scale(.985);background:#181B22} .askbar .t{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.askbar .go{flex:none;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:#20232C;color:var(--muted)} .askbar .go svg{width:16px;height:16px}
+body.has-ask .wrap{padding-bottom:calc(176px + env(safe-area-inset-bottom,0px))}   /* room for the coach bar above the tab bar, so the last row on every tab can still be tapped (restored; dropped by #107, which is why #112 rolled it back) */
+.cav{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(150deg,#BE383E,#800000);color:#FFF4EC;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)} .cav .mark{width:auto;height:58%} .cav.sm{width:24px;height:24px}
+.back.askback{padding:0;align-items:end;background:rgba(5,6,9,.6);animation:ask-fade .22s ease both} .back.askback.out{animation:ask-fade .16s ease reverse both;pointer-events:none}
+.sheet.asks,.sheet.asks-out{max-width:560px;display:flex;flex-direction:column;gap:14px;overflow:hidden;border-radius:22px 22px 0 0;border:1px solid #262A35;border-bottom:0;background:#121419;padding:8px 18px calc(12px + env(safe-area-inset-bottom,0px));margin-bottom:0;box-shadow:0 -12px 40px rgba(0,0,0,.5);animation:ask-up .34s cubic-bezier(.2,.9,.25,1) both}
+.back.askback.out .sheet{animation:ask-down .16s ease-in both}
+.sheet.asks:before,.sheet.asks-out:before{content:"";flex:none;align-self:center;width:38px;height:4px;border-radius:4px;background:#363B48;margin-bottom:2px}
+@keyframes ask-up{from{transform:translateY(100%)}to{transform:none}} @keyframes ask-down{to{transform:translateY(100%)}} @keyframes ask-fade{from{opacity:0}to{opacity:1}}
+@keyframes ask-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} @keyframes ask-dot{0%,80%,100%{opacity:.25;transform:none}40%{opacity:1;transform:translateY(-3px)}}
+.ask-h{display:flex;align-items:center;gap:11px;flex:none} .ask-h .who{display:grid;gap:3px;min-width:0} .ask-h b{font:700 17px/1.1 var(--f-display);color:var(--ink)} .ask-h .who span{font-size:12.5px;color:var(--muted)}
+.ask-x{margin-left:auto;flex:none;width:34px;height:34px;border-radius:50%;border:0;background:#20232C;color:var(--muted);display:grid;place-items:center;cursor:pointer} .ask-x svg{width:16px;height:16px}
+.ask-log{display:grid;gap:14px;flex:0 1 auto;min-height:56px;max-height:min(52dvh,max(90px,calc(var(--vvh,100dvh) - 300px)));overflow-y:auto;overscroll-behavior:contain;align-content:start;scroll-behavior:smooth;padding:2px 0}
+.ask-log > :last-child{animation:ask-in .26s ease both}
+.ask-hello{margin:0;font:600 19px/1.3 var(--f-display);color:var(--ink)}
+.ask-m{margin:0;max-width:86%;font-size:15.5px;line-height:1.5;overflow-wrap:anywhere}
+.ask-m.u{justify-self:end;padding:9px 14px;border-radius:18px 18px 6px 18px;background:#262A35;color:var(--ink)}
+.ask-m.a{justify-self:start;max-width:100%;color:#E4E7EE;padding-left:12px;border-left:2px solid #BE383E}
+.ask-m.busy{display:inline-flex;gap:5px;align-items:center;height:22px;border-left-color:#3A3F4D} .ask-m.busy i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:ask-dot 1.1s infinite ease-in-out} .ask-m.busy i:nth-child(2){animation-delay:.15s} .ask-m.busy i:nth-child(3){animation-delay:.3s}
+.ask-acts{display:grid;gap:8px;justify-self:stretch;max-width:100%;padding-left:14px} .ask-acts .btn{justify-content:space-between;text-align:left;min-height:46px;white-space:normal;height:auto;padding:11px 14px;border-radius:12px;background:#1B1E26;border:1px solid #2E3340;color:var(--ink);font-weight:600}
+.ask-acts .btn:after{content:"";flex:none;width:7px;height:7px;margin-left:12px;border-top:2px solid #BE383E;border-right:2px solid #BE383E;transform:rotate(45deg)} .ask-acts small{color:var(--muted);font-size:13px}
 .ask-about{font-size:13.5px;line-height:1.4;color:var(--muted);border-left:3px solid var(--accent-2);padding:2px 0 2px 10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden} .coach .askab{margin-top:8px}
-.ask-chips{display:flex;flex-wrap:wrap;gap:8px} .ask-chips button{min-height:40px;padding:0 14px;border-radius:999px;background:#1F222B;border:1px solid var(--line);color:var(--ink);font:500 14px var(--f-body);cursor:pointer}
-.ask-f{display:flex;gap:8px} .ask-f input{flex:1;min-width:0;min-height:46px;border-radius:999px;padding:0 16px;background:#0F1116;border:1px solid var(--line);color:var(--ink);font:16px var(--f-body)} .ask-f .btn{min-height:46px;border-radius:999px;padding:0 18px}
+.ask-chips{display:grid;gap:0;border:1px solid #262A35;border-radius:14px;overflow:hidden;background:#171A21} .ask-chips button{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:0 14px;border:0;border-top:1px solid #23262F;background:none;color:var(--ink);font:500 15px var(--f-body);text-align:left;cursor:pointer}
+.ask-chips button:first-child{border-top:0} .ask-chips button:active{background:#1E2129} .ask-chips button:after{content:"";flex:none;width:7px;height:7px;border-top:2px solid #5A6070;border-right:2px solid #5A6070;transform:rotate(45deg)}
+.ask-f{flex:none;display:flex;align-items:center;gap:6px;padding:4px 4px 4px 16px;border-radius:24px;background:#0D0F13;border:1px solid #2A2E3A;transition:border-color .15s ease} .ask-f:focus-within{border-color:#4A505F}
+.ask-f input{flex:1;min-width:0;min-height:40px;border:0;background:none;color:var(--ink);font:16px var(--f-body);outline:none;padding:0}
+.ask-f .btn{flex:none;width:40px;height:40px;min-height:40px;padding:0;border-radius:50%;display:grid;place-items:center} .ask-f .btn svg{width:18px;height:18px} .ask-f .btn:disabled{opacity:.45}
+/* smoother everywhere (Nov 18) */
+.view.stagger > *{animation:ask-in .32s cubic-bezier(.2,.8,.3,1) both} .view.stagger > :nth-child(2){animation-delay:.03s} .view.stagger > :nth-child(3){animation-delay:.06s} .view.stagger > :nth-child(4){animation-delay:.09s} .view.stagger > :nth-child(5){animation-delay:.12s} .view.stagger > :nth-child(n+6){animation-delay:.15s}
+button,.tl,.pc,.scard,.srow,.act,.actc,.deep,.day,.sd{-webkit-tap-highlight-color:transparent}
+.btn,.srow,.scard,.deep,.sd,.chip,.hcheck,.hsee,.arrow,.iconbtn{transition:transform .12s ease,background-color .15s ease,opacity .15s ease,border-color .15s ease}
+.btn:active,.hcheck:active,.arrow:active,.iconbtn:active,.sd:active{transform:scale(.96)} .srow:active,.deep:active{transform:scale(.985)}
+.bar i,.wbar i,.fbars i{transition:width .6s cubic-bezier(.2,.8,.3,1)}
+@media (prefers-reduced-motion: reduce){.view.stagger > *{animation:none} .btn,.srow,.scard,.deep{transition:none}}
+.deep{display:flex;align-items:center;gap:12px;width:100%;margin-top:4px;padding:14px 16px;border-radius:16px;border:1px solid #2E3340;background:#16181E;color:var(--ink);text-align:left;cursor:pointer;font:inherit}
+.deep > span:nth-child(2){flex:1;display:grid;gap:3px} .deep b{font-weight:600;font-size:15px} .deep small{font-size:13px;color:var(--muted)} .deep i{font-style:normal;color:var(--muted);font-size:20px} .deep:active{background:#1B1E26}
+.hub-hero + .hub-hero{margin-top:12px}
+.ask-note{margin:-6px 0 0;text-align:center;font-size:11.5px;color:#6E7486} @media (max-height:640px){.ask-note{display:none} .sheet.asks{gap:10px}}
 .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.tl{background:var(--surface);border:1px solid rgba(255,255,255,.05);border-radius:8px;padding:18px;display:grid;gap:6px;align-content:start;min-height:132px;cursor:pointer;text-align:left;color:var(--ink);min-width:0}
+.tl{background:var(--surface);border:1px solid #262A35;border-radius:16px;padding:18px;display:grid;gap:6px;align-content:start;min-height:132px;cursor:pointer;text-align:left;color:var(--ink);min-width:0}
 .tl.wide{grid-column:1/-1;min-height:0}
 .tl .tt{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-weight:600}
 .tl .tt i{display:none}
@@ -637,7 +680,7 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 .fdate{display:flex;align-items:center;gap:10px;background:var(--sunk);border-radius:7px;padding:6px}
 .fdate > div{flex:1;text-align:center;min-width:0} .fdate b{display:block;font-weight:700} .fdate span{font-size:12.5px;color:var(--muted)}
 .fdate .arrow{background:var(--surface)}
-.coach{display:flex;gap:12px;align-items:flex-start;background:color-mix(in srgb,var(--accent) 12%,var(--sunk));border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:6px;padding:12px 14px}
+.coach{display:flex;gap:11px;align-items:flex-start;background:#16181E;border:1px solid #262A35;border-radius:14px;padding:13px 14px} .coach > div{min-width:0;flex:1} .coach > .cav{margin-top:1px}
 .coach > .ic{color:var(--accent-2);margin-top:2px}
 .gattr{display:block;font-size:12px;line-height:1.35;color:var(--muted);margin:3px 0 0} .ask-m.a + .gattr{margin:-4px 0 0 4px}
 .coach b{display:block;font-weight:700} .coach .num{display:block;font-size:13px;color:var(--muted);margin:2px 0}
@@ -685,7 +728,7 @@ textarea::placeholder{color:var(--muted);opacity:.8}
 
 /* sheet + toast */
 .back{position:fixed;inset:0;background:rgba(0,0,0,.66);z-index:40;display:grid;align-items:end;justify-items:center;padding:12px}
-.sheet{width:100%;max-width:480px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:20px;display:grid;gap:12px;margin-bottom:env(safe-area-inset-bottom,0px);max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.sheet{width:100%;max-width:480px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;display:grid;gap:12px;margin-bottom:env(safe-area-inset-bottom,0px);max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:50;background:#232736;border:1px solid var(--line);border-radius:6px;padding:12px 16px;font-size:14px;max-width:min(92vw,420px);box-shadow:0 12px 30px rgba(0,0,0,.5)}
 
 /* Screen changes: native slide/fade where the phone supports it (View Transitions), a light fallback otherwise.
@@ -835,13 +878,23 @@ button:active,.opt input:active + span{transform:scale(.96)}
 /* plainer finish: flat tints instead of diagonal gradients and glows */
 .logo,.getapp,.steps-bar i.on{background:var(--accent)} .getapp{box-shadow:none}
 .hero-h{background:color-mix(in srgb,var(--tc) 34%,#111318)}
-.hub-hero{background:color-mix(in srgb,var(--tc) 30%,#111318)}
-.day-h{background:color-mix(in srgb,var(--tc) 13%,#15171D)} .day.t-rest .day-h b{color:var(--muted)}   /* the rest-day grey was 4.1:1 on its own header */
+.hub-hero{background:#14161C}
+.day-h{background:#16181E;border-bottom:1px solid #22252E} .day-h b{color:var(--ink)} .day-h b:before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--tc);margin-right:9px;vertical-align:2px}
+.day.t-rest .day-h b{color:var(--muted)} .day.today .day-h{background-color:#16181E;background-image:linear-gradient(90deg,color-mix(in srgb,var(--accent) 22%,#16181E),#16181E 70%)}
+.day.past{opacity:.6} .day.past:active,.day.past:focus-within{opacity:1}   /* days already behind you this week step back (Nov 18) */
+.weekhead-card{touch-action:pan-y}   /* the rest-day grey was 4.1:1 on its own header */
 .verdict{background:color-mix(in srgb,var(--good) 10%,#14161C)} .verdict.v1{background:color-mix(in srgb,var(--work) 10%,#14161C)} .verdict.v2{background:color-mix(in srgb,var(--race) 10%,#14161C)}
 .inst{background:color-mix(in srgb,var(--accent) 12%,#14161C)}
 .scard{background:var(--surface)} .scard.hi{background:color-mix(in srgb,var(--accent) 14%,var(--surface))} .icard{background:var(--surface)}
 .rg-w circle{filter:none!important}
 a.scard{text-decoration:none;color:var(--ink)}
+.scards{gap:0;border:1px solid #262A35;border-radius:16px;overflow:hidden;background:var(--surface)}
+.scards > .scard{border:0;border-radius:0;background:none;padding:15px 16px;gap:14px;border-top:1px solid #22252E;transform:none}
+.scards > .scard:first-child{border-top:0} .scards > .scard:active{background:#1A1D24}
+.scards > .scard b{font:600 16px/1.25 var(--f-body);letter-spacing:0} .scards > .scard span{margin-top:3px;font-size:13.5px}
+.scards > .scard .mi{width:34px;height:34px;border-radius:9px;background:#20232C;color:#C9CDD8} .scards > .scard .mi .ic{width:18px;height:18px}
+.scards > .scard.hi{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 16%,transparent),transparent 70%);box-shadow:inset 3px 0 0 #BE383E}
+.scards > .scard.hi .mi{background:color-mix(in srgb,var(--accent) 35%,#20232C);color:#fff}
 #player{position:fixed;inset:0;z-index:200;background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--pt) 28%,var(--bg)) 0%,var(--bg) 70%);color:var(--ink);display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 20px)}
 .pl-top{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
 .pl-now{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center}
@@ -863,7 +916,7 @@ a.scard{text-decoration:none;color:var(--ink)}
 .rpe button{min-height:38px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 14px/1 inherit;font-variant-numeric:tabular-nums}
 .rpe button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
 .rpe-w{display:block;font-size:12px;color:var(--muted);margin-top:4px}
-.asum{margin-top:12px;padding:12px 14px;border-left:3px solid var(--tc,var(--accent));background:color-mix(in srgb,var(--accent) 6%,transparent);border-radius:0 8px 8px 0}
+.asum{margin-top:12px;padding:13px 14px;border:1px solid #262A35;background:#16181E;border-radius:14px}
 .asum b{display:block;margin-bottom:4px}.asum p{margin:4px 0;font-size:14px;color:var(--ink-2,var(--muted))}
 .asub{display:block;font-size:13px;color:var(--muted);margin:-2px 0 6px}
 
@@ -937,7 +990,7 @@ a.scard{text-decoration:none;color:var(--ink)}
   <button type="button" data-tab="training"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg><span>Progress</span></button>
   <button type="button" data-tab="more"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>More</span></button>
 </nav>
-<button type="button" class="askbar" id="askbar" data-act="askopen" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.94 14.06 4 20M14 4l1.5 4.5L20 10l-4.5 1.5L14 16l-1.5-4.5L8 10l4.5-1.5z"/></svg><span>Ask your coach or change your plan</span></button>
+<button type="button" class="askbar" id="askbar" data-act="askopen" hidden><span class="cav" aria-hidden="true"></span><span class="t">Message your coach</span><i class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></i></button>
 
 <script src="plan.js"></script>
 <script>
@@ -1011,6 +1064,9 @@ function loadAccount(j){
   const dr = plan ? null : setupDraft.get(me.id);
   if (plan) setupDraft.clear();
   setup = plan ? null : dr ? {step: Math.min(3, Math.max(0, Math.floor(+dr.step) || 0)), p: {...blankProfile(), ...dr.p}, resumed: true} : {step: 0, p: {...blankProfile(), name: (me.name || "").split(" ")[0]}};
+  // funnel question 4 (Nov 19): a signed-in member with no plan lands straight on the goal screen, so record step 0 here
+  // (it was never sent before: the old trigger was Next on the welcome screen, which account members never see)
+  if (!plan) api("POST", "/api/account/setup-step", {step: 0}).catch(() => {});
 }
 function signedOut(){ scr = null; feat = {}; inv = null; revOpen = false; aiSt = {on: true, asked: true, needs: false, available: false}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
@@ -1032,12 +1088,12 @@ function reviewHtml(rv, a, garminIn){
   if (rv.askFeel){
     // Strava workout: rule-based summary, then the coach needs the person's own take (Strava data isn't sent to AI)
     const id = a ? a.id : "";
-    return '<div class="coach">' + ic("spark") + '<div><b>' + esc(rv.headline) + '</b>' + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') +
+    return '<div class="coach"><span class="cav sm" aria-hidden="true">' + MARK + '</span><div><small class="ai">Coach\'s note</small><b>' + esc(rv.headline) + '</b>' + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') +
       (id && mode === "account" && coachOn ? '<p class="feelq">How did it feel? Your coach will take it from there.</p><div class="feel" role="group" aria-label="How did it feel">' +
         [["easy", "Easy"], ["just right", "Just right"], ["hard", "Hard"], ["very hard", "Very hard"]].map(([k, l]) => '<button type="button" data-act="feel" data-id="' + esc(id) + '" data-f="' + k + '"' + (feelBusy === id ? ' disabled' : '') + '>' + l + '</button>').join("") + '</div>' +
         '<input class="feelnote" id="fn-' + esc(id) + '" maxlength="300" placeholder="Anything else? Legs, pace, how you slept (optional)">' : '') + '</div></div>';
   }
-  return '<div class="coach">' + ic("spark") + '<div><small class="ai">AI coach · can be wrong</small><b>' + esc(rv.headline) + '</b>' + gm + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + (rv.feel ? '<p class="fine">From how you said it felt: ' + esc(rv.feel) + '.</p>' : '') +
+  return '<div class="coach"><span class="cav sm" aria-hidden="true">' + MARK + '</span><div><small class="ai">Coach\'s note <i>· AI, can be wrong</i></small><b>' + esc(rv.headline) + '</b>' + gm + (rv.numbers ? '<span class="num">' + esc(rv.numbers) + '</span>' : '') + (rv.meaning ? '<p>' + esc(rv.meaning) + '</p>' : '') + (rv.next ? '<p><strong>Next:</strong> ' + esc(rv.next) + '</p>' : '') + (rv.feel ? '<p class="fine">From how you said it felt: ' + esc(rv.feel) + '.</p>' : '') +
     (askOn() && (!a || a.source !== "strava") ? '<button class="linkbtn askab" type="button" data-act="askabout" data-t="' + esc([rv.headline, rv.meaning, rv.next ? "Next: " + rv.next : ""].filter(Boolean).join(" ").slice(0, 480)) + '">Ask about this</button>' : '') + '</div></div>';
 }
 let feelBusy = null;
@@ -1321,13 +1377,13 @@ function actDetail(a){
   if (a.note) h += '<p class="anote"><b>Private note</b>' + esc(a.note) + '</p>';
   const shareOk = a.mi > 0 || (pts && pts.length > 1);
   if (shareOk || canEdit(a)) h += '<div class="adet-b">' + (canEdit(a) ? '<button class="btn shbtn" type="button" data-act="aedit" data-id="' + esc(a.id) + '">' + ic("pencil") + ' Edit</button>' : '') + (shareOk ? '<button class="btn shbtn" type="button" data-act="ashare" data-id="' + esc(a.id) + '">' + ic("share") + ' Share image</button>' : '') + '</div>';
-  h += '<section class="card" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv, a) : '') + summaryHtml(a) + '</section>';
+  h += '<section class="card astats" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv, a) : '') + summaryHtml(a) + '</section>';
   let laps = null; try { laps = a.laps ? (typeof a.laps === "string" ? JSON.parse(a.laps) : a.laps) : null; } catch(e){}
   laps = (laps || []).filter(l => l[0] > 50 && l[1] > 0);
   if (a.type === "run" && laps.length > 1){
     const paces = laps.map(l => l[1] / (l[0] / 1609.34)), fast = Math.min(...paces), slow = Math.max(...paces);
     h += '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("bars") + '<span class="lbl">Splits</span><span class="r">' + laps.length + ' laps</span></div><div class="splits"><div class="sp hd"><span>Lap</span><span>Pace</span><span></span><em>HR</em></div>' +
-      laps.map((l, i) => '<div class="sp"><span>' + (i + 1) + '</span><b>' + fmtPace(paces[i]) + '</b><i style="width:' + (slow > fast ? 35 + 65 * (slow - paces[i]) / (slow - fast) : 100) + '%"></i><em>' + (l[2] || '–') + '</em></div>').join("") + '</div>' +
+      laps.map((l, i) => '<div class="sp' + (paces[i] === fast && laps.length > 2 ? ' best' : '') + '"><span>' + (i + 1) + '</span><b>' + fmtPace(paces[i]) + '</b><i style="width:' + (slow > fast ? 35 + 65 * (slow - paces[i]) / (slow - fast) : 100) + '%"></i><em>' + (l[2] || '–') + '</em></div>').join("") + '</div>' +
       '<p class="sub">Lap distances: ' + laps.slice(0, 12).map(l => r2(l[0] / 1609.34)).join(", ") + (laps.length > 12 ? '…' : '') + ' mi</p></section>';
   }
   if (a.source === "manual") h += '<button class="btn block" type="button" data-act="adel" data-id="' + esc(a.id) + '" style="color:var(--crit)">Delete this workout</button>';
@@ -2446,7 +2502,9 @@ const IC = {
   wave:'<path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>',
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
   pin:'<path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
-  spark:'<path d="M9.94 14.06 4 20M14 4l1.5 4.5L20 10l-4.5 1.5L14 16l-1.5-4.5L8 10l4.5-1.5z"/>',
+  spark:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/>',   // was a sparkle (the stock AI symbol); Nov 18 it's a speech bubble
+  help:'<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17.2h.01"/>',
+  star:'<path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/>',
   bell:'<path d="M10.27 21a2 2 0 0 0 3.46 0"/><path d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33"/>',
   download:'<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
   pencil:'<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 7.5l3 3"/>',
@@ -2497,7 +2555,7 @@ function header(){
 function weekOf(date){ return plan.weeks.findIndex(w => date >= w.start && date <= addDays(w.start, 6)); }
 function dayOf(date){ const wi = weekOf(date); return wi < 0 ? null : plan.weeks[wi].days[dow(date)]; }
 // no watch? pace by feel: the talk test (Foster 1999 / Reed 2014: tracks ventilatory thresholds well)
-const TALK = {E: "talk in full sentences · 3/10", L: "talk in full sentences · 3–4/10", M: "a few sentences at a time · 5/10", H: "short phrases · 6/10", T: "a few words at a time · 7/10", I: "one or two words · 8/10", R: "fast but relaxed, no talking · 9/10", G: "race effort"};
+const TALK = {E: "talk in full sentences · effort 3 of 10", L: "talk in full sentences · effort 3–4 of 10", M: "a few sentences at a time · effort 5 of 10", H: "short phrases · effort 6 of 10", T: "a few words at a time · effort 7 of 10", I: "one or two words · effort 8 of 10", R: "fast but relaxed, no talking · effort 9 of 10", G: "race effort"};
 /* strength: swap one exercise for another that works the same muscles, from a dropdown right on the exercise.
    Same sets and reps. The planned exercise is always first in the list, so it's easy to put back. */
 function exStepHtml(s, st, i, key){
@@ -2554,7 +2612,7 @@ function sessHtml(s, key, big){
     : minOnly(s) ? (s.yd ? '<div><b>' + comma(s.yd) + ' yd</b><span>Distance</span></div>' : s.bmi ? '<div><b>~' + s.bmi + ' mi</b><span>At an easy pace</span></div>' : s.type === "race" ? '<div><b>' + esc(HP.raceName(plan.profile)) + '</b><span>Event</span></div>' : '') + tstat + '<div><b>' + (s.type === "race" ? 'Steady' : s.type === "hyrox" ? 'Hard' : /hard|threshold|interval|race effort|7–8/i.test(s.steps.map(x => x[0]).join(" ")) ? 'Mixed' : 'Easy') + '</b><span>Effort</span></div>'
     : '<div><b>' + s.mi + ' mi</b><span>Distance</span></div>' + (t ? '<div><b>' + fmtTime(t).replace(/:\d\d$/, "") + (t >= 3600 ? '' : ' min') + '</b><span>About</span></div>' : '') +
       (HP.targetOf(plan.profile) === "hr" && HP.hrFor(s.type === "race" ? "G" : s.k, zonesNow(), plan.profile.goal) ? (r0 => '<div><b>Z' + r0.zone + '</b><span>' + r0.lo + '–' + r0.hi + ' bpm</span></div>')(HP.hrFor(s.type === "race" ? "G" : s.k, zonesNow(), plan.profile.goal)) :
-      '<div><b>' + (s.type === "race" ? fmtPace(plan.P.G) : s.k === "E" || s.k === "L" ? fmtPace(plan.P[s.k][0]) + '+' : fmtPace((plan.P[s.k] || plan.P.T) + ((offs && offs[s.k]) || 0))) + '</b><span>' + (s.type === "race" ? "Goal pace" : "Key pace") + '</span></div>');
+      '<div><b>' + (s.type === "race" ? fmtPace(plan.P.G) : s.k === "E" || s.k === "L" ? fmtPace(plan.P[s.k][0]) + '–' + fmtPace(plan.P[s.k][1]) : fmtPace((plan.P[s.k] || plan.P.T) + ((offs && offs[s.k]) || 0))) + '</b><span>' + (s.type === "race" ? "Goal pace" : "Target pace") + '</span></div>');
   return '<div class="sess t-' + s.type + '">' + (big ? '<span class="chip">' + TYPE[s.type] + '</span>' : '') +
     '<h3 class="sess-t">' + esc(s.title) + '</h3><div class="stats">' + stats + '</div><ul class="steps">' + s.steps.map((st, i) => s.type === "lift" && s.o && !match && !isDone && date >= TODAY ? exStepHtml(s, st, i, key) : stepHtml(st, offs)).join("") + '</ul>' +
     (future && s.k && F.offs[s.k] ? '<p class="fbnote">' + ic("gauge") + '<span>Reps ' + Math.abs(F.offs[s.k]) + ' s/mi ' + (F.offs[s.k] < 0 ? 'faster' : 'slower') + ' than the original plan, from how your last workouts went.</span></p>' : '') +
@@ -2578,7 +2636,7 @@ function missedCard(){
   for (let k = 1; k <= 3; k++){
     const date = addDays(TODAY, -k); let sk = null; try { sk = localStorage.getItem("hy-mskip-" + date); } catch(e){}
     if (sk || !missedDay(date) || !moveTargets(date).length) continue;
-    return '<section class="card mcard" style="--tone:var(--warn,#E8A33D)"><div class="card-h">' + ic("cal") + '<span class="lbl">Missed ' + dayName(date).toLowerCase().replace(/^[a-z]/, c => c.toUpperCase()) + '</span></div>' +
+    return '<section class="card mcard" style="--tone:var(--warn,#E8A33D)"><div class="card-h">' + ic("cal") + '<span class="lbl">Missed ' + (/^yesterday$/i.test(dayName(date)) ? 'yesterday' : dayName(date)) + '</span></div>' +
       '<p><b>' + esc(dayLabel(dayOf(date))) + '</b> didn\'t get done. Life happens. Move it to a day you can do it.</p><div class="row"><button class="btn primary" type="button" data-act="mvopen" data-date="' + date + '">' + ic("swap") + 'Move it</button><button class="linkbtn" type="button" data-act="mskip" data-date="' + date + '">Skip it</button></div></section>';
   }
   return '';
@@ -2609,10 +2667,10 @@ function greeting(p, w){
 function heroSummary(day){
   const t = dayType(day), m = dayMatches(TODAY), F = fb(), r = readiness(checkins[TODAY], sigOn(TODAY));
   const first1 = !Object.keys(done).length && !acts.length;   // never checked off or synced a workout: coach the first one (B7)
-  if (!day.sessions.length) return '<section class="hub-hero t-rest" style="cursor:default"><div class="hh"><span>Today</span><span class="chip">Rest</span></div><h3>Rest day</h3><p style="color:rgba(255,255,255,.8)">An easy walk or mobility is plenty. Sleep and food do the work today.</p></section>';
+  if (!day.sessions.length) return '<section class="hub-hero t-rest" style="cursor:default"><div class="hh"><span>Today</span><span class="chip">Rest</span></div><h3>Rest day</h3><p style="color:var(--muted)">An easy walk or mobility is plenty. Sleep and food do the work today.</p></section>';
   return day.sessions.map((s, i) => {
     const key = TODAY + "-" + i, isDone = !!m[i] || !!done[key], tt = estTime(s), adj = r && r.level && ADJ[r.level][s.type];
-    const kp = s.type === "race" ? fmtPace(plan.P.G) : s.k === "E" || s.k === "L" ? fmtPace(plan.P[s.k][0]) + '+' : fmtPace((plan.P[s.k] || plan.P.T) + ((F.offs && F.offs[s.k]) || 0));
+    const kp = s.type === "race" ? fmtPace(plan.P.G) : s.k === "E" || s.k === "L" ? fmtPace(plan.P[s.k][0]) + '–' + fmtPace(plan.P[s.k][1]) : fmtPace((plan.P[s.k] || plan.P.T) + ((F.offs && F.offs[s.k]) || 0));
     const stats = s.type === "lift" ? [["Exercises", s.steps.length], ["Time", s.min ? s.min + ' min' : "~50 min"]]
       : minOnly(s) ? [].concat(s.yd ? [["Distance", comma(s.yd) + ' yd']] : s.bmi ? [["About", s.bmi + ' mi']] : []).concat(tt ? [["Time", fmtTime(tt).replace(/:\d\d$/, "") + (tt >= 3600 ? '' : ' min')]] : [])
       : [["Distance", s.mi + ' mi']].concat(tt ? [["Time", fmtTime(tt).replace(/:\d\d$/, "") + (tt >= 3600 ? '' : ' min')]] : []).concat([[s.type === "race" ? "Goal pace" : "Pace", kp + '/mi']]);
@@ -2675,13 +2733,13 @@ function renderToday(){
 function renderPlan(){
   const wi = wkSel != null ? wkSel : Math.max(0, weekOf(TODAY)), w = plan.weeks[wi];
   const runs = w.days.reduce((a, d) => a + d.sessions.filter(s => s.type !== "lift").length, 0), lifts = w.days.reduce((a, d) => a + d.sessions.filter(s => s.type === "lift").length, 0);
-  let h = '<section class="card"><div class="weekhead"><button class="arrow" type="button" data-act="wk" data-dir="-1" aria-label="Previous week"' + (wi === 0 ? ' disabled' : '') + '>‹</button><div class="mid"><b>Week ' + w.n + ' · ' + esc(w.phase) + '</b><span>' + fmtD(w.start) + ' – ' + fmtD(addDays(w.start, 6)) + '</span></div><button class="arrow" type="button" data-act="wk" data-dir="1" aria-label="Next week"' + (wi === plan.weeks.length - 1 ? ' disabled' : '') + '>›</button></div>' +
+  let h = '<section class="card weekhead-card"><div class="weekhead"><button class="arrow" type="button" data-act="wk" data-dir="-1" aria-label="Previous week"' + (wi === 0 ? ' disabled' : '') + '>‹</button><div class="mid"><b>Week ' + w.n + ' · ' + esc(w.phase) + '</b><span>' + fmtD(w.start) + ' – ' + fmtD(addDays(w.start, 6)) + '</span></div><button class="arrow" type="button" data-act="wk" data-dir="1" aria-label="Next week"' + (wi === plan.weeks.length - 1 ? ' disabled' : '') + '>›</button></div>' +
     '<div class="strip">' + w.days.map((d, k) => { const t = dayType(d); return '<button class="sd t-' + t + (d.date === TODAY ? ' now on' : '') + '" type="button" data-act="goday" data-date="' + d.date + '"><span>' + DAYS[k].slice(0, 1) + '</span><b>' + parseD(d.date).getUTCDate() + '</b><i></i></button>'; }).join("") + '</div>' +
     (plan.multi ? '<div class="wkstats"><div><span>Hours</span><b>' + w.hours + '</b></div><div><span>Sessions</span><b>' + (runs + lifts) + '</b></div>' + (plan.multi === "fit" ? '<div><span>Strength</span><b>' + w.days.reduce((t, d) => t + d.sessions.filter(x => x.type === "lift").length, 0) + '</b></div>' : '<div><span>Run miles</span><b>' + w.miles + '</b></div>') + '</div></section><div class="days">'
       : '<div class="wkstats"><div><span>Miles</span><b>' + w.miles + '</b></div><div><span>Runs</span><b>' + runs + '</b></div><div><span>Lifts</span><b>' + lifts + '</b></div></div></section><div class="days">');
   w.days.forEach((d, k) => {
     const t = dayType(d);
-    h += '<article class="card day t-' + t + (d.date === TODAY ? ' today' : '') + '" id="d-' + d.date + '"><header class="day-h"><div><b>' + (d.date === TODAY ? 'Today' : DAYF[k]) + '</b> <span>' + fmtD(d.date) + '</span>' + (movedNote(d.date) ? '<p class="mvmark">' + movedNote(d.date) + '</p>' : '') + '</div>' + moveBtn(d.date) + '<span class="chip">' + TYPE[t] + '</span></header><div class="day-b">' +
+    h += '<article class="card day t-' + t + (d.date === TODAY ? ' today' : d.date < TODAY ? ' past' : '') + '" id="d-' + d.date + '"><header class="day-h"><div><b>' + (d.date === TODAY ? 'Today' : DAYF[k]) + '</b> <span>' + fmtD(d.date) + '</span>' + (movedNote(d.date) ? '<p class="mvmark">' + movedNote(d.date) + '</p>' : '') + '</div>' + moveBtn(d.date) + '<span class="chip">' + TYPE[t] + '</span></header><div class="day-b">' +
       (d.sessions.length ? d.sessions.map((s, i) => sessHtml(s, d.date + "-" + i, false)).join("") : '<p class="muted">Rest. Walk, stretch, sleep.</p>') + '</div></article>';
   });
   return h + '</div>';
@@ -2761,7 +2819,9 @@ function canMove(date){
 }
 /* a missed day: up to 7 days back, planned sessions, nothing done or logged. It can move to a day from today on. */
 function untouched(date){ const d = plan && dayOf(date); if (!d) return false; const m = dayMatches(date); return !d.sessions.some((s, i) => sessDone(date, i, m)) && !liftLog.some(x => x.date === date); }
-function missedDay(date){ const d = plan && dayOf(date); return !!d && date < TODAY && date >= addDays(TODAY, -7) && d.sessions.length > 0 && !d.sessions.some(s => s.type === "race") && untouched(date); }
+/* never a day from before the member built this plan (activation incident, Nov 19: a runner who joined on a Thursday
+   opened Today to "Missed Tuesday" on day one, for a week that started before they signed up) */
+function missedDay(date){ const d = plan && dayOf(date); return !!d && date < TODAY && date >= addDays(TODAY, -7) && date >= (plan.profile.built || "") && d.sessions.length > 0 && !d.sessions.some(s => s.type === "race") && untouched(date); }
 const canMoveFrom = date => canMove(date) || missedDay(date);
 function moveTargets(date){
   const out = []; for (let k = -7; k <= 7; k++){ const x = addDays(date, k), d = k && x >= TODAY && dayOf(x); if (d && canMove(x)) out.push(d); }
@@ -2782,7 +2842,7 @@ let ask = {msgs: [], busy: false, err: "", hint: "", kind: "", about: ""};
 const askOn = () => mode === "account" && !!(feat && feat.ask) && !!plan && aiSt.on;
 const ASK_SCREENS = ["fuel", "weather", "weight", "workouts", "meals", "fuelplan", "settings", "set-train", "set-run", "set-profile", "set-acct", "set-watch", "set-notif", "set-hr", "set-help", "t-paces", "t-races", "set-report", "faq"];   // the same list the server allows (ASK_SCREENS in api/worker.js)
 const isDay = d => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d);
-function askBarShow(on){ const b = $("#askbar"), show = !!on && askOn(); if (b) b.hidden = !show; document.body.classList.toggle("has-ask", show); }
+function askBarShow(on){ const b = $("#askbar"), show = !!on && askOn(); if (b){ b.hidden = !show; const av = b.querySelector(".cav"); if (av && !av.firstChild) av.innerHTML = MARK; } document.body.classList.toggle("has-ask", show); }
 const lc1 = t => /^(Today|Tomorrow|Yesterday)/.test(t) ? t.replace(/^[A-Z]/, c => c.toLowerCase()) : t;   // "tomorrow", but "Wednesday"
 function askLabel(a){   // what a proposed change would do, in the app's own words; null = not possible on this plan right now
   if (!a || typeof a !== "object") return null;
@@ -2810,15 +2870,16 @@ function askMsgHtml(m, mi){
 }
 function askOpen(hint, kind, about){
   closeMenu(); ask.hint = hint || ""; ask.kind = kind || ""; ask.about = about || ""; ask.err = "";
-  const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
-  b.innerHTML = '<div class="sheet asks" role="dialog" aria-modal="true" aria-label="Ask your coach"></div>';
+  document.querySelectorAll(".back.out").forEach(x => x.remove());
+  const b = document.createElement("div"); b.className = "back askback"; b.dataset.close = "1";
+  b.innerHTML = '<div class="sheet asks" role="dialog" aria-modal="true" aria-label="Message your coach"></div>';
   document.body.appendChild(b); askRender(true);
 }
 /* On-screen keyboard (Nov 17, Matthew: "the keyboard covers it"). iOS doesn't shrink the page when the keyboard opens,
    so a sheet pinned to the bottom ends up behind it. While a sheet is open, its backdrop follows the visible area
    (visualViewport) and --vvh tells the coach's message list how much room is left. */
 function fitSheets(){
-  const vv = window.visualViewport, b = $(".back"); if (!vv) return;
+  const vv = window.visualViewport, b = $(".back:not(.out)"); if (!vv) return;
   document.documentElement.style.setProperty("--vvh", Math.round(vv.height) + "px");
   if (!b) return;
   b.style.top = Math.round(vv.offsetTop) + "px"; b.style.height = Math.round(vv.height) + "px"; b.style.bottom = "auto";
@@ -2828,15 +2889,17 @@ if (window.visualViewport){ visualViewport.addEventListener("resize", fitSheets)
 function askRender(focus, keep){
   const el = $(".sheet.asks"); if (!el) return;
   const chips = ask.kind === "feel" ? ["Legs feel heavy today", "Slept badly, but I feel fine", "I feel great"]
+    : ask.kind === "screen" ? ["Explain this in depth", "How is this worked out?", "What should I do with this?"]
     : ask.about ? ["Why did you say this?", "What numbers is this based on?", "What should I do differently?"]
     : (feat && feat.rough ? [ROUGH_Q] : []).concat(["Why this workout today?", "How is my readiness score worked out?", "How do you set my calories?", "Move today's workout to tomorrow"]);
-  el.innerHTML = '<div class="ask-h"><b>Coach</b><small class="ai">AI coach · can be wrong</small><button class="linkbtn r" type="button" data-act="askclose">Close</button></div>' +
-    '<div class="ask-log" aria-live="polite">' + (ask.about ? '<p class="ask-about">About: ' + esc(ask.about) + '</p>' : '') + (ask.msgs.length ? ask.msgs.map(askMsgHtml).join("") : ask.about ? '' : '<p class="sub">Ask me anything, including how I worked something out: I show the rule and your numbers. Tell me what to change and I suggest it; nothing moves until you tap it.</p>') +
-    (ask.busy ? '<p class="ask-m a busy">Thinking…</p>' : '') + '</div>' +
+  el.innerHTML = '<div class="ask-h"><span class="cav" aria-hidden="true">' + MARK + '</span><div class="who"><b>Coach</b><span>Knows your plan, runs and recovery</span></div><button class="ask-x" type="button" data-act="askclose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+    '<div class="ask-log" aria-live="polite">' + (ask.about ? '<p class="ask-about">About: ' + esc(ask.kind === "screen" ? ask.about.replace(/ of the app:.*$/, "") : ask.about) + '</p>' : '') + (ask.msgs.length ? ask.msgs.map(askMsgHtml).join("") : ask.about ? '' : '<p class="ask-hello">' + (ask.kind === "feel" ? 'How do you feel today?' : 'What do you want to know or change?') + '</p>') +
+    (ask.busy ? '<p class="ask-m a busy" role="status" aria-label="Coach is typing"><i></i><i></i><i></i></p>' : '') + '</div>' +
     (!ask.busy && (!ask.msgs.length || ask.kind === "feel" || ask.about) ? '<div class="ask-chips">' + chips.map(c => '<button type="button" data-act="askchip">' + esc(c) + '</button>').join("") + '</div>' : '') +
     (ask.err ? '<p class="err" role="alert">' + esc(ask.err) + '</p>' : '') +
     '<form id="askform" class="ask-f"><input id="ask-q" type="text" maxlength="600" autocomplete="off" enterkeyhint="send" placeholder="' + esc(ask.hint || "Ask, or say what to change") + '" aria-label="Message your coach" value="' + esc(keep || "") + '">' +
-    '<button class="btn primary" type="submit"' + (ask.busy ? ' disabled' : '') + '>Send</button></form>';
+    '<button class="btn primary" type="submit" aria-label="Send"' + (ask.busy ? ' disabled' : '') + '><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></form>' +
+    '<p class="ask-note">AI coach: it can get things wrong. Nothing in your plan changes until you tap.</p>';
   const log = el.querySelector(".ask-log"); if (log) log.scrollTop = log.scrollHeight;
   fitSheets(); setTimeout(fitSheets, 350);   // again once the keyboard has finished opening
   if (focus){ const i = $("#ask-q"); if (i) i.focus({preventScroll: true}); }
@@ -3033,7 +3096,7 @@ function loadDetail(){
   const wks = Array.from({length: 12}, (_, i) => { const ws = addDays(mondayOf(TODAY), -7 * (11 - i)); return Array.from({length: 7}, (_, j) => (byDay[addDays(ws, j)] || []).reduce((t, a) => t + loadOf(a), 0)).reduce((a, b) => a + b, 0); });
   let h = '<section class="card" style="--tone:var(--lift)"><div class="card-h"><span class="lbl">Last 7 days</span><span class="r">' + load7 + ' load</span></div>' +
     '<p><b>' + verdict[0] + '.</b> ' + verdict[1] + '</p>' + (young ? '' : '<div class="gauge"><i style="left:' + Math.max(2, Math.min(97, ratio / 2 * 100)).toFixed(1) + '%"></i></div>') + '' +
-    '<div class="pf" style="display:flex;justify-content:space-between;gap:12px"><span>Ratio to your 4-week average</span><b>' + (ratio && !young ? ratio.toFixed(2) + '×' : '–') + '</b></div></section>';
+    '<div class="pf" style="display:flex;justify-content:space-between;gap:12px"><span>This week vs your last 4 weeks</span><b>' + (ratio && !young ? ratio.toFixed(2) + '×' : '–') + '</b></div></section>';
   h += '<section class="card"><div class="card-h"><span class="lbl">Daily load · 4 weeks</span></div>' + barsSvg(dv, days.map((d, i) => i % 7 === 6 ? shortD(d) : ''), () => "var(--long)", 340, 150, opt / 7, "Training load each day for 4 weeks") +
     '<div class="legend">' + Object.entries({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Other sports"}).map(([k, l]) => '<span><i style="--c:' + TYPE_C[k] + '"></i>' + l + '</span>').join("") + '</div><p class="fine">Dashed line: a typical day for your current fitness.</p></section>';
   h += '<section class="card"><div class="card-h"><span class="lbl">Weekly load · 12 weeks</span></div>' + barsSvg(wks, wks.map((_, i) => i % 3 === 2 ? shortD(addDays(mondayOf(TODAY), -7 * (11 - i))) : ''), i => i === 11 ? "var(--accent-2)" : "var(--lift)", 340, 140, 0, "Training load per week, 12 weeks") + '</section>';
@@ -3099,9 +3162,9 @@ function progressHtml(){
   const c1 = cum(0), c0 = cum(30), cmax = Math.max(1, c1[29], c0[29]), spark = (arr, mx, col, fill) => { const pts = arr.map((v, i) => (i * 150 / 29).toFixed(1) + ',' + (56 - v / mx * 50).toFixed(1)); return (fill ? '<polygon points="0,56 ' + pts.join(' ') + ' 150,56" fill="' + col + '" opacity=".25"/>' : '') + '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2.4" stroke-linejoin="round"/>'; };
   const fs_ = fitnessSeries(90, acts), cur = fs_[fs_.length - 1], form = cur.ctl - cur.atl, fmx = Math.max(1, ...fs_.map(x => Math.max(x.ctl, x.atl)));
   h += '<div class="pgrid">' +
-    '<div class="pc" data-act="go" data-scr="p-load" role="button" tabindex="0"><div class="ph">' + ic("bars") + '<span>Last 30 days</span><i>›</i></div><div class="pv">' + hmin(m30) + '</div><svg viewBox="0 0 150 58" aria-hidden="true">' + spark(c0, cmax, "var(--muted)") + spark(c1, cmax, "var(--accent-2)", true) + '</svg>' +
-      '<div class="pf"><span>vs prior 30</span><b class="' + (diff >= 0 ? 'up' : 'down') + '">' + (diff >= 0 ? '+' : '−') + hmin(Math.abs(diff)) + '</b></div></div>' +
-    '<div class="pc" data-act="go" data-scr="p-fit" role="button" tabindex="0"><div class="ph">' + ic("heart") + '<span>Your fitness</span><i>›</i></div><div class="pv">' + Math.round(cur.ctl) + '</div><svg viewBox="0 0 150 58" aria-hidden="true">' + spark(fs_.slice(-60).map(x => x.atl), fmx, "var(--muted)") + spark(fs_.slice(-60).map(x => x.ctl), fmx, "var(--long)", true) + '</svg>' +
+    '<div class="pc" data-act="go" data-scr="p-load" role="button" tabindex="0"><div class="ph">' + ic("bars") + '<span>Last 30 days</span><i>›</i></div><div class="pv">' + hmin(m30) + '</div><p class="pm">Time spent training</p><svg viewBox="0 0 150 58" aria-hidden="true">' + spark(c0, cmax, "var(--muted)") + spark(c1, cmax, "var(--accent-2)", true) + '</svg>' +
+      '<div class="pf"><span>vs the 30 days before</span><b class="' + (diff >= 0 ? 'up' : 'down') + '">' + (diff >= 0 ? '+' : '−') + hmin(Math.abs(diff)) + '</b></div></div>' +
+    '<div class="pc" data-act="go" data-scr="p-fit" role="button" tabindex="0"><div class="ph">' + ic("heart") + '<span>Your fitness</span><i>›</i></div><div class="pv">' + Math.round(cur.ctl) + '</div><p class="pm">' + (form >= 5 ? 'Fresh: a good day to push' : form <= -10 ? 'Tired: normal in a hard block' : 'Steady: building nicely') + '</p><svg viewBox="0 0 150 58" aria-hidden="true">' + spark(fs_.slice(-60).map(x => x.atl), fmx, "var(--muted)") + spark(fs_.slice(-60).map(x => x.ctl), fmx, "var(--long)", true) + '</svg>' +
       '<div class="pf"><span>Form · ' + (form >= 5 ? 'fresh' : form <= -10 ? 'tired' : 'steady') + '</span><b class="' + (form >= 0 ? 'up' : 'down') + '">' + (form >= 0 ? '+' : '−') + Math.abs(Math.round(form)) + '</b></div></div></div>';
   // race prediction
   const p = plan.profile, runG = ["5k","10k","half","marathon"].includes(p.goal), gk = runG ? p.goal : "half", pred = plan.pred[gk];
@@ -3114,11 +3177,11 @@ function progressHtml(){
   const r30 = acts.filter(a => a.date > addDays(TODAY, -30) && a.type === "run"), fm = [0, 0, 0]; r30.forEach(a => fm[runClass(a)] += a.minutes || 0);
   const ft = fm[0] + fm[1] + fm[2], fi = ft ? fm.indexOf(Math.max(...fm)) : 0, FN = ["Aerobic", "Threshold", "Speed"], FC = ["var(--long)", "var(--easy)", "var(--work)"];
   h += '<div class="pgrid">' +
-    '<div class="pc" data-act="go" data-scr="p-load" role="button" tabindex="0"><div class="ph">' + ic("dumbbell") + '<span>Training load</span><i>›</i></div><div class="pv">' + load7 + '<small>load</small></div><div class="gauge"><i style="left:' + pos.toFixed(1) + '%"></i></div>' +
-      '<div class="pf"><span>' + wkActs.length + ' in 7 days</span><b>' + (load7 < opt * .64 ? 'Low' : load7 <= opt * 1.15 ? 'Good' : load7 <= opt * 1.35 ? 'High' : 'Very high') + '</b></div></div>' +
-    '<div class="pc" data-act="go" data-scr="p-focus" role="button" tabindex="0"><div class="ph">' + ic("gauge") + '<span>Training focus</span><i>›</i></div><div class="pv" style="font-size:26px">' + (ft ? FN[fi] : '–') + '</div><div class="fbars">' +
+    '<div class="pc" data-act="go" data-scr="p-load" role="button" tabindex="0"><div class="ph">' + ic("dumbbell") + '<span>Training load</span><i>›</i></div><div class="pv">' + load7 + '<small>load</small></div><p class="pm">This week vs your usual</p><div class="gauge"><i style="left:' + pos.toFixed(1) + '%"></i></div>' +
+      '<div class="pf"><span>' + wkActs.length + (wkActs.length === 1 ? ' workout' : ' workouts') + ' in 7 days</span><b>' + (load7 < opt * .64 ? 'Low' : load7 <= opt * 1.15 ? 'Good' : load7 <= opt * 1.35 ? 'High' : 'Very high') + '</b></div></div>' +
+    '<div class="pc" data-act="go" data-scr="p-focus" role="button" tabindex="0"><div class="ph">' + ic("gauge") + '<span>Training focus</span><i>›</i></div><div class="pv" style="font-size:26px">' + (ft ? FN[fi] : '–') + '</div><p class="pm">Where most of your running went</p><div class="fbars">' +
       fm.map((v, i) => '<div><i style="width:' + (ft ? v / ft * 100 : 0) + '%;background:' + FC[i] + '"></i></div>').join("") + '</div>' +
-      '<div class="pf"><span>' + (ft ? Math.round(fm[fi] / ft * 100) + '% · last 30 days' : 'No runs in 30 days') + '</span></div></div></div>';
+      '<div class="pf"><span>' + (ft ? Math.round(fm[fi] / ft * 100) + '% of your running · 30 days' : 'No runs in 30 days') + '</span></div></div></div>';
   // heart rate zones
   const zt = [0, 0, 0, 0, 0]; acts.filter(a => a.date > addDays(TODAY, -30)).forEach(a => { const z = zoneOf(a.avg_hr); if (z) zt[z - 1] += a.minutes || 0; });
   const zsum = zt.reduce((x, y) => x + y, 0), zmax = Math.max(1, ...zt), zi = zsum ? zt.indexOf(Math.max(...zt)) : 0, ZC = ["#9CA3B4", "var(--easy)", "var(--long)", "var(--work)", "var(--race)"];
@@ -3633,7 +3696,11 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
+<<<<<<< HEAD
 const APP_VERSION = "113";
+=======
+const APP_VERSION = "115";
+>>>>>>> origin/main
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3755,8 +3822,10 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-19.2";
+const NEW_ID = "2026-11-19.3";
 const NEWS = [
+  ["spark", "A cleaner, clearer Mileset", "The coach slides up from Message your coach, every Progress tile says what its number means, and plan and progress screens end with Go deeper with your coach.", null, null, "2026-11-19.3"],
+  ["cal", "Plan and workouts, tidied up", "Plan opens on today and you can swipe the week card to change weeks. A workout's page now leads with distance, pace and time, with your fastest lap marked.", "plan", null, "2026-11-19.3"],
   ["dumbbell", "Your own workouts, with progress", "More > My workouts: build a workout (like a shoulder day), log weight and reps each time, and see every lift go up week to week. Mileset suggests what to try next.", "myw", null, "2026-11-19.2"],
   ["bars", "A clearer weekly miles chart", "Progress > View plan shows every week's miles, what you've done this week against the plan, and which weeks are base, build, peak or taper.", "t-miles", null, "2026-11-19"],
   ["spark", "A cleaner, full-screen look", "Every screen now runs edge to edge, the tab bar sits at the bottom, and sheets slide up smoothly. Everything is still where it was.", null, null, "2026-11-18.8"],
@@ -3824,7 +3893,9 @@ function askNotif(){
     (denied ? '<button class="btn primary block" type="button" data-act="nasknot">OK</button>' : '<button class="btn primary block" type="button" data-act="naskyes">Allow</button><button class="btn block" type="button" data-act="nasknot">Not now</button>') + '</div>';
   document.body.appendChild(b);
 }
-function closeMenu(){ const b = $(".back"); if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
+function closeMenu(){ const b = $(".back:not(.out)");
+  if (b && b.classList.contains("askback") && !reduceMotion){ b.classList.add("out"); const sh = b.querySelector(".sheet.asks"); if (sh) sh.classList.replace("asks", "asks-out"); setTimeout(() => b.remove(), 170); }   // the coach sheet slides down instead of vanishing
+  else if (b) b.remove(); const ar = $(".inst-arrow"); if (ar) ar.remove(); }
 const SCR_T = {myw: "My workouts", mywdo: "My workout", fuel: "Fuel and food", workouts: "Workouts", weather: "Weather", weight: "Weigh-in", session: "Today's session",
   settings: "Settings", "set-notif": "Notifications", "set-watch": "Devices and apps", "set-health": "Sleep and heart rate", "set-report": "Report a problem", "set-reports": "Reported problems", "set-account": "Delete account",
   "set-hr": "Heart rate zones", "set-health-info": "Health and safety", "set-terms": "Terms of use", "set-profile": "Body and goals", "set-run": "Running", "set-about": "How Mileset works", "set-email": "Email", "set-password": "Password",  "p-load": "Training load", "p-fit": "Fitness and form", "p-focus": "Training focus and zones", "t-races": "Race predictions", "t-paces": "Training paces", "t-miles": "Weekly miles", "t-body": "Weight and calories", "t-setup": "Your setup", "set-acct": "Account and profile", "set-train": "Coaching and training", "set-help": "Help and support", faq: "FAQ", members: "Members", fuelplan: "Race fueling", meals: "Meal prep", crews: "Crews", crew: "Crew", invites: "Your invite link"};
@@ -3878,8 +3949,15 @@ function renderScreen(){
   else if (s === "myw") h = mywListHtml();
   else if (s === "mywdo") h = mywDoHtml();
   else h = settingsScreen(s);
+  // go deeper on anything (Matthew, Nov 18: "make sure you can go into depth about everything"): every plan and
+  // progress screen ends with a way to have the coach walk through it. Only the screen's name is sent; the coach
+  // already has the plan, and Strava data never goes to the AI.
+  if (DEEP[s] && askOn()) h += '<button class="deep" type="button" data-act="askscreen" data-t="' + esc(SCR_T[s] || s) + '"><span class="cav sm" aria-hidden="true">' + MARK + '</span><span><b>Go deeper with your coach</b><small>' + DEEP[s] + '</small></span><i aria-hidden="true">›</i></button>';
   return back + h;
 }
+const DEEP = {"t-races": "Why these times, and what moves them", "t-paces": "Why each pace, and when to use it", "t-miles": "Why the miles build the way they do", "t-body": "How your calories and weight trend are worked out",
+  "t-setup": "What each setting changes in your plan", "p-load": "What your load means and how much to add", "p-fit": "What fitness, fatigue and form mean for this week", "p-focus": "Whether your mix of easy and hard is right",
+  fuelplan: "Why these carbs, fluid and sodium numbers", meals: "How the meals fit your training days", weather: "How heat and wind change today's run"};
 function progSwitch(cur){
   return '<div class="segsw" role="tablist" aria-label="Progress or recovery">' + [["training", "Progress"], ["recovery", "Recovery"]].map(([k, l]) => '<button type="button" role="tab" data-act="tab" data-tab2="' + k + '" aria-selected="' + (cur === k) + '">' + l + '</button>').join("") + '</div>';
 }
@@ -3887,14 +3965,14 @@ function renderMore(){
   const card = (act, title, sub, icon, scrTo, cls) => '<button class="scard' + (cls ? ' ' + cls : '') + '" type="button" data-act="' + act + '"' + (scrTo ? ' data-scr="' + scrTo + '"' : '') + '><i class="mi">' + ic(icon) + '</i><div><b>' + title + '</b><span>' + sub + '</span></div><i>›</i></button>';
   let h = '<h2 class="sec-t">More</h2>' + (founding ? '<div class="fcard"><i>' + ic("bolt") + '</i><div><b>Founding Member #' + founding + '</b><span>Mileset is free for you for life, including anything paid we add later. Thanks for being here early.</span></div></div>' : '') + '<div class="scards">';
   if (mode === "account") h += card("racefind", "Find a race", "Search races anywhere in the world and build a plan for it", "flag", "", "hi");
-  if (plan && mode !== "sample") h += card("wnopen", "What's new", "The latest features and how to use them", "spark");
+  if (plan && mode !== "sample") h += card("wnopen", "What's new", "The latest features and how to use them", "star");
   if (plan) h += card("go", "My workouts", mywList().length ? mywList().length + (mywList().length === 1 ? " workout" : " workouts") + " · log them and watch every lift go up" : "Build your own, like a shoulder day, and track every lift week to week", "dumbbell", "myw");
   h += card("edit", "Change goal or start a new plan", plan ? "Now: " + esc(HP.raceName(plan.profile)) + (plan.raceDate ? " · " + fmtD(plan.raceDate) : "") : "Pick a goal and your training days", "cal");
   if (plan && plan.raceDate) h += card("go", "Race fueling and hydration", "Carbs, fluid and sodium per hour, and a sweat test", "bolt", "fuelplan");
   h += card("go", "Meal prep and grocery list", "Two preps a week, sized to your targets", "fork", "meals");
   if (mode === "account") h += card("go", "Crews", "Train with friends. They only see your nickname and weekly total", "user", "crews");
   if (mode === "account" && isOwner) h += card("go", "Members", "Only you see this · who signed up and what they've linked", "user", "members", "hi");
-  h += card("go", "FAQ", "How plans, calories, recovery and syncing work", "spark", "faq");
+  h += card("go", "FAQ", "How plans, calories, recovery and syncing work", "help", "faq");
   if (API) h += card("invite", "Invite a friend", "Send them Mileset. It's free to try", "share");
   if (API && mode === "account") h += card("go", "Your invite link", "See how many people joined through your link", "bars", "invites");
   h += '<a class="scard" href="https://www.instagram.com/hybrdrunning/" target="_blank" rel="noopener"><i class="mi">' + ic("camera") + '</i><div><b>Follow @hybrdrunning</b><span>Tips, new features and early access news on Instagram</span></div><i>›</i></a>';
@@ -4015,12 +4093,19 @@ function faqHtml(){
 }
 function setTab(t, scroll){ nav("fade", () => setTab_(t, scroll)); }
 function setTab_(t, scroll){
+  const toPlan = t === "plan" && tab !== "plan";
   scr = null;
   if (!["today","plan","activities","recovery","training","more"].includes(t)) t = "today";
   tab = t; if (t !== "plan") wkSel = null; if (t !== "activities"){ actSel = null; actName = null; }
   try { if (location.hash !== "#" + t) history.replaceState(null, "", "#" + t); } catch(e){}
   render(); if (scroll) window.scrollTo(0, 0);
+  if (!reduceMotion){ const v = app.querySelector(".view"); if (v){ v.classList.add("stagger"); setTimeout(() => v.classList.remove("stagger"), 700); } }   // cards ease in one after another (Nov 18: "smoother")
+  if (toPlan && plan && !scroll){ const el = document.getElementById("d-" + TODAY); if (el && el.getBoundingClientRect().top > innerHeight * .6) requestAnimationFrame(() => el.scrollIntoView({block: "start", behavior: reduceMotion ? "auto" : "smooth"})); }
 }
+{ let sx = null, sy = 0;   // swipe the week card (Nov 18: "swipe between weeks")
+  document.addEventListener("touchstart", e => { const c = e.target.closest && e.target.closest(".weekhead-card"); sx = c && e.touches.length === 1 ? e.touches[0].clientX : null; sy = sx == null ? 0 : e.touches[0].clientY; }, {passive: true});
+  document.addEventListener("touchend", e => { if (sx == null || tab !== "plan" || scr) return; const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null;
+    if (Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.6){ const b = document.querySelector('.weekhead [data-act="wk"][data-dir="' + (dx < 0 ? 1 : -1) + '"]'); if (b && !b.disabled) b.click(); } }, {passive: true}); }
 
 document.addEventListener("keydown", ev => { if ((ev.key === "Enter" || ev.key === " ") && ev.target.getAttribute && ev.target.getAttribute("role") === "button" && ev.target.dataset.act){ ev.preventDefault(); ev.target.click(); } });
 document.addEventListener("click", ev => {
@@ -4035,7 +4120,7 @@ document.addEventListener("click", ev => {
     if (mode === "account" && !plan && setup.step >= 1) api("POST", "/api/account/setup-step", {step: setup.step}).catch(() => {});
     if (mode === "account" && !plan && me && setup.step >= 1 && setup.step <= 3) setupDraft.set(me.id, setup);
     if (setup.step === 4){
-      const prof = {...setup.p, start: mondayOf(TODAY), pv: HP.PLAN_V}; delete prof.sample; delete prof.swaps; if (plan && plan.profile.myWorkouts && !prof.myWorkouts) prof.myWorkouts = plan.profile.myWorkouts;   // your own workouts survive a new plan   // a new plan starts with no moved days
+      const prof = {...setup.p, start: mondayOf(TODAY), built: TODAY, pv: HP.PLAN_V}; delete prof.sample; delete prof.swaps; if (plan && plan.profile.myWorkouts && !prof.myWorkouts) prof.myWorkouts = plan.profile.myWorkouts;   // your own workouts survive a new plan   // a new plan starts with no moved days   // built: the day they made it, so earlier days that week never read as missed
       // training location: from "Use my location", or look up the typed city (doesn't hold up the plan)
       const cur = (wxLoc() || {}).place || "", city = setup.city || "";
       const geo = setup.geo;
@@ -4396,7 +4481,7 @@ document.addEventListener("click", ev => {
   if (act === "fday"){ captureFood(); fdate = addDays(fdate, +a.dataset.dir); if (fdate > TODAY) fdate = TODAY; fs.err = ""; fs.note = ""; render(); return; }
   if (act === "nasknot"){ closeMenu(); return; }
   if (act === "wndone"){ wnSeen(); wnPill(false); return; }
-  if (act === "wngo"){ const to = a.dataset.to; wnSeen(); if (to === "progress" || to === "activities"){ scr = null; actSel = null; tab = to === "progress" ? "training" : to; render(); window.scrollTo(0, 0); } else go(to); wnPill(true); return; }
+  if (act === "wngo"){ const to = a.dataset.to; wnSeen(); if (to === "progress" || to === "activities" || to === "plan"){ scr = null; actSel = null; tab = to === "progress" ? "training" : to; render(); window.scrollTo(0, 0); } else go(to); wnPill(true); return; }
   if (act === "wnback" || act === "wnopen"){ wnPill(false); whatsNew(true); return; }
   if (act === "naskyes"){ a.disabled = true; a.textContent = "One moment…"; pushOn().then(() => { closeMenu(); render(); toast("Notifications are on."); }).catch(e => { closeMenu(); toast(e.message || "Couldn't turn on notifications."); }); return; }
   if (act === "pushon"){ a.disabled = true; a.textContent = "One moment…"; pushOn().then(() => { render(); toast("Notifications are on."); }).catch(e => { a.disabled = false; a.textContent = "Turn on notifications"; toast(e.message || "Couldn't turn on notifications."); }); return; }
@@ -4482,6 +4567,7 @@ document.addEventListener("click", ev => {
   }
   if (act === "askfeel"){ if (askOn()) askOpen("How do you feel this morning?", "feel"); return; }
   if (act === "askabout"){ if (askOn()) askOpen("Ask about this note", "", a.dataset.t || ""); return; }
+  if (act === "askscreen"){ if (askOn()) askOpen("Ask about " + (a.dataset.t || "this screen").toLowerCase(), "screen", "The " + (a.dataset.t || "") + " screen of the app: explain what it shows for them and why, from their own plan and numbers, in depth"); return; }
   if (act === "askclose"){ closeMenu(); return; }
   if (act === "askchip"){ if (a.textContent === ROUGH_Q) ask.kind = "rough"; askSend(a.textContent); return; }
   if (act === "askdo"){ askDo(+a.dataset.m, +a.dataset.i); return; }
