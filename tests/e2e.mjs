@@ -1,6 +1,10 @@
 // Real-browser test of every screen of Hybrid. Runs against the live site and live API by default.
 //   SITE=https://app.hybrdrunning.com/ node tests/e2e.mjs
 // Uses a throwaway account (deleted at the end) and the real AI, weather and database.
+// Local runs: start the local API with the coach turned on, or the coach bar and every "Go deeper" button stay hidden
+// and the test can't see them covering anything (that is how #107 passed locally and failed live, rolled back in #112):
+//   npx wrangler dev --port 8787 --local-upstream localhost:8787 --var ANTHROPIC_API_KEY:test-key --var ANTHROPIC_URL:http://127.0.0.1:9912
+// with any stand-in AI on 9912 that answers {"content":[{"type":"text","text":"{\"answer\":\"ok\",\"actions\":[]}"}]} (see tests/ask.mjs).
 import { chromium } from "playwright";
 import fs from "fs";
 const SITE = process.env.SITE || "https://app.hybrdrunning.com/";
@@ -472,7 +476,9 @@ await check("Ask bar stress: hostile replies, bad buttons, a burst of taps, 14 r
   // send a question and wait for its answer (counting bubbles would stall once the conversation reaches its 40-message limit)
   const say = async q => { const c = calls; await page.fill("#ask-q", q); await page.press("#ask-q", "Enter"); for (let i = 0; i < 100 && calls === c; i++) await page.waitForTimeout(50);
     await page.waitForFunction(() => !document.querySelector(".ask-m.busy") && document.querySelector("#ask-q") && !document.querySelector('.ask-f button[disabled]')); };
-  const openSheet = async () => { if (!(await page.$(".sheet.asks"))){ await page.click("#askbar"); await page.waitForSelector(".sheet.asks #ask-q"); } };
+  // the coach sheet slides up (Nov 18): measure it once it has landed
+  const settled = () => page.waitForFunction(() => { const s = document.querySelector(".sheet.asks"); return s && s.getAnimations().every(a => a.playState !== "running"); });
+  const openSheet = async () => { if (!(await page.$(".sheet.asks"))){ await page.click("#askbar"); await page.waitForSelector(".sheet.asks #ask-q"); await settled(); } };
   const closeSheet = async () => { if (await page.$(".sheet.asks")){ await page.keyboard.press("Escape"); await page.waitForFunction(() => !document.querySelector(".sheet.asks")); } };
   const planText = async () => { await closeSheet(); await tab("plan"); await page.waitForSelector(".day-h"); const t = await page.evaluate(() => [...document.querySelectorAll(".card.day")].slice(0, 21).map(d => d.id + ":" + [...d.querySelectorAll(".sess-t, h3, .s-title")].map(x => x.textContent.trim()).join("+")).join("|")); await tab("today"); return t; };
   await page.route("**/api/me", me); await page.route("**/api/ask", coach);
@@ -538,7 +544,7 @@ await check("Ask bar stress: hostile replies, bad buttons, a burst of taps, 14 r
     const vp = page.viewportSize(); await page.setViewportSize({width: 320, height: 568});
     // the sheet follows the visible area through visualViewport "resize", which can land a frame or two after the
     // screen changes on a slow CI runner (PR checks, Nov 17: Send measured at the old 844px height). Give it up to 2 s.
-    try { await noOverflow(); const send = page.locator('.ask-f button[type="submit"]'), onScreen = b => b && b.x + b.width <= 321 && b.y + b.height <= 569;
+    try { await noOverflow(); await settled(); const send = page.locator('.sheet.asks .ask-f button[type="submit"]'), onScreen = b => b && b.x + b.width <= 321 && b.y + b.height <= 569;
       let box = await send.boundingBox(); for (let i = 0; i < 20 && !onScreen(box); i++){ await page.waitForTimeout(100); box = await send.boundingBox(); }
       if (!onScreen(box)) throw new Error("Send is off the screen on a small phone: " + JSON.stringify(box)); }
     finally { await page.setViewportSize(vp); }
@@ -694,6 +700,11 @@ await check("Glitch scan: every screen fits the phone, tab bar never covered", a
     await tab(t); const H = await page.evaluate(() => document.documentElement.scrollHeight);
     for (let y = 0; y < H; y += 350){ await page.evaluate(y => window.scrollTo(0, y), y); await page.waitForTimeout(120); const n = await covered(); if (n){ bad.push(t + " tab bar covered at " + y + "px"); break; } }
     const w = await page.evaluate(() => document.documentElement.scrollWidth); if (w > 392) bad.push(t + " is " + w + "px wide");
+    // the coach bar floats above the tab bar: the last thing on the tab must still scroll clear of it (#107 dropped the room for it and was rolled back in #112)
+    const hid = await page.evaluate(async () => { const a = document.querySelector("#askbar"); if (!a || a.hidden) return ""; window.scrollTo(0, document.documentElement.scrollHeight); await new Promise(r => setTimeout(r, 150));
+      const els = [...document.querySelectorAll(".view button, .view a")].filter(e => e.offsetParent && e.getBoundingClientRect().height > 0); const last = els[els.length - 1]; if (!last) return "";
+      return last.getBoundingClientRect().bottom > a.getBoundingClientRect().top + 1 ? (last.innerText || last.className).trim().slice(0, 40) : ""; });
+    if (hid) bad.push(t + ": the coach bar covers \"" + hid + "\" at the bottom");
   }
   await tab("today");
   const screens = ["fuel", "workouts", "weather", "weight", "settings", "set-acct", "set-train", "set-help", "set-watch", "set-notif", "set-hr", "set-run", "set-profile", "set-about", "t-races", "t-paces", "t-miles", "t-body", "t-setup", "faq", "fuelplan", "meals", "crews", "myw"];
@@ -706,6 +717,14 @@ await check("Glitch scan: every screen fits the phone, tab bar never covered", a
   }
   await page.unroute(/tile\.openstreetmap\.org/); await tab("today");
   if (bad.length) throw new Error(bad.join("; ")); return "6 tabs scrolled top to bottom, " + screens.length + " screens";
+});
+await check("Go deeper: a plan screen ends with a button that asks the coach about it", async () => {
+  await tab("today"); if (!(await page.isVisible("#askbar"))) return "coach is off on this server, so no button (correct)";
+  await page.evaluate(() => { const x = document.createElement("button"); x.dataset.act = "go"; x.dataset.scr = "t-paces"; x.hidden = true; document.body.appendChild(x); x.click(); x.remove(); });
+  await page.waitForSelector(".scrbar", {timeout: 5000}); await page.click(".view .deep"); await page.waitForSelector(".sheet.asks", {timeout: 5000}); await page.waitForTimeout(300);
+  const t = await page.innerText(".sheet.asks"); await page.keyboard.press("Escape"); await page.evaluate(() => { const b = document.querySelector(".back"); if (b) b.remove(); });
+  while (await page.locator('[data-act="back"]').count()){ await page.click('[data-act="back"]'); await page.waitForTimeout(150); }
+  if (!/Explain this in depth/.test(t)) throw new Error(t.slice(0, 160)); return "Training paces -> coach opens with 3 starters";
 });
 await check("Log out and back in (data kept)", async () => {
   await open("fuel"); const before = await page.locator(".card:has(.fdate) .fl li").count(); await back();
