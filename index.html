@@ -2759,7 +2759,9 @@ function canMove(date){
 }
 /* a missed day: up to 7 days back, planned sessions, nothing done or logged. It can move to a day from today on. */
 function untouched(date){ const d = plan && dayOf(date); if (!d) return false; const m = dayMatches(date); return !d.sessions.some((s, i) => sessDone(date, i, m)) && !liftLog.some(x => x.date === date); }
-function missedDay(date){ const d = plan && dayOf(date); return !!d && date < TODAY && date >= addDays(TODAY, -7) && d.sessions.length > 0 && !d.sessions.some(s => s.type === "race") && untouched(date); }
+/* never a day from before the member built this plan (activation incident, Nov 19: a runner who joined on a Thursday
+   opened Today to "Missed Tuesday" on day one, for a week that started before they signed up) */
+function missedDay(date){ const d = plan && dayOf(date); return !!d && date < TODAY && date >= addDays(TODAY, -7) && date >= (plan.profile.built || "") && d.sessions.length > 0 && !d.sessions.some(s => s.type === "race") && untouched(date); }
 const canMoveFrom = date => canMove(date) || missedDay(date);
 function moveTargets(date){
   const out = []; for (let k = -7; k <= 7; k++){ const x = addDays(date, k), d = k && x >= TODAY && dayOf(x); if (d && canMove(x)) out.push(d); }
@@ -3631,7 +3633,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "111";
+const APP_VERSION = "112";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -4033,7 +4035,7 @@ document.addEventListener("click", ev => {
     if (mode === "account" && !plan && setup.step >= 1) api("POST", "/api/account/setup-step", {step: setup.step}).catch(() => {});
     if (mode === "account" && !plan && me && setup.step >= 1 && setup.step <= 3) setupDraft.set(me.id, setup);
     if (setup.step === 4){
-      const prof = {...setup.p, start: mondayOf(TODAY), pv: HP.PLAN_V}; delete prof.sample; delete prof.swaps; if (plan && plan.profile.myWorkouts && !prof.myWorkouts) prof.myWorkouts = plan.profile.myWorkouts;   // your own workouts survive a new plan   // a new plan starts with no moved days
+      const prof = {...setup.p, start: mondayOf(TODAY), built: TODAY, pv: HP.PLAN_V};   // built: the day they made it, so earlier days that week never read as missed delete prof.sample; delete prof.swaps; if (plan && plan.profile.myWorkouts && !prof.myWorkouts) prof.myWorkouts = plan.profile.myWorkouts;   // your own workouts survive a new plan   // a new plan starts with no moved days
       // training location: from "Use my location", or look up the typed city (doesn't hold up the plan)
       const cur = (wxLoc() || {}).place || "", city = setup.city || "";
       const geo = setup.geo;
