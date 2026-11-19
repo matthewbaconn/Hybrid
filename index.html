@@ -253,6 +253,23 @@ button{cursor:pointer}
 .wsum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .wsum div{background:var(--sunk);border-radius:6px;padding:12px}
 .wsum span{display:block;font-size:12px;color:var(--muted)} .wsum b{font:800 21px/1.2 var(--f-display);white-space:nowrap}
+.apl-f{display:grid;gap:10px}
+.apl-in{width:100%;min-height:46px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:500 16px/1.35 var(--f-body);resize:vertical}
+.apl-name{font:700 18px/1.2 var(--f-body)} textarea.apl-in{min-height:72px}
+.apl-s{margin:6px 0 0;font:800 18px/1.2 var(--f-display)}
+.apl-row{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--card)} .apl-row .ic{flex:none;width:20px;height:20px;color:var(--muted)}
+.apl-row select{flex:1;min-width:0;min-height:46px;border:0;background:transparent;color:var(--ink);font:600 16px var(--f-body)}
+.apl-g{display:flex;flex-wrap:wrap;gap:6px} .apl-g button{border:1px solid var(--line);border-radius:999px;padding:8px 12px;background:var(--card);color:var(--muted);font:600 13.5px var(--f-body)}
+.apl-g button[aria-pressed="true"]{background:#800000;border-color:#BE383E;color:#fff}
+.apl-feel{display:grid;gap:8px} .apl-feel > span{font:600 14px var(--f-body);color:var(--muted)} .apl-feel b{color:var(--ink)}
+.apl-feel div{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px} .apl-feel button{min-height:40px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:700 14px var(--f-body);padding:0}
+.apl-feel button[aria-pressed="true"]{background:#BE383E;border-color:#BE383E;color:#fff}
+.apl-note{position:relative;display:block} .apl-note svg{position:absolute;left:12px;top:14px;width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:2} .apl-note textarea{padding-left:38px}
+.apl-shoe{display:grid;grid-template-columns:1fr 110px auto;gap:6px} .apl-add{justify-self:start} .apl-priv{margin:0;font-size:12.5px;color:var(--muted)}
+.adescr{margin:0;font-size:15.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere} .adet-chips{padding:0;margin:0}
+.anote{margin:0;padding:12px 14px;border-radius:10px;background:var(--sunk);font-size:14.5px;white-space:pre-wrap;overflow-wrap:anywhere} .anote b{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.actc .acd{margin:6px 18px 0;font-size:14.5px;line-height:1.4;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.adet-b{display:flex;gap:8px} .adet-b .btn{flex:1;min-height:46px}
 .achips{display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 14px;margin-top:-4px}
 .achips span{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:var(--sunk);color:var(--ink);font:600 12.5px/1.2 var(--f-body);max-width:100%;overflow-wrap:anywhere}
 .achips .ok{color:var(--good)} .achips .warn{color:var(--warn)} .achips .mut{color:var(--muted)} .achips .ac-hr{font-style:normal;color:#FF5A5F}
@@ -910,7 +927,7 @@ function loadAccount(j){
   clearObj(weights); (j.weights || []).forEach(w => weights[w.date] = w.lb);
   acts = j.activities || []; strava = j.strava || strava; garmin = j.garmin || {available: false, connected: false, last_push: null};
   reviews = j.reviews || {}; notes = j.notes || []; uset = j.settings || uset; pushInfo = j.push || pushInfo; coachOn = !!j.coach; aiSt = j.ai || {on: true, asked: true, needs: false, available: !!j.coach}; healthLink = j.health_link || {on: false}; dev = devMap(j.health) || {}; isOwner = !!j.owner; feat = j.features || {}; founding = j.founding || null; reports = j.reports || [];
-  liftLog = j.lifts || []; mealplan = j.mealplan || null; crews = j.crews || []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null;
+  gear = j.gear || []; liftLog = j.lifts || []; mealplan = j.mealplan || null; crews = j.crews || []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null;
   plan = j.profile ? buildPlan(j.profile) : null;
   const dr = plan ? null : setupDraft.get(me.id);
   if (plan) setupDraft.clear();
@@ -920,6 +937,7 @@ function signedOut(){ scr = null; feat = {}; inv = null; revOpen = false; aiSt =
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
 const checkins = S.checkins || {};          // date -> {sleep_h, sleep_q, soreness, energy, stress}
 const weights = S.weights || {};            // date -> lb
+let gear = [];                              // the member's shoes: [{id, name, mi, retired}]
 let acts = S.acts || [];                    // [{id, source, date, type, name, mi, minutes, cal, avg_hr}]
 let strava = {available: false, connected: false, name: "", last_sync: null}, garmin = {available: false, connected: false, last_push: null};
 let ci = null, wf = null, aw = {open: false, err: "", busy: false};
@@ -1176,7 +1194,7 @@ function actCard(a){
   const pts = ptsOf(a), tone = ACT_TONE[a.type] || "long", src = a.source === "strava" ? "Strava" : a.source === "garmin" ? "Garmin" : a.source === "sample" ? "Sample" : "Logged";
   return '<article class="card actc" style="--tc:var(--' + tone + ')" data-act="actopen" data-id="' + esc(a.id) + '" tabindex="0" role="button" aria-label="Open ' + esc(a.name) + '">' +
     '<div class="ah"><span class="aic">' + ic(ACT_IC[a.type] || "watch") + '</span><div><b>' + esc((me && me.name) || (plan && plan.profile.name) || "You") + '</b><span>' + whenTxt(a) + ' · ' + src + '</span></div></div>' +
-    '<h3>' + esc(a.name) + '</h3>' + (plan && a.type !== "run" && a.type !== "lift" ? '<span class="asub">' + esc(HP.actSummary(plan, feedActs(), a, TODAY, maxHrNow()).headline) + '</span>' : '') + '<div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + actChips(a) +
+    '<h3>' + esc(a.name) + '</h3>' + (a.descr ? '<p class="acd">' + esc(a.descr) + '</p>' : '') + (plan && a.type !== "run" && a.type !== "lift" ? '<span class="asub">' + esc(HP.actSummary(plan, feedActs(), a, TODAY, maxHrNow()).headline) + '</span>' : '') + '<div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + actChips(a) +
     (pts && pts.length > 1 ? '<div class="amap" data-map="' + esc(a.id) + '">' + routeSvg(pts) + '</div>' : '') + '</article>';
 }
 function feedActs(){
@@ -1218,7 +1236,12 @@ function actDetail(a){
     : '<h1>' + esc(a.name) + '</h1>') + '<span class="sub">' + whenTxt(a) + ' · ' + (a.source === "strava" ? 'Strava' : a.source === "garmin" ? 'Garmin' : a.source === "sample" ? 'Sample' : 'Logged by hand') + '</span></div>' +
     (canRename(a) && !(actName && actName.id === a.id) ? '<button class="an-edit" type="button" data-act="anedit" aria-label="Rename this workout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 7.5l3 3"/></svg></button>' : '') + '</div>';
   if (pts && pts.length > 1) h += '<div class="amap big" data-map="' + esc(a.id) + '" data-big="1">' + routeSvg(pts) + '</div>';
-  if (a.mi > 0 || (pts && pts.length > 1)) h += '<button class="btn block shbtn" type="button" data-act="ashare" data-id="' + esc(a.id) + '">' + ic("share") + ' Share image</button>';
+  if (a.descr) h += '<p class="adescr">' + esc(a.descr) + '</p>';
+  const meta = [a.tag && (TAGS.find(t => t[0] === a.tag) || [])[1], a.gear_id && (gear.find(g => g.id === a.gear_id) || {}).name, a.rpe && 'Felt ' + a.rpe + '/10'].filter(Boolean);
+  if (meta.length) h += '<div class="achips adet-chips">' + meta.map(t => '<span>' + esc(t) + '</span>').join("") + '</div>';
+  if (a.note) h += '<p class="anote"><b>Private note</b>' + esc(a.note) + '</p>';
+  const shareOk = a.mi > 0 || (pts && pts.length > 1);
+  if (shareOk || canEdit(a)) h += '<div class="adet-b">' + (canEdit(a) ? '<button class="btn shbtn" type="button" data-act="aedit" data-id="' + esc(a.id) + '">' + ic("pencil") + ' Edit</button>' : '') + (shareOk ? '<button class="btn shbtn" type="button" data-act="ashare" data-id="' + esc(a.id) + '">' + ic("share") + ' Share image</button>' : '') + '</div>';
   h += '<section class="card" style="--tone:var(--' + tone + ')"><div class="agrid">' + actStats(a, true).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' + (rv ? reviewHtml(rv, a) : '') + summaryHtml(a) + '</section>';
   let laps = null; try { laps = a.laps ? (typeof a.laps === "string" ? JSON.parse(a.laps) : a.laps) : null; } catch(e){}
   laps = (laps || []).filter(l => l[0] > 50 && l[1] > 0);
@@ -1380,36 +1403,80 @@ async function shareRun(a, k){
 const APL_KEY = "hy-actpop";
 function aplSeen(){ try { return JSON.parse(localStorage.getItem(APL_KEY) || "null"); } catch(e){ return null; } }
 function aplMark(ids){ try { const old = aplSeen() || []; localStorage.setItem(APL_KEY, JSON.stringify([...new Set(ids.concat(old))].slice(0, 60))); } catch(e){} }
-let apl = null;   // {id, err, busy} while the after-workout sheet is open
+let apl = null;   // {id, fresh, err, busy, f: {fields being edited}, addShoe: {name, mi} | null} while the editor is open
 function actPop(){
-  if (mode !== "account" || !plan || setup || authv || $(".back")) return;
+  if (mode !== "account" || !plan || setup || authv || needsConsent() || $(".back")) return;
   const fresh = acts.filter(a => a.source !== "manual" && a.source !== "sample" && a.date && daysBetween(a.date, TODAY) <= 1);
   const seen = aplSeen();
   if (!seen){ aplMark(acts.filter(a => !fresh.includes(a)).map(a => a.id)); }   // first time: older workouts never pop up
   const a = fresh.filter(x => !(seen || []).includes(x.id)).sort((x, y) => (y.start_local || y.date).localeCompare(x.start_local || x.date))[0];
   if (!a) return;
   aplMark(fresh.map(x => x.id));   // shown once, and older ones from the same sync don't stack up behind it
-  apl = {id: a.id, err: "", busy: false}; aplDraw(a);
+  aplOpen(a, true);
+}
+/* Edit a workout (Matthew, Nov 18 11:36am, with Strava's Edit Activity screens: "add these features that can be edited"):
+   name, How'd it go?, sport type, tag, how it felt (1-10), private notes, shoes. The same sheet opens by itself after a new
+   synced workout and from the Edit button on a workout's screen. Workouts in Mileset are only ever seen by their owner. */
+const TAGS = [["race", "Race"], ["long", "Long run"], ["workout", "Workout"], ["easy", "Easy"], ["recovery", "Recovery"], ["treadmill", "Treadmill"], ["commute", "Commute"], ["group", "Group run"]];
+const TYPES = [["run", "Run"], ["lift", "Strength"], ["bike", "Ride"], ["swim", "Swim"], ["other", "Other"]];
+const FEEL = ["", "Very easy", "Easy", "Easy", "Moderate", "Moderate", "Hard", "Hard", "Very hard", "Max effort", "Max effort"];
+const canEdit = a => mode === "account" && a && a.source !== "sample";
+function aplOpen(a, fresh){ apl = {id: a.id, fresh: !!fresh, err: "", busy: false, addShoe: null, f: {name: a.name, descr: a.descr || "", type: a.type, tag: a.tag || "", rpe: a.rpe || 0, note: a.note || "", gear_id: a.gear_id || ""}}; aplDraw(a); }
+function aplKeep(){   // copy what's typed into the open sheet before it's redrawn
+  if (!apl) return; const v = id => { const e = document.getElementById(id); return e ? e.value : null; };
+  for (const [id, k] of [["apl-q", "name"], ["apl-d", "descr"], ["apl-n", "note"], ["apl-t", "type"], ["apl-g", "gear_id"]]){ const x = v(id); if (x != null) apl.f[k] = x; }
+  if (apl.addShoe){ const n = v("apl-sn"), m = v("apl-sm"); if (n != null) apl.addShoe.name = n; if (m != null) apl.addShoe.mi = m; }
 }
 function aplDraw(a){
   let b = $(".back.apl"); if (!b){ b = document.createElement("div"); b.className = "back apl"; b.dataset.close = "1"; document.body.appendChild(b); }
-  const pts = ptsOf(a), can = canRename(a);
-  b.innerHTML = '<div class="sheet apls" role="dialog" aria-modal="true" aria-labelledby="apl-h"><p class="kick">' + (a.type === "run" ? 'Nice run' : 'Nice work') + ' · ' + whenTxt(a) + '</p>' +
-    (can ? '<form id="apl-form" class="an-form"><label for="apl-q" id="apl-h" class="lbl">Name this workout</label><input id="apl-q" type="text" maxlength="60" autocomplete="off" enterkeyhint="done" value="' + esc(a.name) + '">' +
-      (apl.err ? '<p class="err" role="alert">' + esc(apl.err) + '</p>' : '') + '</form>' : '<h2 id="apl-h">' + esc(a.name) + '</h2>') +
+  const pts = ptsOf(a), can = canRename(a), f = apl.f, st = b.querySelector(".apls") ? b.querySelector(".apls").scrollTop : 0;
+  const shoes = gear.filter(g => !g.retired || g.id === f.gear_id);
+  b.innerHTML = '<div class="sheet apls" role="dialog" aria-modal="true" aria-labelledby="apl-h"><p class="kick">' + (apl.fresh ? (a.type === "run" ? 'Nice run' : 'Nice work') + ' · ' : 'Edit workout · ') + whenTxt(a) + '</p>' +
+    '<form id="apl-form" class="apl-f">' +
+    (can ? '<input id="apl-q" class="apl-in apl-name" type="text" maxlength="60" autocomplete="off" enterkeyhint="done" aria-label="Workout name" value="' + esc(f.name) + '">' : '<h2 id="apl-h">' + esc(a.name) + '</h2>') +
+    (can ? '<span id="apl-h" hidden>Edit workout</span>' : '') +
+    '<textarea id="apl-d" class="apl-in" rows="3" maxlength="600" placeholder="How\'d it go? Share more about your workout." aria-label="Description">' + esc(f.descr) + '</textarea>' +
     (pts && pts.length > 1 ? '<div class="amap apl-map">' + routeSvg(pts) + '</div>' : '') +
     '<div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
-    '<div class="apl-b">' + (can ? '<button class="btn primary" type="button" data-act="aplsave"' + (apl.busy ? ' disabled aria-busy="true"' : '') + '>' + (apl.busy ? 'Saving…' : 'Save') + '</button>' : '') +
+    '<h3 class="apl-s">Details</h3>' +
+    '<label class="apl-row">' + ic(ACT_IC[f.type] || "watch") + '<select id="apl-t" aria-label="Workout type">' + TYPES.map(([k, l]) => '<option value="' + k + '"' + (f.type === k ? ' selected' : '') + '>' + l + '</option>').join("") + '</select></label>' +
+    '<div class="apl-g" role="group" aria-label="Tag">' + TAGS.map(([k, l]) => '<button type="button" data-act="apltag" data-k="' + k + '" aria-pressed="' + (f.tag === k) + '">' + l + '</button>').join("") + '</div>' +
+    '<div class="apl-feel"><span>How did it feel?' + (f.rpe ? ' <b>' + f.rpe + '/10 · ' + FEEL[f.rpe] + '</b>' : '') + '</span><div role="group" aria-label="How hard it felt, 1 to 10">' +
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => '<button type="button" data-act="aplrpe" data-n="' + n + '" aria-pressed="' + (f.rpe === n) + '" aria-label="' + n + ' of 10, ' + FEEL[n] + '">' + n + '</button>').join("") + '</div></div>' +
+    '<label class="apl-note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><textarea id="apl-n" class="apl-in" rows="2" maxlength="600" placeholder="Private notes. Only you can see these." aria-label="Private notes">' + esc(f.note) + '</textarea></label>' +
+    '<label class="apl-row">' + ic("run") + '<select id="apl-g" aria-label="Shoes"><option value="">' + (shoes.length ? 'No shoes' : 'Shoes: none added yet') + '</option>' + shoes.map(g => '<option value="' + esc(g.id) + '"' + (f.gear_id === g.id ? ' selected' : '') + '>' + esc(g.name) + ' · ' + comma(Math.round(g.mi)) + ' mi</option>').join("") + '</select></label>' +
+    (apl.addShoe ? '<div class="apl-shoe"><input id="apl-sn" class="apl-in" type="text" maxlength="40" placeholder="Shoe name, e.g. Pegasus 41" aria-label="Shoe name" value="' + esc(apl.addShoe.name) + '"><input id="apl-sm" class="apl-in" type="number" inputmode="decimal" min="0" max="3000" placeholder="Miles on them" aria-label="Miles already on them" value="' + esc(apl.addShoe.mi) + '"><button class="btn" type="button" data-act="aplshoeadd">Add</button></div>'
+      : '<button class="linkbtn apl-add" type="button" data-act="aplshoe">+ Add new shoes</button>') +
+    '<p class="apl-priv">Only you can see your workouts in Mileset.</p>' +
+    (apl.err ? '<p class="err" role="alert">' + esc(apl.err) + '</p>' : '') + '</form>' +
+    '<div class="apl-b"><button class="btn primary" type="button" data-act="aplsave"' + (apl.busy ? ' disabled aria-busy="true"' : '') + '>' + (apl.busy ? 'Saving…' : 'Save') + '</button>' +
     '<button class="btn" type="button" data-act="aplshare">' + ic("share") + ' Share</button></div>' +
-    '<div class="apl-b"><button class="linkbtn" type="button" data-act="aplopen">See the full workout</button><button class="linkbtn" type="button" data-act="close">Close</button></div></div>';
+    '<div class="apl-b">' + (apl.fresh ? '<button class="linkbtn" type="button" data-act="aplopen">See the full workout</button>' : '<span></span>') + '<button class="linkbtn" type="button" data-act="close">Close</button></div></div>';
+  const sh = b.querySelector(".apls"); if (sh && st) sh.scrollTop = st;
+}
+async function aplShoe(){
+  aplKeep(); const a = apl && acts.find(x => x.id === apl.id); if (!a || !apl.addShoe) return;
+  const name = (apl.addShoe.name || "").trim(); if (!name){ apl.err = "Give your shoes a name."; return aplDraw(a); }
+  try { const j = await api("POST", "/api/gear", {name, start_mi: +apl.addShoe.mi || 0}); gear = j.gear || gear; apl.f.gear_id = j.id; apl.addShoe = null; apl.err = ""; aplDraw(a); }
+  catch(e){ apl.err = e.message; aplDraw(a); }
 }
 async function aplSave(){
-  const a = apl && acts.find(x => x.id === apl.id); if (!a || apl.busy) return;
-  const q = $("#apl-q"), name = cleanName(q ? q.value : a.name);
-  if (!name || name === a.name){ apl = null; closeMenu(); return; }
-  apl.busy = true; aplDraw(a);
-  try { const j = await api("PUT", "/api/activity/" + a.id + "/name", {name}); a.name = j.name; a.src_name = j.src_name || null; save(); apl = null; closeMenu(); render(); toast("Saved."); }
-  catch(e){ apl.busy = false; apl.err = e.message || "That didn't save. Try again."; aplDraw(a); }
+  aplKeep(); const a = apl && acts.find(x => x.id === apl.id); if (!a || apl.busy) return;
+  const f = apl.f, ch = {};
+  if ((f.descr || "") !== (a.descr || "")) ch.descr = f.descr;
+  if ((f.note || "") !== (a.note || "")) ch.note = f.note;
+  if ((f.tag || "") !== (a.tag || "")) ch.tag = f.tag || null;
+  if (f.type && f.type !== a.type) ch.type = f.type;
+  if ((f.rpe || 0) !== (a.rpe || 0)) ch.rpe = f.rpe || null;
+  if ((f.gear_id || "") !== (a.gear_id || "")) ch.gear_id = f.gear_id || null;
+  const name = canRename(a) ? cleanName(f.name) : a.name, rename = name && name !== a.name;
+  if (!rename && !Object.keys(ch).length){ apl = null; closeMenu(); return; }
+  apl.busy = true; apl.err = ""; aplDraw(a);
+  try {
+    if (rename){ const j = await api("PUT", "/api/activity/" + a.id + "/name", {name}); a.name = j.name; a.src_name = j.src_name || null; }
+    if (Object.keys(ch).length){ const j = await api("PUT", "/api/activity/" + a.id + "/details", ch); Object.assign(a, j.activity || {}); if (j.gear) gear = j.gear; }
+    save(); apl = null; closeMenu(); render(); toast("Saved.");
+  } catch(e){ if (apl){ apl.busy = false; apl.err = e.message || "That didn't save. Try again."; aplDraw(a); } }
 }
 /* maps: the route is drawn right away; dark street tiles load on top when the card scrolls into view */
 let LP = null, mapObs = null;
@@ -3327,7 +3394,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "105";
+const APP_VERSION = "106";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3449,8 +3516,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-18.6";
+const NEW_ID = "2026-11-18.7";
 const NEWS = [
+  ["pencil", "Edit any workout", "Open a workout and tap Edit, or use the sheet after a run: name, how it went, type, a tag, how it felt, private notes and your shoes, with the miles on each pair.", "activities", null, "2026-11-18.7"],
   ["bars", "More in every workout", "Activities now shows heart rate and zone, climb, effort, and how each run lined up with your plan. This week's box shows planned miles left, and the list is grouped by week.", "activities", null, "2026-11-18.6"],
   ["share", "See-through share stickers", "Open a workout, tap Share image and pick a style: stats, big numbers, route, splits or heart rate. They're see-through, so they sit right on your Instagram Story or photo.", "activities", null, "2026-11-18.5"],
   ["pencil", "Name it right after", "After a synced run, the app opens with it at the bottom: give it a name, share it, or open the full workout.", null, null, "2026-11-18.5"],
@@ -3755,7 +3823,12 @@ document.addEventListener("click", ev => {
   if (act === "ashare"){ const x = feedActs().find(y => y.id === a.dataset.id); if (x) shareSheet(x); return; }
   if (act === "shpick"){ const x = feedActs().find(y => y.id === a.dataset.id); if (x) shareRun(x, a.dataset.k); return; }
   if (act === "aplsave"){ aplSave(); return; }
-  if (act === "aplshare"){ const x = apl && acts.find(y => y.id === apl.id); if (x){ apl = null; closeMenu(); shareSheet(x); } return; }
+  if (act === "apltag" || act === "aplrpe" || act === "aplshoe"){ aplKeep(); const x = apl && acts.find(y => y.id === apl.id); if (!x) return;
+    if (act === "apltag") apl.f.tag = apl.f.tag === a.dataset.k ? "" : a.dataset.k; else if (act === "aplrpe"){ const n = +a.dataset.n; apl.f.rpe = apl.f.rpe === n ? 0 : n; } else apl.addShoe = {name: "", mi: ""};
+    aplDraw(x); if (act === "aplshoe"){ const q = $("#apl-sn"); if (q) q.focus(); } return; }
+  if (act === "aplshoeadd"){ aplShoe(); return; }
+  if (act === "aedit"){ const x = acts.find(y => y.id === a.dataset.id); if (x && canEdit(x)) aplOpen(x, false); return; }
+  if (act === "aplshare"){ aplKeep(); const x = apl && acts.find(y => y.id === apl.id); if (x){ closeMenu(); shareSheet(x); } return; }
   if (act === "aplopen"){ const id = apl && apl.id; apl = null; closeMenu(); if (id) nav("fwd", () => { scr = null; tab = "activities"; actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actopen"){ const id = a.dataset.id; scrollMem[viewKey()] = window.scrollY; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actback"){ nav("back", () => { actSel = null; actName = null; render(); restoreScroll(viewKey()); }); return; }
