@@ -451,7 +451,9 @@ await check("Ask bar stress: hostile replies, bad buttons, a burst of taps, 14 r
   // send a question and wait for its answer (counting bubbles would stall once the conversation reaches its 40-message limit)
   const say = async q => { const c = calls; await page.fill("#ask-q", q); await page.press("#ask-q", "Enter"); for (let i = 0; i < 100 && calls === c; i++) await page.waitForTimeout(50);
     await page.waitForFunction(() => !document.querySelector(".ask-m.busy") && document.querySelector("#ask-q") && !document.querySelector('.ask-f button[disabled]')); };
-  const openSheet = async () => { if (!(await page.$(".sheet.asks"))){ await page.click("#askbar"); await page.waitForSelector(".sheet.asks #ask-q"); } };
+  // the coach sheet slides up (Nov 18): measure it once it has landed
+  const settled = () => page.waitForFunction(() => { const s = document.querySelector(".sheet.asks"); return s && s.getAnimations().every(a => a.playState !== "running"); });
+  const openSheet = async () => { if (!(await page.$(".sheet.asks"))){ await page.click("#askbar"); await page.waitForSelector(".sheet.asks #ask-q"); await settled(); } };
   const closeSheet = async () => { if (await page.$(".sheet.asks")){ await page.keyboard.press("Escape"); await page.waitForFunction(() => !document.querySelector(".sheet.asks")); } };
   const planText = async () => { await closeSheet(); await tab("plan"); await page.waitForSelector(".day-h"); const t = await page.evaluate(() => [...document.querySelectorAll(".card.day")].slice(0, 21).map(d => d.id + ":" + [...d.querySelectorAll(".sess-t, h3, .s-title")].map(x => x.textContent.trim()).join("+")).join("|")); await tab("today"); return t; };
   await page.route("**/api/me", me); await page.route("**/api/ask", coach);
@@ -517,7 +519,7 @@ await check("Ask bar stress: hostile replies, bad buttons, a burst of taps, 14 r
     const vp = page.viewportSize(); await page.setViewportSize({width: 320, height: 568});
     // the sheet follows the visible area through visualViewport "resize", which can land a frame or two after the
     // screen changes on a slow CI runner (PR checks, Nov 17: Send measured at the old 844px height). Give it up to 2 s.
-    try { await noOverflow(); const send = page.locator('.ask-f button[type="submit"]'), onScreen = b => b && b.x + b.width <= 321 && b.y + b.height <= 569;
+    try { await noOverflow(); await settled(); const send = page.locator('.sheet.asks .ask-f button[type="submit"]'), onScreen = b => b && b.x + b.width <= 321 && b.y + b.height <= 569;
       let box = await send.boundingBox(); for (let i = 0; i < 20 && !onScreen(box); i++){ await page.waitForTimeout(100); box = await send.boundingBox(); }
       if (!onScreen(box)) throw new Error("Send is off the screen on a small phone: " + JSON.stringify(box)); }
     finally { await page.setViewportSize(vp); }
