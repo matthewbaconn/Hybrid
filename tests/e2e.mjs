@@ -1,6 +1,10 @@
 // Real-browser test of every screen of Hybrid. Runs against the live site and live API by default.
 //   SITE=https://app.hybrdrunning.com/ node tests/e2e.mjs
 // Uses a throwaway account (deleted at the end) and the real AI, weather and database.
+// Local runs: start the local API with the coach turned on, or the coach bar and every "Go deeper" button stay hidden
+// and the test can't see them covering anything (that is how #107 passed locally and failed live, rolled back in #112):
+//   npx wrangler dev --port 8787 --local-upstream localhost:8787 --var ANTHROPIC_API_KEY:test-key --var ANTHROPIC_URL:http://127.0.0.1:9912
+// with any stand-in AI on 9912 that answers {"content":[{"type":"text","text":"{\"answer\":\"ok\",\"actions\":[]}"}]} (see tests/ask.mjs).
 import { chromium } from "playwright";
 import fs from "fs";
 const SITE = process.env.SITE || "https://app.hybrdrunning.com/";
@@ -210,6 +214,27 @@ await check("Log weights and reps, see strength progress", async () => {
   if (!t.includes(ex) || !/100 lb × 8/.test(t)) throw new Error("progress card: " + t.replace(/\n/g, " ").slice(0, 160));
   await tab("today"); return ex + " 100 lb × 8 saved and shown";
 });
+await check("My workouts: build a shoulder day, log it, it's kept, progress shows, edit and delete", async () => {
+  // a member's idea (Nov 18): your own workouts + progressive overload, week to week
+  await tab("more"); await page.click('.scard[data-scr="myw"]'); await page.waitForSelector('[data-act="mywnew"]'); await noOverflow();
+  await page.click('[data-act="mywnew"]'); await page.waitForSelector(".sheet.myws #myw-name");
+  await page.click('[data-act="mywsave"]'); if (!/name/i.test(await page.innerText(".sheet.myws .err"))) throw new Error("saving without a name wasn't stopped");
+  await page.fill("#myw-name", "Shoulder day"); await page.fill("#myw-n-0", "Overhead press"); await page.fill("#myw-s-0", "4"); await page.fill("#myw-r-0", "8");
+  await page.fill("#myw-n-1", "Lateral raise"); await page.fill("#myw-r-1", "12"); await page.fill("#myw-n-2", "overhead press");   // a duplicate is dropped
+  await noOverflow(); await shot("02h-myw-edit");
+  await page.click('[data-act="mywsave"]'); await page.waitForSelector(".mywdo #mw-w-0");
+  if (await page.locator(".mywdo .lrow").count() !== 2) throw new Error("expected 2 exercises (duplicate dropped), got " + await page.locator(".mywdo .lrow").count());
+  await page.fill("#mw-w-0", "95"); await page.fill("#mw-r-0", "8"); await page.fill("#mw-r-1", "12"); await page.click('[data-act="mywlog"]'); await page.waitForTimeout(900);
+  await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar:not([hidden])", {timeout: 15000}); await page.waitForTimeout(300);
+  await tab("more"); await page.click('.scard[data-scr="myw"]'); await page.waitForSelector(".mywc"); if (!/Shoulder day/.test(await page.innerText(".mywl"))) throw new Error("the workout wasn't kept after a reload");
+  await page.click(".mywc"); await page.waitForSelector(".mywp"); await noOverflow(); await shot("02i-myw-do");
+  const prog = await page.innerText(".mywp >> nth=0"); if (!/95 lb × 8/.test(prog)) throw new Error("progress didn't show the logged set: " + prog.replace(/\n/g, " "));
+  await tab("training"); const sp = await page.locator(".pc:has-text('Strength progress')").innerText(); if (!/Overhead press/.test(sp)) throw new Error("Strength progress doesn't include it");
+  await tab("more"); await page.click('.scard[data-scr="myw"]'); await page.click(".mywc"); await page.click('[data-act="mywedit"]'); await page.waitForSelector(".sheet.myws");
+  await page.click('[data-act="mywdel"]'); await page.click('[data-act="mywdel"]'); await page.waitForSelector(".sheet.myws", {state: "detached"}); await page.waitForTimeout(600);
+  if (await page.locator(".mywc").count()) throw new Error("the workout wasn't deleted");
+  await tab("today"); return "built, logged 95 lb × 8, kept after reload, in Strength progress, deleted";
+});
 await check("Move check flags hard back-to-back days (plan logic)", async () => {
   const r = await page.evaluate(() => { const p = {goal: "half", raceDate: "2027-02-07", goalSec: 6300, weekly: 22, longest: 8, days: [0, 1, 3, 4, 5], longDay: 5, lifts: 3, start: "2026-11-09", prDist: "10k", prSec: 2910, age: 30, weight: 182};
     const pl = HP.buildPlan(p, "2026-11-14"), w = pl.weeks[1].days, wk = pl.weeks[1].miles, sw = HP.buildPlan({...p, swaps: [[w[1].date, w[2].date]]}, "2026-11-14");
@@ -335,12 +360,18 @@ await check("Ask bar: shows only when the server says so; ask, confirm a move, p
   // Switch the preview on for this account in the app's view only, with a stand-in coach (no AI call, nothing leaves the test).
   await tab("plan"); await page.waitForSelector(".day-h .mvb");
   // a future day with a workout whose next day is a valid target (a rest day can carry a Move button too, and the coach's
-  // Move is only offered for a day that has sessions: picking the first future day failed on days the plan rests, Nov 18)
-  const pick = await page.evaluate(() => { const today = HP.isoLocal(new Date());
-    for (const d of [...document.querySelectorAll(".day-h .mvb")].map(b => b.dataset.date).filter(d => d > today)){
-      const t = HP.addDays(d, 1), a = document.getElementById("d-" + d), b = document.getElementById("d-" + t);
-      if (a && !a.classList.contains("t-rest") && b && !b.classList.contains("t-race")) return [d, t]; }
-    return null; });
+  // Move is only offered for a day that has sessions: picking the first future day failed on days the plan rests, Nov 18).
+  // Look at this week AND next week: late in the week the days left can all be rest days, or the next day is the following
+  // Monday, which isn't on screen (failed on a Friday, Nov 20). The app checks the move against the plan, not the screen.
+  const seen = {}, look = () => page.evaluate(() => [...document.querySelectorAll(".day[id^='d-']")].map(el => ({date: el.id.slice(2), rest: el.classList.contains("t-rest"), race: el.classList.contains("t-race"), mv: !!el.querySelector(".day-h .mvb")})));
+  for (const x of await look()) seen[x.date] = x;
+  const nextWk = page.locator('.weekhead [data-act="wk"][data-dir="1"]');
+  if (await nextWk.count() && await nextWk.isEnabled()){ await nextWk.click(); await page.waitForTimeout(300); for (const x of await look()) seen[x.date] = x; }
+  const today = await page.evaluate(() => HP.isoLocal(new Date()));
+  let pick = null;
+  for (const d of Object.keys(seen).sort()){ if (d <= today) continue;
+    const t = await page.evaluate(x => HP.addDays(x, 1), d), A = seen[d], B = seen[t];
+    if (A.mv && !A.rest && B && !B.race){ pick = [d, t]; break; } }
   if (!pick) throw new Error("no future workout day to move in the test plan");
   const [from, to] = pick, asked = [];
   const me = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {ask: true}; await route.fulfill({response: r, json: j}); };
@@ -451,7 +482,9 @@ await check("Ask bar stress: hostile replies, bad buttons, a burst of taps, 14 r
   // send a question and wait for its answer (counting bubbles would stall once the conversation reaches its 40-message limit)
   const say = async q => { const c = calls; await page.fill("#ask-q", q); await page.press("#ask-q", "Enter"); for (let i = 0; i < 100 && calls === c; i++) await page.waitForTimeout(50);
     await page.waitForFunction(() => !document.querySelector(".ask-m.busy") && document.querySelector("#ask-q") && !document.querySelector('.ask-f button[disabled]')); };
-  const openSheet = async () => { if (!(await page.$(".sheet.asks"))){ await page.click("#askbar"); await page.waitForSelector(".sheet.asks #ask-q"); } };
+  // the coach sheet slides up (Nov 18): measure it once it has landed
+  const settled = () => page.waitForFunction(() => { const s = document.querySelector(".sheet.asks"); return s && s.getAnimations().every(a => a.playState !== "running"); });
+  const openSheet = async () => { if (!(await page.$(".sheet.asks"))){ await page.click("#askbar"); await page.waitForSelector(".sheet.asks #ask-q"); await settled(); } };
   const closeSheet = async () => { if (await page.$(".sheet.asks")){ await page.keyboard.press("Escape"); await page.waitForFunction(() => !document.querySelector(".sheet.asks")); } };
   const planText = async () => { await closeSheet(); await tab("plan"); await page.waitForSelector(".day-h"); const t = await page.evaluate(() => [...document.querySelectorAll(".card.day")].slice(0, 21).map(d => d.id + ":" + [...d.querySelectorAll(".sess-t, h3, .s-title")].map(x => x.textContent.trim()).join("+")).join("|")); await tab("today"); return t; };
   await page.route("**/api/me", me); await page.route("**/api/ask", coach);
@@ -515,7 +548,11 @@ await check("Ask bar stress: hostile replies, bad buttons, a burst of taps, 14 r
     step = "part 7";
     // 7. a 320px phone: nothing runs off the side, the box and Send are on screen
     const vp = page.viewportSize(); await page.setViewportSize({width: 320, height: 568});
-    try { await noOverflow(); const box = await page.locator('.ask-f button[type="submit"]').boundingBox(); if (!box || box.x + box.width > 321 || box.y + box.height > 569) throw new Error("Send is off the screen on a small phone: " + JSON.stringify(box)); }
+    // the sheet follows the visible area through visualViewport "resize", which can land a frame or two after the
+    // screen changes on a slow CI runner (PR checks, Nov 17: Send measured at the old 844px height). Give it up to 2 s.
+    try { await noOverflow(); await settled(); const send = page.locator('.sheet.asks .ask-f button[type="submit"]'), onScreen = b => b && b.x + b.width <= 321 && b.y + b.height <= 569;
+      let box = await send.boundingBox(); for (let i = 0; i < 20 && !onScreen(box); i++){ await page.waitForTimeout(100); box = await send.boundingBox(); }
+      if (!onScreen(box)) throw new Error("Send is off the screen on a small phone: " + JSON.stringify(box)); }
     finally { await page.setViewportSize(vp); }
     return done + " of " + tried + " random moves made and put back; plan unchanged";
   } catch(e){ if (process.env.ASK_DEBUG){ await page.screenshot({path: process.env.ASK_DEBUG}).catch(() => {}); console.log("ASK_DEBUG step=" + step + " | " + await page.evaluate(() => { const b = document.querySelector(".back"), t = document.querySelector(".toast"), a = document.querySelector("#askbar"); return (b ? "sheet " + b.firstElementChild.className : "no sheet") + ", askbar " + (a && !a.hidden ? "shown" : "hidden") + ", toast: " + (t ? t.textContent : "none") + ", " + (document.querySelector(".scrbar") ? "detail screen" : "tab") + ", bubbles " + document.querySelectorAll(".ask-m").length + ", last acts: " + ([...document.querySelectorAll(".ask-acts")].pop() || {textContent: "-"}).textContent.slice(0, 160); }).catch(x => "eval failed " + x.message)); }
@@ -669,9 +706,14 @@ await check("Glitch scan: every screen fits the phone, tab bar never covered", a
     await tab(t); const H = await page.evaluate(() => document.documentElement.scrollHeight);
     for (let y = 0; y < H; y += 350){ await page.evaluate(y => window.scrollTo(0, y), y); await page.waitForTimeout(120); const n = await covered(); if (n){ bad.push(t + " tab bar covered at " + y + "px"); break; } }
     const w = await page.evaluate(() => document.documentElement.scrollWidth); if (w > 392) bad.push(t + " is " + w + "px wide");
+    // the coach bar floats above the tab bar: the last thing on the tab must still scroll clear of it (#107 dropped the room for it and was rolled back in #112)
+    const hid = await page.evaluate(async () => { const a = document.querySelector("#askbar"); if (!a || a.hidden) return ""; window.scrollTo(0, document.documentElement.scrollHeight); await new Promise(r => setTimeout(r, 150));
+      const els = [...document.querySelectorAll(".view button, .view a")].filter(e => e.offsetParent && e.getBoundingClientRect().height > 0); const last = els[els.length - 1]; if (!last) return "";
+      return last.getBoundingClientRect().bottom > a.getBoundingClientRect().top + 1 ? (last.innerText || last.className).trim().slice(0, 40) : ""; });
+    if (hid) bad.push(t + ": the coach bar covers \"" + hid + "\" at the bottom");
   }
   await tab("today");
-  const screens = ["fuel", "workouts", "weather", "weight", "settings", "set-acct", "set-train", "set-help", "set-watch", "set-notif", "set-hr", "set-run", "set-profile", "set-about", "t-races", "t-paces", "t-miles", "t-body", "t-setup", "faq", "fuelplan", "meals", "crews"];
+  const screens = ["fuel", "workouts", "weather", "weight", "settings", "set-acct", "set-train", "set-help", "set-watch", "set-notif", "set-hr", "set-run", "set-profile", "set-about", "t-races", "t-paces", "t-miles", "t-body", "t-setup", "faq", "fuelplan", "meals", "crews", "myw"];
   for (const s of screens){
     await page.evaluate(s => { const x = document.createElement("button"); x.dataset.act = "go"; x.dataset.scr = s; x.hidden = true; document.body.appendChild(x); x.click(); x.remove(); }, s);
     await page.waitForTimeout(250);
@@ -681,6 +723,14 @@ await check("Glitch scan: every screen fits the phone, tab bar never covered", a
   }
   await page.unroute(/tile\.openstreetmap\.org/); await tab("today");
   if (bad.length) throw new Error(bad.join("; ")); return "6 tabs scrolled top to bottom, " + screens.length + " screens";
+});
+await check("Go deeper: a plan screen ends with a button that asks the coach about it", async () => {
+  await tab("today"); if (!(await page.isVisible("#askbar"))) return "coach is off on this server, so no button (correct)";
+  await page.evaluate(() => { const x = document.createElement("button"); x.dataset.act = "go"; x.dataset.scr = "t-paces"; x.hidden = true; document.body.appendChild(x); x.click(); x.remove(); });
+  await page.waitForSelector(".scrbar", {timeout: 5000}); await page.click(".view .deep"); await page.waitForSelector(".sheet.asks", {timeout: 5000}); await page.waitForTimeout(300);
+  const t = await page.innerText(".sheet.asks"); await page.keyboard.press("Escape"); await page.evaluate(() => { const b = document.querySelector(".back"); if (b) b.remove(); });
+  while (await page.locator('[data-act="back"]').count()){ await page.click('[data-act="back"]'); await page.waitForTimeout(150); }
+  if (!/Explain this in depth/.test(t)) throw new Error(t.slice(0, 160)); return "Training paces -> coach opens with 3 starters";
 });
 await check("Log out and back in (data kept)", async () => {
   await open("fuel"); const before = await page.locator(".card:has(.fdate) .fl li").count(); await back();

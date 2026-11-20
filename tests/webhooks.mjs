@@ -75,4 +75,7 @@ catch(e){ failed++; console.log("::error::food-read retry test failed"); }
 // The report-kind test (Nov 17) runs here too, for the same reason.
 try { execFileSync("node", [new URL("./report_kind.mjs", import.meta.url).pathname], {stdio: "inherit"}); }
 catch(e){ failed++; console.log("::error::report kind test failed"); }
+// The visitor-kind diagnostic test (Nov 17) rides along for the same reason.
+try { execFileSync("node", [new URL("./visits.mjs", import.meta.url).pathname], {stdio: "inherit"}); }
+catch(e){ failed++; console.log("::error::visitor-kind test failed"); }
 process.exit(failed ? 1 : 0);
