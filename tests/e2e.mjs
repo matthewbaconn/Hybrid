@@ -835,8 +835,9 @@ await check("Mobile 6: Back stays on screen while you scroll, and the phone's ow
   if (await page.evaluate(() => window.scrollY) > 100){ e = await reach('[data-act="actback"]'); if (e) out.push("workout: " + e); }
   await page.goBack(); await page.waitForTimeout(600); await settleNav();
   if (await page.$(".adet-h")) out.push("the phone's Back left the workout open"); if (!(await page.isVisible("#tabbar"))) out.push("the phone's Back left the app");
-  await open("myw").catch(() => {}); if (await page.$(".scrbar")){ await back(); await settleNav(); }   // on-screen Back and history stay in step: one more phone Back must not leave the app
-  await page.goBack().catch(() => {}); await page.waitForTimeout(600); if (!(await page.isVisible("#tabbar"))) out.push("on-screen Back left a stale step: the next phone Back left the app");
+  // a fast tab switch right after closing and reopening screens must never walk the history out of the app
+  await tab("more"); await settleNav(); await page.click('[data-scr="faq"]'); await page.waitForSelector(".scrbar"); await tab("today"); await tab("more"); await tab("more"); await tab("today"); await page.waitForTimeout(500);
+  if (!(await page.isVisible("#tabbar"))) out.push("quick tab switches with a screen open walked out of the app (" + page.url() + ")");
   await page.goto(SITE, {waitUntil: "domcontentloaded"}).catch(() => {}); await page.waitForSelector("#tabbar", {state: "visible", timeout: 20000}).catch(() => {});
   if (out.length) throw new Error(out.join("; ")); return "Back stuck to the top in the FAQ and a workout · phone Back closes them";
 }, {needs: "Log a workout (with rep pace)"});

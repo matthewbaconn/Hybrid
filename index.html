@@ -3925,24 +3925,26 @@ function nav(dir, fn){
 const scrollMem = {};
 const viewKey = () => scr ? "scr:" + scr : "tab:" + tab + (tab === "activities" && actSel ? ":" + actSel : "");
 function restoreScroll(key){ const y = scrollMem[key] || 0; delete scrollMem[key]; window.scrollTo(0, y); if (y) requestAnimationFrame(() => window.scrollTo(0, y)); }
-/* The phone's own Back (Android back button, browser back) closes the open screen instead of leaving the app: each
-   screen or opened workout adds one step to the history, and the on-screen Back button uses up that same step, so
-   the two never drift apart (Nov 20 mobile fixes). */
-let histN = 0, histSkip = 0, backFromPop = false, histQuiet = 0;
-function histPush(){ try { history.pushState({hy: ++histN}, "", location.href); } catch(e){} }
-function histPop(){ if (histN > 0){ histN--; histSkip++; histQuiet = Date.now(); try { history.back(); } catch(e){ histSkip--; } } }
-function histReset(){ if (histN > 0){ const n = histN; histN = 0; histSkip++; histQuiet = Date.now(); try { history.go(-n); } catch(e){ histSkip--; } } }
-window.addEventListener("popstate", () => {
-  if (histSkip > 0){ histSkip--; try { if (location.hash !== "#" + tab) history.replaceState(history.state, "", "#" + tab); } catch(e){} return; }   // our own step back: keep the address on the tab you are on
-  if (histN > 0) histN--;
-  if ($(".back")){ closeMenu(); return; }
+/* The phone's own Back (Android back button, browser back) closes the open screen instead of leaving the app
+   (Nov 20 mobile fixes). While any screen or opened workout is showing, ONE extra step sits in the history (the
+   guard). The phone's Back uses it up: the app goes back one screen and, if a screen is still open, puts the guard
+   back. The app never moves the history itself on its own Back button or a tab switch, so a fast tap can never race
+   a history move (that raced and could walk out of the app). At the top level the phone's Back leaves, as usual. */
+let histGuard = false, guardLen = 0;
+function histPush(){ if (histGuard) return; try { history.pushState({hy: 1}, "", location.href); histGuard = true; guardLen = history.length; } catch(e){} }
+window.addEventListener("popstate", e => {
+  if (e.state && e.state.hy){ histGuard = true; return; }                // forward onto the guard again
+  const mine = histGuard && history.length <= guardLen; histGuard = false;
+  if (!mine) return;                                                     // a link or address change, not the phone's Back
+  try { if (location.hash !== "#" + tab) history.replaceState(null, "", "#" + tab); } catch(err){}   // stay on this tab
+  if ($(".back")){ closeMenu(); if (scr || actSel) histPush(); return; }
   const b = document.querySelector('.scrbar [data-act="back"], [data-act="actback"]');
-  if (b){ b.dataset.pop = "1"; b.click(); }
+  if (b){ const stay = b.dataset.act === "back" && !!SCR_UP[scr]; b.click(); if (stay) histPush(); return; }   // still a screen under this one: guard again
+  try { history.back(); } catch(err){}                                   // nothing open: the phone's Back leaves, in one press
 });
 function go(s){
   const dir = s === null || SCR_UP[scr] === s || (scr && !s) ? "back" : "fwd";
-  const pop = backFromPop; backFromPop = false;
-  if (dir === "fwd") histPush(); else if (s === null) histReset(); else if (!pop) histPop();
+  if (dir === "fwd") histPush();
   if (dir === "fwd") scrollMem[viewKey()] = window.scrollY;
   if (s === "members" && mem) mem.stale = true;
   if (s === "invites" && inv) inv.stale = true;
@@ -4127,7 +4129,6 @@ function setTab_(t, scroll, bar){
   let keep = null;
   if (bar && t !== from){ tabMem[from] = {scr: scr && !NO_KEEP.test(scr) ? scr : null, actSel, wkSel, y: window.scrollY}; keep = tabMem[t] || null; delete tabMem[t]; }
   else if (bar){ delete tabMem[t]; actSel = null; actName = null; wkSel = null; }   // tap the tab you are on: back to its top
-  if (bar) histReset();
   scr = null;
   if (!["today","plan","activities","recovery","training","more"].includes(t)) t = "today";
   tab = t; if (t !== "plan") wkSel = null; if (t !== "activities"){ actSel = null; actName = null; }
@@ -4196,7 +4197,7 @@ document.addEventListener("click", ev => {
   if (act === "aplshare"){ aplKeep(); const x = apl && acts.find(y => y.id === apl.id); if (x){ closeMenu(); shareSheet(x); } return; }
   if (act === "aplopen"){ const id = apl && apl.id; apl = null; closeMenu(); if (id) nav("fwd", () => { scr = null; tab = "activities"; actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actopen"){ const id = a.dataset.id; scrollMem[viewKey()] = window.scrollY; histPush(); nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
-  if (act === "actback"){ delete a.dataset.pop; histReset(); nav("back", () => { actSel = null; actName = null; render(); restoreScroll(viewKey()); }); return; }
+  if (act === "actback"){ nav("back", () => { actSel = null; actName = null; render(); restoreScroll(viewKey()); }); return; }
   if (act === "anedit"){ const x = acts.find(y => y.id === actSel); if (x && canRename(x)){ actName = {id: x.id, v: x.name, err: "", busy: false}; render(); const q = $("#an-q"); if (q){ q.focus(); q.select(); } } return; }
   if (act === "ancancel"){ actName = null; render(); return; }
   if (act === "anreset"){ if (actName) saveActName(actName.id, ""); return; }
@@ -4358,7 +4359,7 @@ document.addEventListener("click", ev => {
   if (act === "pwk"){ progSel = +a.dataset.i; render(); return; }
   if (act === "tab"){ setTab(a.dataset.tab2, true); return; }
   if (act === "go"){ if (a.dataset.scr === "set-report" && reportView && reportView.sent) reportView = null; go(a.dataset.scr); return; }
-  if (act === "back"){ if (a.dataset.pop){ delete a.dataset.pop; backFromPop = true; } if (scr === "set-hr") hrEdit = null; if (scr === "set-profile") pf = null; if (/^set-(email|password)$/.test(scr)) af = null; const up = SCR_UP[scr] || null; if (scr === "set-report") reportView = null; go(up); return; }
+  if (act === "back"){ if (scr === "set-hr") hrEdit = null; if (scr === "set-profile") pf = null; if (/^set-(email|password)$/.test(scr)) af = null; const up = SCR_UP[scr] || null; if (scr === "set-report") reportView = null; go(up); return; }
   if (act === "hlmake"){ api("POST", "/api/import-key").then(j => { healthKey = j.key; healthLink = {on: true, last_used: null}; go("set-health"); }).catch(e => toast(e.message)); return; }
   if (act === "rpsend"){
     const v = reportView; v.text = ($("#rp-text") || {}).value || "";
@@ -4682,7 +4683,7 @@ document.addEventListener("touchstart", () => {}, {passive: true});
 ["gesturestart", "gesturechange", "gestureend"].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
 document.addEventListener("input", ev => { if (ev.target.id === "an-q" && actName && !actName.busy) actName.v = ev.target.value; });
 document.addEventListener("submit", ev => { if (ev.target.id === "apl-form"){ ev.preventDefault(); aplSave(); return; } if (ev.target.id === "an-form"){ ev.preventDefault(); const q = $("#an-q"); if (actName) saveActName(actName.id, q ? q.value : actName.v); return; } if (ev.target.id === "askform"){ ev.preventDefault(); const q = $("#ask-q"); askSend(q ? q.value : ""); return; } if (ev.target.id === "rs-form"){ ev.preventDefault(); if (!rsv.busy) rsSearch(); return; } if (ev.target.id === "authform"){ ev.preventDefault(); if (!authv.busy) submitAuth(); } });
-window.addEventListener("hashchange", () => { if (Date.now() - histQuiet < 1500) return; if (!setup && plan) setTab(location.hash.slice(1), true); });
+window.addEventListener("hashchange", () => { if (location.hash.slice(1) === tab) return; if (!setup && plan) setTab(location.hash.slice(1), true); });
 
 tab = ["today","plan","activities","recovery","training","more"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "today";
 render();
