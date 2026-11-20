@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#800000">
+<meta name="color-scheme" content="dark">
 <title>Mileset</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -47,7 +48,7 @@
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html{background:var(--bg);-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:pan-x pan-y pinch-zoom;overscroll-behavior-y:none}
+html{background:var(--bg);color-scheme:dark;-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:pan-x pan-y pinch-zoom;overscroll-behavior-y:none}
 body{touch-action:pan-x pan-y pinch-zoom}
 @media (pointer:coarse){input,select,textarea{font-size:16px!important}}
 html,body{overflow-x:clip;max-width:100%}
@@ -64,9 +65,9 @@ button{cursor:pointer}
 
 /* header */
 .top{display:flex;align-items:center;gap:12px}
-.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;flex:none}
 .logo{width:36px;height:36px;border-radius:5px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent-2),var(--accent));flex:none}
-.logo svg{width:20px;height:20px} .logo svg.mark{width:12px;height:26px;color:#fff} .logo.hdr{width:auto;background:none;padding:0 2px} .logo.hdr svg.mark{width:16px;height:34px} .brand b.word{font-weight:900;letter-spacing:.08em}
+.logo svg{width:20px;height:20px} .logo svg.mark{width:12px;height:26px;color:#fff} .logo.hdr{width:auto;background:none;padding:0 2px} .logo.hdr svg.mark{width:12px;height:30px} .brand b.word{font-weight:900;letter-spacing:.08em;white-space:nowrap}
 .brand b{font:800 19px/1 var(--f-display);letter-spacing:-.02em}
 .pill{display:inline-flex;align-items:center;gap:6px;border-radius:6px;padding:4px 10px;font:600 12px/1.2 var(--f-body);background:var(--sunk);color:var(--muted);white-space:nowrap}
 .pill.demo{background:color-mix(in srgb,var(--work) 16%,transparent);color:var(--work)}
@@ -403,7 +404,7 @@ button{cursor:pointer}
   display:grid;place-items:center;opacity:0;transform:translateY(-50px);will-change:transform,opacity;pointer-events:none}
 #ptr svg{width:20px;height:20px;fill:none;stroke:var(--accent-2);stroke-width:2.4;stroke-linecap:round}
 #ptr.go svg{animation:spin .7s linear infinite}
-#ptr.back{transition:transform .25s ease,opacity .25s ease}
+#ptr.ptr-back{transition:transform .25s ease,opacity .25s ease}
 #app.pulling{will-change:transform} #app.settle{transition:transform .25s ease}
 .wdate{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--muted);font-weight:500}.wdate input{flex:1;max-width:190px;min-height:38px;font-size:14px}
 .wrng{margin-left:auto;display:flex;gap:2px;background:var(--sunk);border-radius:6px;padding:2px}.wrng button{border:0;background:none;color:var(--muted);font:600 12px var(--f-body);padding:5px 9px;border-radius:5px}.wrng button.on{background:var(--card,#1a1d24);color:var(--ink)}
@@ -494,7 +495,7 @@ body.has-ask .wrap{padding-bottom:calc(176px + env(safe-area-inset-bottom,0px))}
 .ask-f .btn{flex:none;width:40px;height:40px;min-height:40px;padding:0;border-radius:50%;display:grid;place-items:center} .ask-f .btn svg{width:18px;height:18px} .ask-f .btn:disabled{opacity:.45}
 /* smoother everywhere (Nov 18) */
 .view.stagger > *{animation:ask-in .32s cubic-bezier(.2,.8,.3,1) both} .view.stagger > :nth-child(2){animation-delay:.03s} .view.stagger > :nth-child(3){animation-delay:.06s} .view.stagger > :nth-child(4){animation-delay:.09s} .view.stagger > :nth-child(5){animation-delay:.12s} .view.stagger > :nth-child(n+6){animation-delay:.15s}
-button,.tl,.pc,.scard,.srow,.act,.actc,.deep,.day,.sd{-webkit-tap-highlight-color:transparent}
+*,button,.tl,.pc,.scard,.srow,.act,.actc,.deep,.day,.sd{-webkit-tap-highlight-color:transparent}
 .btn,.srow,.scard,.deep,.sd,.chip,.hcheck,.hsee,.arrow,.iconbtn{transition:transform .12s ease,background-color .15s ease,opacity .15s ease,border-color .15s ease}
 .btn:active,.hcheck:active,.arrow:active,.iconbtn:active,.sd:active{transform:scale(.96)} .srow:active,.deep:active{transform:scale(.985)}
 .bar i,.wbar i,.fbars i{transition:width .6s cubic-bezier(.2,.8,.3,1)}
@@ -876,12 +877,12 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .feelq{margin:10px 0 8px!important;font-weight:600;color:var(--ink)!important}.feel{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.feel button{border:1px solid var(--line);background:var(--sunk);color:var(--ink);border-radius:7px;padding:10px 2px;font:600 12.5px/1.1 var(--f-body)}.feel button:active{transform:scale(.96)}.feel button:disabled{opacity:.5}.feelnote{margin-top:8px;width:100%;min-height:40px;font-size:14px}
 
 /* plainer finish: flat tints instead of diagonal gradients and glows */
-.logo,.getapp,.steps-bar i.on{background:var(--accent)} .getapp{box-shadow:none}
+.logo,.getapp,.steps-bar i.on{background:var(--accent)} .logo:not(.hdr){background:#BE383E} .getapp{box-shadow:none}
 .hero-h{background:color-mix(in srgb,var(--tc) 34%,#111318)}
 .hub-hero{background:#14161C}
 .day-h{background:#16181E;border-bottom:1px solid #22252E} .day-h b{color:var(--ink)} .day-h b:before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--tc);margin-right:9px;vertical-align:2px}
 .day.t-rest .day-h b{color:var(--muted)} .day.today .day-h{background-color:#16181E;background-image:linear-gradient(90deg,color-mix(in srgb,var(--accent) 22%,#16181E),#16181E 70%)}
-.day.past{opacity:.6} .day.past:active,.day.past:focus-within{opacity:1}   /* days already behind you this week step back (Nov 18) */
+.day.past{opacity:.6} .day.past:has(:focus-visible){opacity:1}   /* days already behind you this week step back (Nov 18) */
 .weekhead-card{touch-action:pan-y}   /* the rest-day grey was 4.1:1 on its own header */
 .verdict{background:color-mix(in srgb,var(--good) 10%,#14161C)} .verdict.v1{background:color-mix(in srgb,var(--work) 10%,#14161C)} .verdict.v2{background:color-mix(in srgb,var(--race) 10%,#14161C)}
 .inst{background:color-mix(in srgb,var(--accent) 12%,#14161C)}
@@ -944,6 +945,15 @@ a.scard{text-decoration:none;color:var(--ink)}
 .view > .hello > .racecd{margin-top:0;border-bottom:0;padding-top:18px;padding-bottom:18px}
 .view > .segsw{margin-inline:20px;padding:4px}
 .card > .wsum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+/* Mileset mark: a solid white bolt, never shadowed, dimmed or cut off (Nov 20 mobile fixes) */
+.logo svg.mark{overflow:visible;filter:none;opacity:1;color:#fff;stroke-width:30}
+.top .pill.demo{flex:none}
+@media (max-width:374px){.getapp span{display:none}.getapp{padding:0 11px}}
+/* back button stays reachable while you scroll a screen (Nov 20 mobile fixes) */
+.view > .scrbar{top:0;margin-top:calc(-1 * env(safe-area-inset-top,0px));padding-top:max(8px,env(safe-area-inset-top,0px))}
+.view > .adet-h{top:var(--toph,0px);padding-top:8px}   /* a workout opens under the sticky Mileset header, so its back row sticks just below it */
+.view > .scrbar,.view > .adet-h{position:sticky;z-index:24;padding-bottom:8px;
+  background:color-mix(in srgb,var(--bg) 96%,transparent);-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%)}
 /* header: sticky, see-through */
 .wrap > .top{position:sticky;top:0;z-index:25;padding:max(10px,env(safe-area-inset-top,0px)) 20px 10px;margin-top:calc(-1 * env(safe-area-inset-top,0px));
   background:color-mix(in srgb,var(--bg) 84%,transparent);-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%)}
@@ -971,7 +981,7 @@ a.scard{text-decoration:none;color:var(--ink)}
 .btn:active,.card[data-act]:active,.actc:active{transform:scale(.985)}
 .btn{border-radius:10px}
 /* screens arrive with a short cross-fade (the app already uses view transitions to move between screens) */
-::view-transition-old(root){animation:ui-out .16s ease both} ::view-transition-new(root){animation:ui-in .26s var(--ease) both}
+::view-transition-old(root){animation:none} ::view-transition-new(root){animation:ui-in .22s var(--ease) both}   /* the new screen fades in OVER the old one: no dip to a blank page between them (the Plan tab flickered dark/light) */
 @keyframes ui-out{to{opacity:0}} @keyframes ui-in{from{opacity:0;transform:translateY(8px)}}
 @media (prefers-reduced-motion:reduce){.back,.sheet{animation:none}::view-transition-old(root),::view-transition-new(root){animation:none}.btn:active,.card[data-act]:active,.actc:active{transform:none}}
 /* big screens: keep a centred column, rounded like a phone screen */
@@ -1284,7 +1294,7 @@ function whenTxt(a){
 function actStats(a, big){
   const st = [];
   if (a.mi > 0) st.push(["Distance", r2(a.mi) + ' mi']);
-  if (a.type === "run" && a.mi > 0 && a.minutes > 0) st.push(["Pace", fmtPace(a.minutes * 60 / a.mi) + '/mi']);
+  if (a.type === "run" && a.mi > 0 && a.minutes > 0) st.push(["Pace", fmtPace(HP.runSecs(a) / a.mi) + '/mi']);
   if (a.type === "bike" && a.mi > 0 && a.minutes > 0) st.push(["Speed", (Math.round(a.mi / a.minutes * 600) / 10) + ' mph']);
   if (a.minutes) st.push(["Time", durTxt(a.minutes)]);
   if (big || st.length < 3){ if (a.avg_hr) st.push(["Avg HR", a.avg_hr + ' bpm' + (big && zoneOf(a.avg_hr) ? ' · Z' + zoneOf(a.avg_hr) : '')]); }
@@ -1634,7 +1644,7 @@ function mountMaps(){
     const big = !!el.dataset.big, cs = getComputedStyle(document.documentElement);
     const col = "#FF5A5F";
     el.innerHTML = "";
-    const m = L.map(el, {zoomControl: false, attributionControl: true, dragging: big, touchZoom: big, doubleClickZoom: big, scrollWheelZoom: false, boxZoom: false, keyboard: false, tap: false});
+    const m = L.map(el, {zoomControl: false, attributionControl: true, dragging: big && !matchMedia("(pointer:coarse)").matches, touchZoom: big, doubleClickZoom: big, scrollWheelZoom: false, boxZoom: false, keyboard: false, tap: false});
     const tl = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, detectRetina: true, className: "dark-tiles", attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(m);
     let okT = 0, badT = 0; tl.on("tileload", () => okT++);
     tl.on("tileerror", () => { if (++badT >= 4 && !okT && el._map){ el._map.remove(); el._map = null; el.dataset.fallback = "1"; el.innerHTML = routeSvg(pts); } });
@@ -1782,11 +1792,12 @@ document.addEventListener("focusout", () => setTimeout(reloadIfIdle, 400));
 (function(){
   const ptr = document.getElementById("ptr"), appEl = document.getElementById("app"), MAX = 120, GO = 72;
   let y0 = null, d = 0, busy = false;
-  const blocked = () => !plan || setup || authv || loading || $(".back") || window.scrollY > 0;
+  const blocked = () => !plan || setup || authv || loading || $(".back:not(#ptr)") || $(".sheet") || window.scrollY > 0;
+  const inner = t => { for (let n = t; n && n !== document.body; n = n.parentElement){ if (n.nodeType !== 1) continue; if (n.matches(".leaflet-container,.amap,input,textarea,select,[contenteditable]")) return true; if (n.scrollTop > 0 && n.scrollHeight > n.clientHeight + 1) return true; } return false; };
   const show = (dist, spin) => { const p = Math.min(1, dist / GO); ptr.style.opacity = p; ptr.style.transform = "translateY(" + (Math.min(dist, MAX) * .6 - 50 + 50 * p) + "px) rotate(" + dist * 3 + "deg)"; appEl.style.transform = dist ? "translateY(" + Math.min(dist, MAX) * .4 + "px)" : ""; if (spin) ptr.classList.add("go"); };
-  const reset = () => { ptr.classList.add("back"); appEl.classList.add("settle"); ptr.style.opacity = 0; ptr.style.transform = "translateY(-50px)"; appEl.style.transform = ""; ptr.classList.remove("go");
-    setTimeout(() => { ptr.classList.remove("back"); appEl.classList.remove("settle"); }, 260); };
-  addEventListener("touchstart", e => { if (busy || blocked() || e.touches.length !== 1 || e.touches[0].clientX <= 28) { y0 = null; return; } y0 = e.touches[0].clientY; d = 0; appEl.classList.add("pulling"); }, {passive: true});
+  const reset = () => { ptr.classList.add("ptr-back"); appEl.classList.add("settle"); ptr.style.opacity = 0; ptr.style.transform = "translateY(-50px)"; appEl.style.transform = ""; ptr.classList.remove("go");
+    setTimeout(() => { ptr.classList.remove("ptr-back"); appEl.classList.remove("settle"); }, 260); };
+  addEventListener("touchstart", e => { if (busy || blocked() || e.touches.length !== 1 || e.touches[0].clientX <= 28 || inner(e.target)) { y0 = null; return; } y0 = e.touches[0].clientY; d = 0; appEl.classList.add("pulling"); }, {passive: true});
   addEventListener("touchmove", e => {
     if (y0 == null) return;
     const dy = e.touches[0].clientY - y0;
@@ -1794,6 +1805,7 @@ document.addEventListener("focusout", () => setTimeout(reloadIfIdle, 400));
     d = dy * .55; show(d);
     if (e.cancelable) e.preventDefault();
   }, {passive: false});
+  addEventListener("touchcancel", () => { if (y0 == null) return; y0 = null; d = 0; appEl.classList.remove("pulling"); if (!busy) reset(); });
   addEventListener("touchend", async () => {
     if (y0 == null) return; y0 = null; appEl.classList.remove("pulling");
     if (d < GO){ reset(); return; }
@@ -3387,6 +3399,7 @@ function render(){
   if (scr && !SCR_T[scr]) scr = null;
   const keepMaps = {}; app.querySelectorAll(".amap[data-map]").forEach(e => { if (e._map) keepMaps[e.dataset.map + "|" + (e.dataset.big || "")] = e; });   // reuse live maps: no flash, no re-download
   app.innerHTML = (scr ? '' : header()) + '<div class="view' + (navDir ? ' nav-' + navDir : '') + '" style="display:grid;gap:22px">' + (scr ? renderScreen() : tab === "plan" ? renderPlan() : tab === "recovery" ? progSwitch("recovery") + renderRecovery() : tab === "training" ? progSwitch("training") + renderTraining() : tab === "more" ? renderMore() : tab === "activities" ? renderActivities() : renderToday()) + '</div>';
+  { const tp = app.querySelector(".wrap > .top, #app > .top"); if (tp) document.documentElement.style.setProperty("--toph", tp.offsetHeight + "px"); }
   app.querySelectorAll(".amap[data-map]").forEach(n => { const o = keepMaps[n.dataset.map + "|" + (n.dataset.big || "")]; if (o && o !== n){ n.replaceWith(o); try { o._map.invalidateSize(false); } catch(e){} } });
   if ((tab === "activities" || scr) && app.querySelector(".amap[data-map]")) mountMaps();
 }
@@ -3930,8 +3943,26 @@ function nav(dir, fn){
 const scrollMem = {};
 const viewKey = () => scr ? "scr:" + scr : "tab:" + tab + (tab === "activities" && actSel ? ":" + actSel : "");
 function restoreScroll(key){ const y = scrollMem[key] || 0; delete scrollMem[key]; window.scrollTo(0, y); if (y) requestAnimationFrame(() => window.scrollTo(0, y)); }
+/* The phone's own Back (Android back button, browser back) closes the open screen instead of leaving the app
+   (Nov 20 mobile fixes). While any screen or opened workout is showing, ONE extra step sits in the history (the
+   guard). The phone's Back uses it up: the app goes back one screen and, if a screen is still open, puts the guard
+   back. The app never moves the history itself on its own Back button or a tab switch, so a fast tap can never race
+   a history move (that raced and could walk out of the app). At the top level the phone's Back leaves, as usual. */
+let histGuard = false, guardLen = 0;
+function histPush(){ if (histGuard) return; try { history.pushState({hy: 1}, "", location.href); histGuard = true; guardLen = history.length; } catch(e){} }
+window.addEventListener("popstate", e => {
+  if (e.state && e.state.hy){ histGuard = true; return; }                // forward onto the guard again
+  const mine = histGuard && history.length <= guardLen; histGuard = false;
+  if (!mine) return;                                                     // a link or address change, not the phone's Back
+  try { if (location.hash !== "#" + tab) history.replaceState(null, "", "#" + tab); } catch(err){}   // stay on this tab
+  if ($(".back")){ closeMenu(); if (scr || actSel) histPush(); return; }
+  const b = document.querySelector('.scrbar [data-act="back"], [data-act="actback"]');
+  if (b){ const stay = b.dataset.act === "back" && !!SCR_UP[scr]; b.click(); if (stay) histPush(); return; }   // still a screen under this one: guard again
+  try { history.back(); } catch(err){}                                   // nothing open: the phone's Back leaves, in one press
+});
 function go(s){
   const dir = s === null || SCR_UP[scr] === s || (scr && !s) ? "back" : "fwd";
+  if (dir === "fwd") histPush();
   if (dir === "fwd") scrollMem[viewKey()] = window.scrollY;
   if (s === "members" && mem) mem.stale = true;
   if (s === "invites" && inv) inv.stale = true;
@@ -4105,15 +4136,24 @@ function faqHtml(){
   return '<section class="card faq">' + FAQ.map(([q, a]) => '<details><summary>' + esc(q) + '</summary><p>' + esc(a) + '</p></details>').join("") + '</section>' +
     '<p class="sub" style="text-align:center">Still stuck? <button class="linkbtn inl" type="button" data-act="go" data-scr="set-report">Report a problem</button></p>';
 }
-function setTab(t, scroll){ nav("fade", () => setTab_(t, scroll)); }
-function setTab_(t, scroll){
-  const toPlan = t === "plan" && tab !== "plan";
+function setTab(t, scroll, bar){ nav("fade", () => setTab_(t, scroll, bar)); }
+/* Each tab keeps its place (Nov 20, Matthew: "preserve sub-view state and scroll across tab switches"): leave Plan on
+   week 6 or Activities on a run, tap Today, come back with the tab bar and you are where you were, same scroll.
+   Tapping the tab you are already on goes back to its top level, like any phone app. Other ways in (links, buttons,
+   the URL) still open the tab fresh. Screens that hold a half-typed form never come back on their own. */
+const tabMem = {}, NO_KEEP = /^set-(email|password|account|report|profile|hr)$/;
+function setTab_(t, scroll, bar){
+  const toPlan = t === "plan" && tab !== "plan", from = tab;
+  let keep = null;
+  if (bar && t !== from){ tabMem[from] = {scr: scr && !NO_KEEP.test(scr) ? scr : null, actSel, wkSel, y: window.scrollY}; keep = tabMem[t] || null; delete tabMem[t]; }
+  else if (bar){ delete tabMem[t]; actSel = null; actName = null; wkSel = null; }   // tap the tab you are on: back to its top
   scr = null;
   if (!["today","plan","activities","recovery","training","more"].includes(t)) t = "today";
   tab = t; if (t !== "plan") wkSel = null; if (t !== "activities"){ actSel = null; actName = null; }
   try { if (location.hash !== "#" + t) history.replaceState(null, "", "#" + t); } catch(e){}
-  render(); if (scroll) window.scrollTo(0, 0);
-  if (!reduceMotion){ const v = app.querySelector(".view"); if (v){ v.classList.add("stagger"); setTimeout(() => v.classList.remove("stagger"), 700); } }   // cards ease in one after another (Nov 18: "smoother")
+  if (keep){ if (keep.scr && SCR_T[keep.scr] !== undefined) scr = keep.scr; if (t === "plan" && keep.wkSel != null) wkSel = keep.wkSel; if (t === "activities" && keep.actSel && acts.some(x => x.id === keep.actSel)) actSel = keep.actSel; if (scr || actSel) histPush(); }
+  render(); if (keep){ const y = keep.y || 0; window.scrollTo(0, y); if (y) requestAnimationFrame(() => window.scrollTo(0, y)); } else if (scroll) window.scrollTo(0, 0);
+  if (!keep && !reduceMotion && !document.documentElement.dataset.nav){ const v = app.querySelector(".view"); if (v){ v.classList.add("stagger"); setTimeout(() => v.classList.remove("stagger"), 700); } }   // cards ease in one after another (Nov 18: "smoother")
   if (toPlan && plan && !scroll){ const el = document.getElementById("d-" + TODAY); if (el && el.getBoundingClientRect().top > innerHeight * .6) requestAnimationFrame(() => el.scrollIntoView({block: "start", behavior: reduceMotion ? "auto" : "smooth"})); }
 }
 { let sx = null, sy = 0;   // swipe the week card (Nov 18: "swipe between weeks")
@@ -4123,7 +4163,7 @@ function setTab_(t, scroll){
 
 document.addEventListener("keydown", ev => { if ((ev.key === "Enter" || ev.key === " ") && ev.target.getAttribute && ev.target.getAttribute("role") === "button" && ev.target.dataset.act){ ev.preventDefault(); ev.target.click(); } });
 document.addEventListener("click", ev => {
-  const tb = ev.target.closest("[data-tab]"); if (tb && tb.closest("#tabbar")){ setTab(tb.dataset.tab, true); return; }
+  const tb = ev.target.closest("[data-tab]"); if (tb && tb.closest("#tabbar")){ setTab(tb.dataset.tab, true, true); return; }
   if (ev.target.classList && ev.target.classList.contains("back")){ closeMenu(); return; }
   const a = ev.target.closest("[data-act]"); if (!a) return;
   const act = a.dataset.act;
@@ -4176,7 +4216,7 @@ document.addEventListener("click", ev => {
   if (act === "aedit"){ const x = acts.find(y => y.id === a.dataset.id); if (x && canEdit(x)) aplOpen(x, false); return; }
   if (act === "aplshare"){ aplKeep(); const x = apl && acts.find(y => y.id === apl.id); if (x){ closeMenu(); shareSheet(x); } return; }
   if (act === "aplopen"){ const id = apl && apl.id; apl = null; closeMenu(); if (id) nav("fwd", () => { scr = null; tab = "activities"; actSel = id; render(); window.scrollTo(0, 0); }); return; }
-  if (act === "actopen"){ const id = a.dataset.id; scrollMem[viewKey()] = window.scrollY; nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
+  if (act === "actopen"){ const id = a.dataset.id; scrollMem[viewKey()] = window.scrollY; histPush(); nav("fwd", () => { actSel = id; render(); window.scrollTo(0, 0); }); return; }
   if (act === "actback"){ nav("back", () => { actSel = null; actName = null; render(); restoreScroll(viewKey()); }); return; }
   if (act === "anedit"){ const x = acts.find(y => y.id === actSel); if (x && canRename(x)){ actName = {id: x.id, v: x.name, err: "", busy: false}; render(); const q = $("#an-q"); if (q){ q.focus(); q.select(); } } return; }
   if (act === "ancancel"){ actName = null; render(); return; }
@@ -4664,7 +4704,7 @@ document.addEventListener("touchstart", () => {}, {passive: true});
 ["gesturestart", "gesturechange", "gestureend"].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
 document.addEventListener("input", ev => { if (ev.target.id === "an-q" && actName && !actName.busy) actName.v = ev.target.value; });
 document.addEventListener("submit", ev => { if (ev.target.id === "apl-form"){ ev.preventDefault(); aplSave(); return; } if (ev.target.id === "an-form"){ ev.preventDefault(); const q = $("#an-q"); if (actName) saveActName(actName.id, q ? q.value : actName.v); return; } if (ev.target.id === "askform"){ ev.preventDefault(); const q = $("#ask-q"); askSend(q ? q.value : ""); return; } if (ev.target.id === "rs-form"){ ev.preventDefault(); if (!rsv.busy) rsSearch(); return; } if (ev.target.id === "authform"){ ev.preventDefault(); if (!authv.busy) submitAuth(); } });
-window.addEventListener("hashchange", () => { if (!setup && plan) setTab(location.hash.slice(1), true); });
+window.addEventListener("hashchange", () => { if (location.hash.slice(1) === tab) return; if (!setup && plan) setTab(location.hash.slice(1), true); });
 
 tab = ["today","plan","activities","recovery","training","more"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "today";
 render();
