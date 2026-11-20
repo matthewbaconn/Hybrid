@@ -360,12 +360,18 @@ await check("Ask bar: shows only when the server says so; ask, confirm a move, p
   // Switch the preview on for this account in the app's view only, with a stand-in coach (no AI call, nothing leaves the test).
   await tab("plan"); await page.waitForSelector(".day-h .mvb");
   // a future day with a workout whose next day is a valid target (a rest day can carry a Move button too, and the coach's
-  // Move is only offered for a day that has sessions: picking the first future day failed on days the plan rests, Nov 18)
-  const pick = await page.evaluate(() => { const today = HP.isoLocal(new Date());
-    for (const d of [...document.querySelectorAll(".day-h .mvb")].map(b => b.dataset.date).filter(d => d > today)){
-      const t = HP.addDays(d, 1), a = document.getElementById("d-" + d), b = document.getElementById("d-" + t);
-      if (a && !a.classList.contains("t-rest") && b && !b.classList.contains("t-race")) return [d, t]; }
-    return null; });
+  // Move is only offered for a day that has sessions: picking the first future day failed on days the plan rests, Nov 18).
+  // Look at this week AND next week: late in the week the days left can all be rest days, or the next day is the following
+  // Monday, which isn't on screen (failed on a Friday, Nov 20). The app checks the move against the plan, not the screen.
+  const seen = {}, look = () => page.evaluate(() => [...document.querySelectorAll(".day[id^='d-']")].map(el => ({date: el.id.slice(2), rest: el.classList.contains("t-rest"), race: el.classList.contains("t-race"), mv: !!el.querySelector(".day-h .mvb")})));
+  for (const x of await look()) seen[x.date] = x;
+  const nextWk = page.locator('.weekhead [data-act="wk"][data-dir="1"]');
+  if (await nextWk.count() && await nextWk.isEnabled()){ await nextWk.click(); await page.waitForTimeout(300); for (const x of await look()) seen[x.date] = x; }
+  const today = await page.evaluate(() => HP.isoLocal(new Date()));
+  let pick = null;
+  for (const d of Object.keys(seen).sort()){ if (d <= today) continue;
+    const t = await page.evaluate(x => HP.addDays(x, 1), d), A = seen[d], B = seen[t];
+    if (A.mv && !A.rest && B && !B.race){ pick = [d, t]; break; } }
   if (!pick) throw new Error("no future workout day to move in the test plan");
   const [from, to] = pick, asked = [];
   const me = async route => { const r = await route.fetch(); const j = await r.json(); j.features = {ask: true}; await route.fulfill({response: r, json: j}); };
