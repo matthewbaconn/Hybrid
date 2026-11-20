@@ -21,7 +21,7 @@ const lastActiveDay = (m, today) => [localDay(m.last_seen), m.last_day && m.last
   .filter(Boolean).sort().pop() || null;
 const r5 = x => Math.round(x / 5) * 5;
 const half = x => Math.round(x * 2) / 2;
-const fmtPace = s => { s = Math.round(s); return Math.floor(s / 60) + ":" + pad(s % 60); };
+const fmtPace = s => { s = Math.round(Number(s)); if (!isFinite(s) || s <= 0 || s >= 3600) return "–:––"; return Math.floor(s / 60) + ":" + pad(s % 60); };   // no NaN:NaN, 0:00 or 999:59 on a bad or missing distance
 const fmtTime = s => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? h + ":" + pad(m) + ":" + pad(x) : m + ":" + pad(x); };
 // "2410" -> "24:10", "14500" -> "1:45:00": colons fill in from the right (seconds, minutes, hours)
 const fmtDigits = v => { const d = String(v).replace(/\D/g, "").replace(/^0+(?=\d{3})/, "").slice(0, 6); if (d.length <= 2) return d;
@@ -887,6 +887,14 @@ function applyVenues(plan){
   })));
   return plan;
 }
+/* a run's moving time in seconds: minutes are stored whole, so a 24:29 5K would read 24:00 and the pace would be off by up to 10 s/mi; the laps carry the exact seconds */
+function runSecs(a){
+  const m = (+a.minutes || 0) * 60; let laps = null;
+  try { laps = a.laps ? (typeof a.laps === "string" ? JSON.parse(a.laps) : a.laps) : null; } catch(e){}
+  if (!Array.isArray(laps) || !laps.length) return m;
+  let mt = 0, sec = 0; for (const l of laps){ if (!Array.isArray(l)) return m; mt += +l[0] || 0; sec += +l[1] || 0; }
+  return sec > 0 && Math.abs(sec - m) <= 60 && Math.abs(mt / 1609.34 - a.mi) <= Math.max(.05, a.mi * .03) ? sec : m;
+}
 const mph = secPerMi => Math.round(3600 / secPerMi * 10) / 10;
 function garminWorkout(plan, s, offs, extra, date){
   if (!s || s.type === "lift" || s.type === "walk" || (s.type === "race" && s.multi)) return null;
@@ -1125,5 +1133,5 @@ function swapCheck(plan, a, b, dropA){        // dropA: a is a missed day, so wh
   return scan().filter(m => !before.includes(m));   // only what this move adds, not what the week already had
 }
 
-root.HP = {zonesFrom, hrFor, targetOf, HR_PCT, cyclePhase, cycleAdvice, cyclePattern, CYCLE, CYCLE_SYM, applyVenues, mph, sportOf, effortOf, loadOf, actSummary, SPORTS, PLAN_RPE, cleanSession, alternatives, library, exAlts, exAll, exGroup, applySwaps, swapCheck, isHard, garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, PLAN_V, sleepOutlier, stressNudge, pad, isoLocal, localDay, lastActiveDay, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
+root.HP = {zonesFrom, hrFor, targetOf, HR_PCT, cyclePhase, cycleAdvice, cyclePattern, CYCLE, CYCLE_SYM, applyVenues, mph, sportOf, effortOf, loadOf, actSummary, SPORTS, PLAN_RPE, cleanSession, alternatives, library, exAlts, exAll, exGroup, applySwaps, swapCheck, isHard, garminWorkout, bmrOf, BODY_GOAL, heatPct, bestWindow, sessionMinutes, fuelTip, raceSplits, PLAN_V, sleepOutlier, stressNudge, pad, isoLocal, localDay, lastActiveDay, parseD, addDays, daysBetween, dow, mondayOf, DAYS, DAYF, MON, fmtD, r5, half, fmtPace, runSecs, fmtTime, fmtDigits, parseTime, comma, RACES, SWIM_EVENTS, BIKE_EVENTS, raceName, isMulti, hm, LONG_CAP, LONG_GOAL, PEAK, TAPER, riegel, fitnessFrom, LIFTS, LIFT_SETS, pace, PNAME, workoutFor, buildPlan, avgW, weekIdx, dayOf, readiness, devSignals, ADJ, dayMatches, PACE_KEYS, workPace, paceRange, assess, feedback, withExtraRep, deficitFor, burnOf, plannedBurn, fuel};
 })(typeof globalThis !== "undefined" ? globalThis : self);
