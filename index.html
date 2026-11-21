@@ -1031,14 +1031,25 @@ const setupDraft = {
   get(uid){ try { const d = JSON.parse(localStorage.getItem("hp-setup") || "null"); return d && d.uid === uid && d.p && Date.now() - (d.ts || 0) < 30 * 864e5 ? d : null; } catch(e){ return null; } },
   set(uid, st){ try { localStorage.setItem("hp-setup", JSON.stringify({uid, step: st.step, p: st.p, ts: Date.now()})); } catch(e){} },
   clear(){ try { localStorage.removeItem("hp-setup"); } catch(e){} } };
-// the app lives at app.hybrdrunning.com: the old addresses (github.io, app.hybridrunnin.com) forward here and carry the login along
+// the app's home: app.hybrdrunning.com, then app.milesetapp.com once the server says so (Nov 21, /api/home). Older addresses
+// forward a browser tab there and carry the login along (#move=<token>) and the #part it was opened with (&then=...).
+// An icon on the Home Screen stays where it is: its login, workout reminders and the icon itself belong to that address.
 let movedHere = false;
+const isStandalone = (() => { try { return matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; } catch(e){ return false; } })();
+const hash0 = location.hash;   // the #part it was opened with, before anything below rewrites it
+function moveApp(host, h = location.hash){ const t0 = tokenStore.get(), then = h && !/^#(move=|moved|reset=)/.test(h) ? "&then=" + encodeURIComponent(h.slice(1)) : "";
+  location.replace("https://" + host + "/" + location.search + (t0 && /^[a-f0-9]{64}$/.test(t0) ? "#move=" + t0 : "#moved") + then); }
 try { const rf = new URLSearchParams(location.search).get("ref"); if (/^[a-f0-9]{8}$/.test(rf || "")) localStorage.setItem("hp-ref", rf); } catch(e){}
-try { const sp = new URLSearchParams(location.search), rh = (() => { try { return document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, "") : ""; } catch(e){ return ""; } })(), rs = !rh || rh === location.hostname || sp.get("ref") ? "" : /(^|\.)hybrdrunning\.com$/.test(rh) ? "site" : /instagram\.com$/.test(rh) ? "ig" : /(facebook\.com|fb\.com|fb\.me)$/.test(rh) ? "fb" : /(^|\.)google\./.test(rh) ? "google" : /tiktok\.com$/.test(rh) ? "tiktok" : /reddit\.com$/.test(rh) ? "reddit" : /(^t\.co|x\.com|twitter\.com)$/.test(rh) ? "x" : "ref-other", sv = String(sp.get("src") || sp.get("utm_source") || (sp.get("fbclid") ? "fb" : "") || rs).toLowerCase(); if (/^[a-z0-9_-]{1,24}$/.test(sv) && !localStorage.getItem("hp-src")) localStorage.setItem("hp-src", sv); } catch(e){}   // first source wins
-if (/^#move=[a-f0-9]{64}$/.test(location.hash)){ if (!tokenStore.get()) tokenStore.set(location.hash.slice(6)); movedHere = true;   // never replaces a login that is already here: a crafted link can't switch someone into another account
-  try { history.replaceState(null, "", location.pathname + location.search + "#today"); } catch(e){} }
-else if (location.hash === "#moved"){ movedHere = true; try { history.replaceState(null, "", location.pathname + location.search + "#today"); } catch(e){} }
-if (location.hostname === "matthewbaconn.github.io" || location.hostname === "app.hybridrunnin.com"){ const t0 = tokenStore.get(); location.replace("https://app.hybrdrunning.com/" + location.search + (t0 && /^[a-f0-9]{64}$/.test(t0) ? "#move=" + t0 : "#moved")); }
+try { const sp = new URLSearchParams(location.search), rh = (() => { try { return document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, "") : ""; } catch(e){ return ""; } })(), rs = !rh || rh === location.hostname || sp.get("ref") ? "" : /(^|\.)(hybrdrunning|milesetapp)\.com$/.test(rh) ? "site" : /instagram\.com$/.test(rh) ? "ig" : /(facebook\.com|fb\.com|fb\.me)$/.test(rh) ? "fb" : /(^|\.)google\./.test(rh) ? "google" : /tiktok\.com$/.test(rh) ? "tiktok" : /reddit\.com$/.test(rh) ? "reddit" : /(^t\.co|x\.com|twitter\.com)$/.test(rh) ? "x" : "ref-other", sv = String(sp.get("src") || sp.get("utm_source") || (sp.get("fbclid") ? "fb" : "") || rs).toLowerCase(); if (/^[a-z0-9_-]{1,24}$/.test(sv) && !localStorage.getItem("hp-src")) localStorage.setItem("hp-src", sv); } catch(e){}   // first source wins
+{ const mv = location.hash.match(/^#(?:move=([a-f0-9]{64})|moved)(?:&then=([^&]*))?$/);
+  if (mv){ if (mv[1] && !tokenStore.get()) tokenStore.set(mv[1]); movedHere = true;   // never replaces a login that is already here: a crafted link can't switch someone into another account
+    let then = ""; try { then = mv[2] ? decodeURIComponent(mv[2]) : ""; } catch(e){}
+    if (/^#?move=|^#?moved/.test(then)) then = "";
+    try { history.replaceState(null, "", location.pathname + location.search + "#" + (then.replace(/^#/, "") || "today")); } catch(e){} } }
+if (location.hostname === "matthewbaconn.github.io" || location.hostname === "app.hybridrunnin.com") moveApp("app.hybrdrunning.com");
+else if (location.hostname === "app.hybrdrunning.com" && !isStandalone && API)
+  fetch(API + "/api/home").then(r => r.json()).then(j => { const m = j && j.live ? /^https:\/\/(app\.milesetapp\.com)\/$/.exec(j.app || "") : null;
+    if (m && m[1] !== location.hostname && !resetCode) moveApp(m[1], hash0); }).catch(() => {});   // mid password reset: it finishes here first
 // "forgot password" email link: #reset=<code> opens the new-password form
 let resetCode = null;
 if (/^#reset=[a-f0-9]{64}$/.test(location.hash)){ resetCode = location.hash.slice(7); try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} }
@@ -3709,7 +3720,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "119";
+const APP_VERSION = "120";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */

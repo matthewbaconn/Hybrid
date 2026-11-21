@@ -78,4 +78,10 @@ catch(e){ failed++; console.log("::error::report kind test failed"); }
 // The visitor-kind diagnostic test (Nov 17) rides along for the same reason.
 try { execFileSync("node", [new URL("./visits.mjs", import.meta.url).pathname], {stdio: "inherit"}); }
 catch(e){ failed++; console.log("::error::visitor-kind test failed"); }
+// The milesetapp.com move tests (Nov 21) ride along for the same reason: which address serves what, and the Worker side
+// (mail fallback, the switch, CORS for both domains, reset links, /api/home) on its own local API.
+try { execFileSync("node", [new URL("./domains.mjs", import.meta.url).pathname], {stdio: "inherit"}); }
+catch(e){ failed++; console.log("::error::domain move test failed"); }
+try { execFileSync("node", [new URL("./domain_mail.mjs", import.meta.url).pathname], {stdio: "inherit", cwd: new URL("../api/", import.meta.url).pathname}); }
+catch(e){ failed++; console.log("::error::domain mail test failed"); }
 process.exit(failed ? 1 : 0);
