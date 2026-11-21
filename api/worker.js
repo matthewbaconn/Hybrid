@@ -924,6 +924,8 @@ async function cron(env, ctx){
   await day7Nudges(env).catch(e => logEvent(env, "nudge_mail", false, "cron " + errName(e)));
   await firstWorkoutNudges(env).catch(e => logEvent(env, "first_workout", false, "cron " + errName(e)));
   await saveFunnelDaily(env).catch(e => logEvent(env, "funnel_daily", false, "cron " + errName(e)));
+  // HQ mailbox housekeeping: commands and confirmations are kept two days (the latest "state" row stays)
+  await env.DB.prepare("DELETE FROM hq_box WHERE d != 'state' AND created < ?").bind(new Date(Date.now() - 2 * 864e5).toISOString()).run().catch(() => {});
   // once a day (after 4 am local) refresh the next 7 days of workouts on each athlete's Garmin
   for (const {user_id} of (await env.DB.prepare("SELECT user_id FROM garmin_links WHERE permissions LIKE '%WORKOUT_IMPORT%'").all()).results){
     try { const L = localNow((await settingsOf(env, user_id)).tz); if (L.hm >= "04:00" && await once(env, user_id, "gwork", L.date)) await garminWorkouts(env, user_id); }
@@ -1371,6 +1373,23 @@ async function route(req, env, path, ctx){
   // forgot password: email a one-time link (always answers the same, so it can't be used to test which emails have accounts)
   if (M === "GET" && path === "/api/founding") return {left: await foundingLeft(env), max: FOUNDING_MAX, ends: "2027-01-01",
     members: (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE " + REAL()).first()).n};   // a count only, real members
+  // HQ mailbox (Matthew, Nov 20): opaque AES-256-GCM envelopes between the owner's HQ page and Vesper's server, so HQ can
+  // send commands (approve, hold, focus mode, quick capture) and get confirmations without leaving the page. The Worker
+  // never has the key and cannot read an envelope. A mailbox is named by a SHA-256 derived from that key, so only the
+  // two key holders can find it; a stranger can at worst add junk to a mailbox nobody reads. Rows: "in" = commands
+  // from HQ, "out" = Vesper's confirmations, "state" = the latest encrypted office (one row, replaced each time).
+  const hb = path.match(/^\/api\/hq\/box\/([a-f0-9]{64})$/);
+  if (hb && M === "GET"){
+    const q = new URL(req.url).searchParams, since = Math.max(0, parseInt(q.get("since") || "0", 10) || 0), want = q.get("d") === "in" ? ["in"] : ["out", "state"];
+    return {rows: (await env.DB.prepare("SELECT id, d, iv, ct, created AS at FROM hq_box WHERE box = ? AND id > ? AND d IN (" + want.map(() => "?").join(",") + ") ORDER BY id LIMIT 50").bind(hb[1], since, ...want).all()).results}; }
+  if (hb && M === "POST"){
+    await limit(env, "hqbox:" + (req.headers.get("CF-Connecting-IP") || "x"));
+    const b = await body(req), d = String(b.d || ""), iv = String(b.iv || ""), ct = String(b.ct || "");
+    if (!["in", "out", "state"].includes(d) || !/^[A-Za-z0-9_-]{16}$/.test(iv) || !/^[A-Za-z0-9_-]{24,}$/.test(ct) || ct.length > (d === "state" ? 400000 : 8000)) throw new HttpError(400, "Bad request.");
+    if (d === "state") await env.DB.prepare("DELETE FROM hq_box WHERE box = ? AND d = 'state'").bind(hb[1]).run();
+    else if ((await env.DB.prepare("SELECT COUNT(*) AS n FROM hq_box WHERE box = ? AND d = ?").bind(hb[1], d).first()).n >= 200) throw new HttpError(429, "Mailbox full. Try again later.");
+    const r = await env.DB.prepare("INSERT INTO hq_box (box, d, iv, ct, created) VALUES (?, ?, ?, ?, ?)").bind(hb[1], d, iv, ct, new Date().toISOString()).run();
+    return {id: r.meta.last_row_id}; }
   if (path === "/api/unsubscribe"){
     const q = new URL(req.url).searchParams, uid = String(q.get("u") || ""), sig = String(q.get("s") || "");
     const ok = /^[a-f0-9]{8,64}$/.test(uid) && env.RESEND_API_KEY && safeEqual(sig, await mailSig(env, uid));
