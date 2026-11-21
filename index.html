@@ -449,6 +449,8 @@ button{cursor:pointer}
 .hub-hero .hsee{border:0;background:none;padding:0;min-height:44px;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .hub-hero .hcheck{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border:0;border-radius:999px;background:#fff;color:#800000;font-family:inherit;font-weight:700;font-size:15px;cursor:pointer}
 .hub-hero .hcheck svg{width:16px;height:16px}
+.fwc .fw-t{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:4px 0 6px} .fwc .fw-t b{font-size:18px} .fwc .fw-t span{color:var(--accent-2);font-weight:600;white-space:nowrap}
+.fwc .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px} .hub-hero .hwatch{display:inline;padding:0;font-size:14px;text-decoration:underline}
 .hub-hero .hfirst{margin:0;font-size:14px;line-height:1.45;color:rgba(255,255,255,.9);background:rgba(10,11,15,.3);border-radius:10px;padding:10px 12px}
 .hub-hero .hadj{font-size:13.5px;color:#FFE9A8}
 .hub-hero + .hub-hero{margin-top:0}
@@ -2702,10 +2704,29 @@ function heroSummary(day){
       '<div class="hh"><span>' + (i ? 'Also today' : 'Today · ' + fmtD(TODAY)) + '</span><span class="chip">' + TYPE[s.type] + '</span></div><h3>' + esc(s.title) + '</h3>' +
       '<div class="hs">' + stats.map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
       (adj ? '<p class="hadj">' + (r.level === 1 ? 'Go easier today: trimmed for how you feel.' : 'Recovery day: keep it easy or rest.') + '</p>' : '') +
-      (!isDone && first1 && !i ? '<p class="hfirst">Your first workout. When it\'s done, tap I did it. Runs from Strava or Garmin check off on their own.</p>' : '') +
+      (!isDone && first1 && !i ? '<p class="hfirst">Your first workout. When it\'s done, tap I did it. Runs from Strava or Garmin check off on their own.' + (inner && watchAsk() ? ' <button class="linkbtn hwatch" type="button" data-act="go" data-scr="set-watch">Link your watch</button>' : '') + '</p>' : '') +
       '<div class="hgo">' + (isDone ? '<span class="hdone">✓ Done' + (m[i] ? ' · ' + esc(m[i].name) : '') + '</span>' : inner ? '<button class="hsee" type="button" data-act="go" data-scr="session">See the workout</button>' : '<span>See the workout</span>') +
       (inner ? '<button class="hcheck" type="button" data-act="done" data-key="' + key + '" aria-label="I did it: check off ' + esc(s.title) + '">' + ic("check") + 'I did it</button>' : '<span>›</span>') + '</div></article>';
   }).join("");
+}
+/* First workout, on a rest day (incident activation-none-trained, Nov 21): a member who has never checked off or synced a
+   workout and opens Today on a rest day saw only "Rest day" and nothing about when to start. Show the next session, how it
+   counts, and a way to link a watch so runs check off on their own. Gone after the first check-off or synced workout. */
+function firstWorkout(){
+  if (mode !== "account" || Object.keys(done).length || acts.length) return null;
+  for (let k = 1; k <= 14; k++){ const d = addDays(TODAY, k), x = dayOf(d); if (x && x.sessions.length) return {date: d, day: x}; }
+  return null;
+}
+const watchAsk = () => mode === "account" && !strava.connected && !garmin.connected && (strava.available || garmin.available);
+function firstCard(day){
+  if (day.sessions.length) return '';
+  const nx = firstWorkout(); if (!nx) return '';
+  const when = dayName(nx.date);
+  return '<section class="card fwc" style="--tone:var(--accent)"><div class="card-h">' + ic("bolt") + '<span class="lbl">Your first workout</span></div>' +
+    '<div class="fw-t"><b>' + esc(nx.day.sessions.map(s => s.title).join(" + ")) + '</b><span>' + esc(when) + '</span></div>' +
+    '<p class="sub">Rest today. When you\'ve done this one, tap I did it on Today. Runs from Strava or Garmin check off on their own.</p>' +
+    '<div class="row"><button class="btn primary" type="button" data-act="fwsee" data-date="' + nx.date + '">' + ic("cal") + 'See it in your plan</button>' +
+    (watchAsk() ? '<button class="btn" type="button" data-act="go" data-scr="set-watch">' + ic("watch") + 'Link your watch</button>' : '') + '</div></section>';
 }
 /* One optional question, once (preview: features.source): where did this member hear about Mileset? */
 const SRC_Q = [["friend", "A friend or family"], ["matthew", "Matthew"], ["instagram", "Instagram"], ["search", "Search"], ["club", "A run club or gym"], ["other", "Somewhere else"]];
@@ -2740,7 +2761,7 @@ function renderToday(){
   const quickW = !wt && wskip !== TODAY && wAsk() ? '<section class="card qw" style="--tone:var(--lift)"><div class="card-h">' + ic("scale") + '<span class="lbl">Morning weigh-in</span><button class="linkbtn r" type="button" data-act="wskip">Not today</button></div>' +
     '<div class="wform"><input id="w-lb" inputmode="decimal" placeholder="' + (aw7 ? aw7.toFixed(1) : "Weight") + '" aria-label="Weight in pounds"><span>lb</span><button class="btn primary" type="button" data-act="wsave">Save</button></div>' + (wf && wf.err ? '<p class="err" role="alert">' + esc(wf.err) + '</p>' : '') + '</section>' : '';
   const mvT = day.sessions.length && canMove(TODAY) && moveTargets(TODAY).length && !day.sessions.some((s, i) => sessDone(TODAY, i, dayMatches(TODAY)));
-  h += sourceCard() + aiCard() + checkinCard() + cycleCard(day) + heroSummary(day) + (mvT ? '<button class="linkbtn hmove" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t do it today? Move it</button>' : '') + missedCard() + fuelTile + quickW;   // today's workout first, then food
+  h += sourceCard() + aiCard() + checkinCard() + cycleCard(day) + heroSummary(day) + firstCard(day) + (mvT ? '<button class="linkbtn hmove" type="button" data-act="mvopen" data-date="' + TODAY + '">' + ic("swap") + 'Can\'t do it today? Move it</button>' : '') + missedCard() + fuelTile + quickW;   // today's workout first, then food
   if (L && wxState === "idle") setTimeout(() => loadWeather(), 0);
   let wmi = 0, wdone = 0;
   if (w) w.days.forEach(d => { const m = dayMatches(d.date); d.sessions.forEach((s, i) => { if (sessDone(d.date, i, m)) wdone += plan.multi ? (m[i] && m[i].minutes ? m[i].minutes : s.min || 0) / 60 : m[i] && m[i].mi ? m[i].mi : s.mi || 0; }); });
@@ -2749,8 +2770,8 @@ function renderToday(){
     tile("weight", "lift", "Weight", wt ? wt + ' <small>lb</small>' : aw7 ? aw7.toFixed(1) + ' <small>lb avg</small>' : '<i class="tl-add">+ Add</i>', wt ? 'Weighed in today' : 'Tap to weigh in') +
     (w ? tile("t-miles", "long", "This week", plan.multi ? Math.round(wdone * 10) / 10 + ' <small>of ' + w.hours + ' h</small>' : half(wdone) + ' <small>of ' + w.miles + ' mi</small>', 'Week ' + w.n + ' · ' + esc(w.phase), '', true) : '') + '</div>';
   h += inviteCard();
-  const tm = dayOf(addDays(TODAY, 1));
-  if (tm){ const tt = dayType(tm); h += '<section class="card"><div class="card-h" style="--tone:var(--muted)">' + ic("cal") + '<span class="lbl">Tomorrow</span></div><div class="mini t-' + tt + '"><div><b>' + esc(tm.sessions.length ? tm.sessions.map(s => s.title).join(" + ") : "Rest day") + '</b><span>' + DAYF[dow(addDays(TODAY, 1))] + '</span></div></div></section>'; }
+  const tm = dayOf(addDays(TODAY, 1)), fw = !day.sessions.length && firstWorkout();   // fw: the first-workout card already shows tomorrow
+  if (tm && !(fw && fw.date === addDays(TODAY, 1))){ const tt = dayType(tm); h += '<section class="card"><div class="card-h" style="--tone:var(--muted)">' + ic("cal") + '<span class="lbl">Tomorrow</span></div><div class="mini t-' + tt + '"><div><b>' + esc(tm.sessions.length ? tm.sessions.map(s => s.title).join(" + ") : "Rest day") + '</b><span>' + DAYF[dow(addDays(TODAY, 1))] + '</span></div></div></section>'; }
   return h;
 }
 function renderPlan(){
@@ -3720,7 +3741,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "120";
+const APP_VERSION = "121";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3842,8 +3863,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-19.3";
+const NEW_ID = "2026-11-21";
 const NEWS = [
+  ["bolt", "Know when your first workout is", "New to Mileset? On a rest day, Today shows your first workout and when it is, with a button to link your watch so runs check off on their own.", null, null, "2026-11-21"],
   ["spark", "A cleaner, clearer Mileset", "The coach slides up from Message your coach, every Progress tile says what its number means, and plan and progress screens end with Go deeper with your coach.", null, null, "2026-11-19.3"],
   ["cal", "Plan and workouts, tidied up", "Plan opens on today and you can swipe the week card to change weeks. A workout's page now leads with distance, pace and time, with your fastest lap marked.", "plan", null, "2026-11-19.3"],
   ["dumbbell", "Your own workouts, with progress", "More > My workouts: build a workout (like a shoulder day), log weight and reps each time, and see every lift go up week to week. Mileset suggests what to try next.", "myw", null, "2026-11-19.2"],
@@ -4419,6 +4441,7 @@ document.addEventListener("click", ev => {
   if (act === "hloff"){ if (!confirm("Turn this off? Your Shortcut will stop sending data.")) return; api("DELETE", "/api/import-key").then(() => { healthKey = null; healthLink = {on: false}; go("set-watch"); }).catch(e => toast(e.message)); return; }
   if (act === "hlcopy"){ const v = ($("#hl-url") || {}).value || ""; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast("Link copied."), () => { const el = $("#hl-url"); if (el){ el.focus(); el.select(); } toast("Press and hold the link to copy it."); }); return; }
   if (act === "wk"){ const cur = wkSel != null ? wkSel : Math.max(0, weekOf(TODAY)); wkSel = Math.max(0, Math.min(plan.weeks.length - 1, cur + +a.dataset.dir)); render(); return; }
+  if (act === "fwsee"){ const d = a.dataset.date, wi = weekOf(d); wkSel = wi >= 0 ? wi : null; setTab("plan", true); setTimeout(() => { const el = document.getElementById("d-" + d); if (el) el.scrollIntoView({block: "start", behavior: reduceMotion ? "auto" : "smooth"}); }, 450); return; }
   if (act === "goday"){ const el = document.getElementById("d-" + a.dataset.date); if (el) el.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"start"}); return; }
   if (act === "fadd"){
     captureFood();
