@@ -208,7 +208,7 @@ $("#stack").addEventListener("click", e => { const f = e.target.closest("[data-f
 // ---------- views ----------
 const views = $("#views");
 function show(v){ view = v; for (const b of $$("#dock button")) b[b.dataset.v === v ? "setAttribute" : "removeAttribute"]("aria-current", "page");
-  if (v === "members") loadRoster();
+  if (v === "members") loadRoster(); if (v === "company") loadFin();
   views.hidden = v === "floor"; document.body.classList.toggle("inview", v !== "floor"); $("#floorctl").hidden = $("#stack").hidden = v !== "floor"; if (v !== "floor"){ views.scrollTop = 0; drawView(true); } else { drawRecap(); fit(); } }
 $("#dock").onclick = e => { const b = e.target.closest("button"); if (b) show(b.dataset.v); };
 const prState = p => p.m ? ["ok", "Shipped " + ago(p.m)] : p.draft ? ["paused", "Not ready"] : M.yours.includes(p) ? ["waiting", "Held by you"] : M.needs.includes(p) ? ["waiting", "Waiting for your OK"] : ["working", "Queued"];
@@ -217,7 +217,7 @@ const chk = p => { const c = S.checks[p.sha]; return !c ? "" : c.bad ? chip("ale
 function vShip(){
   const step = (p, n, cls, extra) => `<div class="step ${cls}" data-n="${n}" data-pr="${p.n}"><b>${esc(plain(p.t))} <span class="dim num">#${p.n}</span></b><div class="meta">${extra || ""}${chk(p)}</div></div>`;
   const cmds = S.out.slice(0, 8);
-  let n = 0, h = cmds.length ? `<section class="card glass wide" id="c-cmds"><h2>Commands you sent</h2><p class="sub">Instant reads run at once; changes wait for your Approve in Telegram.</p><div class="rows">${cmds.map(r => `<div class="row"><div class="g"><b>${esc(r.label)}</b><span>${esc(ago(r.at))}${r.cost ? " · about " + money(r.cost) : ""}${r.say && !r.result ? " · " + esc(cut(plain(r.say), 120)) : ""}</span>${result(r)}</div>${badge(r.st)}</div>`).join("")}</div></section>` : "";
+  let n = 0, h = cmds.length ? `<section class="card glass wide" id="c-cmds"><h2>Commands you sent</h2><p class="sub">Instant reads run at once; changes wait for your Approve in Telegram.</p><div class="rows">${cmds.map(r => `<div class="row" data-cmdrec="${esc(r.id)}" style="cursor:pointer"><div class="g"><b>${esc(r.label)}</b><span>${esc(ago(r.at))}${r.cost ? " · about " + money(r.cost) : ""}${r.say && !r.result ? " · " + esc(cut(plain(r.say), 120)) : ""}</span>${result(r)}</div>${badge(r.st)}</div>`).join("")}</div></section>` : "";
   h += vPipe();
   h += `<section class="card glass wide"><h2>Ship gate</h2><p class="sub">In the exact order changes go live. One per hourly run, bug fixes first, then oldest first.${M.nextRun ? " Next run " + esc(when(M.nextRun)) + "." : ""}${S.orderErr ? " (GitHub is busy: showing the list from " + esc(ago(S.orderAt)) + ".)" : ""}</p>`;
   if (!S.order) h += empty("the release queue", "Loading the public change list from GitHub.");
@@ -336,7 +336,7 @@ function playCards(){ const decks = [...HQ.ls.get("hq-decks", []), ...(M.h2.stud
 function stopCards(){ if (audio) audio.on = false; audio = null; try { speechSynthesis.cancel(); } catch(e){} drawView(true); }
 function drawView(force){ if (view === "floor") return; const a = document.activeElement; if (!force && a && views.contains(a) && /INPUT|TEXTAREA/.test(a.tagName)) return;
   const keep = {}; for (const el of $$("input,textarea", views)) if (el.id) keep[el.id] = el.value; const y = views.scrollTop;
-  if (setHTML(views, `<div class="view">${view === "ship" ? vShip() : view === "members" ? vMembers() : view === "company" ? vCompany() : vMe()}</div>`)){ for (const id in keep){ const el = document.getElementById(id); if (el) el.value = keep[id]; } views.scrollTop = y; }
+  if (setHTML(views, `<div class="view">${view === "ship" ? vShip() : view === "members" ? vMembers() : view === "company" ? vFinance() + vCompany() : vMe()}</div>`)){ for (const id in keep){ const el = document.getElementById(id); if (el) el.value = keep[id]; } views.scrollTop = y; }
   if (view === "ship") for (const p of [...M.needs, ...M.queue].slice(0, 5)) if (!S.checks[p.sha]) HQ.loadChecks(p); }
 
 // ---------- HQ tabs, batch 1 (Nov 20 9:24pm): Pipeline board + Members. Every read is $0 (Vesper's plain code). ----------
@@ -423,9 +423,57 @@ views.addEventListener("input", e => { if (e.target.id === "m-q"){ MS.q = e.targ
 views.addEventListener("keydown", e => { if (e.target.id === "m-q" && e.key === "Enter"){ MS.q = e.target.value; loadRoster(true); }
   const tr = e.target.closest && e.target.closest("tr[data-mr]"); if (tr && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); openMember(tr.dataset.mr); } });
 // 1-7 switch tabs (when not typing). 5 and 6 (Growth, Client Sites) arrive with batch 3; 5 opens Company for now.
-const TABKEYS = {1: "floor", 2: "ship", 3: "members", 4: "company", 5: "company", 7: "me"};
+const TABKEYS = {1: "floor", 2: "ship", 3: "members", 4: "company", 5: "company", 7: "me"};   // 4 = Finance
 addEventListener("keydown", e => { if (e.metaKey || e.ctrlKey || e.altKey || !pal.hidden) return; const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) || a && a.isContentEditable) return;
   const v = TABKEYS[e.key]; if (v){ e.preventDefault(); closeDrawer(); show(v); } });
+
+// ---------- HQ tabs, batch 2 (Nov 20 9:24pm): macro dock, live command drawer, finance & spend guardrails ----------
+const MACROS = [["Check gate & queue", {t: "read", q: "gate"}], ["Daily spend breakdown", {t: "read", q: "finance", range: "today"}], ["Check site health", {t: "read", q: "health"}],
+  ["Sync Buffer queue", {t: "text", text: "sync the Buffer queue and tell me what's scheduled"}], ["Pause all outbound", {t: "focus", mode: "paused"}]];
+function drawMacros(){ const el = $("#macros"); if (!el) return; el.hidden = view !== "floor";
+  const recent = S.out.slice(0, 3);
+  setHTML(el, `<h2>Macro dock</h2><div class="mrow">${MACROS.map(([l, c], i) => `<button type="button" class="mac" data-macro="${i}"${HQ.blocked(c) ? " disabled" : ""}>${esc(l)}<small class="${HQ.tier(c) === 1 ? "t1" : "t2"}">${HQ.tier(c) === 1 ? "Instant · Tier 1" : "Telegram gated · Tier 2"}</small></button>`).join("")}</div>`
+    + (recent.length ? `<div style="margin-top:8px">${recent.map(r => `<div class="crow" data-cmdrec="${esc(r.id)}" tabindex="0"><span>${esc(cut(r.label, 44))}</span>${badge(r.st)}</div>`).join("")}</div>` : "")); }
+function openCmd(id){ const r = () => S.out.find(x => x.id === id) || S.reads.find(x => x.id === id); if (!r()) return;
+  const body = () => { const x = r(), lat = x.ackAt ? ((x.ackAt - x.at) / 1000).toFixed(1) + " s" : FINAL_ST.includes(x.st) ? "–" : "waiting…", c = {...x.cmd}; delete c.id;
+    return `<section>${badge(x.st)} <span class="dim sm">Tier ${x.tier || HQ.tier(x.cmd || {})}${x.tier === 1 || HQ.tier(x.cmd || {}) === 1 ? " · instant, $0" : " · waits for your Telegram Approve"}</span></section>
+      <section><dl class="kv"><dt>command_id</dt><dd>${esc(x.id)}</dd><dt>Sent</dt><dd>${esc(new Date(x.at).toLocaleTimeString())}</dd><dt>Latency</dt><dd>${esc(lat)}</dd><dt>Token cost</dt><dd>${x.cost ? "about " + esc(money(x.cost)) : x.tier === 1 || HQ.tier(x.cmd || {}) === 1 ? "$0.00 (plain code, no AI)" : "$0.00 so far"}</dd></dl></section>
+      <section><h3>Payload</h3><pre class="raw" style="white-space:pre-wrap;margin:0">${esc(JSON.stringify(c, null, 1))}</pre></section>
+      <section><h3>Output</h3>${x.say ? `<p style="margin:0 0 6px">${esc(plain(x.say))}</p>` : ""}${result(x)}${!x.say && !x.result ? `<p class="mut sm" style="margin:0">Nothing back yet.</p>` : ""}
+      ${x.result ? `<details class="raw"><summary>Raw output</summary><pre>${esc(JSON.stringify(x.result, null, 1).slice(0, 4000))}</pre></details>` : ""}</section>`; };
+  openDrawer("cmd:" + id, r().label, "Command", body());
+  const iv = setInterval(() => { if (drawerKey !== "cmd:" + id){ clearInterval(iv); return; } const db = $(".db", drawer), h = body(); if (db._h !== h){ db._h = h; db.innerHTML = h; } if (FINAL_ST.includes(r().st)) clearInterval(iv); }, 500); }
+document.addEventListener("click", e => { const m = e.target.closest("[data-macro]"); if (m && !m.disabled){ const [l, c] = MACROS[+m.dataset.macro]; send(c, l).then(rec => { if (rec) openCmd(rec.id); }); return; }
+  const cr = e.target.closest("[data-cmdrec]"); if (cr){ if (!pal.hidden) closePal(); openCmd(cr.dataset.cmdrec); } });
+document.addEventListener("keydown", e => { const cr = e.target.closest && e.target.closest(".crow[data-cmdrec]"); if (cr && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); openCmd(cr.dataset.cmdrec); } });
+
+const FS = {range: "7d", job: ""}; let finRec = null;
+function loadFin(fresh){ HQ.ask({t: "read", q: "finance", range: FS.range}, fresh).then(r => { if (r){ finRec = r; const iv = setInterval(() => { if (view === "company") drawView(true); if (FINAL_ST.includes(r.st)) clearInterval(iv); }, 400); } }); }
+function vFinance(){ const F = finRec && finRec.result && finRec.result.fin, sp = M.spend, ps = HQ.pauseState();
+  let h = `<section class="card glass wide" id="c-fin"><h2>Finance &amp; spend guardrails</h2><p class="sub">Revenue against Vesper's API burn, from Vesper's own ledger: $0 to look at.</p>
+    <div class="pills">${[["today", "Today"], ["7d", "7D"], ["30d", "30D"], ["all", "All-time"]].map(([v, l]) => `<button type="button" data-fr="${v}" aria-pressed="${FS.range === v}">${l}</button>`).join("")}</div>`;
+  if (!F) h += finRec && /failed|rejected/.test(finRec.st) ? `<p class="mut">${esc(plain(finRec.say || "Couldn't load the ledger."))}</p>` : empty("the ledger", HQ.keyStr() ? "Asking Vesper (a few seconds)." : "Unlock HQ first.");
+  else { const kp = (v, l, warn) => `<div class="kpi"><b${warn ? ' style="color:var(--rd)"' : ""}>${v}</b><span>${esc(l)}</span></div>`;
+    h += `<div class="kpis">${kp(money(F.revenue), "Gross revenue")}${kp(money(F.burn), "Vesper API burn")}${kp((F.net < 0 ? "−" : "") + money(Math.abs(F.net)), "Net", F.net < 0)}${kp(money(F.run30), "30-day run rate")}</div>
+      <p class="dim sm" style="margin:8px 0 0">${esc(F.revenue_note)}</p>`;
+    const mx = Math.max(0.01, ...F.days.map(d => d[1]));
+    if (F.days.length > 1) h += `<div class="bars" role="img" aria-label="Daily burn">${F.days.map(d => `<i style="height:${Math.max(2, Math.round(100 * d[1] / mx))}%" title="${esc(d[0])}: ${esc(money(d[1]))}"></i>`).join("")}</div><p class="dim xs" style="margin:0">${esc(F.days[0][0])} → ${esc(F.days[F.days.length - 1][0])}</p>`;
+    const brk = (title, o, key) => { const tot = Object.values(o).reduce((a, b) => a + b, 0) || 1; return `<h3 style="margin:14px 0 6px">${title}</h3>` + (Object.keys(o).length ? `<div class="brk">${Object.entries(o).map(([k, v]) => `<button type="button" data-fj="${key}:${esc(k)}" aria-pressed="${FS.job === key + ":" + k}"><span>${esc(k)}</span><span>${esc(money(v))}${FS.job === key + ":" + k ? " · " + Math.round(100 * v / tot) + "%" : ""}</span><span class="bar"><u style="width:${Math.round(100 * v / tot)}%"></u></span></button>`).join("")}</div>` : `<p class="mut sm">No runs in this range.</p>`); };
+    h += brk("By job", F.by_job, "job") + brk("By model", F.by_model, "model"); }
+  const cap = F ? F.cap : sp.cap, warn = F ? F.warn_pct : 80;
+  h += `</section><section class="card glass wide" id="c-guard"><h2>Budget controls</h2><p class="sub">Each change waits for your Approve in Telegram. Today: ${sp.known ? esc(money(sp.today)) : "–"} of ${esc(money(sp.cap))}.</p>
+    <div class="ctl"><label for="b-cap">Daily hard cap ($)</label><span><input id="b-cap" type="number" min="0.5" max="20" step="0.25" value="${cap}"> <button class="btn" data-budget="cap">Set</button></span></div>
+    <div class="ctl"><label for="b-warn">Warning at <b id="b-warnv">${warn}%</b> (<span id="b-warnd">${esc(money(cap * warn / 100))}</span>)</label><button class="btn" data-budget="warn">Set</button><input id="b-warn" type="range" min="50" max="95" step="5" value="${warn}" style="grid-column:1/3"></div>
+    <div class="ctl"><span>Over-budget pause: <b style="color:${ps.paused ? "var(--rd)" : "var(--em)"}">${ps.paused ? "ON (" + esc(ps.reason || "paused") + ")" : "armed"}</b></span><button class="btn ${ps.paused ? "go" : "warn"}" data-budget="${ps.paused ? "resume" : "pause"}">${ps.paused ? "Lift the pause" : "Pause now"}</button></div></section>`;
+  return h; }
+views.addEventListener("click", e => { const b = e.target.closest("[data-fr],[data-fj],[data-budget]"); if (!b) return;
+  if (b.dataset.fr){ FS.range = b.dataset.fr; FS.job = ""; finRec = null; loadFin(); drawView(true); return; }
+  if (b.dataset.fj){ FS.job = FS.job === b.dataset.fj ? "" : b.dataset.fj; drawView(true); return; }
+  const op = b.dataset.budget, val = op === "cap" ? +($("#b-cap") || {}).value : op === "warn" ? +($("#b-warn") || {}).value : undefined;
+  if (op === "cap" && !(val >= 0.5 && val <= 20)) return HQ.toast("The daily cap can be $0.50 to $20.00 here.", "warn");
+  send({t: "budget", op, ...(val != null ? {val} : {})}, {cap: "Set daily cap to " + money(val), warn: "Set spend warning to " + val + "%", pause: "Over-budget pause ON", resume: "Lift the over-budget pause"}[op]); });
+views.addEventListener("input", e => { if (e.target.id === "b-warn" || e.target.id === "b-cap"){ const w = +($("#b-warn") || {}).value || 80, c = +($("#b-cap") || {}).value || 0, v = $("#b-warnv"), d = $("#b-warnd");
+  if (v) v.textContent = w + "%"; if (d) d.textContent = money(c * w / 100); } });
 
 // ---------- one click handler for every action button ----------
 document.addEventListener("click", e => {
@@ -450,7 +498,7 @@ function sugs(q){ const L = [["Status", {t: "read", q: "status"}, "instant"], ["
     ["Health check", {t: "read", q: "health"}, "instant"], ["Recent log", {t: "read", q: "log"}, "instant"], ["Ship gate", {t: "read", q: "gate"}, "instant"], ["I'm in class: hold non-urgent messages", {t: "focus", mode: "class"}, "focus"], ["Back to normal alerts", {t: "focus", mode: "normal"}, "focus"], ["Pause workers and spend", {t: "focus", mode: "paused"}, "focus"], ["I'm going over budget", "going over budget", "spend hold"],
     ...M.needs.map(p => ["Approve #" + p.n + ": " + cut(plain(p.t), 40), {t: "ship", n: p.n}, "ship gate"]), ...M.queue.map(p => ["Hold #" + p.n + ": " + cut(plain(p.t), 40), {t: "hold", n: p.n}, "ship gate"]),
     ...["Growth Sprint", "Dev Lead", "Product Lead"].map(r => ["Run " + r + " now", "run " + r.toLowerCase() + " now", "dispatch"])];
-  const s = q.trim().toLowerCase(), go = [["Go to Command floor", {go: "floor"}, "1"], ["Go to Pipeline", {go: "ship"}, "2"], ["Go to Members", {go: "members"}, "3"], ["Go to Company & finance", {go: "company"}, "4"], ["Go to Me & planner", {go: "me"}, "7"]];
+  const s = q.trim().toLowerCase(), go = [["Go to Command floor", {go: "floor"}, "1"], ["Go to Pipeline", {go: "ship"}, "2"], ["Go to Members", {go: "members"}, "3"], ["Go to Finance", {go: "company"}, "4"], ["Go to Me & planner", {go: "me"}, "7"]];
   const extra = [], num = s.match(/^#?(\d{1,5})$/);
   if (num) for (const it of (pipeItems() || []).filter(i => String(i.n) === num[1])) extra.push(["Open " + (it.r === "vesper" ? "Vesper " : "") + "#" + it.n + ": " + cut(plain(it.t), 40), {pipe: pkey(it)}, it.st]);
   const fm = q.trim().match(/^(?:@|find |member )\s*(.{2,})$/i); if (fm) extra.push(["Find member: " + fm[1], {member: fm[1]}, "search"]);
@@ -458,7 +506,7 @@ function sugs(q){ const L = [["Status", {t: "read", q: "status"}, "instant"], ["
 function drawPal(){ const inp = $("#pal input"), q = inp ? inp.value : "", L = sugs(q), th = S.out.slice(0, 4).reverse();
   const cmdOf = c => typeof c === "string" ? {t: "text", text: c} : c, tag = (c, x) => c && (c.go || c.pipe || c.member != null) ? (x || "") : HQ.blocked(cmdOf(c)) ? "paused" : HQ.tier(cmdOf(c)) === 1 ? "instant" : "needs Telegram OK";
   $("#pal .sug").innerHTML = L.map((x, i) => `<button type="button" class="${i === palSel ? "sel" : ""}" data-i="${i}"${!(x[1].go || x[1].pipe || x[1].member != null) && HQ.blocked(cmdOf(x[1])) ? " disabled" : ""}>${esc(x[0])}<span>${esc(tag(x[1], x[2]))}</span></button>`).join("") + (q.trim() ? `<button type="button" class="${palSel >= L.length ? "sel" : ""}" data-i="-1">Send "${esc(cut(q.trim(), 60))}" to Vesper<span>${esc(tag(q.trim()))}</span></button>` : "");
-  $("#pal .thread").innerHTML = th.map(r => `<div class="msg me">${esc(r.label)}<small>${badge(r.st)} · ${esc(ago(r.at))}</small></div>${r.say || r.result ? `<div class="msg v">${r.say && !r.result ? esc(plain(r.say)) : ""}${result(r)}</div>` : ""}`).join(""); pal._L = L; }
+  $("#pal .thread").innerHTML = th.map(r => `<div class="msg me" data-cmdrec="${esc(r.id)}" style="cursor:pointer">${esc(r.label)}<small>${badge(r.st)} · ${esc(ago(r.at))}</small></div>${r.say || r.result ? `<div class="msg v">${r.say && !r.result ? esc(plain(r.say)) : ""}${result(r)}</div>` : ""}`).join(""); pal._L = L; }
 function openPal(pre){ pal.hidden = false; palSel = 0; pal.innerHTML = `<div class="box glass solid" role="dialog" aria-label="Command bar"><div class="thread"></div><input type="text" placeholder="Tell Vesper something, or pick below" aria-label="Command" autocomplete="off" autocapitalize="sentences"><div class="sug"></div><p class="dim xs" style="margin:0;text-align:center">${S.box.on === false ? "The command link isn't live yet: commands are copied for you to paste in Telegram." : "Instant reads run at once. Anything that changes something waits for your Approve in Telegram."}</p></div>`;
   const inp = $("#pal input"); inp.value = pre || ""; drawPal(); setTimeout(() => inp.focus(), 30);
   inp.oninput = () => { palSel = inp.value.trim() ? (sugs(inp.value).length ? 0 : 0) : 0; drawPal(); };
@@ -487,7 +535,7 @@ const STL = {sending: "Sending", queued: "Queued", awaiting_telegram_approval: "
 const badge = st => `<span class="badge" data-st="${esc(st)}">${esc(STL[st] || st)}</span>`;
 const result = r => r.result && r.result.lines ? `<div class="res"><b>${esc(r.result.title || "")}</b>${r.result.lines.map(l => esc(l)).join("<br>")}</div>` : "";
 let queued = false, lastLeft = null;
-function draw(){ if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; M = model(); drawFloor(); drawHud(); drawSync(); drawCall(); drawRecap(); drawLock(); drawView(); drawTbar(); if (!pal.hidden) drawPal(); lockTier2();
+function draw(){ if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; M = model(); drawFloor(); drawHud(); drawSync(); drawCall(); drawRecap(); drawLock(); drawView(); drawTbar(); drawMacros(); if (!pal.hidden) drawPal(); lockTier2();
   const left = [...$("#stack").children].some(c => !c.hidden); if (left !== lastLeft){ lastLeft = left; if (view === "floor" && !drawerKey && !pts.size) fit(lastLeft === null); } }); }
 buildFloor(); HQ.on(draw); draw(); fit(true); requestAnimationFrame(() => fit(true));
 addEventListener("resize", () => { if (layout()){ buildFloor(); for (const st of STN) delete st._i; draw(); } if (view === "floor" && !drawerKey) fit(true); drawHud(); });

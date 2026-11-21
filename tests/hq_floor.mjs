@@ -57,6 +57,9 @@ async function run(name, ctxOpt, phone){
   const ROSTER = [["u1aaaaaa", "Ana Runner", "ana@x.test", "2026-11-02", "2026-11-20 20:10", 4, 3, 0], ["u2bbbbbb", "Ben Lifter", "ben@x.test", "2026-10-28", "2026-11-12 09:00", 0, 0, 1], ["u3cccccc", "Cara Tri", "cara@x.test", "2026-11-19", "2026-11-20 18:00", 2, 1, 0]];
   const readRes = c => c.q === "members" ? {title: "Members", lines: [ROSTER.length + " member(s)"], rows: c.f === "risk" ? ROSTER.slice(1, 2) : ROSTER, q: c.arg || "", f: c.f || "all"}
     : c.q === "member" ? {title: "Ana Runner", lines: ["Joined 2026-11-02"], m: {id: c.arg, name: "Ana Runner", email: "ana@x.test", joined: "2026-11-02", seen: "2026-11-20 20:10", sessions: 12, streak: 3, food7: 3, mails: [["day3_nudge", "2026-11-05", 1]], no_mail: false, flag: false}}
+    : c.q === "finance" ? {title: "Finance", lines: ["burn"], fin: {range: c.range, burn: c.range === "30d" ? 21.4 : 6.2, revenue: 0, revenue_note: "No paid plans: the Founding 100 are free for life.", net: c.range === "30d" ? -21.4 : -6.2, run30: 26.6,
+        days: [["2026-11-14", 0.5], ["2026-11-15", 1.2], ["2026-11-16", 0.9], ["2026-11-17", 1.1], ["2026-11-18", 0.7], ["2026-11-19", 1.1], ["2026-11-20", 0.7]], by_job: {chat: 3.1, briefing: 2.0, workers: 1.1}, by_model: {"haiku-4": 2.2, "sonnet-4": 4.0},
+        cap: 5, today: 0.67, warn_pct: 80, paused: false, reason: "", month: 8.27, month_cap: 17}}
     : {title: "Spend", lines: ["Today: $0.67 of the $5.00 daily cap ($4.33 left).", "Over-budget pause: armed"]};
   const vesper = c => { if (t1(c)){ say(c, "running"); say(c, "completed", {ok: true, say: "read " + (c.q || c.t), result: c.t === "defer" ? null : readRes(c)}); return; }
     say(c, "awaiting_telegram_approval", {say: "Waiting for your Approve in Telegram.", cost: c.t === "text" ? 0.15 : 0, tier: 2});
@@ -128,6 +131,7 @@ async function run(name, ctxOpt, phone){
   // 3. station inspector
   await page.evaluate(() => document.querySelector('.stn[data-id="dev"]').click()); await page.waitForSelector("#drawer.on"); await page.waitForTimeout(700);
   const dr = await page.innerText("#drawer"); check(/Current task/i.test(dr) && /Recently finished/i.test(dr) && /Reliability and speed/i.test(dr) && /90%/.test(dr) && /Activity/i.test(dr) && /Technical log/.test(dr), T("station inspector: task, progress, recent work, reliability, activity, raw log on demand"));
+  await page.waitForFunction(() => /scale\((0\.9|1\.1)/.test(document.querySelector("#world").style.transform), null, {timeout: 4000}).catch(() => {});   // let the camera settle
   const tf = await page.evaluate(() => document.querySelector("#world").style.transform); check(/scale\((0\.9|1\.1)/.test(tf), T("tapping a station zooms the floor to it (" + tf.slice(-14) + ")"));
   await shot("3-inspector"); await page.keyboard.press("Escape"); await page.waitForTimeout(500);
   // pan + zoom
@@ -248,6 +252,39 @@ async function run(name, ctxOpt, phone){
   await page.fill("#pal input", "find cara"); await page.waitForTimeout(150); check(/Find member: cara/.test(await page.innerText("#pal .sug")), T("⌘K: search members (\"find …\" or \"@…\")"));
   await page.fill("#pal input", "pipeline"); await page.waitForTimeout(150); check(/Go to Pipeline/.test(await page.innerText("#pal .sug")), T("⌘K: jump to any tab"));
   await page.keyboard.press("Escape");
+
+  // HQ tabs, batch 2: macro dock, live command drawer, finance & spend guardrails
+  await page.click('#dock [data-v="floor"]'); await page.waitForSelector("#macros .mac");
+  const mtx = await page.innerText("#macros");
+  check((await page.$$("#macros .mac")).length === 5 && /Check gate & queue/i.test(mtx) && /Pause all outbound/i.test(mtx) && /Instant · Tier 1/i.test(mtx) && /Telegram gated · Tier 2/i.test(mtx),
+        T("Macro dock: five one-tap macros, each badged Instant (Tier 1) or Telegram gated (Tier 2)"));
+  check(await page.$eval('#macros [data-macro="3"] small', e => e.className) === "t2" && await page.$eval('#macros [data-macro="4"] small', e => e.className) === "t2" && await page.$eval('#macros [data-macro="2"] small', e => e.className) === "t1",
+        T("Macro dock: Sync Buffer and Pause all outbound are gated; reads are instant"));
+  const mc0 = cmds.length; await page.click('#macros [data-macro="2"]');
+  await page.waitForFunction(() => /Completed/i.test((document.querySelector("#drawer") || {}).textContent || "") && /Latency/.test(document.querySelector("#drawer").textContent), null, {timeout: 9000}).catch(() => {});
+  const cdw = await page.innerText("#drawer");
+  check(cmds[mc0] && cmds[mc0].t === "read" && cmds[mc0].q === "health" && cdw.includes(cmds[mc0].command_id) && /\d+\.\d s/.test(cdw) && /\$0\.00 \(plain code, no AI\)/.test(cdw) && /"q": "health"/.test(cdw),
+        T("Live command drawer: exact payload, command_id, latency, token cost and output"));
+  await page.keyboard.press("Escape"); await page.waitForTimeout(250);
+  if (!phone){ await page.click("#macros .crow"); await page.waitForSelector("#drawer.on"); check(/command_id/.test(await page.innerText("#drawer")), T("tapping a recent command opens its drawer")); await page.keyboard.press("Escape"); }
+  await shot("11-macros");
+  check(/Finance/.test(await page.innerText('#dock [data-v="company"]')), T("tab 4 is Finance"));
+  await page.click('#dock [data-v="company"]'); await page.waitForFunction(() => /Vesper API burn/.test((document.querySelector("#c-fin") || {}).textContent || ""), null, {timeout: 9000}).catch(() => {});
+  const fv = await page.innerText("#c-fin");
+  check(/\$0\.00\s*Gross revenue/.test(fv) && /\$6\.20\s*Vesper API burn/.test(fv) && /−\$6\.20\s*Net/.test(fv) && /\$26\.60\s*30-day run rate/.test(fv) && /Founding 100 are free/.test(fv),
+        T("Finance: revenue (honest $0, no paid plans), burn, net and the 30-day run rate"));
+  check((await page.$$("#c-fin .bars i")).length === 7, T("Finance: daily burn bars"));
+  const fr0 = cmds.length; await page.click('#c-fin [data-fr="30d"]'); await page.waitForFunction(() => /\$21\.40/.test(document.querySelector("#c-fin").textContent), null, {timeout: 9000}).catch(() => {});
+  check(cmds.slice(fr0).some(c => c.t === "read" && c.q === "finance" && c.range === "30d") && /\$21\.40/.test(await page.innerText("#c-fin")), T("Finance: Today / 7D / 30D / All-time ranges ($0 reads)"));
+  await page.click('#c-fin [data-fj="job:chat"]'); check(/chat\s*\$3\.10 · 50%/.test(await page.innerText("#c-fin")), T("Finance: clickable breakdown by job and model"));
+  const bc0 = cmds.length; await page.fill("#b-cap", "6"); await page.click('[data-budget="cap"]'); await page.waitForTimeout(500);
+  await page.$eval("#b-warn", e => { e.value = "85"; e.dispatchEvent(new Event("input", {bubbles: true})); }); check(/85% \(\$5\.10\)/.test(await page.innerText("#c-guard")), T("Budget controls: the warning slider shows the level and its dollar amount"));
+  await page.click('[data-budget="warn"]'); await page.waitForTimeout(500); await page.click('[data-budget="pause"]'); await page.waitForTimeout(500);
+  const bcs = cmds.slice(bc0).filter(c => c.t === "budget");
+  check(bcs.length === 3 && bcs[0].op === "cap" && bcs[0].val === 6 && bcs[1].op === "warn" && bcs[1].val === 85 && bcs[2].op === "pause" && bcs.every(c => UUIDRE.test(c.command_id)),
+        T("Budget controls: cap, warning level and pause each go to Vesper as a Tier 2 command with its own UUID"));
+  check(await page.evaluate(() => HQ.tier({t: "budget", op: "cap", val: 6})) === 2, T("every budget change is Tier 2 (Telegram approval)"));
+  await shot("12-finance");
   // layout: no sideways scroll, nothing under the notch or home bar
   const lay = await page.evaluate(() => ({w: document.documentElement.scrollWidth, vw: innerWidth, hud: document.querySelector("#hud").getBoundingClientRect().top, dock: innerHeight - document.querySelector("#dock").getBoundingClientRect().bottom,
     vf: /viewport-fit=cover/.test(document.querySelector('meta[name="viewport"]').content), css: [...document.styleSheets].flatMap(s => [...s.cssRules]).map(r => r.cssText).join("")}));
@@ -260,8 +297,8 @@ async function run(name, ctxOpt, phone){
   check(/RELAY STALE · 5 min/.test(tb2), T("header bar: relay STALE when the last heartbeat is over 2 minutes old"));
   if (!(await page.isVisible("#call .btn.warn"))) await page.click("#call [data-fold]");
   const appr = await page.$$eval("#call .btn.go", e => e.map(x => x.disabled)), hold = await page.$$eval("#call .btn.warn", e => e.map(x => x.disabled));
-  const safe = await page.evaluate(() => [HQ.blocked({t: "hold", n: 1}), HQ.blocked({t: "focus", mode: "normal"}), HQ.blocked({t: "read", q: "spend"}), HQ.blocked({t: "text", text: "run dev lead now"})]);
-  check(appr.length && appr.every(Boolean) && hold.every(x => !x) && JSON.stringify(safe) === "[false,false,false,true]", T("while paused, Tier 2 buttons are switched off in the UI (Hold, focus and reads stay on)"));
+  const safe = await page.evaluate(() => [HQ.blocked({t: "hold", n: 1}), HQ.blocked({t: "focus", mode: "normal"}), HQ.blocked({t: "read", q: "spend"}), HQ.blocked({t: "text", text: "run dev lead now"}), HQ.blocked({t: "budget", op: "resume"}), HQ.blocked({t: "member", act: "reset", uid: "u1"})]);
+  check(appr.length && appr.every(Boolean) && hold.every(x => !x) && JSON.stringify(safe) === "[false,false,false,true,false,true]", T("while paused, Tier 2 buttons are switched off in the UI (Hold, focus and reads stay on)"));
   const p0 = cmds.length; await page.evaluate(() => { const b = document.querySelector("#call .btn.go"); b.disabled = false; b.click(); }); await page.waitForTimeout(400);
   check(cmds.length === p0 && /Paused: today's spend cap/.test(await page.innerText("#toasts")), T("a paused Tier 2 command is refused before anything is sent"));
   await shot("8-paused");
