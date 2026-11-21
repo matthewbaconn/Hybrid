@@ -5,6 +5,7 @@
 //   - an older plan (no build date saved) still shows missed days as before
 //   - a plan built 3 days ago flags a missed day after it was built, never one before
 //   - building a plan saves the day it was built
+// Nov 21: the card says "Missed yesterday" (lower case since #107/#113); the day match is case-insensitive now.
 // Run: node tests/day_one.mjs  (serves this folder itself)
 import {chromium} from "playwright";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
@@ -41,7 +42,7 @@ try {
   // the card names the day ("Missed Tuesday"): it must be a day on or after the build date
   const DAYN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const built3 = add(today, -3), missed3 = await open({...base, built: built3});
-  const nm = (missed3[0] || "").replace(/^Missed /, ""), back = [1, 2, 3, 4, 5, 6, 7].map(i => add(today, -i)).find(d => nm === "Yesterday" ? d === add(today, -1) : DAYN[new Date(d + "T12:00:00").getDay()] === nm);
+  const nm = (missed3[0] || "").replace(/^Missed /, ""), back = [1, 2, 3, 4, 5, 6, 7].map(i => add(today, -i)).find(d => /^yesterday$/i.test(nm) ? d === add(today, -1) : DAYN[new Date(d + "T12:00:00").getDay()] === nm);
   t(missed3.length === 1 && !!back && back >= built3, "a plan built 3 days ago still flags a missed day, but only one after it was built (" + (missed3[0] || "none") + ", built " + built3 + ")");
   if (process.env.SHOTS){ await open({...base, built: today}); await p.screenshot({path: process.env.SHOTS + "/day-one-today.png"}); }
 } catch(e){ t(false, "test crashed: " + (e && e.message || e)); }

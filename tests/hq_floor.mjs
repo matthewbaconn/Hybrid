@@ -73,11 +73,12 @@ async function run(name, ctxOpt, phone){
   const telegram = () => pend.splice(0).forEach(f => f());
   const tel = () => ({at: Math.round(Date.now() / 1000) - telAge, spend: {today: telPaused ? 0.86 : 0.67, cap: 5, limit: 0.86, left: telPaused ? 0 : 0.19, pct: telPaused ? 17 : 13, paused: telPaused, reason: telPaused ? "cap reached" : "", month: 8.27, month_cap: 17},
     gate: {next_n: 4, next_title: "Fix: TEST bug fix", queue: 2, next_run: new Date(Date.now() + 37 * 60000).toISOString()}, relay: {mode: "normal"},
-    pipe: [{n: 4, r: "app", t: "Fix: TEST bug fix", loc: ["Mileset App & Site"], st: "Queued for Gate", ch: "pass", bad: [], files: 2, add: 10, del: 3, sum: "Fixes the TEST bug.", at: "2026-11-20T20:00:00Z", u: "https://github.com/x/4"},
-           {n: 241, r: "vesper", t: "TEST Vesper upgrade", loc: ["Vesper Relay (server)"], st: "Awaiting Telegram Tap", ch: "pass", bad: [], files: 3, add: 50, del: 9, sum: "Tiers.", at: "2026-11-20T21:00:00Z", u: "https://github.com/x/241"},
-           {n: 111, r: "app", t: "TEST held change", loc: ["HQ Frontend"], st: "Held", ch: "none", bad: [], files: 1, add: 2, del: 0, sum: "Held.", at: "2026-11-19T21:00:00Z", u: ""},
-           {n: 7, r: "app", t: "TEST failing change", loc: ["Cloudflare Worker / D1"], st: "Tests Failing", ch: "fail", bad: ["checks"], files: 1, add: 1, del: 1, sum: "Broken.", at: "2026-11-20T19:00:00Z", u: ""},
-           {n: 3, r: "app", t: "TEST shipped change", loc: ["HQ Frontend"], st: "Live", ch: "pass", bad: [], files: 4, add: 80, del: 20, sum: "Shipped.", at: "2026-11-20T18:00:00Z", u: ""}],
+    // times relative to now (Nov 21): fixed dates made "went live in the last 24h" false a day after the test was written
+    pipe: [{n: 4, r: "app", t: "Fix: TEST bug fix", loc: ["Mileset App & Site"], st: "Queued for Gate", ch: "pass", bad: [], files: 2, add: 10, del: 3, sum: "Fixes the TEST bug.", at: iso(120), u: "https://github.com/x/4"},
+           {n: 241, r: "vesper", t: "TEST Vesper upgrade", loc: ["Vesper Relay (server)"], st: "Awaiting Telegram Tap", ch: "pass", bad: [], files: 3, add: 50, del: 9, sum: "Tiers.", at: iso(60), u: "https://github.com/x/241"},
+           {n: 111, r: "app", t: "TEST held change", loc: ["HQ Frontend"], st: "Held", ch: "none", bad: [], files: 1, add: 2, del: 0, sum: "Held.", at: iso(25 * 60), u: ""},
+           {n: 7, r: "app", t: "TEST failing change", loc: ["Cloudflare Worker / D1"], st: "Tests Failing", ch: "fail", bad: ["checks"], files: 1, add: 1, del: 1, sum: "Broken.", at: iso(180), u: ""},
+           {n: 3, r: "app", t: "TEST shipped change", loc: ["HQ Frontend"], st: "Live", ch: "pass", bad: [], files: 4, add: 80, del: 20, sum: "Shipped.", at: iso(240), u: ""}],
     incidents: {mail: 2, e5xx: 1, relay: 0, total: 3}, next_block: {d: new Date(Date.now() + 864e5).toISOString().slice(0, 10), t: "07:00", e: "08:30", title: "NCLEX review", kind: "appointment"}, breaker: {on: telBreaker, until: Math.round(Date.now() / 1000) + 600, limit: 1.5, mins: 30},
     members: {total: 42, a24: 9, a7: 21, a30: 33, new24: 1, new7: 5, risk: 6, sessions_today: 14, meals_today: 23, at: Math.round(Date.now() / 1000)}});
   page.on("console", m => { if (m.type() === "error" && !/favicon|404|ERR_FAILED|ERR_INTERNET_DISCONNECTED/.test(m.text())) cErr.push(m.text()); }); page.on("pageerror", e => cErr.push(String(e)));
