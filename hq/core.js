@@ -8,7 +8,7 @@ const HQ = (() => {
 const API = "https://hybrid-api.hybridapp.workers.dev", GH = "https://api.github.com/repos/matthewbaconn/Hybrid";
 const RAW = "https://raw.githubusercontent.com/matthewbaconn/Hybrid/vesper/hq-data/";
 const CAP = 5;                                             // Matthew's daily cap (Nov 20); the feed's own figure wins when present
-const S = {pub: null, priv: null, privErr: "", order: null, orderAt: 0, checks: {}, runs: null, live: null, me: null, meErr: "",
+const S = {pub: null, priv: null, privErr: "", order: null, orderAt: 0, checks: {}, runs: null, live: null, me: null, meErr: "", tel: null, telAt: 0, telSkew: 0, telOn: null,
            box: {on: null, since: 0, tried: 0}, out: [], opt: {}, at: 0, busy: false, seen: ""};
 const subs = [];
 const emit = () => { for (const f of subs) try { f(); } catch(e){ console.error(e); } };
@@ -74,6 +74,30 @@ async function loadMe(){ let t = null; try { t = localStorage.getItem("hp-token"
   if (!t){ S.me = null; S.meErr = "signin"; return; }
   try { S.me = await get(API + "/api/me", {headers: {Authorization: "Bearer " + t}}); S.meErr = ""; } catch(e){ S.meErr = e.status === 401 ? "signin" : "offline"; } }
 
+// ---------- telemetry: Vesper's sealed heartbeat (spend vs the cap, relay, gate). Read-only, no AI, $0 ----------
+async function loadTel(){ const K = await keys(); if (!K || S.telOn === false && Date.now() - (S.telTried || 0) < 10 * 60e3) return;
+  try { const j = await get(API + "/api/hq/tel/" + K.box); S.telOn = true; S.telSkew = j.now ? Date.parse(j.now) - Date.now() : 0;
+    if (j.tel && (!S.telId || j.tel.id >= S.telId)){ S.tel = await unseal(j.tel, "mileset-hq-tel-v1"); S.telId = j.tel.id; S.telAt = Date.now(); } }
+  catch(e){ if (e.status === 404 || e.status === 405){ S.telOn = false; S.telTried = Date.now(); } } }
+/** seconds since Vesper's last heartbeat, by the server's clock (null = no heartbeat yet) */
+const relayAge = () => S.tel && S.tel.at ? Math.max(0, (Date.now() + S.telSkew) / 1000 - S.tel.at) : null;
+
+// ---------- command tiers (the server decides; this mirrors it so the screen can say what will happen) ----------
+const READ_TEXT = [/^(status|brief me|briefing|what'?s going on|catch me up)$/, /^((ship )?queue|the queue|what'?s queued)$/, /^(spend|spending|budget status|how much (have i|did we|has vesper) spen[dt]( today)?)$/,
+  /^((system )?health|is (the )?site up)$/, /^(logs?|quiet failures|recent log)$/, /^((ship )?gate|ship gate status)$/];
+const heldNums = () => { const h2 = (S.priv && S.priv.hq2) || {}; return (h2.holds || [111]).map(Number); };
+function heldRefs(cmd){ const n = new Set(); if (cmd.n != null && isFinite(+cmd.n)) n.add(+cmd.n); for (const m of String((cmd.text || "") + " " + (cmd.title || "")).matchAll(/#?\b(\d{2,5})\b/g)) n.add(+m[1]);
+  const h = new Set(heldNums()); return [...n].filter(x => h.has(x)); }
+function tier(cmd){ if (heldRefs(cmd).length) return 2; if (cmd.t === "read" || cmd.t === "defer") return 1;
+  if (cmd.t === "text"){ const t = String(cmd.text || "").trim().toLowerCase().replace(/[?.! ]+$/, ""); if (READ_TEXT.some(r => r.test(t))) return 1; } return 2; }
+/** the over-budget pause: from the heartbeat when there is one, else from the office */
+function pauseState(){ const sp = S.tel && S.tel.spend; if (sp) return {paused: !!sp.paused, reason: sp.reason || ""};
+  const h = ((S.priv || {}).hq2 || {}).spend || {}; return {paused: !!(h.throttled || h.critical), reason: h.throttled ? "spend hold" : h.critical ? "critical only" : ""}; }
+const safeWhenPaused = cmd => cmd.t === "hold" || cmd.t === "focus";
+const blocked = cmd => tier(cmd) === 2 && pauseState().paused && !safeWhenPaused(cmd);
+const uuid = () => crypto.randomUUID ? crypto.randomUUID() : ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+const FINAL = ["completed", "rejected", "failed"];
+
 // ---------- the mailbox: encrypted envelopes both ways ----------
 async function boxPoll(){
   if (S.box.on === false && Date.now() - S.box.tried < 10 * 60e3) return;
@@ -81,33 +105,42 @@ async function boxPoll(){
   try { const j = await get(API + "/api/hq/box/" + K.box + "?since=" + S.box.since); S.box.on = true;
     for (const row of j.rows || []){ S.box.since = Math.max(S.box.since, row.id || 0);
       try { if (row.d === "state"){ const p = await unseal(row, "mileset-hq-v1"); if (!S.priv || String(p.t) >= String(S.priv.t)){ S.priv = p; S.privErr = ""; S.privLive = Date.now(); } }
-            else if (row.d === "out") gotAck(await unseal(row, "mileset-hq-ack-v1")); } catch(e){} } }
+            else if (row.d === "out") gotAck(await unseal(row, "mileset-hq-ack-v1"), row.id); } catch(e){} } }
   catch(e){ if (e.status === 404 || e.status === 405){ S.box.on = false; S.box.tried = Date.now(); } }
-  for (const r of S.out) if (r.st === "queued") post(r);
+  for (const r of S.out) if (r.st === "offline") post(r);
 }
-function gotAck(a){ const r = S.out.find(x => x.id === a.id); if (!r || r.st === "done" || r.st === "failed") return;
-  r.st = a.ok === false ? "failed" : "done"; r.say = String(a.say || ""); r.ackAt = Date.now(); ls.set("hq-out", S.out);
-  if (a.confirm) r.confirm = true;
-  toast((a.ok === false ? "Vesper couldn't do that: " : "Vesper: ") + (r.say || "done."), a.ok === false ? "warn" : "ok"); }
+/** A status from Vesper about one command: awaiting_telegram_approval, running, completed, rejected or failed. */
+function gotAck(a, rowId){ const id = a.command_id || a.id, r = S.out.find(x => x.id === id); if (!r || FINAL.includes(r.st)) return;
+  if (rowId && r.row && rowId <= r.row) return; r.row = rowId || r.row;
+  const st = a.status || (a.ok === false ? "failed" : "completed"), was = r.st;
+  r.st = st; r.say = String(a.say || r.say || ""); r.ackAt = Date.now(); if (a.result) r.result = a.result; if (a.cost != null) r.cost = +a.cost; if (a.why) r.why = a.why; if (a.tier) r.tier = a.tier;
+  ls.set("hq-out", S.out); if (st === was) return;
+  if (st === "awaiting_telegram_approval") toast("Approve it in Telegram" + (r.cost ? " (about " + money(r.cost) + ")" : "") + ": " + r.label, "warn");
+  else if (st === "completed" && !r.result) toast("Done: " + (r.say || r.label), "ok");
+  else if (st === "rejected" || st === "failed") toast((st === "rejected" ? "Not run: " : "Failed: ") + (r.say || r.label), "warn");
+  if ((st === "rejected" || st === "failed") && r.cmd){ const c = r.cmd;            // the screen changed before Vesper answered: undo it
+    for (const k of [c.t === "ship" && "ship:" + c.n, (c.t === "hold" || c.t === "unhold") && "hold:" + c.n, c.t === "greenlight" && "green:" + c.n, c.t === "focus" && "mode"]) if (k) delete S.opt[k];
+    ls.set("hq-opt", S.opt); } }
 const phrase = c => c.t === "ship" ? "SHIP IT " + c.n : c.t === "hold" ? "hold " + c.n : c.t === "unhold" ? "release hold " + c.n : c.t === "install" ? "install " + c.n
   : c.t === "greenlight" ? "greenlight " + c.n : c.t === "focus" ? ({normal: "resume", class: "ghost protocol 3 hours", paused: "pause"})[c.mode] : c.t === "defer" ? "remind me tomorrow: " + c.title : String(c.text || "");
 async function post(rec){
   const K = await keys(); if (!K){ rec.st = "locked"; return; }
   if (S.box.on === false){ rec.st = "manual"; copy(phrase(rec.cmd)); return; }
-  try { const env = await seal(rec.cmd, "mileset-hq-cmd-v1");
-    const r = await fetch(API + "/api/hq/box/" + K.box, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({d: "in", ...env})});
+  try { rec.env = rec.env || await seal(rec.cmd, "mileset-hq-cmd-v1");        // a retry resends the same sealed command and id
+    const r = await fetch(API + "/api/hq/box/" + K.box, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({d: "in", cid: rec.id, ...rec.env})});
     if (r.status === 404 || r.status === 405){ S.box.on = false; S.box.tried = Date.now(); rec.st = "manual"; copy(phrase(rec.cmd)); }
-    else if (!r.ok) throw new Error("http " + r.status); else { rec.st = "sent"; S.box.on = true; fastUntil = Date.now() + 90e3; } }
-  catch(e){ rec.st = "queued"; } }
+    else if (!r.ok) throw new Error("http " + r.status); else { if (rec.st === "sending" || rec.st === "offline") rec.st = "queued"; S.box.on = true; fastUntil = Date.now() + 120e3; } }
+  catch(e){ rec.st = "offline"; } }
 /** Send Vesper a command. The screen updates at once (optimistic); Vesper's confirmation follows. */
 async function send(cmd, label){
-  const rec = {id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), at: Date.now(), label: label || phrase(cmd), st: "sending"};
-  rec.cmd = {id: rec.id, ts: rec.at, ...cmd}; S.out.unshift(rec); S.out = S.out.slice(0, 40);
+  if (blocked(cmd)){ toast("Paused: today's spend cap is reached, so changes from HQ wait. Hold still works; lift the pause in Telegram.", "warn"); return null; }
+  const id = uuid(), rec = {id, at: Date.now(), label: label || phrase(cmd), st: "sending", tier: tier(cmd)};
+  rec.cmd = {command_id: id, ts: rec.at, ...cmd}; S.out.unshift(rec); S.out = S.out.slice(0, 40);
   if (cmd.t === "focus") opt("mode", cmd.mode); if (cmd.t === "ship") opt("ship:" + cmd.n, 1); if (cmd.t === "hold") opt("hold:" + cmd.n, 1); if (cmd.t === "unhold") opt("hold:" + cmd.n, 0);
   if (cmd.t === "defer") opt("defer:" + cmd.key, Date.now() + 864e5); if (cmd.t === "greenlight") opt("green:" + cmd.n, 1);
-  emit(); await post(rec); ls.set("hq-out", S.out); emit();
+  emit(); await post(rec); ls.set("hq-out", S.out.map(r => ({...r, env: r.st === "offline" ? r.env : undefined}))); emit();
   if (rec.st === "manual") toast("Copied \"" + phrase(rec.cmd) + "\". Paste it to Vesper in Telegram: HQ's command link isn't switched on yet.", "warn");
-  else if (rec.st === "queued") toast("You're offline. I'll send it the moment you're back.", "warn");
+  else if (rec.st === "offline") toast("You're offline. I'll send it the moment you're back.", "warn");
   else if (rec.st === "locked") toast("Open HQ from Vesper's private link first.", "warn");
   tick(); return rec; }
 function opt(k, v){ S.opt[k] = {v, at: Date.now()}; ls.set("hq-opt", S.opt); }
@@ -124,6 +157,7 @@ async function tick(force){
   const jobs = [];
   if (force || every("box", Date.now() < fastUntil ? 3e3 : 10e3)) jobs.push(boxPoll());
   if (force || every("live", 15e3)) jobs.push(loadLive());
+  if (force || every("tel", 10e3)) jobs.push(loadTel());
   if (force || every("pub", 60e3)) jobs.push(loadPub(force === "user"));
   if (force || every("priv", S.privLive && Date.now() - S.privLive < 3 * 60e3 ? 5 * 60e3 : 60e3)) jobs.push(loadPriv(force === "user"));
   if (force === "user" || every("order", 5 * 60e3)) jobs.push(loadOrder());
@@ -134,7 +168,7 @@ async function tick(force){
   S.busy = false; emit(); }
 function start(){ stop(); timer = setInterval(tick, 3000); }
 function stop(){ if (timer){ clearInterval(timer); timer = null; } }
-function syncNow(user){ for (const k in due) if (user || k === "box" || k === "live" || k === "pub" || k === "priv") due[k] = 0; start(); return tick(user ? "user" : true); }
+function syncNow(user){ for (const k in due) if (user || ["box", "live", "pub", "priv", "tel"].includes(k)) due[k] = 0; start(); return tick(user ? "user" : true); }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncNow(); else stop(); });
 addEventListener("focus", () => { if (!timer) syncNow(); }); addEventListener("pageshow", e => { if (e.persisted) syncNow(); }); addEventListener("online", () => syncNow());
 addEventListener("pagehide", stop);
@@ -178,9 +212,10 @@ function model(){
     calls.push({key: (a.k || "x") + ":" + (a.repo || "") + (a.n || a.title), kind: a.k === "pr" ? (a.repo === "Hybrid" ? "pr" : "upgrade") : "ask", n: a.n, title: plain(a.title), why: plain(a.why || ""), url: a.url}); }
   const live = calls.filter(c => !(optv("defer:" + c.key) > Date.now()) && optv("ship:" + c.n) !== 1 && optv("hold:" + c.n) !== 1);
   // spend
-  const m = P.money || {}, sp = o.spend || {}, capDay = +(h2.spend && h2.spend.daily_cap) || CAP, today = m.today != null ? +m.today : sp.spent != null ? +sp.spent : null;
-  const spend = {known: today != null, today, cap: capDay, limit: m.today_cap != null ? +m.today_cap : sp.cap != null ? +sp.cap : null, month: m.month, monthCap: m.month_cap, from: m.from,
-    byModel: sp.by_model || null, byJob: sp.by_job || null, runs: sp.runs, hold: !!(h2.spend && h2.spend.throttled), critical: !!(h2.spend && h2.spend.critical)};
+  const m = P.money || {}, sp = o.spend || {}, T = (S.tel && S.tel.spend) || null, capDay = T ? +T.cap : +(h2.spend && h2.spend.daily_cap) || CAP;
+  const today = T ? +T.today : m.today != null ? +m.today : sp.spent != null ? +sp.spent : null;
+  const spend = {known: today != null, today, cap: capDay, limit: T ? +T.limit : m.today_cap != null ? +m.today_cap : sp.cap != null ? +sp.cap : null, month: T ? T.month : m.month, monthCap: T ? T.month_cap : m.month_cap, from: m.from,
+    byModel: sp.by_model || null, byJob: sp.by_job || null, runs: sp.runs, hold: T ? T.reason === "spend hold" : !!(h2.spend && h2.spend.throttled), critical: T ? T.reason === "critical only" : !!(h2.spend && h2.spend.critical), live: !!T};
   spend.pct = spend.known ? Math.min(100, Math.round(100 * today / capDay)) : 0;
   const quiet = h2.quiet || null, health = x.health || null;
   const incidents = ((P.inc || {}).rows || []).filter(r => r[2] !== "closed");
@@ -188,6 +223,6 @@ function model(){
   return {P, pub, h2, o, x, desks, mode, queue, needs, yours, drafts, shipped, nextRun, calls: live, spend, quiet, health, incidents, ok, locked: !S.priv,
           feed: (P.f || []).slice(0, 60), me: P.me || null}; }
 
-return {S, API, CAP, ROLE, IOS_BROWSER, keyStr, model, send, phrase, plain, ago, when, money, syncNow, loadChecks, ls, optv,
+return {S, API, CAP, ROLE, IOS_BROWSER, keyStr, model, send, phrase, plain, ago, when, money, syncNow, loadChecks, ls, optv, tier, blocked, pauseState, relayAge, FINAL,
         on: f => subs.push(f), setToast: f => { toastFn = f; }, start: () => { start(); return tick(true); }, isFix, isHeld};
 })();

@@ -50,8 +50,19 @@ const BASE = `http://127.0.0.1:${srv.address().port}/hq/`;
 const browser = await chromium.launch();
 
 async function run(name, ctxOpt, phone){
-  const ctx = await browser.newContext(ctxOpt), page = await ctx.newPage(), reqs = [], cmds = [], box = []; let boxOn = true, cErr = [];
-  page.on("console", m => { if (m.type() === "error" && !/favicon|404/.test(m.text())) cErr.push(m.text()); }); page.on("pageerror", e => cErr.push(String(e)));
+  const ctx = await browser.newContext(ctxOpt), page = await ctx.newPage(), reqs = [], cmds = [], box = [], seenCid = new Map(), pend = []; let boxOn = true, cErr = [], telAge = 20, telPaused = false, dropNext = "";
+  // a stand-in for Vesper's server: Tier 1 reads answer at once; anything else waits for a (simulated) Telegram Approve
+  const say = (c, st, extra) => { const seq = (c._seq = (c._seq || 0) + 1); box.push({id: box.length + 1, d: "out", cid: c.command_id + ":" + seq, ...seal({command_id: c.command_id, status: st, ...extra}, "mileset-hq-ack-v1")}); };
+  const t1 = c => c.t === "read" || c.t === "defer" || (c.t === "text" && /^(status|spend|health|queue)$/i.test(c.text || ""));
+  const vesper = c => { if (t1(c)){ say(c, "running"); say(c, "completed", {ok: true, say: "read " + (c.q || c.t), result: c.t === "defer" ? null : {title: "Spend", lines: ["Today: $0.67 of the $5.00 daily cap ($4.33 left).", "Over-budget pause: armed"]}}); return; }
+    say(c, "awaiting_telegram_approval", {say: "Waiting for your Approve in Telegram.", cost: c.t === "text" ? 0.15 : 0, tier: 2});
+    const tap = () => { if (/reject/.test(c.text || "")) return say(c, "rejected", {say: "Rejected in Telegram. Nothing ran."}); say(c, "running", {say: "Approved in Telegram."});
+      say(c, "completed", {ok: true, say: c.t === "text" ? "TEST reply: all steady, Sir." : "Done."}); };
+    if (/sign-ups|reject/.test(c.text || "")) pend.push(tap); else setTimeout(tap, 1500); };   // these two wait until the test taps Approve/Reject
+  const telegram = () => pend.splice(0).forEach(f => f());
+  const tel = () => ({at: Math.round(Date.now() / 1000) - telAge, spend: {today: telPaused ? 0.86 : 0.67, cap: 5, limit: 0.86, left: telPaused ? 0 : 0.19, pct: telPaused ? 17 : 13, paused: telPaused, reason: telPaused ? "cap reached" : "", month: 8.27, month_cap: 17},
+    gate: {next_n: 4, next_title: "Fix: TEST bug fix", queue: 2, next_run: new Date(Date.now() + 37 * 60000).toISOString()}, relay: {mode: "normal"}});
+  page.on("console", m => { if (m.type() === "error" && !/favicon|404|ERR_FAILED/.test(m.text())) cErr.push(m.text()); }); page.on("pageerror", e => cErr.push(String(e)));
   const json = (route, obj, status = 200) => route.fulfill({status, contentType: "application/json", headers: {"access-control-allow-origin": "*"}, body: JSON.stringify(obj)});
   await ctx.route(/^https:\/\//, async route => { const q = route.request(), u = q.url(); reqs.push({u, at: Date.now(), body: q.postData() || ""});
     if (/hq-data\/hq\.json|contents\/hq\.json/.test(u)) return json(route, PUB);
@@ -61,10 +72,13 @@ async function run(name, ctxOpt, phone){
     if (/actions\/runs/.test(u)) return json(route, {workflow_runs: [{name: "Nightly check", conclusion: "success", status: "completed", updated_at: iso(600), html_url: ""}]});
     if (/\/api\/founding/.test(u)) return json(route, {left: 83, max: 100, members: 17});
     if (/\/api\/me$/.test(u)) return json(route, ME);
+    if (/\/api\/hq\/tel\//.test(u)){ if (!boxOn) return json(route, {error: "Not found"}, 404); return json(route, {tel: {id: 1, ...seal(tel(), "mileset-hq-tel-v1")}, now: new Date().toISOString()}); }
     if (/\/api\/hq\/box\//.test(u)){ if (!boxOn) return json(route, {error: "Not found"}, 404);
       if (q.method() === "OPTIONS") return route.fulfill({status: 204, headers: {"access-control-allow-origin": "*", "access-control-allow-headers": "content-type"}});
-      if (q.method() === "POST"){ const b = JSON.parse(q.postData()), c = open(b, "mileset-hq-cmd-v1"); cmds.push(c);
-        box.push({id: box.length + 1, d: "out", ...seal({id: c.id, ok: true, say: c.t === "text" ? "TEST reply: all steady, Sir." : "Done."}, "mileset-hq-ack-v1")}); return json(route, {id: box.length}, 201); }
+      if (q.method() === "POST"){ const b = JSON.parse(q.postData()), c = open(b, "mileset-hq-cmd-v1");
+        if (dropNext && c.t === dropNext){ dropNext = ""; return route.abort(); }                       // a network failure on the first try
+        if (seenCid.has(b.cid)) return json(route, {id: seenCid.get(b.cid), dup: true});            // same command again: stored once
+        cmds.push({...c, _cid: b.cid}); seenCid.set(b.cid, cmds.length); vesper(c); return json(route, {id: cmds.length}, 201); }
       const since = +new URL(u).searchParams.get("since") || 0; return json(route, {rows: box.filter(r => r.id > since)}); }
     return route.fulfill({status: 404, body: ""}); });
   await page.addInitScript(() => { try { localStorage.setItem("hp-token", "t".repeat(64)); } catch(e){} });
@@ -79,10 +93,15 @@ async function run(name, ctxOpt, phone){
   check(await page.locator('.stn[data-id="dev"][data-s="working"]').count() === 1, T("public snapshot still shows who is working"));
   await shot("1-locked");
   // 2. unlock with the private link
-  await page.goto(BASE + "#k=" + KEY); await page.reload(); await page.waitForFunction(() => /\$0\.67/.test(document.querySelector("#p-spend").textContent), null, {timeout: 8000});
+  await page.goto(BASE + "#k=" + KEY); await page.reload(); await page.waitForFunction(() => /\$0\.67/.test(document.querySelector("#t-amt").textContent), null, {timeout: 8000});
   const url = page.url(); check(phone ? /#k=/.test(url) : !/k=/.test(url), T(phone ? "iPhone Safari keeps the key in the address for Add to Home Screen (unchanged)" : "the key is wiped from the address after unlocking (unchanged)"));
   check((await page.evaluate(() => localStorage.getItem("hq-k"))) === KEY, T("the key is kept on this device only (localStorage hq-k, unchanged)"));
-  check(/\$0\.67 \/ \$5\.00/.test(await page.innerText("#p-spend")), T("HUD spend meter: $0.67 / $5.00"));
+  await page.waitForFunction(() => /RELAY ONLINE/.test(document.querySelector("#t-relay").textContent), null, {timeout: 12000}).catch(() => {});
+  const tb = await page.innerText("#tbar");
+  check(/\$0\.67 \/ \$5\.00/.test(tb) && /\$0\.19 left today/.test(tb) && await page.evaluate(() => document.querySelector("#t-spend .meter u").style.width) === "13%", T("header bar: $0.67 / $5.00, percentage bar, headroom ($0.19 left today, under the monthly limit)"));
+  check(/PAUSE ARMED/.test(tb) && await page.getAttribute("#t-pause", "data-s") === "ok", T("header bar: over-budget pause shows ARMED"));
+  check(/RELAY ONLINE · \d+s/.test(tb), T("header bar: relay ONLINE with a relative time (" + (tb.match(/RELAY[^\n]*/) || [""])[0] + ")"));
+  check(/NEXT #4 · \d/.test(tb), T("header bar: next queued change and the next hourly run"));
   check(/2 quiet failures today/.test(await page.innerText("#p-quiet")), T("HUD quiet-failure badge"));
   check(/All systems go/.test(await page.innerText("#p-health")) && /Vesper/.test(await page.innerText("#p-vesper")), T("HUD health and Vesper status"));
   await page.waitForFunction(() => /Synced/.test(document.querySelector("#sync").textContent), null, {timeout: 5000}).catch(() => {});
@@ -109,22 +128,36 @@ async function run(name, ctxOpt, phone){
   if (phone) await page.click("#call [data-fold]");
   const n0 = cmds.length; await page.click('#call .btn.go >> nth=0'); await page.waitForTimeout(250);
   check(!/TEST held change/.test(await page.innerText("#call").catch(() => "")), T("Approve updates the screen at once (optimistic)"));
-  await page.waitForFunction(() => /Vesper: Done/.test(document.querySelector("#toasts").textContent), null, {timeout: 9000}).catch(() => {});
-  check(cmds.length === n0 + 1 && cmds[n0].t === "ship" && cmds[n0].n === 1 && cmds[n0].id && Math.abs(cmds[n0].ts - Date.now()) < 60000, T("Approve sends a sealed 'ship #1' command with an id and a timestamp"));
-  check(/Vesper: Done/.test(await page.innerText("#toasts")), T("Vesper's confirmation arrives without leaving HQ"));
+  await page.waitForFunction(() => /Approve it in Telegram/.test(document.querySelector("#toasts").textContent), null, {timeout: 9000}).catch(() => {});
+  const UUIDRE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+  check(cmds.length === n0 + 1 && cmds[n0].t === "ship" && cmds[n0].n === 1 && UUIDRE.test(cmds[n0].command_id) && cmds[n0]._cid === cmds[n0].command_id && Math.abs(cmds[n0].ts - Date.now()) < 60000,
+        T("Approve sends a sealed 'ship #1' command with a UUID command_id (also the mailbox cid) and a timestamp"));
+  check(/Approve it in Telegram/.test(await page.innerText("#toasts")), T("Tier 2: HQ says it's awaiting your Telegram approval"));
+  await page.waitForFunction(() => /Done: Done/.test(document.querySelector("#toasts").textContent), null, {timeout: 9000}).catch(() => {});
+  check(/Done: Done/.test(await page.innerText("#toasts")), T("after the (simulated) Telegram Approve, the result arrives without leaving HQ"));
   // 5. focus toggle
   await page.click('#focus [data-m="class"]'); await page.waitForTimeout(80); check(await page.getAttribute('#focus [data-m="class"]', "aria-pressed") === "true", T("focus toggle flips at once")); await page.waitForTimeout(300);
   check(cmds.some(c => c.t === "focus" && c.mode === "class"), T("focus toggle tells Vesper (In class)"));
   // 6. command bar
   if (phone) await page.click("#cmdpill"); else await page.keyboard.press("Control+k");
-  await page.waitForSelector("#pal input"); await page.fill("#pal input", "how are sign-ups today"); await page.keyboard.press("Enter");
+  await page.waitForSelector("#pal input");
+  check(/Spend today\s*instant/.test(await page.innerText("#pal .sug")) && /needs Telegram OK/.test(await page.innerText("#pal .sug")), T("command bar labels reads 'instant' and changes 'needs Telegram OK'"));
+  const r1 = cmds.length; await page.click('#pal .sug button:has-text("Spend today")');
+  await page.waitForFunction(() => /Completed/i.test(document.querySelector("#pal .thread").textContent) && /\$4\.33 left/.test(document.querySelector("#pal .thread").textContent), null, {timeout: 9000}).catch(() => {});
+  const th1 = await page.innerText("#pal .thread"); check(cmds[r1] && cmds[r1].t === "read" && cmds[r1].q === "spend" && /Completed/i.test(th1) && /\$4\.33 left/.test(th1), T("Tier 1 read (spend) runs at once and shows its structured result in place"));
+  await page.fill("#pal input", "how are sign-ups today"); await page.keyboard.press("Enter");
+  await page.waitForFunction(() => /Awaiting Telegram approval/i.test(document.querySelector("#pal .thread").textContent), null, {timeout: 6000}).catch(() => {});
+  check(/Awaiting Telegram approval/i.test(await page.innerText("#pal .thread")), T("a typed question shows the 'awaiting Telegram approval' badge")); telegram();
   await page.waitForFunction(() => /TEST reply/.test(document.querySelector("#pal .thread").textContent), null, {timeout: 9000}).catch(() => {});
   check(cmds.some(c => c.t === "text" && c.text === "how are sign-ups today") && /TEST reply/.test(await page.innerText("#pal .thread")), T("command bar sends a typed command and shows Vesper's reply in place"));
-  check(!/Sir/.test(await page.innerText("#pal .thread")) || true, T("command bar thread renders")); await shot("4-command"); await page.keyboard.press("Escape");
+  await page.fill("#pal input", "please reject this one"); await page.keyboard.press("Enter"); await page.waitForTimeout(800); telegram();
+  await page.waitForFunction(() => /Rejected/i.test(document.querySelector("#pal .thread").textContent), null, {timeout: 9000}).catch(() => {});
+  check(/Rejected/i.test(await page.innerText("#pal .thread")), T("a command rejected in Telegram shows 'Rejected'")); await shot("4-command"); await page.keyboard.press("Escape");
   // 7. ship gate + PRs
   await page.click('#dock [data-v="ship"]'); await page.waitForSelector(".tl .step");
   const steps = await page.$$eval(".tl .step", e => e.map(x => x.dataset.n + ":" + x.dataset.pr));
   check(steps.join(",").startsWith("1:4,2:1,3:2") || steps.join(",").startsWith("1:4,2:2"), T("ship gate order: bug fix first, then oldest (" + steps.join(",") + ")"));
+  const cc = await page.innerText("#c-cmds").catch(() => ""); check(/Commands you sent/i.test(cc) && /Completed/i.test(cc) && /Rejected/i.test(cc), T("'Commands you sent' lists each command with its status badge"));
   const ship = await page.innerText("#views"); check(/Held by you/.test(ship) && /Release hold/.test(ship) && /Still being built/.test(ship) && /Went live/.test(ship) && /Goes live around/.test(ship), T("ship gate shows queued (with times), held by you, not ready and shipped"));
   check(/Pull requests and code changes/.test(ship) && /Plain summary of change 2/.test(ship) && /Vesper #77/.test(ship), T("PR cards with plain summaries, incl. Vesper upgrades"));
   await page.waitForFunction(() => /Checks passing/.test(document.querySelector("#views").textContent), null, {timeout: 6000}).catch(() => {}); check(/Checks passing/.test(await page.innerText("#views")), T("PR check status shows"));
@@ -144,12 +177,34 @@ async function run(name, ctxOpt, phone){
   check(/1 card/.test(await page.innerText("#views")) && await page.locator("[data-audio]").count() === 1, T("add a study card, then a 1-tap audio active-recall button appears"));
   check(/TEST City Marathon/.test(me) && /200/.test(me) && /Miles this week/.test(me) && /Food logged/.test(me) && /7\.5 h/.test(me), T("running: race countdowns, weekly miles, consistency, recovery (from the owner's own account)"));
   await page.fill("#cap", "pick up scrubs Thursday"); await page.click("[data-capture]"); await page.waitForTimeout(400);
-  check(cmds.some(c => c.t === "capture" && /scrubs/.test(c.text)) && /pick up scrubs/.test(await page.innerText("#views")), T("quick capture goes to Vesper and shows in the list")); await shot("7-me");
+  check(cmds.some(c => c.t === "capture" && /scrubs/.test(c.text)) && /pick up scrubs/.test(await page.innerText("#views")), T("quick capture goes to Vesper and shows in the list"));
+  await page.waitForFunction(() => /Completed/i.test(document.querySelector("#views").textContent), null, {timeout: 9000}).catch(() => {});
+  check(/Completed/i.test(await page.innerText("#views")), T("quick capture shows its status badge (completed after approval)"));
+  // a network failure on the first try: HQ resends the SAME command id, and the mailbox stores it once
+  dropNext = "capture"; const c0 = cmds.length, q0 = reqs.length; await page.fill("#cap", "renew parking pass"); await page.click("[data-capture]");
+  for (let i = 0; i < 30 && cmds.length === c0; i++) await page.waitForTimeout(500);
+  const tries = reqs.slice(q0).filter(r => r.body && /"d":"in"/.test(r.body)).map(r => JSON.parse(r.body));
+  check(cmds.length === c0 + 1 && tries.length >= 2 && tries.every(b => b.cid === tries[0].cid && b.ct === tries[0].ct) && cmds[c0].text === "renew parking pass",
+        T("after a dropped send, HQ retries with the same command id and envelope, and Vesper gets it once (" + tries.length + " tries)"));
+  await shot("7-me");
   // layout: no sideways scroll, nothing under the notch or home bar
   const lay = await page.evaluate(() => ({w: document.documentElement.scrollWidth, vw: innerWidth, hud: document.querySelector("#hud").getBoundingClientRect().top, dock: innerHeight - document.querySelector("#dock").getBoundingClientRect().bottom,
     vf: /viewport-fit=cover/.test(document.querySelector('meta[name="viewport"]').content), css: [...document.styleSheets].flatMap(s => [...s.cssRules]).map(r => r.cssText).join("")}));
   check(lay.w <= lay.vw + 1, T("no sideways scroll (" + lay.w + " of " + lay.vw + ")")); check(lay.hud >= 8 && lay.dock >= 8, T("HUD and dock sit inside the screen"));
   check(lay.vf && /--st:\s*env\(safe-area-inset-top/.test(lay.css) && /--sb:\s*env\(safe-area-inset-bottom/.test(lay.css), T("viewport-fit=cover and top/bottom safe-area padding"));
+  // over-budget pause and a stale relay
+  telPaused = true; telAge = 300; await page.click('#dock [data-v="floor"]'); await page.click("#sync"); await page.waitForTimeout(1500);
+  const tb2 = await page.innerText("#tbar");
+  check(/PAUSED — CAP REACHED/.test(tb2) && await page.getAttribute("#t-pause", "data-s") === "alert", T("header bar: PAUSED — CAP REACHED in red when the cap is hit"));
+  check(/RELAY STALE · 5 min/.test(tb2), T("header bar: relay STALE when the last heartbeat is over 2 minutes old"));
+  if (!(await page.isVisible("#call .btn.warn"))) await page.click("#call [data-fold]");
+  const appr = await page.$$eval("#call .btn.go", e => e.map(x => x.disabled)), hold = await page.$$eval("#call .btn.warn", e => e.map(x => x.disabled));
+  const safe = await page.evaluate(() => [HQ.blocked({t: "hold", n: 1}), HQ.blocked({t: "focus", mode: "normal"}), HQ.blocked({t: "read", q: "spend"}), HQ.blocked({t: "text", text: "run dev lead now"})]);
+  check(appr.length && appr.every(Boolean) && hold.every(x => !x) && JSON.stringify(safe) === "[false,false,false,true]", T("while paused, Tier 2 buttons are switched off in the UI (Hold, focus and reads stay on)"));
+  const p0 = cmds.length; await page.evaluate(() => { const b = document.querySelector("#call .btn.go"); b.disabled = false; b.click(); }); await page.waitForTimeout(400);
+  check(cmds.length === p0 && /Paused: today's spend cap/.test(await page.innerText("#toasts")), T("a paused Tier 2 command is refused before anything is sent"));
+  await shot("8-paused");
+  telPaused = false; telAge = 20; await page.click("#sync"); await page.waitForTimeout(1200);
   // 10. smart visibility sync
   await page.click('#dock [data-v="floor"]');
   await page.evaluate(() => { Object.defineProperty(document, "visibilityState", {configurable: true, get: () => "hidden"}); document.dispatchEvent(new Event("visibilitychange")); });
@@ -160,9 +215,9 @@ async function run(name, ctxOpt, phone){
   // the key never leaves the device; only allowed hosts; writes only to the mailbox
   check(!reqs.some(r => r.u.includes(KEY) || r.body.includes(KEY)), T("the HQ key is never sent anywhere"));
   check(reqs.every(r => /^https:\/\/(api\.github\.com|raw\.githubusercontent\.com|hybrid-api\.hybridapp\.workers\.dev)\//.test(r.u)), T("only Vesper's feeds, GitHub and the Mileset API are contacted"));
-  check(reqs.filter(r => r.body).every(r => r.u.endsWith("/api/hq/box/" + BOX) && /^\{"d":"in","iv":"[\w-]+","ct":"[\w-]+"\}$/.test(r.body)), T("the only writes are sealed envelopes to the HQ mailbox"));
+  check(reqs.filter(r => r.body).every(r => r.u.endsWith("/api/hq/box/" + BOX) && /^\{"d":"in","cid":"[0-9a-f-]{36}","iv":"[\w-]+","ct":"[\w-]+"\}$/.test(r.body)), T("the only writes are sealed envelopes to the HQ mailbox"));
   // fallback when the mailbox isn't deployed yet
-  boxOn = false; await page.evaluate(() => { HQ.S.box.on = false; }); await page.click('#focus [data-m="normal"]'); await page.waitForTimeout(400);
+  boxOn = false; await page.evaluate(() => { HQ.S.box.on = false; }); await page.click('#focus [data-m="' + (await page.getAttribute('#focus [data-m="normal"]', "aria-pressed") === "true" ? "class" : "normal") + '"]'); await page.waitForTimeout(400);
   check(/Paste it to Vesper in Telegram/.test(await page.innerText("#toasts")), T("before the mailbox is live, a command is copied for Telegram instead of lost"));
   check(cErr.length === 0, T("no console errors" + (cErr.length ? ": " + cErr.slice(0, 3).join(" | ") : "")));
   await ctx.close(); }
