@@ -1393,7 +1393,7 @@ async function route(req, env, path, ctx){
     const b = await body(req), d = String(b.d || "");
     await limit(env, "hqbox:" + (req.headers.get("CF-Connecting-IP") || "x") + ":" + d.slice(0, 6));   // per kind: Vesper's minute heartbeat never crowds out its confirmations
     const iv = String(b.iv || ""), ct = String(b.ct || ""), cid = b.cid == null ? null : String(b.cid);
-    if (!["in", "out", "state", "tel"].includes(d) || !/^[A-Za-z0-9_-]{16}$/.test(iv) || !/^[A-Za-z0-9_-]{24,}$/.test(ct) || ct.length > (d === "state" ? 400000 : 8000)) throw new HttpError(400, "Bad request.");
+    if (!["in", "out", "state", "tel"].includes(d) || !/^[A-Za-z0-9_-]{16}$/.test(iv) || !/^[A-Za-z0-9_-]{24,}$/.test(ct) || ct.length > (d === "state" ? 400000 : d === "in" ? 8000 : 48000)) throw new HttpError(400, "Bad request.");
     if (cid !== null && (!["in", "out"].includes(d) || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(:\d{1,2})?$/.test(cid))) throw new HttpError(400, "Bad request.");
     if (cid !== null){ const old = await env.DB.prepare("SELECT id FROM hq_box WHERE box = ? AND d = ? AND cid = ?").bind(hb[1], d, cid).first();
       if (old) return {id: old.id, dup: true}; }                        // the same command (or status) again: already stored

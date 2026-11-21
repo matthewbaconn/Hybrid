@@ -24,6 +24,8 @@ check((await get(OTHER)).rows.length === 0 && (await get(OTHER, "?d=in")).rows.l
 let bad = false; try { open((await get(BOX)).rows.find(x => x.d === "out"), "mileset-hq-cmd-v1"); } catch(e){ bad = true; } check(bad, "a confirmation can't be replayed as a command (different seal)");
 for (const [b, why] of [[{d: "x", ...seal(cmd, "a")}, "unknown kind"], [{d: "in", iv: "short", ct: "A".repeat(40)}, "bad iv"], [{d: "in", iv: "A".repeat(16), ct: "A".repeat(9000)}, "oversized command"], [{d: "in"}, "empty"]])
   check((await post(BOX, b)).status === 400, "refused: " + why);
+check((await post(BOX, {d: "out", iv: "A".repeat(16), ct: "A".repeat(20000)})).ok && (await post(box(crypto.randomBytes(32)), {d: "tel", iv: "A".repeat(16), ct: "A".repeat(30000)})).ok
+      && (await post(BOX, {d: "out", iv: "A".repeat(16), ct: "A".repeat(50000)})).status === 400, "a big reply (pipeline, roster) fits up to 48 KB; commands stay small");
 check((await fetch(`${API}/api/hq/box/nothex`)).status >= 400 && (await fetch(`${API}/api/hq/box/`)).status >= 400, "no listing without a mailbox id");
 // Nov 20 command tiers: command ids make retries safe, and the sealed telemetry heartbeat has its own read endpoint.
 const CID = crypto.randomUUID(), env1 = seal({command_id: CID, ts: Date.now(), t: "read", q: "spend"}, "mileset-hq-cmd-v1");
