@@ -58,11 +58,15 @@ try {
   t(!(await p.$(".fwc")), "checked off a workout before: no card");
   await open(base(restProf, {activities: [{id: "a1", source: "strava", date: add(today, -1), type: "Run", name: "Morning Run", mi: 3, minutes: 30}]}));
   t(!(await p.$(".fwc")), "synced a workout before: no card");
-  // a session day: the old hint stays, with the watch link
+  // a session day: the hint (growth move 11 copy: "Day 1 is today" on the day the plan is built), with the watch link
   await open(base({...restProf, days: [dw(today), dw(add(today, 3))], longDay: dw(add(today, 3))}));
   t(!(await p.$(".fwc")), "a day with a session: no rest-day card");
   const hint = await p.$eval(".hfirst", e => e.innerText).catch(() => "");
-  t(/Your first workout/.test(hint) && /Link your watch/.test(hint), "a day with a session: first-workout hint with Link your watch");
+  t(/Your plan is ready\. Day 1 is today\./.test(hint) && /I did it/.test(hint) && /Link your watch/.test(hint), "plan built today, a day with a session: hint opens with Day 1 is today, says tap I did it, keeps Link your watch (" + hint.slice(0, 60) + ")");
+  t(/Start with my phone/.test(hint), "run day: hint points to Start with my phone (no watch needed)");
+  await open(base({...restProf, built: add(today, -3), days: [dw(today), dw(add(today, 3))], longDay: dw(add(today, 3))}));
+  const hint2 = await p.$eval(".hfirst", e => e.innerText).catch(() => "");
+  t(/Your first workout is today\./.test(hint2) && !/Day 1/.test(hint2), "plan built 3 days ago, never trained: hint says the first workout is today, not Day 1 (" + hint2.slice(0, 60) + ")");
 } catch(e){ console.log("FAIL error: " + e.message); bad++; }
 await b.close(); srv.close();
 console.log(bad ? bad + " FAILED" : "ALL PASS"); process.exit(bad ? 1 : 0);
