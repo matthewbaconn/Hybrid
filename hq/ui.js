@@ -208,6 +208,7 @@ $("#stack").addEventListener("click", e => { const f = e.target.closest("[data-f
 // ---------- views ----------
 const views = $("#views");
 function show(v){ view = v; for (const b of $$("#dock button")) b[b.dataset.v === v ? "setAttribute" : "removeAttribute"]("aria-current", "page");
+  if (v === "members") loadRoster();
   views.hidden = v === "floor"; document.body.classList.toggle("inview", v !== "floor"); $("#floorctl").hidden = $("#stack").hidden = v !== "floor"; if (v !== "floor"){ views.scrollTop = 0; drawView(true); } else { drawRecap(); fit(); } }
 $("#dock").onclick = e => { const b = e.target.closest("button"); if (b) show(b.dataset.v); };
 const prState = p => p.m ? ["ok", "Shipped " + ago(p.m)] : p.draft ? ["paused", "Not ready"] : M.yours.includes(p) ? ["waiting", "Held by you"] : M.needs.includes(p) ? ["waiting", "Waiting for your OK"] : ["working", "Queued"];
@@ -217,6 +218,7 @@ function vShip(){
   const step = (p, n, cls, extra) => `<div class="step ${cls}" data-n="${n}" data-pr="${p.n}"><b>${esc(plain(p.t))} <span class="dim num">#${p.n}</span></b><div class="meta">${extra || ""}${chk(p)}</div></div>`;
   const cmds = S.out.slice(0, 8);
   let n = 0, h = cmds.length ? `<section class="card glass wide" id="c-cmds"><h2>Commands you sent</h2><p class="sub">Instant reads run at once; changes wait for your Approve in Telegram.</p><div class="rows">${cmds.map(r => `<div class="row"><div class="g"><b>${esc(r.label)}</b><span>${esc(ago(r.at))}${r.cost ? " · about " + money(r.cost) : ""}${r.say && !r.result ? " · " + esc(cut(plain(r.say), 120)) : ""}</span>${result(r)}</div>${badge(r.st)}</div>`).join("")}</div></section>` : "";
+  h += vPipe();
   h += `<section class="card glass wide"><h2>Ship gate</h2><p class="sub">In the exact order changes go live. One per hourly run, bug fixes first, then oldest first.${M.nextRun ? " Next run " + esc(when(M.nextRun)) + "." : ""}${S.orderErr ? " (GitHub is busy: showing the list from " + esc(ago(S.orderAt)) + ".)" : ""}</p>`;
   if (!S.order) h += empty("the release queue", "Loading the public change list from GitHub.");
   else { h += `<div class="tl">` + (M.queue.length ? M.queue.map((p, i) => step(p, ++n, "", `<span>${M.nextRun ? "Goes live around " + esc(when(M.nextRun + i * 3600e3)) : "Next in line"}</span><button class="btn sm warn" data-cmd='${JSON.stringify({t: "hold", n: p.n})}' data-label="Hold #${p.n}">Hold</button>`)).join("") : `<p class="mut" style="margin:0">Nothing is queued. The gate is clear.</p>`)
@@ -224,6 +226,7 @@ function vShip(){
     + M.yours.map(p => step(p, "‖", "held", `<span class="tag" style="--c:var(--am)">Held by you</span><button class="btn sm" data-cmd='${JSON.stringify({t: "unhold", n: p.n})}' data-label="Release hold on #${p.n}">Release hold</button>`)).join("")
     + M.drafts.map(p => step(p, "·", "draft", `<span>Still being built</span>`)).join("")
     + M.shipped.map(p => step(p, "✓", "live", `<span>Went live ${esc(ago(p.m))}</span>`)).join("") + `</div>`; }
+  if (pipeItems()) return h + `</section>`;
   h += `</section><section class="card glass wide"><h2>Pull requests and code changes</h2><p class="sub">Every open or recent change, in plain words. Tap one for details and its checks.</p><div class="rows">`;
   const all = [...M.needs, ...M.queue, ...M.yours, ...M.drafts, ...M.shipped], ups = (M.P.a || []).filter(a => a.k === "pr" && a.repo && a.repo !== "Hybrid");
   h += all.map(p => { const [s, l] = prState(p); return `<div class="row" data-pr="${p.n}" style="cursor:pointer"><div class="g"><b>${esc(plain(p.t))} <span class="dim num">#${p.n}</span></b><span>${esc(prSum(p) || "Mileset app change")}</span></div><div style="display:grid;gap:5px;justify-items:end">${chip(s, l)}${chk(p)}</div></div>`; }).join("")
@@ -333,8 +336,96 @@ function playCards(){ const decks = [...HQ.ls.get("hq-decks", []), ...(M.h2.stud
 function stopCards(){ if (audio) audio.on = false; audio = null; try { speechSynthesis.cancel(); } catch(e){} drawView(true); }
 function drawView(force){ if (view === "floor") return; const a = document.activeElement; if (!force && a && views.contains(a) && /INPUT|TEXTAREA/.test(a.tagName)) return;
   const keep = {}; for (const el of $$("input,textarea", views)) if (el.id) keep[el.id] = el.value; const y = views.scrollTop;
-  if (setHTML(views, `<div class="view">${view === "ship" ? vShip() : view === "company" ? vCompany() : vMe()}</div>`)){ for (const id in keep){ const el = document.getElementById(id); if (el) el.value = keep[id]; } views.scrollTop = y; }
+  if (setHTML(views, `<div class="view">${view === "ship" ? vShip() : view === "members" ? vMembers() : view === "company" ? vCompany() : vMe()}</div>`)){ for (const id in keep){ const el = document.getElementById(id); if (el) el.value = keep[id]; } views.scrollTop = y; }
   if (view === "ship") for (const p of [...M.needs, ...M.queue].slice(0, 5)) if (!S.checks[p.sha]) HQ.loadChecks(p); }
+
+// ---------- HQ tabs, batch 1 (Nov 20 9:24pm): Pipeline board + Members. Every read is $0 (Vesper's plain code). ----------
+const STAGES = ["Awaiting Telegram Tap", "Tests Failing", "Running Tests", "Queued for Gate", "Held", "Draft", "Open", "Live"];
+const LAYERS = ["HQ Frontend", "Cloudflare Worker / D1", "Mileset App & Site", "Vesper Relay (server)", "Vesper Relay (Mac)", "Tests & CI"];
+const stS = st => ({"Awaiting Telegram Tap": "waiting", "Tests Failing": "alert", "Running Tests": "working", "Queued for Gate": "working", Held: "paused", Draft: "idle", Open: "idle", Live: "ok"})[st] || "idle";
+const chS = ch => ch === "pass" ? chip("ok", "Tests pass") : ch === "fail" ? chip("alert", "Tests fail") : ch === "pending" ? chip("working", "Tests running") : "";
+const PF = {layer: "all", stage: "all", view: phone() ? "list" : "board"};
+const nextGate = () => { const G = S.tel && S.tel.gate, t = G && G.next_run ? Date.parse(G.next_run) : M.nextRun; return t && t > Date.now() - 60e3 ? t : null; };
+const cdText = () => { const t = nextGate(); if (!t) return "--:--"; const s = Math.max(0, Math.round((t - Date.now()) / 1000)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+setInterval(() => { const el = document.getElementById("cd"); if (el) el.textContent = cdText(); }, 1000);
+const pipeItems = () => (S.tel && Array.isArray(S.tel.pipe) ? S.tel.pipe : null);
+const pkey = it => it.r + ":" + it.n;
+function vPipe(){ const items = pipeItems();
+  let h = `<section class="card glass wide" id="c-pipe"><h2>Pipeline</h2><p class="sub">Every held, queued, testing and shipped change across HQ, the Worker, the app and Vesper. Read from GitHub by Vesper's plain code: $0.</p>
+    <div style="display:flex;align-items:baseline;gap:10px;margin:0 0 12px"><span class="dim sm">Next ship-gate run in</span><span class="cd" id="cd">${cdText()}</span>${nextGate() ? `<span class="dim sm">(${esc(when(nextGate()))})</span>` : ""}</div>`;
+  if (!items) return h + empty("the full pipeline", S.telOn === false || !HQ.keyStr() ? "It arrives with Vesper's heartbeat once HQ is unlocked." : "Arrives with Vesper's next heartbeat (within a minute).") + `</section>`;
+  const pill = (k, v, label, n) => `<button type="button" data-pf="${k}:${esc(v)}" aria-pressed="${PF[k] === v}">${esc(label)}${n != null ? " · " + n : ""}</button>`;
+  const lay = LAYERS.filter(l => items.some(i => i.loc.includes(l))), stg = STAGES.filter(s => items.some(i => i.st === s));
+  h += `<div class="pills" aria-label="Filter by layer">${pill("layer", "all", "All layers")}${lay.map(l => pill("layer", l, l, items.filter(i => i.loc.includes(l)).length)).join("")}</div>
+    <div class="pills" aria-label="Filter by stage">${pill("stage", "all", "All stages")}${stg.map(s => pill("stage", s, s, items.filter(i => i.st === s).length)).join("")}<span style="flex:1"></span>${pill("view", "board", "Board")}${pill("view", "list", "Table")}</div>`;
+  const shown = items.filter(i => (PF.layer === "all" || i.loc.includes(PF.layer)) && (PF.stage === "all" || i.st === PF.stage));
+  const card = i => `<button type="button" class="pc" data-pi="${esc(pkey(i))}"><b>${esc(plain(i.t))} <span class="dim num">${i.r === "vesper" ? "Vesper " : ""}#${i.n}</span></b><div class="meta">${i.loc.map(l => `<span class="loc" data-l="${esc(l)}">${esc(l)}</span>`).join("")}</div><div class="meta">${PF.view === "list" || PF.stage !== "all" ? chip(stS(i.st), i.st) : ""}${chS(i.ch)}${i.files ? `<span class="dim xs">${i.files} file${i.files > 1 ? "s" : ""}${i.add != null ? ` · +${i.add} −${i.del}` : ""}</span>` : ""}</div></button>`;
+  if (!shown.length) h += `<p class="mut">Nothing matches those filters.</p>`;
+  else if (PF.view === "board") h += `<div class="board">${STAGES.filter(s => shown.some(i => i.st === s)).map(s => `<div class="col"><h3><span>${esc(s)}</span><span>${shown.filter(i => i.st === s).length}</span></h3>${shown.filter(i => i.st === s).map(card).join("")}</div>`).join("")}</div>`;
+  else h += `<div>${shown.map(card).join("")}</div>`;
+  return h + `<p class="dim xs" style="margin:8px 0 0">Updated ${esc(ago((S.tel.at || 0) * 1000))}. Tap a change for its diff summary, tests and actions.</p></section>`; }
+function openPipe(k){ const it = (pipeItems() || []).find(i => pkey(i) === k); if (!it) return;
+  const held = it.st === "Held", is111 = it.r === "app" && it.n === 111;
+  const act = is111 ? `<p class="mut sm">#111 stays held and isolated by your standing word. HQ never sends a command for it.</p>`
+    : it.st === "Awaiting Telegram Tap" ? `<button class="btn go" data-cmd='${esc(JSON.stringify(it.r === "vesper" ? {t: "install", n: it.n} : {t: "ship", n: it.n}))}' data-label="${it.r === "vesper" ? "Install Vesper upgrade" : "Approve"} #${it.n}">Request approval</button>`
+    : held ? `<button class="btn" data-cmd='${esc(JSON.stringify({t: "unhold", n: it.n}))}' data-label="Release hold on #${it.n}">Release hold</button>`
+    : it.r === "app" && it.st !== "Live" ? `<button class="btn warn" data-cmd='${esc(JSON.stringify({t: "hold", n: it.n}))}' data-label="Hold #${it.n}">Hold</button>` : "";
+  openDrawer("pipe:" + k, plain(it.t), (it.r === "vesper" ? "Vesper upgrade #" : "App change #") + it.n + " · " + (it.st === "Live" ? "went live " : "opened ") + ago(Date.parse(it.at)),
+    `<section>${chip(stS(it.st), it.st)} ${chS(it.ch)}<div class="meta" style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">${it.loc.map(l => `<span class="loc" data-l="${esc(l)}">${esc(l)}</span>`).join("")}</div></section>
+     <section><h3>What changes</h3><p style="margin:0">${esc(plain(it.sum) || "No description.")}</p><p class="dim sm" style="margin:8px 0 0">${it.files} file(s)${it.add != null ? `, +${it.add} −${it.del} lines` : ""}</p></section>
+     <section><h3>Tests</h3>${it.ch === "fail" ? `<p style="margin:0">Failing: ${esc((it.bad || []).join(", ") || "see GitHub")}</p>` : it.ch === "pending" ? `<p class="mut" style="margin:0">Running now.</p>` : it.ch === "pass" ? `<p style="margin:0">All checks passed.</p>` : `<p class="mut" style="margin:0">No checks on this change.</p>`}</section>
+     <section class="acts">${act}${it.u ? `<a class="btn" href="${esc(it.u)}" target="_blank" rel="noopener">Open on GitHub</a>` : ""}</section>`); }
+
+const MS = {q: "", f: "all", sort: "seen", dir: -1}; let memRec = null;
+function loadRoster(fresh){ HQ.ask({t: "read", q: "members", f: MS.f, arg: MS.q}, fresh).then(r => { if (r){ memRec = r; drawView(true); } }); }
+const fmtDay = s => s ? (Date.now() - Date.parse(s.replace(" ", "T")) < 864e5 * 2 ? ago(Date.parse(s.replace(" ", "T") + (s.length > 10 && !/Z|\+/.test(s) ? "Z" : ""))) : s.slice(0, 10)) : "never";
+function vMembers(){ const K = S.tel && S.tel.members, k = K && !K.err ? K : null;
+  const kp = (v, l) => `<div class="kpi"><b>${v == null ? "–" : v}</b><span>${esc(l)}</span></div>`;
+  let h = `<section class="card glass wide" id="c-kpis"><h2>Members &amp; app pulse</h2><p class="sub">Live from the Mileset database (read-only, your own accounts and test robots left out). Counts refresh every 5 minutes: $0.</p>`;
+  h += k ? `<div class="kpis">${kp(k.total, "Total members")}${kp(k.a24, "Active 24h")}${kp(k.a7, "Active 7d")}${kp(k.a30, "Active 30d")}${kp(k.new24, "New today")}${kp(k.new7, "New 7d")}${kp(k.risk, "At risk")}${kp(k.sessions_today, "Sessions done today")}${kp(k.meals_today, "Meals logged today")}</div>`
+    : empty("member counts", K && K.err ? "Vesper couldn't read the database just now (" + K.err + ")." : "They arrive with Vesper's heartbeat once HQ is unlocked.");
+  h += `</section><section class="card glass wide" id="c-roster"><h2>Roster</h2><p class="sub">Names and emails come straight to this screen, sealed with your key. They're never saved on this device.</p>
+    <div class="srch"><input id="m-q" type="search" placeholder="Search name or email" autocomplete="off" value="${esc(MS.q)}"><button class="btn" data-msearch="1">Search all</button></div>
+    <div class="pills">${[["all", "All"], ["active", "Active"], ["new", "New"], ["risk", "At-risk"]].map(([v, l]) => `<button type="button" data-mf="${v}" aria-pressed="${MS.f === v}">${l}</button>`).join("")}</div>`;
+  const r = memRec, rows = r && r.result && Array.isArray(r.result.rows) ? r.result.rows : null;
+  if (!rows) h += r && (r.st === "failed" || r.st === "rejected") ? `<p class="mut">Vesper couldn't load the roster: ${esc(plain(r.say || "try again"))}</p>` : empty("the roster", HQ.keyStr() ? "Asking Vesper (a few seconds)." : "Unlock HQ first.");
+  else { const loc = MS.q && !(r.result.q) ? rows.filter(x => (x[1] + " " + x[2]).toLowerCase().includes(MS.q.toLowerCase())) : rows;
+    const col = {name: 1, joined: 3, seen: 4, s7: 5, f7: 6}[MS.sort], sorted = [...loc].sort((a, b) => (a[col] > b[col] ? 1 : a[col] < b[col] ? -1 : 0) * MS.dir);
+    const th = (k, l, cls) => `<th data-ms="${k}" class="${cls || ""}" aria-sort="${MS.sort === k ? (MS.dir > 0 ? "ascending" : "descending") : "none"}">${l}${MS.sort === k ? (MS.dir > 0 ? " ↑" : " ↓") : ""}</th>`;
+    h += `<p class="dim sm" style="margin:0 0 6px">${esc(r.result.lines[0] || "")}${loc.length !== rows.length ? ` · ${loc.length} shown` : ""}</p><div style="overflow-x:auto"><table class="tbl"><thead><tr>${th("name", "Member")}${th("joined", "Joined", "hide-s")}${th("seen", "Last seen")}${th("s7", "Sessions 7d")}${th("f7", "Meal days 7d", "hide-s")}</tr></thead><tbody>`
+      + sorted.map(x => `<tr data-mr="${esc(x[0])}" tabindex="0"><td><b>${esc(x[1] || "(no name)")}</b>${x[7] ? " " + chip("waiting", "Flagged") : ""}<div class="e">${esc(x[2])}</div></td><td class="hide-s">${esc(x[3])}</td><td>${esc(fmtDay(x[4]))}</td><td>${x[5]}</td><td class="hide-s">${x[6]}</td></tr>`).join("") + `</tbody></table></div>`; }
+  return h + `</section>`; }
+function openMember(uid){ const row = ((memRec && memRec.result && memRec.result.rows) || []).find(x => x[0] === uid), name = row ? row[1] || "Member" : "Member";
+  const body = rec => { const m = rec && rec.result && rec.result.m;
+    if (!m) return `<section>${rec && (rec.st === "failed" || rec.st === "rejected") ? `<p class="mut">${esc(plain(rec.say || "Couldn't load this member."))}</p>` : `<p class="mut">Loading from Vesper…</p>`}</section>`;
+    const who = (m.name || "member").split(" ")[0], c = act => esc(JSON.stringify({t: "member", act, uid: m.id, who}));
+    return `<section><div class="kpis">${[[m.joined, "Joined"], [m.seen ? fmtDay(m.seen) : "never", "Last seen"], [m.streak + "d", "Streak"], [m.sessions, "Sessions total"], [m.food7 + "/7", "Meal days"]].map(([v, l]) => `<div class="kpi"><b style="font-size:17px">${esc(v)}</b><span>${l}</span></div>`).join("")}</div></section>
+      <section><h3>Email</h3><p class="e" style="margin:0 0 6px">${esc(m.email)}</p>${m.mails.length ? `<div class="rows">${m.mails.map(x => `<div class="row"><div class="g"><b>${esc(String(x[0]).replace(/_/g, " "))}</b><span>${esc(x[1])}</span></div>${chip(x[2] ? "ok" : "alert", x[2] ? "Sent" : "Failed")}</div>`).join("")}</div>` : `<p class="mut sm">No lifecycle emails sent yet.</p>`}${m.no_mail ? `<p class="mut sm">Opted out of update emails (password resets still arrive).</p>` : ""}</section>
+      <section><h3>Admin actions</h3><p class="dim sm" style="margin:0 0 8px">Each one waits for your Approve in Telegram.</p><div class="acts">
+        <button class="btn go" data-cmd='${c("reset")}' data-label="Password reset email to ${esc(who)}">Send password reset</button>
+        <button class="btn${m.flag ? "" : " warn"}" data-cmd='${c(m.flag ? "unflag" : "flag")}' data-label="${m.flag ? "Unflag" : "Flag"} ${esc(who)}">${m.flag ? "Remove flag" : "Flag account"}</button>
+        <button class="btn" disabled title="Mileset signs in with a password; there are no magic links">Magic link</button>
+        <button class="btn" disabled title="Mileset has no trials: the Founding 100 are free for life">Grant trial days</button>
+        <button class="btn" disabled title="Needs a new admin endpoint on the Worker (a security change that waits for your SHIP IT)">Resend welcome</button></div>
+        <p class="dim xs" style="margin:8px 0 0">Magic links, trials and welcome resends aren't part of Mileset yet, so those stay off rather than pretend.</p></section>`; };
+  openDrawer("member:" + uid, name, "Member", body(null));
+  HQ.ask({t: "read", q: "member", arg: uid}).then(rec => { if (!rec) return; const upd = () => { if (drawerKey === "member:" + uid) $(".db", drawer).innerHTML = body(rec); };
+    upd(); const iv = setInterval(() => { upd(); if (FINAL_ST.includes(rec.st) || drawerKey !== "member:" + uid) clearInterval(iv); }, 500); }); }
+const FINAL_ST = ["completed", "failed", "rejected"];
+views.addEventListener("click", e => { const b = e.target.closest("[data-pf],[data-pi],[data-mf],[data-ms],[data-msearch],[data-mr]"); if (!b) return;
+  if (b.dataset.pf){ const [k, v] = b.dataset.pf.split(/:(.*)/); PF[k] = v; drawView(true); return; }
+  if (b.dataset.pi){ openPipe(b.dataset.pi); return; }
+  if (b.dataset.mf){ MS.f = b.dataset.mf; loadRoster(); drawView(true); return; }
+  if (b.dataset.ms){ const k = b.dataset.ms; MS.dir = MS.sort === k ? -MS.dir : (k === "name" ? 1 : -1); MS.sort = k; drawView(true); return; }
+  if (b.dataset.msearch){ MS.q = ($("#m-q") || {}).value || ""; loadRoster(true); return; }
+  if (b.dataset.mr){ openMember(b.dataset.mr); } });
+views.addEventListener("input", e => { if (e.target.id === "m-q"){ MS.q = e.target.value; const was = document.activeElement === e.target, pos = e.target.selectionStart; drawView(true); const el = $("#m-q"); if (was && el){ el.focus(); try { el.setSelectionRange(pos, pos); } catch(_){} } } });
+views.addEventListener("keydown", e => { if (e.target.id === "m-q" && e.key === "Enter"){ MS.q = e.target.value; loadRoster(true); }
+  const tr = e.target.closest && e.target.closest("tr[data-mr]"); if (tr && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); openMember(tr.dataset.mr); } });
+// 1-7 switch tabs (when not typing). 5 and 6 (Growth, Client Sites) arrive with batch 3; 5 opens Company for now.
+const TABKEYS = {1: "floor", 2: "ship", 3: "members", 4: "company", 5: "company", 7: "me"};
+addEventListener("keydown", e => { if (e.metaKey || e.ctrlKey || e.altKey || !pal.hidden) return; const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) || a && a.isContentEditable) return;
+  const v = TABKEYS[e.key]; if (v){ e.preventDefault(); closeDrawer(); show(v); } });
 
 // ---------- one click handler for every action button ----------
 document.addEventListener("click", e => {
@@ -359,17 +450,23 @@ function sugs(q){ const L = [["Status", {t: "read", q: "status"}, "instant"], ["
     ["Health check", {t: "read", q: "health"}, "instant"], ["Recent log", {t: "read", q: "log"}, "instant"], ["Ship gate", {t: "read", q: "gate"}, "instant"], ["I'm in class: hold non-urgent messages", {t: "focus", mode: "class"}, "focus"], ["Back to normal alerts", {t: "focus", mode: "normal"}, "focus"], ["Pause workers and spend", {t: "focus", mode: "paused"}, "focus"], ["I'm going over budget", "going over budget", "spend hold"],
     ...M.needs.map(p => ["Approve #" + p.n + ": " + cut(plain(p.t), 40), {t: "ship", n: p.n}, "ship gate"]), ...M.queue.map(p => ["Hold #" + p.n + ": " + cut(plain(p.t), 40), {t: "hold", n: p.n}, "ship gate"]),
     ...["Growth Sprint", "Dev Lead", "Product Lead"].map(r => ["Run " + r + " now", "run " + r.toLowerCase() + " now", "dispatch"])];
-  const s = q.trim().toLowerCase(); return (s ? L.filter(x => x[0].toLowerCase().includes(s)) : L).slice(0, 7); }
+  const s = q.trim().toLowerCase(), go = [["Go to Command floor", {go: "floor"}, "1"], ["Go to Pipeline", {go: "ship"}, "2"], ["Go to Members", {go: "members"}, "3"], ["Go to Company & finance", {go: "company"}, "4"], ["Go to Me & planner", {go: "me"}, "7"]];
+  const extra = [], num = s.match(/^#?(\d{1,5})$/);
+  if (num) for (const it of (pipeItems() || []).filter(i => String(i.n) === num[1])) extra.push(["Open " + (it.r === "vesper" ? "Vesper " : "") + "#" + it.n + ": " + cut(plain(it.t), 40), {pipe: pkey(it)}, it.st]);
+  const fm = q.trim().match(/^(?:@|find |member )\s*(.{2,})$/i); if (fm) extra.push(["Find member: " + fm[1], {member: fm[1]}, "search"]);
+  return [...extra, ...(s ? [...go, ...L].filter(x => x[0].toLowerCase().includes(s)) : L)].slice(0, 8); }
 function drawPal(){ const inp = $("#pal input"), q = inp ? inp.value : "", L = sugs(q), th = S.out.slice(0, 4).reverse();
-  const cmdOf = c => typeof c === "string" ? {t: "text", text: c} : c, tag = c => HQ.blocked(cmdOf(c)) ? "paused" : HQ.tier(cmdOf(c)) === 1 ? "instant" : "needs Telegram OK";
-  $("#pal .sug").innerHTML = L.map((x, i) => `<button type="button" class="${i === palSel ? "sel" : ""}" data-i="${i}"${HQ.blocked(cmdOf(x[1])) ? " disabled" : ""}>${esc(x[0])}<span>${esc(tag(x[1]))}</span></button>`).join("") + (q.trim() ? `<button type="button" class="${palSel >= L.length ? "sel" : ""}" data-i="-1">Send "${esc(cut(q.trim(), 60))}" to Vesper<span>${esc(tag(q.trim()))}</span></button>` : "");
+  const cmdOf = c => typeof c === "string" ? {t: "text", text: c} : c, tag = (c, x) => c && (c.go || c.pipe || c.member != null) ? (x || "") : HQ.blocked(cmdOf(c)) ? "paused" : HQ.tier(cmdOf(c)) === 1 ? "instant" : "needs Telegram OK";
+  $("#pal .sug").innerHTML = L.map((x, i) => `<button type="button" class="${i === palSel ? "sel" : ""}" data-i="${i}"${!(x[1].go || x[1].pipe || x[1].member != null) && HQ.blocked(cmdOf(x[1])) ? " disabled" : ""}>${esc(x[0])}<span>${esc(tag(x[1], x[2]))}</span></button>`).join("") + (q.trim() ? `<button type="button" class="${palSel >= L.length ? "sel" : ""}" data-i="-1">Send "${esc(cut(q.trim(), 60))}" to Vesper<span>${esc(tag(q.trim()))}</span></button>` : "");
   $("#pal .thread").innerHTML = th.map(r => `<div class="msg me">${esc(r.label)}<small>${badge(r.st)} · ${esc(ago(r.at))}</small></div>${r.say || r.result ? `<div class="msg v">${r.say && !r.result ? esc(plain(r.say)) : ""}${result(r)}</div>` : ""}`).join(""); pal._L = L; }
 function openPal(pre){ pal.hidden = false; palSel = 0; pal.innerHTML = `<div class="box glass solid" role="dialog" aria-label="Command bar"><div class="thread"></div><input type="text" placeholder="Tell Vesper something, or pick below" aria-label="Command" autocomplete="off" autocapitalize="sentences"><div class="sug"></div><p class="dim xs" style="margin:0;text-align:center">${S.box.on === false ? "The command link isn't live yet: commands are copied for you to paste in Telegram." : "Instant reads run at once. Anything that changes something waits for your Approve in Telegram."}</p></div>`;
   const inp = $("#pal input"); inp.value = pre || ""; drawPal(); setTimeout(() => inp.focus(), 30);
   inp.oninput = () => { palSel = inp.value.trim() ? (sugs(inp.value).length ? 0 : 0) : 0; drawPal(); };
   inp.onkeydown = e => { const n = pal._L.length + (inp.value.trim() ? 1 : 0); if (e.key === "ArrowDown"){ palSel = (palSel + 1) % Math.max(1, n); drawPal(); e.preventDefault(); } else if (e.key === "ArrowUp"){ palSel = (palSel - 1 + n) % Math.max(1, n); drawPal(); e.preventDefault(); }
     else if (e.key === "Enter"){ e.preventDefault(); const typed = inp.value.trim(), pick = pal._L[palSel]; if (typed && (!pick || palSel >= pal._L.length || !pick[0].toLowerCase().includes(typed.toLowerCase()))) runPal(typed, typed); else if (pick) runPal(pick[1], pick[0]); } else if (e.key === "Escape") closePal(); }; }
-function runPal(c, label){ send(typeof c === "string" ? {t: "text", text: c} : c, label); const inp = $("#pal input"); if (inp){ inp.value = ""; palSel = 0; drawPal(); inp.focus(); } }
+function runPal(c, label){ if (c && typeof c === "object" && (c.go || c.pipe || c.member != null)){ closePal();
+    if (c.go) show(c.go); else if (c.pipe){ show("ship"); openPipe(c.pipe); } else { MS.q = c.member; show("members"); loadRoster(true); } return; }
+  send(typeof c === "string" ? {t: "text", text: c} : c, label); const inp = $("#pal input"); if (inp){ inp.value = ""; palSel = 0; drawPal(); inp.focus(); } }
 function closePal(){ pal.hidden = true; pal.innerHTML = ""; }
 pal.addEventListener("click", e => { if (e.target === pal) return closePal(); const b = e.target.closest(".sug button"); if (!b) return; const i = +b.dataset.i, inp = $("#pal input"); i < 0 ? runPal(inp.value.trim(), inp.value.trim()) : runPal(pal._L[i][1], pal._L[i][0]); });
 $("#cmdpill").onclick = () => openPal("");

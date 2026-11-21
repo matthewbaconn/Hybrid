@@ -196,6 +196,21 @@ button.btn:disabled,button.btn[aria-disabled=true]{opacity:.38;cursor:not-allowe
   .stn .bub{max-width:190px}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* HQ tabs, batch 1: pipeline board and members (Nov 20 9:24pm) */
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}.pills button{font:inherit;font-size:12px;padding:6px 11px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--mut);cursor:pointer;min-height:32px}
+.pills button[aria-pressed="true"]{color:#061016;background:var(--cy);border-color:var(--cy);font-weight:600}
+.cd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:22px;letter-spacing:.04em;color:var(--cy)}
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}.col{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:10px;min-width:0}
+.col h3{margin:0 0 8px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);display:flex;justify-content:space-between}
+.pc{display:block;width:100%;text-align:left;font:inherit;color:inherit;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:11px;padding:9px 10px;margin:0 0 7px;cursor:pointer}
+.pc:hover,.pc:focus-visible{border-color:var(--cy)}.pc b{display:block;font-size:13px;line-height:1.3}.pc .meta{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.loc{font-size:10.5px;padding:2px 7px;border-radius:6px;background:rgba(94,230,255,.1);color:var(--cy);white-space:nowrap}.loc[data-l^="Vesper"]{background:rgba(255,193,94,.12);color:var(--am)}.loc[data-l^="Cloudflare"]{background:rgba(100,220,150,.12);color:var(--em)}.loc[data-l^="Mileset"]{background:rgba(190,56,62,.18);color:#ff9aa0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}.kpi{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 12px}.kpi b{display:block;font-size:22px}.kpi span{font-size:11.5px;color:var(--mut)}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}.tbl th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);text-align:left;padding:6px 8px;cursor:pointer;white-space:nowrap;user-select:none}
+.tbl td{padding:9px 8px;border-top:1px solid rgba(255,255,255,.06);vertical-align:top}.tbl tr[data-mr]{cursor:pointer}.tbl tr[data-mr]:hover td{background:rgba(255,255,255,.03)}.tbl .e{color:var(--mut);font-size:12px;word-break:break-all}
+.srch{display:flex;gap:8px;margin:0 0 10px}.srch input{flex:1;min-width:0;font:inherit;font-size:16px;padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.25);color:inherit}
+@media (max-width:899px){.tbl .hide-s{display:none}.board{grid-template-columns:1fr}}
 </style></head><body>
 <div id="floor" aria-label="Headquarters floor. Drag to move around, pinch or scroll to zoom, tap a station to open it.">
   <div id="world">
@@ -238,7 +253,8 @@ button.btn:disabled,button.btn[aria-disabled=true]{opacity:.38;cursor:not-allowe
 <button id="cmdpill" class="glass solid" type="button" aria-label="Send Vesper a command"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span>Tell Vesper something…</span><kbd>⌘K</kbd></button>
 <nav id="dock" class="glass solid" aria-label="HQ sections">
   <button type="button" data-v="floor" aria-current="page"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>Floor</button>
-  <button type="button" data-v="ship"><svg viewBox="0 0 24 24"><path d="M12 3c3 2 5 6 5 10l-2 3H9l-2-3c0-4 2-8 5-10zM9 19l3 2 3-2"/><circle cx="12" cy="10" r="1.6"/></svg>Ship<b class="dot" id="d-ship" hidden></b></button>
+  <button type="button" data-v="ship"><svg viewBox="0 0 24 24"><path d="M12 3c3 2 5 6 5 10l-2 3H9l-2-3c0-4 2-8 5-10zM9 19l3 2 3-2"/><circle cx="12" cy="10" r="1.6"/></svg>Pipeline<b class="dot" id="d-ship" hidden></b></button>
+  <button type="button" data-v="members"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20c.8-3.6 3.3-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M15.5 4.8a3.2 3.2 0 0 1 0 6.3M18 14.8c2 .7 3.2 2.4 3.6 5.2"/></svg>Members</button>
   <button type="button" data-v="company"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M21 20H3"/></svg>Company</button>
   <button type="button" data-v="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Me</button>
 </nav>

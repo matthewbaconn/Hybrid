@@ -9,7 +9,7 @@ const API = "https://hybrid-api.hybridapp.workers.dev", GH = "https://api.github
 const RAW = "https://raw.githubusercontent.com/matthewbaconn/Hybrid/vesper/hq-data/";
 const CAP = 5;                                             // Matthew's daily cap (Nov 20); the feed's own figure wins when present
 const S = {pub: null, priv: null, privErr: "", order: null, orderAt: 0, checks: {}, runs: null, live: null, me: null, meErr: "", tel: null, telAt: 0, telSkew: 0, telOn: null,
-           box: {on: null, since: 0, tried: 0}, out: [], opt: {}, at: 0, busy: false, seen: ""};
+           box: {on: null, since: 0, tried: 0}, out: [], reads: [], opt: {}, at: 0, busy: false, seen: ""};
 const subs = [];
 const emit = () => { for (const f of subs) try { f(); } catch(e){ console.error(e); } };
 const ls = { get(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } },
@@ -107,13 +107,23 @@ async function boxPoll(){
       try { if (row.d === "state"){ const p = await unseal(row, "mileset-hq-v1"); if (!S.priv || String(p.t) >= String(S.priv.t)){ S.priv = p; S.privErr = ""; S.privLive = Date.now(); } }
             else if (row.d === "out") gotAck(await unseal(row, "mileset-hq-ack-v1"), row.id); } catch(e){} } }
   catch(e){ if (e.status === 404 || e.status === 405){ S.box.on = false; S.box.tried = Date.now(); } }
-  for (const r of S.out) if (r.st === "offline") post(r);
+  for (const r of [...S.out, ...S.reads]) if (r.st === "offline") post(r);
 }
+/** A tab's own Tier 1 read (members, member, pipeline): sealed like any command, answered by Vesper's plain code
+ *  ($0, no AI). The answer lives in memory only: member names and emails are never written to this device's storage.
+ *  The same read within 90 s reuses the last answer. */
+async function ask(cmd, fresh){ const key = JSON.stringify(cmd), old = S.reads.find(r => r.key === key && r.st !== "failed" && r.st !== "offline");
+  if (old && !fresh && Date.now() - old.at < 90e3) return old;
+  if (S.box.on === false || !(await keys())) return null;
+  const id = uuid(), rec = {id, key, at: Date.now(), label: "read " + (cmd.q || ""), st: "sending", tier: 1, silent: true};
+  rec.cmd = {command_id: id, id, ts: rec.at, origin: "hq", ...cmd}; S.reads.unshift(rec); S.reads = S.reads.slice(0, 24);
+  emit(); await post(rec); if (rec.st === "manual") rec.st = "failed"; emit(); tick(); return rec; }
 /** A status from Vesper about one command: awaiting_telegram_approval, running, completed, rejected or failed. */
-function gotAck(a, rowId){ const id = a.command_id || a.id, r = S.out.find(x => x.id === id); if (!r || FINAL.includes(r.st)) return;
+function gotAck(a, rowId){ const id = a.command_id || a.id, r = S.out.find(x => x.id === id) || S.reads.find(x => x.id === id); if (!r || FINAL.includes(r.st)) return;
   if (rowId && r.row && rowId <= r.row) return; r.row = rowId || r.row;
   const st = a.status || (a.ok === false ? "failed" : "completed"), was = r.st;
   r.st = st; r.say = String(a.say || r.say || ""); r.ackAt = Date.now(); if (a.result) r.result = a.result; if (a.cost != null) r.cost = +a.cost; if (a.why) r.why = a.why; if (a.tier) r.tier = a.tier;
+  if (r.silent){ emit(); return; }                 // a tab's own read (roster, member, pipeline): no toast, never stored on the device
   ls.set("hq-out", S.out); if (st === was) return;
   if (st === "awaiting_telegram_approval") toast("Approve it in Telegram" + (r.cost ? " (about " + money(r.cost) + ")" : "") + ": " + r.label, "warn");
   else if (st === "completed" && !r.result) toast("Done: " + (r.say || r.label), "ok");
@@ -223,6 +233,6 @@ function model(){
   return {P, pub, h2, o, x, desks, mode, queue, needs, yours, drafts, shipped, nextRun, calls: live, spend, quiet, health, incidents, ok, locked: !S.priv,
           feed: (P.f || []).slice(0, 60), me: P.me || null}; }
 
-return {S, API, CAP, ROLE, IOS_BROWSER, keyStr, model, send, phrase, plain, ago, when, money, syncNow, loadChecks, ls, optv, tier, blocked, pauseState, relayAge, FINAL,
+return {S, API, CAP, ROLE, IOS_BROWSER, keyStr, model, send, ask, phrase, plain, ago, when, money, syncNow, loadChecks, ls, optv, tier, blocked, pauseState, relayAge, FINAL,
         on: f => subs.push(f), setToast: f => { toastFn = f; }, start: () => { start(); return tick(true); }, isFix, isHeld};
 })();

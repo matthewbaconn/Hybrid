@@ -54,14 +54,24 @@ async function run(name, ctxOpt, phone){
   // a stand-in for Vesper's server: Tier 1 reads answer at once; anything else waits for a (simulated) Telegram Approve
   const say = (c, st, extra) => { const seq = (c._seq = (c._seq || 0) + 1); box.push({id: box.length + 1, d: "out", cid: c.command_id + ":" + seq, ...seal({command_id: c.command_id, status: st, ...extra}, "mileset-hq-ack-v1")}); };
   const t1 = c => c.t === "read" || c.t === "defer" || (c.t === "text" && /^(status|spend|health|queue)$/i.test(c.text || ""));
-  const vesper = c => { if (t1(c)){ say(c, "running"); say(c, "completed", {ok: true, say: "read " + (c.q || c.t), result: c.t === "defer" ? null : {title: "Spend", lines: ["Today: $0.67 of the $5.00 daily cap ($4.33 left).", "Over-budget pause: armed"]}}); return; }
+  const ROSTER = [["u1aaaaaa", "Ana Runner", "ana@x.test", "2026-11-02", "2026-11-20 20:10", 4, 3, 0], ["u2bbbbbb", "Ben Lifter", "ben@x.test", "2026-10-28", "2026-11-12 09:00", 0, 0, 1], ["u3cccccc", "Cara Tri", "cara@x.test", "2026-11-19", "2026-11-20 18:00", 2, 1, 0]];
+  const readRes = c => c.q === "members" ? {title: "Members", lines: [ROSTER.length + " member(s)"], rows: c.f === "risk" ? ROSTER.slice(1, 2) : ROSTER, q: c.arg || "", f: c.f || "all"}
+    : c.q === "member" ? {title: "Ana Runner", lines: ["Joined 2026-11-02"], m: {id: c.arg, name: "Ana Runner", email: "ana@x.test", joined: "2026-11-02", seen: "2026-11-20 20:10", sessions: 12, streak: 3, food7: 3, mails: [["day3_nudge", "2026-11-05", 1]], no_mail: false, flag: false}}
+    : {title: "Spend", lines: ["Today: $0.67 of the $5.00 daily cap ($4.33 left).", "Over-budget pause: armed"]};
+  const vesper = c => { if (t1(c)){ say(c, "running"); say(c, "completed", {ok: true, say: "read " + (c.q || c.t), result: c.t === "defer" ? null : readRes(c)}); return; }
     say(c, "awaiting_telegram_approval", {say: "Waiting for your Approve in Telegram.", cost: c.t === "text" ? 0.15 : 0, tier: 2});
     const tap = () => { if (/reject/.test(c.text || "")) return say(c, "rejected", {say: "Rejected in Telegram. Nothing ran."}); say(c, "running", {say: "Approved in Telegram."});
       say(c, "completed", {ok: true, say: c.t === "text" ? "TEST reply: all steady, Sir." : "Done."}); };
     if (/sign-ups|reject/.test(c.text || "")) pend.push(tap); else setTimeout(tap, 1500); };   // these two wait until the test taps Approve/Reject
   const telegram = () => pend.splice(0).forEach(f => f());
   const tel = () => ({at: Math.round(Date.now() / 1000) - telAge, spend: {today: telPaused ? 0.86 : 0.67, cap: 5, limit: 0.86, left: telPaused ? 0 : 0.19, pct: telPaused ? 17 : 13, paused: telPaused, reason: telPaused ? "cap reached" : "", month: 8.27, month_cap: 17},
-    gate: {next_n: 4, next_title: "Fix: TEST bug fix", queue: 2, next_run: new Date(Date.now() + 37 * 60000).toISOString()}, relay: {mode: "normal"}});
+    gate: {next_n: 4, next_title: "Fix: TEST bug fix", queue: 2, next_run: new Date(Date.now() + 37 * 60000).toISOString()}, relay: {mode: "normal"},
+    pipe: [{n: 4, r: "app", t: "Fix: TEST bug fix", loc: ["Mileset App & Site"], st: "Queued for Gate", ch: "pass", bad: [], files: 2, add: 10, del: 3, sum: "Fixes the TEST bug.", at: "2026-11-20T20:00:00Z", u: "https://github.com/x/4"},
+           {n: 241, r: "vesper", t: "TEST Vesper upgrade", loc: ["Vesper Relay (server)"], st: "Awaiting Telegram Tap", ch: "pass", bad: [], files: 3, add: 50, del: 9, sum: "Tiers.", at: "2026-11-20T21:00:00Z", u: "https://github.com/x/241"},
+           {n: 111, r: "app", t: "TEST held change", loc: ["HQ Frontend"], st: "Held", ch: "none", bad: [], files: 1, add: 2, del: 0, sum: "Held.", at: "2026-11-19T21:00:00Z", u: ""},
+           {n: 7, r: "app", t: "TEST failing change", loc: ["Cloudflare Worker / D1"], st: "Tests Failing", ch: "fail", bad: ["checks"], files: 1, add: 1, del: 1, sum: "Broken.", at: "2026-11-20T19:00:00Z", u: ""},
+           {n: 3, r: "app", t: "TEST shipped change", loc: ["HQ Frontend"], st: "Live", ch: "pass", bad: [], files: 4, add: 80, del: 20, sum: "Shipped.", at: "2026-11-20T18:00:00Z", u: ""}],
+    members: {total: 42, a24: 9, a7: 21, a30: 33, new24: 1, new7: 5, risk: 6, sessions_today: 14, meals_today: 23, at: Math.round(Date.now() / 1000)}});
   page.on("console", m => { if (m.type() === "error" && !/favicon|404|ERR_FAILED/.test(m.text())) cErr.push(m.text()); }); page.on("pageerror", e => cErr.push(String(e)));
   const json = (route, obj, status = 200) => route.fulfill({status, contentType: "application/json", headers: {"access-control-allow-origin": "*"}, body: JSON.stringify(obj)});
   await ctx.route(/^https:\/\//, async route => { const q = route.request(), u = q.url(); reqs.push({u, at: Date.now(), body: q.postData() || ""});
@@ -159,9 +169,9 @@ async function run(name, ctxOpt, phone){
   check(steps.join(",").startsWith("1:4,2:1,3:2") || steps.join(",").startsWith("1:4,2:2"), T("ship gate order: bug fix first, then oldest (" + steps.join(",") + ")"));
   const cc = await page.innerText("#c-cmds").catch(() => ""); check(/Commands you sent/i.test(cc) && /Completed/i.test(cc) && /Rejected/i.test(cc), T("'Commands you sent' lists each command with its status badge"));
   const ship = await page.innerText("#views"); check(/Held by you/.test(ship) && /Release hold/.test(ship) && /Still being built/.test(ship) && /Went live/.test(ship) && /Goes live around/.test(ship), T("ship gate shows queued (with times), held by you, not ready and shipped"));
-  check(/Pull requests and code changes/.test(ship) && /Plain summary of change 2/.test(ship) && /Vesper #77/.test(ship), T("PR cards with plain summaries, incl. Vesper upgrades"));
+  check(/Pipeline/.test(ship) && /Vesper #241/.test(ship) && !/Pull requests and code changes/.test(ship), T("PR cards: the Pipeline (incl. Vesper upgrades) replaces the plain list once Vesper's heartbeat has it"));
   await page.waitForFunction(() => /Checks passing/.test(document.querySelector("#views").textContent), null, {timeout: 6000}).catch(() => {}); check(/Checks passing/.test(await page.innerText("#views")), T("PR check status shows"));
-  await page.click('.row[data-pr="2"]'); await page.waitForSelector("#drawer.on"); check(/Checks/i.test(await page.innerText("#drawer")) && /Open on GitHub/.test(await page.innerText("#drawer")), T("PR click-to-inspect drawer")); await shot("5-ship"); await page.keyboard.press("Escape"); await page.waitForTimeout(400);
+  await page.click('.tl .step[data-pr="2"]'); await page.waitForSelector("#drawer.on"); check(/Checks/i.test(await page.innerText("#drawer")) && /Open on GitHub/.test(await page.innerText("#drawer")), T("PR click-to-inspect drawer")); await shot("5-ship"); await page.keyboard.press("Escape"); await page.waitForTimeout(400);
   // 8. company
   await page.click('#dock [data-v="company"]'); await page.waitForSelector("#c-spend"); const co = await page.innerText("#views");
   check(/\$0\.67/.test(co) && /of \$5\.00 today/.test(co) && /real limit is \$0\.86/.test(co) && /Where it went/i.test(co) && /Everyday model/.test(co) && /going over budget/i.test(co), T("spend tracker: today vs $5 cap, monthly limit, breakdown, over-budget trigger"));
@@ -187,6 +197,57 @@ async function run(name, ctxOpt, phone){
   check(cmds.length === c0 + 1 && tries.length >= 2 && tries.every(b => b.cid === tries[0].cid && b.ct === tries[0].ct) && cmds[c0].text === "renew parking pass",
         T("after a dropped send, HQ retries with the same command id and envelope, and Vesper gets it once (" + tries.length + " tries)"));
   await shot("7-me");
+
+  // HQ tabs, batch 1: keyboard tabs, the Pipeline board and Members (all reads are $0 Tier 1)
+  await page.click('#dock [data-v="floor"]'); await page.mouse.click(5, 300).catch(() => {}); await page.keyboard.press("Escape");
+  if (!phone){ await page.keyboard.press("2"); check(await page.getAttribute('#dock [data-v="ship"]', "aria-current") === "page", T("key 2 opens Pipeline"));
+    await page.keyboard.press("3"); check(await page.getAttribute('#dock [data-v="members"]', "aria-current") === "page", T("key 3 opens Members")); }
+  await page.click('#dock [data-v="ship"]'); await page.waitForSelector("#c-pipe .pc", {timeout: 12000}).catch(() => {});
+  check(/^\d\d:\d\d$/.test(await page.innerText("#cd").catch(() => "")), T("Pipeline: live countdown to the next ship-gate run (" + await page.innerText("#cd").catch(() => "?") + ")"));
+  const pv = await page.innerText("#c-pipe").catch(() => "");
+  check(/Awaiting Telegram Tap/.test(pv) && /Queued for Gate/.test(pv) && /Held/.test(pv) && /Live/.test(pv) && /Tests Failing/.test(pv) && /Vesper Relay/.test(pv) && /Cloudflare Worker \/ D1/.test(pv) && /HQ Frontend/.test(pv),
+        T("Pipeline: every change with its exact stage and where it lands (HQ, Worker/D1, app, Vesper)"));
+  await page.click('#c-pipe [data-pf="layer:Vesper Relay (server)"]'); const pv2 = await page.innerText("#c-pipe");
+  check(/TEST Vesper upgrade/.test(pv2) && !/TEST bug fix/.test(pv2), T("Pipeline: filter by layer"));
+  await page.click('#c-pipe [data-pf="layer:all"]'); await page.click('#c-pipe [data-pf="stage:Live"]'); const pv3 = await page.innerText("#c-pipe");
+  check(/TEST shipped change/.test(pv3) && !/TEST held change/.test(pv3), T("Pipeline: filter by stage"));
+  await page.click('#c-pipe [data-pf="stage:all"]'); await page.click('#c-pipe [data-pf="view:list"]'); check(!(await page.$("#c-pipe .board")), T("Pipeline: board and table views"));
+  await page.click('#c-pipe [data-pi="vesper:241"]'); await page.waitForSelector("#drawer.on");
+  const dv = await page.innerText("#drawer"); check(/Tiers\./.test(dv) && /All checks passed/.test(dv) && await page.$('#drawer [data-cmd*="install"]'), T("Pipeline drawer: diff summary, tests, and Request approval (Tier 2 install card)"));
+  const ip0 = cmds.length; await page.click('#drawer [data-cmd*="install"]'); await page.waitForTimeout(600);
+  check(cmds[ip0] && cmds[ip0].t === "install" && cmds[ip0].n === 241 && UUIDRE.test(cmds[ip0].command_id), T("Request approval sends an idempotent Tier 2 command (UUID command_id)"));
+  await page.keyboard.press("Escape"); await page.waitForTimeout(250);
+  await page.click('#c-pipe [data-pi="app:111"]'); await page.waitForSelector("#drawer.on");
+  check(!(await page.$("#drawer [data-cmd]")) && /stays held/.test(await page.innerText("#drawer")), T("#111 stays held: its card offers no command at all"));
+  await page.keyboard.press("Escape"); await page.waitForTimeout(250); check(!(await page.$("#drawer.on")), T("Esc closes the drawer"));
+  await shot("9-pipeline");
+  const mr0 = cmds.length; await page.click('#dock [data-v="members"]');
+  await page.waitForFunction(() => /Ana Runner/.test((document.querySelector("#c-roster") || {}).textContent || ""), null, {timeout: 12000}).catch(() => {});
+  const mk = await page.innerText("#c-kpis"); check(/42\s*Total members/.test(mk) && /21\s*Active 7d/.test(mk) && /6\s*At risk/.test(mk) && /23\s*Meals logged today/.test(mk), T("Members: live KPIs (total, active 24h/7d/30d, new, at-risk, sessions and meals today)"));
+  const mr = cmds.find(c => c.t === "read" && c.q === "members");   // key 3 may already have asked
+  check(mr && /Ana Runner/.test(await page.innerText("#c-roster")) && /cara@x\.test/.test(await page.innerText("#c-roster")), T("Members: the roster arrives as a Tier 1 read ($0, no AI) and lists each member"));
+  await page.fill("#m-q", "ben"); await page.waitForTimeout(200); const ms1 = await page.innerText("#c-roster");
+  check(/Ben Lifter/.test(ms1) && !/Ana Runner/.test(ms1), T("Members: instant search by name or email"));
+  await page.fill("#m-q", ""); await page.waitForTimeout(150); await page.click('#c-roster [data-ms="name"]'); const firstName = (await page.innerText("#c-roster tbody tr:first-child")).split("\n")[0];
+  check(/Ana Runner/.test(firstName), T("Members: sortable columns (" + firstName + ")"));
+  const rf0 = cmds.length; await page.click('#c-roster [data-mf="risk"]'); await page.waitForTimeout(1500);
+  check(cmds.slice(rf0).some(c => c.q === "members" && c.f === "risk") && !/Ana Runner/.test(await page.innerText("#c-roster")), T("Members: filter pills (At-risk asks Vesper for that list)"));
+  await page.click('#c-roster [data-mf="all"]'); await page.waitForFunction(() => /Ana Runner/.test(document.querySelector("#c-roster").textContent), null, {timeout: 8000}).catch(() => {});
+  await page.click('#c-roster tr[data-mr="u1aaaaaa"]'); await page.waitForFunction(() => /Streak/.test((document.querySelector("#drawer") || {}).textContent || ""), null, {timeout: 9000}).catch(() => {});
+  const md = await page.innerText("#drawer");
+  check(/ana@x\.test/.test(md) && /Streak/.test(md) && /day3 nudge/i.test(md) && /Send password reset/.test(md), T("Member drawer: signup, streak, meal days, email status and admin actions"));
+  check((await page.$$eval("#drawer button[disabled]", b => b.map(x => x.textContent))).join("|") === "Magic link|Grant trial days|Resend welcome", T("Member drawer: actions Mileset doesn't have stay off instead of pretending"));
+  const ma0 = cmds.length; await page.click('#drawer [data-cmd*="reset"]'); await page.waitForTimeout(600);
+  check(cmds[ma0] && cmds[ma0].t === "member" && cmds[ma0].act === "reset" && cmds[ma0].uid === "u1aaaaaa" && UUIDRE.test(cmds[ma0].command_id), T("Send password reset is a Tier 2 command with its own UUID (Telegram approval)"));
+  const stored = await page.evaluate(() => JSON.stringify(Object.assign({}, localStorage)));
+  check(!/ana@x\.test|Ana Runner|cara@x/.test(stored), T("member names and emails are never written to this device's storage"));
+  await page.keyboard.press("Escape"); await shot("10-members");
+  if (phone) await page.click("#cmdpill"); else await page.keyboard.press("Meta+k");
+  await page.waitForSelector("#pal input"); await page.fill("#pal input", "#241"); await page.waitForTimeout(150);
+  check(/Open Vesper #241/.test(await page.innerText("#pal .sug")), T("⌘K: open a change by number"));
+  await page.fill("#pal input", "find cara"); await page.waitForTimeout(150); check(/Find member: cara/.test(await page.innerText("#pal .sug")), T("⌘K: search members (\"find …\" or \"@…\")"));
+  await page.fill("#pal input", "pipeline"); await page.waitForTimeout(150); check(/Go to Pipeline/.test(await page.innerText("#pal .sug")), T("⌘K: jump to any tab"));
+  await page.keyboard.press("Escape");
   // layout: no sideways scroll, nothing under the notch or home bar
   const lay = await page.evaluate(() => ({w: document.documentElement.scrollWidth, vw: innerWidth, hud: document.querySelector("#hud").getBoundingClientRect().top, dock: innerHeight - document.querySelector("#dock").getBoundingClientRect().bottom,
     vf: /viewport-fit=cover/.test(document.querySelector('meta[name="viewport"]').content), css: [...document.styleSheets].flatMap(s => [...s.cssRules]).map(r => r.cssText).join("")}));
