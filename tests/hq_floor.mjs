@@ -130,8 +130,8 @@ async function run(name, ctxOpt, phone){
   check(!/TEST held change/.test(await page.innerText("#call").catch(() => "")), T("Approve updates the screen at once (optimistic)"));
   await page.waitForFunction(() => /Approve it in Telegram/.test(document.querySelector("#toasts").textContent), null, {timeout: 9000}).catch(() => {});
   const UUIDRE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-  check(cmds.length === n0 + 1 && cmds[n0].t === "ship" && cmds[n0].n === 1 && UUIDRE.test(cmds[n0].command_id) && cmds[n0]._cid === cmds[n0].command_id && Math.abs(cmds[n0].ts - Date.now()) < 60000,
-        T("Approve sends a sealed 'ship #1' command with a UUID command_id (also the mailbox cid) and a timestamp"));
+  check(cmds.length === n0 + 1 && cmds[n0].t === "ship" && cmds[n0].n === 1 && UUIDRE.test(cmds[n0].command_id) && cmds[n0]._cid === cmds[n0].command_id && cmds[n0].origin === "hq" && Math.abs(cmds[n0].ts - Date.now()) < 60000,
+        T("Approve sends a sealed 'ship #1' command with a UUID command_id (also the mailbox cid), origin hq and a timestamp"));
   check(/Approve it in Telegram/.test(await page.innerText("#toasts")), T("Tier 2: HQ says it's awaiting your Telegram approval"));
   await page.waitForFunction(() => /Done: Done/.test(document.querySelector("#toasts").textContent), null, {timeout: 9000}).catch(() => {});
   check(/Done: Done/.test(await page.innerText("#toasts")), T("after the (simulated) Telegram Approve, the result arrives without leaving HQ"));
