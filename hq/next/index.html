@@ -1068,7 +1068,7 @@ function explain(a){
   if (a.k === "backlog") return {kind: "Decision", what: `A backlog item that needs your call: ${a.why || "see the backlog"}.`, how: "Answer Vesper in Telegram. Nothing happens until you do."};
   const sec = /github|workflow|security|auth|secret|backup|ssh|token|owner/i.test(a.title + " " + a.why), money = /\$|spend|paid|budget|cost|ads?\b/i.test(a.title + " " + a.why);
   if (a.repo === "vesper-relay") return {kind: "Vesper upgrade", what: `Changes Vesper's own code: ${a.title}.${a.why.startsWith("draft") ? " It's a draft, so nothing installs until it's marked ready." : ""}`, how: "Review the PR. Vesper installs an upgrade only after its checks pass; safety-critical files always wait for your tap.", sec, money};
-  const where = /\bHQ\b|hq\//.test(a.title) ? "HQ at app.hybrdrunning.com/hq" : /site|page|home/i.test(a.title) ? "website" : "app", draft = a.why.startsWith("draft");
+  const where = /\bHQ\b|hq\//.test(a.title) ? "HQ at app.milesetapp.com/hq" : /site|page|home/i.test(a.title) ? "website" : "app", draft = a.why.startsWith("draft");
   return {kind: money ? "Spending" : "Deployment", what: `Lets the ship gate test PR #${a.n} and, if it passes, merge it into the live ${where}: ${a.title}.${draft ? " It's a draft, so nothing can merge until it's marked ready." : ""}`,
     how: a.why === "SHIP IT" ? `Send Vesper "SHIP IT ${a.n}" in Telegram (signed approval).` : draft ? `Review the PR, mark it "Ready for review" on GitHub, then send Vesper "SHIP IT ${a.n}" in Telegram (signed approval).` : `Review the PR first. To approve, send Vesper "SHIP IT ${a.n}" in Telegram (signed approval).`, sec, money};
 }

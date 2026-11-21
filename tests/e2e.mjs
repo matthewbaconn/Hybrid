@@ -1,5 +1,5 @@
 // Real-browser test of every screen of Hybrid. Runs against the live site and live API by default.
-//   SITE=https://app.hybrdrunning.com/ node tests/e2e.mjs
+//   SITE=https://app.milesetapp.com/ node tests/e2e.mjs
 // Uses a throwaway account (deleted at the end) and the real AI, weather and database.
 // Local runs: start the local API with the coach turned on, or the coach bar and every "Go deeper" button stay hidden
 // and the test can't see them covering anything (that is how #107 passed locally and failed live, rolled back in #112):
@@ -7,7 +7,7 @@
 // with any stand-in AI on 9912 that answers {"content":[{"type":"text","text":"{\"answer\":\"ok\",\"actions\":[]}"}]} (see tests/ask.mjs).
 import { chromium } from "playwright";
 import fs from "fs";
-const SITE = process.env.SITE || "https://app.hybrdrunning.com/";
+const SITE = process.env.SITE || "https://app.milesetapp.com/";
 const SHOTS = process.env.SHOTS || "e2e-shots";
 // SMOKE=1: the post-deploy phone smoke test (.github/workflows/post-deploy.yml, Matthew Nov 20): right after a merge
 // goes live it runs only the core flow (sign up, plan, log a workout, Plan and Activities tabs) and every "Mobile"

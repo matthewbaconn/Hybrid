@@ -14,7 +14,8 @@ Top formats, Bottlenecks, Recent decisions. It is gitignored. Never commit it.
 ## What Mileset is
 Training plans and AI nutrition/coaching for runners, triathletes, HYROX and hybrid athletes.
 Plans adapt to sleep, HRV and workouts from Garmin, Strava and Apple Health.
-- App: https://app.hybrdrunning.com · Site: https://hybrdrunning.com · IG: @hybrdrunning
+- App: https://app.milesetapp.com · Site: https://milesetapp.com · IG: @hybrdrunning
+  (moved from hybrdrunning.com on Nov 21, 2026: the old website 301s; the old app address keeps serving Home Screen installs. api/domains.mjs)
 - Contact/replies: milesetapp@gmail.com · Emails are signed "Matthew" (never "Matt")
 - Promo: Founding 100. The first 100 members before Jan 1, 2027 are free for life.
 
