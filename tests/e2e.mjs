@@ -242,7 +242,8 @@ await check("My workouts: build a shoulder day, log it, it's kept, progress show
   await page.click(".mywc"); await page.waitForSelector(".mywp"); await noOverflow(); await shot("02i-myw-do");
   const prog = await page.innerText(".mywp >> nth=0"); if (!/95 lb × 8/.test(prog)) throw new Error("progress didn't show the logged set: " + prog.replace(/\n/g, " "));
   await tab("training"); const sp = await page.locator(".pc:has-text('Strength progress')").innerText(); if (!/Overhead press/.test(sp)) throw new Error("Strength progress doesn't include it");
-  await tab("more"); await page.click('.scard[data-scr="myw"]'); await page.click(".mywc"); await page.click('[data-act="mywedit"]'); await page.waitForSelector(".sheet.myws");
+  await tab("more"); if (!(await page.$('[data-act="mywedit"]'))){ await page.click('.scard[data-scr="myw"]'); await page.click(".mywc"); }   // More keeps the workout you had open (Nov 20 tab memory)
+  await page.click('[data-act="mywedit"]'); await page.waitForSelector(".sheet.myws");
   await page.click('[data-act="mywdel"]'); await page.click('[data-act="mywdel"]'); await page.waitForSelector(".sheet.myws", {state: "detached"}); await page.waitForTimeout(600);
   if (await page.locator(".mywc").count()) throw new Error("the workout wasn't deleted");
   await tab("today"); return "built, logged 95 lb × 8, kept after reload, in Strength progress, deleted";
@@ -743,6 +744,125 @@ await check("Go deeper: a plan screen ends with a button that asks the coach abo
   const t = await page.innerText(".sheet.asks"); await page.keyboard.press("Escape"); await page.evaluate(() => { const b = document.querySelector(".back"); if (b) b.remove(); });
   while (await page.locator('[data-act="back"]').count()){ await page.click('[data-act="back"]'); await page.waitForTimeout(150); }
   if (!/Explain this in depth/.test(t)) throw new Error(t.slice(0, 160)); return "Training paces -> coach opens with 3 starters";
+});
+/* ---------- Nov 20 mobile regressions: six live bugs Matthew found on his phone, fixed in one PR. Each check below
+   fails if its bug comes back. The nightly run (nightly.yml) runs them against the live app every night. ---------- */
+const settleNav = () => page.waitForFunction(() => !document.documentElement.dataset.nav, null, {timeout: 3000}).catch(() => {});
+await check("Mobile 1: pull-down after a run summary never sticks, dims the screen or fights the map", async () => {
+  await tab("activities"); await page.waitForSelector(".actc", {timeout: 5000}); await page.click(".actc >> nth=0"); await page.waitForSelector(".adet-h", {timeout: 5000}); await settleNav();
+  const r = await page.evaluate(async () => {
+    const wait = ms => new Promise(f => setTimeout(f, ms)), app = document.getElementById("app");
+    const touch = (type, el, y) => { const t = new Touch({identifier: 7, target: el, clientX: 200, clientY: y}); el.dispatchEvent(new TouchEvent(type, {bubbles: true, cancelable: true, touches: type === "touchend" || type === "touchcancel" ? [] : [t], targetTouches: [], changedTouches: [t]})); };
+    window.scrollTo(0, 0); await wait(80); const out = [];
+    // an interrupted pull (a call, a notification, the OS taking the gesture) must put everything back
+    const h = document.querySelector(".adet-h"); touch("touchstart", h, 120); touch("touchmove", h, 200); touch("touchmove", h, 260); touch("touchcancel", h, 260); await wait(320);
+    if (app.style.transform) out.push("app left moved down (" + app.style.transform + ") after an interrupted pull");
+    if (app.classList.contains("pulling")) out.push("app left in the pulling state");
+    // a short pull that is let go: the spinner slides back and is never mistaken for a pop-up
+    touch("touchstart", h, 120); touch("touchmove", h, 150); touch("touchend", h, 150); await wait(60);
+    const p = document.getElementById("ptr");
+    if (!p) out.push("pull spinner was removed from the page");
+    else { if (p.matches(".back")) out.push("pull spinner wears the pop-up class .back"); const cs = getComputedStyle(p); if (parseFloat(cs.width) > 60) out.push("pull spinner covers the screen (" + cs.width + ")"); }
+    if (document.querySelector(".back")) out.push("a dark pop-up backdrop is on screen");
+    await wait(300);
+    // a drag that starts on the route map scrolls the page; it does not start a refresh, and one finger does not pan the map
+    const m = document.querySelector(".amap"); if (m){ touch("touchstart", m, 300); touch("touchmove", m, 420); await wait(30);
+      if (app.style.transform) out.push("dragging down on the map started a refresh"); touch("touchend", m, 420);
+      if (m._map && m._map.dragging && m._map.dragging.enabled() && matchMedia("(pointer:coarse)").matches) out.push("one finger pans the map on a phone, so the page can't scroll past it"); }
+    await wait(300); return {out, map: !!m};
+  });
+  await page.click('[data-act="actback"]'); await page.waitForSelector(".afilt");
+  if (r.out.length) throw new Error(r.out.join("; ")); return "interrupted pull resets · spinner stays a spinner" + (r.map ? " · map lets the page scroll" : "");
+}, {needs: "Log a workout (with rep pace)"});
+await check("Mobile 2: Plan tab never flashes light/dark (tab switch, tapping a past day)", async () => {
+  await tab("today"); await settleNav();
+  const seen = await page.evaluate(() => new Promise(done => { let bad = 0; const t0 = performance.now();
+    const look = () => { const v = document.querySelector(".view"); if (document.documentElement.dataset.nav && v && v.classList.contains("stagger")) bad++; if (performance.now() - t0 < 900) requestAnimationFrame(look); else done(bad); };
+    document.querySelector('#tabbar [data-tab="plan"]').click(); requestAnimationFrame(look); }));
+  if (seen) throw new Error("cards faded in from blank on top of the screen fade (" + seen + " frames)");
+  await settleNav(); const out = [];
+  const scheme = await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme + "|" + ((document.querySelector('meta[name="color-scheme"]') || {}).content || ""));
+  if (!/dark/.test(scheme.split("|")[0]) || !/dark/.test(scheme.split("|")[1])) out.push("page is not marked dark (" + scheme + "), so the phone can paint it light first");
+  const old = await page.evaluate(() => { for (const sh of document.styleSheets){ let rules; try { rules = sh.cssRules; } catch(e){ continue; } for (const r of rules) if (r.selectorText === "::view-transition-old(root)" && /ui-out|vt-fade-out/.test(r.style.animationName || r.style.animation || "")) return r.cssText; } return ""; });
+  if (old) out.push("the old screen still fades to blank before the new one shows: " + old.slice(0, 80));
+  const past = page.locator(".day.past .day-h b").first();
+  if (await past.count()){ await past.scrollIntoViewIfNeeded(); const box = await past.boundingBox(); const o0 = await page.evaluate(() => getComputedStyle(document.querySelector(".day.past")).opacity);
+    await page.mouse.move(box.x + 4, box.y + 4); await page.mouse.down(); const o1 = await page.evaluate(() => getComputedStyle(document.querySelector(".day.past")).opacity); await page.mouse.up();
+    if (o0 !== o1) out.push("a past day jumps from " + o0 + " to " + o1 + " opacity when touched"); }
+  await page.evaluate(() => window.scrollTo(0, 0));
+  if (out.length) throw new Error(out.join("; ")); return "no blank frame on the tab switch · page marked dark · past days hold still";
+});
+await check("Mobile 3: paces are never NaN, 0:00, Infinity or rounded off by whole minutes", async () => {
+  const r = await page.evaluate(() => { const out = [], f = HP.fmtPace;
+    for (const [v, want] of [[485, "8:05"], [479.6, "8:00"], [599.5, "10:00"], [NaN, "–:––"], [0, "–:––"], [-30, "–:––"], [Infinity, "–:––"], [undefined, "–:––"], [86400, "–:––"]]){ const g = f(v); if (g !== want) out.push("fmtPace(" + v + ") = " + g + ", want " + want); }
+    const a = {type: "run", mi: 3.1, minutes: 24, laps: JSON.stringify([[1609, 470, 0], [1609, 475, 0], [1611, 470, 0], [160, 54, 0]])};
+    const s = HP.runSecs(a); if (s !== 1469) out.push("a 24:29 run counted as " + s + " s"); const p = f(s / a.mi); if (p !== "7:54") out.push("pace of 3.1 mi in 24:29 shows " + p + ", want 7:54");
+    const far = HP.runSecs({mi: 3.1, minutes: 24, laps: [[800, 200, 0]]}); if (far !== 1440) out.push("laps that don't cover the run were trusted (" + far + " s)");
+    return out; });
+  const shown = [];
+  for (const t of ["today", "plan", "activities", "training"]){ await tab(t); await settleNav(); const txt = await page.innerText("#app"); const m = txt.match(/NaN|Infinity|undefined\/mi|\b0:00\/mi|\d{3,}:\d\d\/mi/); if (m) shown.push(t + " shows \"" + m[0] + "\""); }
+  const all = r.concat(shown); if (all.length) throw new Error(all.join("; ")); return "bad inputs show –:–– · exact lap seconds used · 4 tabs clean";
+});
+await check("Mobile 4: each tab keeps its screen, week and scroll when you switch tabs", async () => {
+  await tab("plan"); await settleNav(); const out = [];
+  const nxt = page.locator('.weekhead [data-act="wk"][data-dir="1"]'); if (await nxt.isEnabled()){ await nxt.click(); await page.waitForTimeout(350); }
+  const wk = async () => (await page.innerText(".weekhead")).replace(/\s+/g, " ").slice(0, 40);
+  const w0 = await wk(); await page.evaluate(() => window.scrollTo(0, 600)); await page.waitForTimeout(150); const y0 = await page.evaluate(() => Math.round(window.scrollY));
+  await tab("today"); await settleNav(); await tab("plan"); await settleNav(); await page.waitForTimeout(150);
+  const w1 = await wk(), y1 = await page.evaluate(() => Math.round(window.scrollY));
+  if (w1 !== w0) out.push("Plan came back on \"" + w1 + "\", was \"" + w0 + "\""); if (Math.abs(y1 - y0) > 4) out.push("Plan came back at " + y1 + "px, was " + y0);
+  await tab("plan"); await settleNav(); if (await page.evaluate(() => Math.round(window.scrollY)) > 4) out.push("tapping Plan again did not go back to the top");
+  await tab("more"); await settleNav(); await page.click('[data-scr="faq"]'); await page.waitForSelector(".scrbar"); await settleNav();
+  await tab("today"); await settleNav(); await tab("more"); await settleNav();
+  const h = await page.$eval(".scrbar h1", e => e.textContent).catch(() => ""); if (!h) out.push("More forgot its open screen (FAQ)");
+  await tab("more"); await settleNav(); if (await page.$(".scrbar")) out.push("tapping More again did not close the screen");
+  await tab("today"); await settleNav();
+  if (out.length) throw new Error(out.join("; ")); return "Plan kept " + w1.slice(0, 22) + " at " + y1 + "px · More kept FAQ · re-tap goes to the top";
+});
+await check("Mobile 5: the Mileset logo is whole, white and never covered", async () => {
+  await tab("today"); await settleNav(); await page.evaluate(() => window.scrollTo(0, 0));
+  const r = await page.evaluate(() => { const out = [], top = document.querySelector(".wrap > .top"), m = top && top.querySelector(".logo.hdr svg.mark"), w = top && top.querySelector(".brand .word");
+    if (!m || !w) return ["header logo missing"];
+    const mr = m.getBoundingClientRect(), wr = w.getBoundingClientRect(), tr = top.getBoundingClientRect(), cs = getComputedStyle(m);
+    if (mr.height < 24 || mr.width < 6) out.push("bolt is " + Math.round(mr.width) + "x" + Math.round(mr.height) + " px");
+    if (mr.top < tr.top - 1 || mr.bottom > tr.bottom + 1) out.push("bolt sticks out of the header");
+    if (cs.filter !== "none" || +cs.opacity < 1 || cs.color !== "rgb(255, 255, 255)") out.push("bolt is dimmed (" + cs.filter + ", " + cs.opacity + ", " + cs.color + ")");
+    if (w.scrollWidth > w.clientWidth + 1) out.push("MILESET is cut off");
+    for (const o of top.querySelectorAll(".pill, .getapp, .iconbtn")){ const r = o.getBoundingClientRect(); if (r.width && r.left < wr.right - 1 && r.right > mr.left) out.push("\"" + o.textContent.trim() + "\" sits on top of the logo"); }
+    const at = document.elementFromPoint(mr.left + mr.width / 2, mr.top + mr.height / 2); if (!at || !at.closest(".brand")) out.push("something covers the bolt");
+    return out; });
+  if (r.length) throw new Error(r.join("; ")); return "bolt whole, white, clear of the pill and buttons";
+});
+await check("Mobile 6: Back stays on screen while you scroll, and the phone's own Back closes the screen", async () => {
+  await tab("today"); await settleNav(); const out = [];
+  const reach = async sel => page.evaluate(sel => { const b = document.querySelector(sel); if (!b) return "no back button"; const r = b.getBoundingClientRect(); if (r.top < 0 || r.bottom > innerHeight * .25) return "back button is at " + Math.round(r.top) + "px";
+    const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return e && e.closest(sel) ? "" : "back button is covered"; }, sel);
+  await tab("more"); await settleNav(); await page.click('[data-scr="faq"]'); await page.waitForSelector(".scrbar"); await settleNav(); await page.evaluate(() => window.scrollTo(0, 900)); await page.waitForTimeout(150);
+  if (await page.evaluate(() => window.scrollY) < 100) out.push("FAQ too short to test scrolling");
+  let e = await reach('.scrbar [data-act="back"]'); if (e) out.push("FAQ: " + e);
+  await page.goBack(); await page.waitForTimeout(600); await settleNav();
+  if (await page.$(".scrbar")) out.push("the phone's Back left the FAQ open"); if (!(await page.isVisible("#tabbar"))) out.push("the phone's Back left the app");
+  await tab("activities"); await page.waitForSelector(".actc", {timeout: 5000}); await page.click(".actc >> nth=0"); await page.waitForSelector(".adet-h"); await settleNav();
+  await page.evaluate(() => window.scrollTo(0, 700)); await page.waitForTimeout(150);
+  if (await page.evaluate(() => window.scrollY) > 100){ e = await reach('[data-act="actback"]'); if (e) out.push("workout: " + e); }
+  await page.goBack(); await page.waitForTimeout(600); await settleNav();
+  if (await page.$(".adet-h")) out.push("the phone's Back left the workout open"); if (!(await page.isVisible("#tabbar"))) out.push("the phone's Back left the app");
+  // a fast tab switch right after closing and reopening screens must never walk the history out of the app
+  await tab("more"); await settleNav(); await page.click('[data-scr="faq"]'); await page.waitForSelector(".scrbar"); await tab("today"); await tab("more"); await tab("more"); await tab("today"); await page.waitForTimeout(500);
+  if (!(await page.isVisible("#tabbar"))) out.push("quick tab switches with a screen open walked out of the app (" + page.url() + ")");
+  await page.goto(SITE, {waitUntil: "domcontentloaded"}).catch(() => {}); await page.waitForSelector("#tabbar", {state: "visible", timeout: 20000}).catch(() => {});
+  if (out.length) throw new Error(out.join("; ")); return "Back stuck to the top in the FAQ and a workout · phone Back closes them";
+}, {needs: "Log a workout (with rep pace)"});
+await check("Mobile sweep: every button on every tab does something", async () => {
+  const r = await page.evaluate(async () => { const src = await (await fetch(location.href.split("#")[0], {cache: "no-store"})).text(); return src; }).then(async src => {
+    const dead = new Set();
+    for (const t of ["today", "plan", "activities", "training", "recovery", "more"]){ await tab(t); await settleNav();
+      const acts = await page.$$eval("#app [data-act], #tabbar [data-tab]", es => es.filter(e => e.offsetParent).map(e => e.dataset.act || ""));
+      for (const a of acts) if (a && src.split('"' + a + '"').length - src.split('data-act="' + a + '"').length < 1) dead.add(t + ": " + a);   // the name must appear somewhere besides the buttons themselves (its handler)
+      const links = await page.$$eval("#app a[href]", es => es.map(e => e.getAttribute("href")));
+      for (const h of links) if (!/^(https?:|mailto:|tel:|sms:|\/|#[a-z])/i.test(h)) dead.add(t + ": link " + h); }
+    return [...dead]; });
+  await tab("today"); if (r.length) throw new Error("buttons with no handler: " + r.join(", ")); return "6 tabs: every button has a handler, every link a real target";
 });
 await check("Log out and back in (data kept)", async () => {
   await open("fuel"); const before = await page.locator(".card:has(.fdate) .fl li").count(); await back();
