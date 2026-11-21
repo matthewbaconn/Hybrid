@@ -25,7 +25,7 @@ async function withApi({port, mailPort, live, verified}, fn){
   const dir = mkdtempSync(join(tmpdir(), "dm-"));
   execFileSync("npx", ["wrangler", "d1", "migrations", "apply", "hybrid", "--local", "--persist-to", dir], {stdio: "ignore", env: {...process.env, CI: "1"}});
   const dev = spawn("npx", ["wrangler", "dev", "--port", String(port), "--local-upstream", "127.0.0.1:" + port, "--persist-to", dir, "--var", "OUTBOX_URL:http://127.0.0.1:1/none",
-    "--var", "MILESET_DOMAIN:" + (live ? "on" : "off"), "--var", "RESEND_API_KEY:test", "--var", "RESEND_URL:http://127.0.0.1:" + mailPort + "/emails"],
+    "--var", "MILESET_DOMAIN:" + (live ? "on" : "off"), "--var", "APP_URL:https://app." + (live ? "milesetapp" : "hybrdrunning") + ".com/", "--var", "RESEND_API_KEY:test", "--var", "RESEND_URL:http://127.0.0.1:" + mailPort + "/emails"],
     {stdio: process.env.DM_DEBUG ? "inherit" : "ignore", detached: true});
   const API = "http://127.0.0.1:" + port;
   try {
