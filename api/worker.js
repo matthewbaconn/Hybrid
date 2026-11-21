@@ -1398,6 +1398,35 @@ async function route(req, env, path, ctx){
     return new Response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mileset</title><body style="font-family:-apple-system,sans-serif;background:#0A0B0F;color:#fff;display:grid;place-items:center;min-height:90vh;margin:0;text-align:center;padding:20px"><div><div style="background:#BE383E;display:inline-block;font-weight:800;font-size:22px;padding:12px 18px;border-radius:6px">Mileset</div><h1 style="font-size:22px">' +
       (ok ? "You're unsubscribed" : "That link didn't work") + '</h1><p style="color:#9aa">' + (ok ? "You won't get Mileset update emails anymore. Password resets still come through." : "Email milesetapp@gmail.com and we'll take you off the list.") + '</p></div>', {status: ok ? 200 : 400, headers: {"Content-Type": "text/html; charset=utf-8"}});
   }
+  // Signed admin action from Vesper (Matthew, Nov 20: "Resend welcome" in HQ, after his Telegram Approve). Only Vesper's
+  // server key can sign it (Ed25519; the public half is VESPER_ADMIN_PUB in wrangler.toml), each signature works once,
+  // within 5 minutes, at most once a day per member and 20 a day in all. It only re-sends the existing welcome email.
+  if (M === "POST" && path === "/api/admin/welcome"){
+    await limit(env, "admin:" + (req.headers.get("CF-Connecting-IP") || "x"));
+    const b = await body(req), uid = String(b.uid || ""), ts = String(b.ts || ""), nonce = String(b.nonce || ""), sig = String(b.sig || "");
+    if (!env.VESPER_ADMIN_PUB) throw new HttpError(503, "Admin actions aren't set up.");
+    if (!/^[A-Za-z0-9_-]{6,64}$/.test(uid) || !/^\d{10}$/.test(ts) || !/^[a-f0-9]{16,64}$/.test(nonce) || !/^[A-Za-z0-9+/=]{80,100}$/.test(sig)) throw new HttpError(400, "Bad request.");
+    if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) throw new HttpError(401, "Expired.");
+    let ok = false;
+    try { const key = await crypto.subtle.importKey("raw", Uint8Array.from(atob(env.VESPER_ADMIN_PUB), c => c.charCodeAt(0)), {name: "Ed25519"}, false, ["verify"]);
+      ok = await crypto.subtle.verify({name: "Ed25519"}, key, Uint8Array.from(atob(sig), c => c.charCodeAt(0)), new TextEncoder().encode("mileset-admin-v1|welcome|" + uid + "|" + ts + "|" + nonce)); }
+    catch(e){ ok = false; }
+    if (!ok) throw new HttpError(401, "Not signed by Vesper.");
+    const sh = await sha256(sig), now = new Date().toISOString(), day = new Date(Date.now() - 864e5).toISOString();
+    try { await env.DB.prepare("INSERT INTO admin_log (sig_hash, kind, user_id, at) VALUES (?, 'welcome', ?, ?)").bind(sh, uid, now).run(); }
+    catch(e){ throw new HttpError(409, "That request was already used."); }
+    const u = await env.DB.prepare("SELECT id, name, email, no_mail FROM users WHERE id = ?").bind(uid).first();
+    if (!u) throw new HttpError(404, "No member with that id.");
+    if (u.no_mail) throw new HttpError(409, "That member opted out of update emails.");
+    const mine = await env.DB.prepare("SELECT COUNT(*) AS n FROM admin_log WHERE user_id = ? AND kind = 'welcome' AND at > ?").bind(uid, day).first();
+    const all = await env.DB.prepare("SELECT COUNT(*) AS n FROM admin_log WHERE kind = 'welcome' AND at > ?").bind(day).first();
+    if (mine.n > 1) throw new HttpError(429, "Already re-sent to this member in the last 24 hours.");
+    if (all.n > 20) throw new HttpError(429, "Daily limit reached (20 re-sends).");
+    if (!env.RESEND_API_KEY) throw new HttpError(503, "Email isn't set up.");
+    await welcomeMail(env, u.id, u.name, u.email);
+    await logEvent(env, "welcome_resend", true, "admin");
+    return {ok: true, sent: true};
+  }
   if (M === "POST" && path === "/api/password/forgot"){
     await limit(env, "auth:" + (req.headers.get("CF-Connecting-IP") || "x"));
     const b = await body(req), email = String(b.email || "").trim().toLowerCase().slice(0, 200);
