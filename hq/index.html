@@ -511,7 +511,10 @@ cv.addEventListener("click", e => { const b = cv.getBoundingClientRect(), x = (e
 function tick(){ document.getElementById("clock").textContent = new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}) + (feed && feed.t && !DEMO ? " · updated " + ago(feed.t) : ""); }
 const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
 const IOS_BROWSER = !standalone && /iphone|ipad|ipod/i.test(navigator.userAgent);
-if (IOS_BROWSER) document.getElementById("install").style.display = "block";
+// Safari on a Mac: "Add to Dock" installs the page address, so (like iPhone) the key has to stay in it
+const MAC_SAFARI = !standalone && !IOS_BROWSER && /Macintosh/.test(navigator.userAgent) && /Safari\//.test(navigator.userAgent) && !/Chrome|Chromium|Edg|Firefox/.test(navigator.userAgent);
+const KEEP_KEY = IOS_BROWSER || MAC_SAFARI;
+if (KEEP_KEY) document.getElementById("install").style.display = "block";
 
 // ---------- private office (owner only) ----------
 // The words (assignments, summaries, history, approvals, decisions) arrive encrypted (AES-256-GCM) in hq-full.json.
@@ -523,11 +526,11 @@ function takeKey(){ const m = location.hash.match(/k=([A-Za-z0-9_-]{40,})/); if 
   try { localStorage.setItem("hq-k", m[1]); } catch(e){}
   // In iPhone Safari the key stays in the address so "Add to Home Screen" installs an app that opens unlocked
   // (older iPhones install the page address, not the manifest). Everywhere else it is wiped from the address.
-  if (!IOS_BROWSER) try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} return true; }
+  if (!KEEP_KEY) try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} return true; }
 takeKey();
-if (IOS_BROWSER) { let k = null; try { k = localStorage.getItem("hq-k"); } catch(e){}
+if (KEEP_KEY) { let k = null; try { k = localStorage.getItem("hq-k"); } catch(e){}
   if (k) { if (!/k=/.test(location.hash)) try { history.replaceState(null, "", location.pathname + location.search + "#k=" + k); } catch(e){}
-    document.getElementById("install").innerHTML = "Put HQ on your home screen from this page: tap <b>Share</b>, then <b>Add to Home Screen</b>. It opens unlocked. Don't send this page to anyone: its address carries your key."; } }
+    document.getElementById("install").innerHTML = (MAC_SAFARI ? "Put HQ in your Dock from this page: choose <b>File</b>, then <b>Add to Dock</b>." : "Put HQ on your home screen from this page: tap <b>Share</b>, then <b>Add to Home Screen</b>.") + " It opens unlocked. Don't send this page to anyone: its address carries your key."; } }
 addEventListener("hashchange", () => { if (takeKey()) loadPriv(); });
 const b64 = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), c => c.charCodeAt(0));
 const DEMO_PRIV = () => { const t = Date.now(), iso = m => new Date(t - m * 60000).toISOString().slice(0, 19) + "Z", day = n => new Date(t + n * 864e5).toISOString().slice(0, 10);
@@ -792,7 +795,7 @@ setInterval(load, 120000); setInterval(tick, 20000);
 // resumes from memory (no reload), so opening it again fires visibilitychange / pageshow / focus instead.
 // The page updates itself too: a home-screen app can keep an old copy of HQ in memory for days, so every refresh
 // checks the published build and reloads when a newer HQ is live.
-const HQ_BUILD = "2026-11-18.1";
+const HQ_BUILD = "2026-11-18.2";
 let lastRefresh = 0, lastBuildCheck = 0;
 async function newerBuild(){
   if (DEMO || location.protocol === "file:") return false;
