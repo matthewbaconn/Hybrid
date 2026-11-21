@@ -136,7 +136,9 @@ async function open(opts){
   if (!/Step 5/.test(await p.textContent('#depts'))) errs.push('security workspace: must state the Step 5 status');
   await p.click('#nav [data-v="approvals"]');
   const apv = await p.textContent('#approvals');
-  if (!/What approving authorizes/.test(apv) || !/How to approve/.test(apv) || !/TEST FIXTURE approval/.test(apv)) errs.push('approvals: each approval must explain what it authorizes and how to approve');
+  // Nov 18: one plain question per ask plus the exact reply, no paragraphs (Matthew: "explain the upgrade in simple terms then i can say yes or no")
+  if (!/TEST FIXTURE approval/.test(apv) || !/Reply "|Answer Vesper|Telegram/.test(apv)) errs.push('approvals: each ask must say in plain words what to reply');
+  if (/What approving authorizes|How to approve|signed approval/.test(apv)) errs.push('approvals: no long explanations, just the question and the reply');
   if (/TEST FIXTURE gate item|TEST FIXTURE draft item/.test(apv)) errs.push('approvals: PRs the gate merges by itself, and drafts, must not be listed as approvals');
   if (await p.locator('#approvals button').count()) errs.push('approvals: HQ must not have approve buttons');
   await p.click('#nav [data-v="ops"]');
@@ -161,9 +163,10 @@ async function open(opts){
   if (!/Strava or Garmin/.test(await p.textContent('#cmdOut'))) errs.push('command: active-customer answer must say synced workouts are unknown');
   await p.keyboard.press('Escape');
   // alerts: unseen count, mark all seen sticks on this device
-  const bn = +(await p.textContent('#belln') || 0); if (bn < 2) errs.push('alerts: the failed run and the approval must raise alerts');
+  const bn = +(await p.textContent('#belln') || 0); if (bn < 2) errs.push('alerts: the waiting approval and the past-due high incident must raise alerts');
+  { const at = await p.textContent('#alerts'); if (/failed its last run|stale|errors? in 24/i.test(at)) errs.push('alerts: team problems (failed runs, errors, stale feeds) are the team\'s job and must not alert Matthew: ' + at.slice(0, 160)); }
   await p.click('#bell');
-  if (!/TEST FIXTURE food reads failing/.test(await p.textContent('#alerts'))) errs.push('alerts: an open incident must raise an alert');
+  if (!/TEST FIXTURE food reads failing/.test(await p.textContent('#alerts'))) errs.push('alerts: a past-due high incident must raise an alert');
   if (/TEST FIXTURE closed incident/.test(await p.textContent('#alerts'))) errs.push('alerts: closed incidents must not alert');
   await p.click('#seenAll'); await p.waitForTimeout(100);
   if ((await p.textContent('#belln')) !== '0') errs.push('alerts: mark all seen must clear the count');
