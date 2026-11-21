@@ -60,6 +60,9 @@ async function run(name, ctxOpt, phone){
     : c.q === "finance" ? {title: "Finance", lines: ["burn"], fin: {range: c.range, burn: c.range === "30d" ? 21.4 : 6.2, revenue: 0, revenue_note: "No paid plans: the Founding 100 are free for life.", net: c.range === "30d" ? -21.4 : -6.2, run30: 26.6,
         days: [["2026-11-14", 0.5], ["2026-11-15", 1.2], ["2026-11-16", 0.9], ["2026-11-17", 1.1], ["2026-11-18", 0.7], ["2026-11-19", 1.1], ["2026-11-20", 0.7]], by_job: {chat: 3.1, briefing: 2.0, workers: 1.1}, by_model: {"haiku-4": 2.2, "sonnet-4": 4.0},
         cap: 5, today: 0.67, warn_pct: 80, paused: false, reason: "", month: 8.27, month_cap: 17}}
+    : c.q === "sites" ? {title: "Client sites", lines: ["2 site(s)"], at: Math.round(Date.now() / 1000), sites: [{name: "Joe's Bakery", url: "https://joes.test", status: "UP", code: 200, ssl: 64, ms: 212, deploy: "Wed, 18 Nov 2026 14:00:00 GMT", notes: "New menu photos"},
+        {name: "Vero Surf mockup", url: "https://surf.test", status: "DOWN", code: 503, ssl: 9, ms: 1500, deploy: "", notes: ""}]}
+    : c.q === "planner" ? {title: "Planner", lines: ["4 item(s)"], plan: {range: c.range, calendar: false, days: [{d: new Date().toISOString().slice(0, 10), items: [{t: "04:30", e: "12:30", title: "Work", kind: "shift"}, {t: "10:00", e: "11:00", title: "Pharm exam", kind: "deadline"}, {t: "22:15", e: "22:30", title: "Ship-gate window", kind: "gate"}, {t: "", e: "", title: "Turkey Trot 5K", kind: "race"}], clash: ["Work overlaps Pharm exam"]}].concat(c.range === "week" ? [{d: "2026-11-22", items: [], clash: []}] : [])}}
     : {title: "Spend", lines: ["Today: $0.67 of the $5.00 daily cap ($4.33 left).", "Over-budget pause: armed"]};
   const vesper = c => { if (t1(c)){ say(c, "running"); say(c, "completed", {ok: true, say: "read " + (c.q || c.t), result: c.t === "defer" ? null : readRes(c)}); return; }
     say(c, "awaiting_telegram_approval", {say: "Waiting for your Approve in Telegram.", cost: c.t === "text" ? 0.15 : 0, tier: 2});
@@ -143,6 +146,7 @@ async function run(name, ctxOpt, phone){
   const n0 = cmds.length; await page.click('#call .btn.go >> nth=0'); await page.waitForTimeout(250);
   check(!/TEST held change/.test(await page.innerText("#call").catch(() => "")), T("Approve updates the screen at once (optimistic)"));
   await page.waitForFunction(() => /Approve it in Telegram/.test(document.querySelector("#toasts").textContent), null, {timeout: 9000}).catch(() => {});
+  const HQ_TIER2 = c => c.t !== "read";
   const UUIDRE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
   check(cmds.length === n0 + 1 && cmds[n0].t === "ship" && cmds[n0].n === 1 && UUIDRE.test(cmds[n0].command_id) && cmds[n0]._cid === cmds[n0].command_id && cmds[n0].origin === "hq" && Math.abs(cmds[n0].ts - Date.now()) < 60000,
         T("Approve sends a sealed 'ship #1' command with a UUID command_id (also the mailbox cid), origin hq and a timestamp"));
@@ -180,8 +184,9 @@ async function run(name, ctxOpt, phone){
   await page.click('#dock [data-v="company"]'); await page.waitForSelector("#c-spend"); const co = await page.innerText("#views");
   check(/\$0\.67/.test(co) && /of \$5\.00 today/.test(co) && /real limit is \$0\.86/.test(co) && /Where it went/i.test(co) && /Everyday model/.test(co) && /going over budget/i.test(co), T("spend tracker: today vs $5 cap, monthly limit, breakdown, over-budget trigger"));
   check(/17 members/.test(co) && /83 Founding spots left/.test(co) && /Built a plan/.test(co) && /76%/.test(co) && /All sending/.test(co) && /Nightly full phone test/.test(co) && /Fix in progress/.test(co), T("members and app health: live count, funnel, member emails, phone tests, open incident"));
-  check(/Instagram followers/.test(co) && /Ready to connect: Meta Ads/.test(co) && /Ready to connect: the scheduled post queue/.test(co), T("social and ads: real counts where they exist, clean 'Ready to connect' where the feed isn't wired"));
-  check(/Ready · 1/i.test(co) && /Exploring · 1/i.test(co) && /In progress · 0/i.test(co), T("ideas board columns"));
+  await page.click('#dock [data-v="growth"]'); await page.waitForSelector("#c-gctl"); const gr = await page.innerText("#views");
+  check(/Instagram followers/.test(gr) && /Ready to connect: Meta Ads/.test(gr) && /Ready to connect: the scheduled post queue/.test(gr), T("Growth: real counts where they exist, clean 'Ready to connect' where Buffer/Meta Ads aren't wired"));
+  check(/Ready · 1/i.test(gr) && /Exploring · 1/i.test(gr) && /In progress · 0/i.test(gr), T("Growth: ideas board columns"));
   await page.click(".idea >> nth=0"); await page.waitForSelector("#drawer.on"); await page.click("#drawer .btn.go"); await page.waitForTimeout(300); check(cmds.some(c => c.t === "greenlight" && c.n === 1), T("greenlight an idea in one tap")); await shot("6-company"); await page.keyboard.press("Escape"); await page.waitForTimeout(400); if (SHOTS) await page.screenshot({path: `${SHOTS}/${name}-6b-company-full.png`, fullPage: false});
   // 9. personal wing
   await page.click('#dock [data-v="me"]'); await page.waitForSelector("#cap"); let me = await page.innerText("#views");
@@ -285,6 +290,40 @@ async function run(name, ctxOpt, phone){
         T("Budget controls: cap, warning level and pause each go to Vesper as a Tier 2 command with its own UUID"));
   check(await page.evaluate(() => HQ.tier({t: "budget", op: "cap", val: 6})) === 2, T("every budget change is Tier 2 (Telegram approval)"));
   await shot("12-finance");
+
+  // HQ tabs, batch 3: Growth controls, Client Sites, Planner
+  check((await page.$$("#dock button")).length === 7, T("seven tabs in the dock"));
+  if (!phone){ await page.keyboard.press("5"); check(await page.getAttribute('#dock [data-v="growth"]', "aria-current") === "page", T("key 5 opens Growth"));
+    await page.keyboard.press("6"); check(await page.getAttribute('#dock [data-v="sites"]', "aria-current") === "page", T("key 6 opens Client sites")); }
+  await page.click('#dock [data-v="growth"]'); await page.waitForSelector("#c-gctl");
+  const g0 = cmds.length; await page.fill("#g-post", "fueling your first 20-miler"); await page.click("[data-gpost]"); await page.waitForTimeout(400);
+  await page.click('#c-gctl [data-label="Pause the Buffer queue"]'); await page.waitForTimeout(300); await page.click('#c-gctl [data-label="Pause Meta campaigns"]').catch(() => {}); await page.waitForTimeout(300);
+  const gc = cmds.slice(g0);
+  check(gc.length === 3 && gc.every(c => c.t === "text" && UUIDRE.test(c.command_id)) && /20-miler/.test(gc[0].text) && /draft only/.test(gc[0].text) && /pause the Buffer queue/i.test(gc[1].text) && /Meta ad campaign/i.test(gc[2].text) && gc.every(c => HQ_TIER2(c)),
+        T("Growth: Draft post, Pause queue and Pause campaign are Tier 2 (Telegram approval) with their own UUIDs"));
+  await shot("13-growth");
+  await page.click('#dock [data-v="sites"]'); await page.waitForFunction(() => /Joe's Bakery/.test((document.querySelector("#c-sites") || {}).textContent || ""), null, {timeout: 9000}).catch(() => {});
+  const sv = await page.innerText("#c-sites");
+  check(/Joe's Bakery/.test(sv) && /200 OK/.test(sv) && /64 days left/.test(sv) && /212 ms/.test(sv) && /DOWN \(503\)/.test(sv) && /9 days left/.test(sv) && /New menu photos/.test(sv),
+        T("Client sites: live status (200 OK / DOWN), SSL days left, response time, last deploy and open requests"));
+  const sc0 = cmds.length; await page.click("[data-sitecheck]"); await page.waitForTimeout(800);
+  check(cmds.slice(sc0).some(c => c.t === "read" && c.q === "sites" && c.fresh === 1) && /Joe's Bakery/.test(await page.innerText("#c-sites")), T("Client sites: one-click Tier 1 uptime & SSL check ($0); results stay on screen while it runs"));
+  const sa0 = cmds.length; await page.fill("#s-url", "not a url"); await page.click("[data-siteadd]"); await page.waitForTimeout(200);
+  check(cmds.length === sa0 && /full address/.test(await page.innerText("#toasts")), T("Client sites: a bad address is refused before anything is sent"));
+  await page.fill("#s-url", "https://new-client.test"); await page.fill("#s-name", "New Client"); await page.click("[data-siteadd]"); await page.waitForTimeout(400);
+  check(cmds[sa0] && cmds[sa0].t === "site" && cmds[sa0].op === "add" && cmds[sa0].url === "https://new-client.test" && UUIDRE.test(cmds[sa0].command_id), T("Client sites: adding a site is a Tier 2 command"));
+  await shot("14-sites");
+  await page.click('#dock [data-v="me"]'); await page.waitForFunction(() => /Pharm exam/.test((document.querySelector("#c-plan") || {}).textContent || ""), null, {timeout: 9000}).catch(() => {});
+  const pl = await page.innerText("#c-plan");
+  check(/Work/.test(pl) && /Pharm exam/.test(pl) && /Exam \/ due/i.test(pl) && /Ship-gate window/.test(pl) && /Turkey Trot 5K/.test(pl) && /Clash: Work overlaps Pharm exam/.test(pl) && /4:30am/.test(pl),
+        T("Planner: one timeline with shifts, exams, races and ship-gate windows; clashes stand out"));
+  check(/calendar feed isn't connected/.test(pl), T("Planner: says plainly when the calendar feed isn't connected"));
+  const w0 = cmds.length; await page.click('#c-plan [data-pl="week"]'); await page.waitForTimeout(1200);
+  check(cmds.slice(w0).some(c => c.t === "read" && c.q === "planner" && c.range === "week"), T("Planner: Today / Week ($0 read)"));
+  const qb0 = cmds.length; await page.fill("#qb", "Block 90 mins tomorrow at 7am for NCLEX sleep & pain review"); await page.keyboard.press("Enter"); await page.waitForTimeout(400);
+  check(cmds[qb0] && cmds[qb0].t === "block" && /NCLEX/.test(cmds[qb0].text) && UUIDRE.test(cmds[qb0].command_id) && await page.evaluate(() => HQ.tier({t: "block", text: "x"})) === 2,
+        T("Quick-block bar: natural language goes to Vesper as a Tier 2 command (Approve / Reject card before writing)"));
+  await shot("15-planner");
   // layout: no sideways scroll, nothing under the notch or home bar
   const lay = await page.evaluate(() => ({w: document.documentElement.scrollWidth, vw: innerWidth, hud: document.querySelector("#hud").getBoundingClientRect().top, dock: innerHeight - document.querySelector("#dock").getBoundingClientRect().bottom,
     vf: /viewport-fit=cover/.test(document.querySelector('meta[name="viewport"]').content), css: [...document.styleSheets].flatMap(s => [...s.cssRules]).map(r => r.cssText).join("")}));

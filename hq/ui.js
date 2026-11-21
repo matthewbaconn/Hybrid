@@ -208,7 +208,7 @@ $("#stack").addEventListener("click", e => { const f = e.target.closest("[data-f
 // ---------- views ----------
 const views = $("#views");
 function show(v){ view = v; for (const b of $$("#dock button")) b[b.dataset.v === v ? "setAttribute" : "removeAttribute"]("aria-current", "page");
-  if (v === "members") loadRoster(); if (v === "company") loadFin();
+  if (v === "members") loadRoster(); if (v === "company") loadFin(); if (v === "sites") loadSites(); if (v === "me") loadPlan();
   views.hidden = v === "floor"; document.body.classList.toggle("inview", v !== "floor"); $("#floorctl").hidden = $("#stack").hidden = v !== "floor"; if (v !== "floor"){ views.scrollTop = 0; drawView(true); } else { drawRecap(); fit(); } }
 $("#dock").onclick = e => { const b = e.target.closest("button"); if (b) show(b.dataset.v); };
 const prState = p => p.m ? ["ok", "Shipped " + ago(p.m)] : p.draft ? ["paused", "Not ready"] : M.yours.includes(p) ? ["waiting", "Held by you"] : M.needs.includes(p) ? ["waiting", "Waiting for your OK"] : ["working", "Queued"];
@@ -262,8 +262,14 @@ function vCompany(){ const sp = M.spend, g = M.P.g || {}, f = g.funnel || {}, li
     <div class="row"><div class="g"><b>iPhone test after each release</b><span>390×844 phone-size run${smoke ? " · " + esc(ago(smoke.at)) : ""}</span></div>${smoke ? chip(smoke.st === "success" ? "ok" : "alert", smoke.st === "success" ? "Passed" : "Failed") : chip("idle", "Ready to connect")}</div>
     <div class="row"><div class="g"><b>Nightly full phone test</b><span>${night ? esc(ago(night.at)) : "Every night around 1:30am"}</span></div>${night ? chip(night.st === "success" ? "ok" : "alert", night.st === "success" ? "Passed" : "Failed") : chip("idle", "Loading")}</div>
     ${M.incidents.map(r => `<div class="row"><div class="g"><b>${esc(plain(r[5]))}</b><span>${esc(plain(r[6]))} · ${esc(plain(r[12] || r[2]))}</span></div>${chip(r[1] === "critical" ? "alert" : "waiting", r[2] === "fixing" ? "Fix in progress" : r[2] === "verifying" ? "Checking the fix" : "Open")}</div>`).join("")}</div>`;
+  return h + `</section>`; }
+function vGrowth(){ const g = M.P.g || {}, h2 = M.h2, so = h2.social || null;
+  let h = `<section class="card glass wide" id="c-gctl"><h2>Growth controls</h2><p class="sub">Each one asks Vesper to act, after your Approve in Telegram. They use the AI (about $0.15 each), so they're never automatic.</p>
+    <div class="qb" style="margin:0 0 10px"><input id="g-post" type="text" placeholder="Draft a post about… (e.g. fueling your first 20-miler)" autocomplete="off"><button class="btn go" data-gpost="1">Draft post</button></div>
+    <div class="acts"><button class="btn warn" data-say="pause the Buffer queue: stop every scheduled Mileset post until I say resume" data-label="Pause the Buffer queue">Pause queue</button>
+      <button class="btn warn" data-say="emergency: pause every active Meta ad campaign for Mileset now and confirm what you paused" data-label="Pause Meta campaigns">Pause campaign</button></div></section>`;
   // social and ads
-  h += `</section><section class="card glass"><h2>Instagram, Facebook and ads</h2><p class="sub">Mileset's own accounts only.</p>`;
+  h += `<section class="card glass"><h2>Instagram, Facebook and ads</h2><p class="sub">Mileset's own accounts only.</p>`;
   const fol = so && so.ig_followers;
   h += `<div class="kpis"><div class="kpi"><span>Instagram followers</span><b>${fol ? fol[0] : "–"}</b><em>${fol ? "counted " + esc(fol[1]) : "not counted yet"}</em></div><div class="kpi"><span>Sign-ups from Instagram, 7 days</span><b>${g.src7 && g.src7.ig != null ? g.src7.ig : "–"}</b></div><div class="kpi"><span>From Facebook, 7 days</span><b>${g.src7 && g.src7.fb != null ? g.src7.fb : "–"}</b></div></div>`;
   h += so && so.queue && so.queue.length ? `<h3 class="cardh" style="margin:10px 0 4px">Scheduled posts</h3><div class="rows">${so.queue.slice(0, 8).map(q => `<div class="row"><div class="g"><b>${esc(cut(q[2], 80))}</b><span>${esc(q[1])} · ${esc(when(q[0]))}</span></div></div>`).join("")}</div>` : empty("the scheduled post queue (through Nov 30)", "The Social worker saves it at its next run; it shows here by itself.");
@@ -276,8 +282,8 @@ function vCompany(){ const sp = M.spend, g = M.P.g || {}, f = g.funnel || {}, li
     for (const j of (M.P.jobs || []).slice(1)) ideas.push({col: /build|progress|doing/i.test(j[3]) ? "progress" : /done|ship/i.test(j[3]) ? "shipped" : "exploring", title: j[1], why: j[2] ? "Owner: " + j[2] : "", src: "backlog"}); }
   h += `</section><section class="card glass wide"><h2>Ideas, experiments and founder queue</h2><p class="sub">Tap any card to read it. Greenlight sends it to the right worker.</p>`;
   h += ideas.length ? `<div class="cols">${Object.entries(cols).map(([k, [name, c]]) => { const L = ideas.filter(i => i.col === k); return `<div class="col" style="--c:${c}"><h3><i style="width:7px;height:7px;border-radius:50%;background:${c}"></i>${name} · ${L.length}</h3>${L.slice(0, 12).map(i => `<div class="idea" data-idea="${ideas.indexOf(i)}"><b>${esc(cut(plain(i.title), 90))}</b>${i.why ? `<span>${esc(cut(plain(i.why), 90))}</span>` : ""}</div>`).join("") || `<p class="dim sm" style="margin:0">Nothing here yet.</p>`}</div>`; }).join("")}</div>` : empty("the ideas board", M.locked ? "Unlock HQ to see it." : "Fills from the research logs and the Friday Demo Day list.");
-  vCompany.ideas = ideas; return h + `</section>`; }
-function openIdea(i){ const it = (vCompany.ideas || [])[i]; if (!it) return; const g = it.green && HQ.optv("green:" + it.green) !== 1;
+  vGrowth.ideas = ideas; return h + `</section>`; }
+function openIdea(i){ const it = (vGrowth.ideas || [])[i]; if (!it) return; const g = it.green && HQ.optv("green:" + it.green) !== 1;
   openDrawer("idea", cut(plain(it.title), 80), esc(({ready: "Ready to build", exploring: "Exploring", progress: "In progress", shipped: "Shipped"})[it.col]), `<section><p style="margin:0">${esc(plain(it.title))}</p>${it.why ? `<p class="mut" style="margin:8px 0 0">${esc(plain(it.why))}</p>` : ""}${it.metric ? `<p class="mut sm" style="margin:8px 0 0">Moves: ${esc(plain(it.metric))}</p>` : ""}</section>
     <section class="acts">${it.col === "shipped" ? "" : g ? `<button class="btn go" data-cmd='${JSON.stringify({t: "greenlight", n: it.green})}' data-label="Greenlight: ${esc(cut(it.title, 40))}">Greenlight</button>` : it.green ? `<span class="sent">✓ Greenlit</span>` : `<button class="btn cy" data-say="prioritize this idea: ${esc(cut(plain(it.title), 140))}" data-label="Prioritize: ${esc(cut(it.title, 40))}">Prioritize</button>`}${it.link ? `<a class="btn" href="${esc(it.link)}" target="_blank" rel="noopener">Source</a>` : ""}</section>${it.src ? `<p class="dim sm">From the ${esc(it.src)} log.</p>` : ""}`); }
 
@@ -336,7 +342,7 @@ function playCards(){ const decks = [...HQ.ls.get("hq-decks", []), ...(M.h2.stud
 function stopCards(){ if (audio) audio.on = false; audio = null; try { speechSynthesis.cancel(); } catch(e){} drawView(true); }
 function drawView(force){ if (view === "floor") return; const a = document.activeElement; if (!force && a && views.contains(a) && /INPUT|TEXTAREA/.test(a.tagName)) return;
   const keep = {}; for (const el of $$("input,textarea", views)) if (el.id) keep[el.id] = el.value; const y = views.scrollTop;
-  if (setHTML(views, `<div class="view">${view === "ship" ? vShip() : view === "members" ? vMembers() : view === "company" ? vFinance() + vCompany() : vMe()}</div>`)){ for (const id in keep){ const el = document.getElementById(id); if (el) el.value = keep[id]; } views.scrollTop = y; }
+  if (setHTML(views, `<div class="view">${view === "ship" ? vShip() : view === "members" ? vMembers() : view === "company" ? vFinance() + vCompany() : view === "growth" ? vGrowth() : view === "sites" ? vSites() : vPlanner() + vMe()}</div>`)){ for (const id in keep){ const el = document.getElementById(id); if (el) el.value = keep[id]; } views.scrollTop = y; }
   if (view === "ship") for (const p of [...M.needs, ...M.queue].slice(0, 5)) if (!S.checks[p.sha]) HQ.loadChecks(p); }
 
 // ---------- HQ tabs, batch 1 (Nov 20 9:24pm): Pipeline board + Members. Every read is $0 (Vesper's plain code). ----------
@@ -423,7 +429,7 @@ views.addEventListener("input", e => { if (e.target.id === "m-q"){ MS.q = e.targ
 views.addEventListener("keydown", e => { if (e.target.id === "m-q" && e.key === "Enter"){ MS.q = e.target.value; loadRoster(true); }
   const tr = e.target.closest && e.target.closest("tr[data-mr]"); if (tr && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); openMember(tr.dataset.mr); } });
 // 1-7 switch tabs (when not typing). 5 and 6 (Growth, Client Sites) arrive with batch 3; 5 opens Company for now.
-const TABKEYS = {1: "floor", 2: "ship", 3: "members", 4: "company", 5: "company", 7: "me"};   // 4 = Finance
+const TABKEYS = {1: "floor", 2: "ship", 3: "members", 4: "company", 5: "growth", 6: "sites", 7: "me"};   // 4 = Finance, 7 = Me & planner
 addEventListener("keydown", e => { if (e.metaKey || e.ctrlKey || e.altKey || !pal.hidden) return; const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) || a && a.isContentEditable) return;
   const v = TABKEYS[e.key]; if (v){ e.preventDefault(); closeDrawer(); show(v); } });
 
@@ -475,6 +481,44 @@ views.addEventListener("click", e => { const b = e.target.closest("[data-fr],[da
 views.addEventListener("input", e => { if (e.target.id === "b-warn" || e.target.id === "b-cap"){ const w = +($("#b-warn") || {}).value || 80, c = +($("#b-cap") || {}).value || 0, v = $("#b-warnv"), d = $("#b-warnd");
   if (v) v.textContent = w + "%"; if (d) d.textContent = money(c * w / 100); } });
 
+// ---------- HQ tabs, batch 3 (Nov 20 9:24pm): Growth, Client Sites, Planner. Reads are $0; writes are Tier 2. ----------
+let siteRec = null, lastSites = null;
+function loadSites(fresh){ HQ.ask({t: "read", q: "sites", ...(fresh ? {fresh: 1} : {})}, fresh).then(r => { if (r){ siteRec = r; const iv = setInterval(() => { if (view === "sites") drawView(true); if (FINAL_ST.includes(r.st)) clearInterval(iv); }, 400); } }); }
+function vSites(){ const busy = siteRec && !FINAL_ST.includes(siteRec.st); if (siteRec && siteRec.result && siteRec.result.sites) lastSites = siteRec.result;
+  const R = (siteRec && siteRec.result) || (busy ? lastSites : null), rows = R && R.sites;   // a fresh check keeps the last results on screen
+  let h = `<section class="card glass wide" id="c-sites"><h2>Client sites</h2><p class="sub">Your local business sites and mockups: live HTTP status, SSL days left and the server's last-modified time. Checked by Vesper's plain code: $0.</p>
+    <div class="acts" style="margin:0 0 12px"><button class="btn go" data-sitecheck="1"${busy ? " disabled" : ""}>${busy ? "Checking…" : "Run uptime & SSL check"}</button><span class="dim xs" style="align-self:center">Instant · Tier 1${R && R.at ? " · last checked " + esc(ago(R.at * 1000)) : ""}</span></div>`;
+  if (!rows) h += siteRec && /failed|rejected/.test(siteRec.st) ? `<p class="mut">${esc(plain(siteRec.say || "Couldn't check the sites."))}</p>` : empty("your client sites", HQ.keyStr() ? "Asking Vesper (a few seconds)." : "Unlock HQ first.");
+  else if (!rows.length) h += `<p class="mut">No sites yet. Add the first one below.</p>`;
+  else h += `<div class="sgrid">${rows.map(r => `<div class="site"><b>${esc(r.name)}</b><div class="u">${esc(r.url)}</div>${chip(r.status === "UP" ? "ok" : "alert", r.status === "UP" ? (r.code || 200) + " OK" : r.status === "BLOCKED" ? "Blocked address" : "DOWN" + (r.code ? " (" + r.code + ")" : ""))}
+      <dl><dt>SSL</dt><dd${r.ssl != null && r.ssl < 21 ? ' style="color:var(--rd)"' : ""}>${r.ssl == null ? (r.url.startsWith("https") ? "couldn't read" : "no SSL (http)") : r.ssl + " days left"}</dd><dt>Response</dt><dd>${r.ms != null ? r.ms + " ms" : "–"}</dd><dt>Last deploy</dt><dd>${r.deploy ? esc(new Date(r.deploy).toLocaleDateString()) : "not reported by the server"}</dd>${r.notes ? `<dt>Requests</dt><dd>${esc(r.notes)}</dd>` : ""}</dl>
+      <button class="btn sm" data-cmd='${esc(JSON.stringify({t: "site", op: "remove", url: r.url}))}' data-label="Stop watching ${esc(r.name)}">Remove</button></div>`).join("")}</div>`;
+  return h + `</section><section class="card glass wide"><h2>Add a site</h2><p class="sub">Public http(s) addresses only. Adding one waits for your Approve in Telegram.</p>
+    <div class="srch"><input id="s-url" type="url" placeholder="https://client-site.com" autocomplete="off"><input id="s-name" type="text" placeholder="Name (optional)" autocomplete="off" style="max-width:38%"><button class="btn" data-siteadd="1">Add</button></div>
+    <input id="s-notes" type="text" placeholder="Open client requests or notes (optional)" autocomplete="off" style="width:100%;font:inherit;font-size:16px;padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.25);color:inherit"></section>`; }
+
+const PL = {range: "today"}; let planRec = null;
+function loadPlan(fresh){ HQ.ask({t: "read", q: "planner", range: PL.range}, fresh).then(r => { if (r){ planRec = r; const iv = setInterval(() => { if (view === "me") drawView(true); if (FINAL_ST.includes(r.st)) clearInterval(iv); }, 400); } }); }
+const PKC = {shift: ["Work", "#93a4ba"], deadline: ["Exam / due", "var(--rd)"], appointment: ["Block", "var(--cy)"], todo: ["To-do", "var(--mut)"], calendar: ["Calendar", "#b48cff"], race: ["Race", "var(--em)"], gate: ["Ship gate", "var(--am)"]};
+const hm = t => { if (!t) return ""; const [h, m] = t.split(":").map(Number); return ((h % 12) || 12) + ":" + String(m).padStart(2, "0") + (h < 12 ? "am" : "pm"); };
+function vPlanner(){ const P = planRec && planRec.result && planRec.result.plan;
+  let h = `<section class="card glass wide" id="c-plan"><h2>Planner</h2><p class="sub">Shifts, exams, races, your calendar and the ship-gate windows on one timeline, so clashes stand out. $0 to look at.</p>
+    <div class="qb" style="margin:0 0 10px"><input id="qb" type="text" placeholder="Block 90 mins tomorrow at 7am for NCLEX review" autocomplete="off"><button class="btn go" data-qblock="1">Block</button></div>
+    <p class="dim xs" style="margin:-4px 0 10px">Vesper reads the day and time, then sends you an Approve / Reject card in Telegram showing exactly what it will add to your agenda.</p>
+    <div class="pills">${[["today", "Today"], ["week", "Week"]].map(([v, l]) => `<button type="button" data-pl="${v}" aria-pressed="${PL.range === v}">${l}</button>`).join("")}</div>`;
+  if (!P) return h + (planRec && /failed|rejected/.test(planRec.st) ? `<p class="mut">${esc(plain(planRec.say || "Couldn't load the planner."))}</p>` : empty("your timeline", HQ.keyStr() ? "Asking Vesper (a few seconds)." : "Unlock HQ first.")) + `</section>`;
+  h += P.days.map(d => `<h3 style="margin:12px 0 6px">${esc(dayName(d.d))}</h3>${d.items.length ? `<div class="tline">${d.items.map(x => { const [l, c] = PKC[x.kind] || PKC.todo; return `<div class="ti" style="--c:${c}"><time>${x.t ? esc(hm(x.t)) + (x.e ? "<br>" + esc(hm(x.e)) : "") : "all day"}</time><div><small>${esc(l)}</small><b>${esc(plain(x.title))}</b></div></div>`; }).join("")}</div>` : `<p class="mut sm" style="margin:0">Nothing on.</p>`}${d.clash.map(c => `<p class="clash">⚠ Clash: ${esc(c)}</p>`).join("")}`).join("");
+  return h + (P.calendar ? "" : `<p class="dim xs" style="margin:10px 0 0">Your calendar feed isn't connected yet, so this shows Vesper's agenda, races and gate windows. Give Vesper a private calendar (ICS) link to add it.</p>`) + `</section>`; }
+views.addEventListener("click", e => { const b = e.target.closest("[data-sitecheck],[data-siteadd],[data-pl],[data-qblock],[data-gpost]"); if (!b || b.disabled) return;
+  if (b.dataset.sitecheck){ loadSites(true); drawView(true); return; }
+  if (b.dataset.siteadd){ const u = ($("#s-url") || {}).value.trim(), n = ($("#s-name") || {}).value.trim(), no = ($("#s-notes") || {}).value.trim();
+    if (!/^https?:\/\/[^\s]+\.[^\s]+/.test(u)) return HQ.toast("Enter the full address, like https://client-site.com", "warn");
+    send({t: "site", op: "add", url: u, name: n, notes: no}, "Watch " + (n || u)); $("#s-url").value = $("#s-name").value = $("#s-notes").value = ""; return; }
+  if (b.dataset.pl){ PL.range = b.dataset.pl; planRec = null; loadPlan(); drawView(true); return; }
+  if (b.dataset.qblock){ const t = ($("#qb") || {}).value.trim(); if (!t) return $("#qb").focus(); send({t: "block", text: t}, "Block: " + cut(t, 50)); $("#qb").value = ""; return; }
+  if (b.dataset.gpost){ const t = ($("#g-post") || {}).value.trim(); if (!t) return $("#g-post").focus(); send({t: "text", text: "Draft one Instagram post for Mileset about: " + t + ". Put it in Buffer as a draft only (don't schedule it) and show me the caption."}, "Draft post: " + cut(t, 40)); $("#g-post").value = ""; } });
+views.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "qb"){ const b = $("[data-qblock]"); if (b) b.click(); } });
+
 // ---------- one click handler for every action button ----------
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-cmd],[data-say],[data-pal],[data-go],[data-pr],[data-idea],[data-capture],[data-addcard],[data-clearcards],[data-audio]"); if (!b || b.closest("#pal .sug")) return;
@@ -498,7 +542,7 @@ function sugs(q){ const L = [["Status", {t: "read", q: "status"}, "instant"], ["
     ["Health check", {t: "read", q: "health"}, "instant"], ["Recent log", {t: "read", q: "log"}, "instant"], ["Ship gate", {t: "read", q: "gate"}, "instant"], ["I'm in class: hold non-urgent messages", {t: "focus", mode: "class"}, "focus"], ["Back to normal alerts", {t: "focus", mode: "normal"}, "focus"], ["Pause workers and spend", {t: "focus", mode: "paused"}, "focus"], ["I'm going over budget", "going over budget", "spend hold"],
     ...M.needs.map(p => ["Approve #" + p.n + ": " + cut(plain(p.t), 40), {t: "ship", n: p.n}, "ship gate"]), ...M.queue.map(p => ["Hold #" + p.n + ": " + cut(plain(p.t), 40), {t: "hold", n: p.n}, "ship gate"]),
     ...["Growth Sprint", "Dev Lead", "Product Lead"].map(r => ["Run " + r + " now", "run " + r.toLowerCase() + " now", "dispatch"])];
-  const s = q.trim().toLowerCase(), go = [["Go to Command floor", {go: "floor"}, "1"], ["Go to Pipeline", {go: "ship"}, "2"], ["Go to Members", {go: "members"}, "3"], ["Go to Finance", {go: "company"}, "4"], ["Go to Me & planner", {go: "me"}, "7"]];
+  const s = q.trim().toLowerCase(), go = [["Go to Command floor", {go: "floor"}, "1"], ["Go to Pipeline", {go: "ship"}, "2"], ["Go to Members", {go: "members"}, "3"], ["Go to Finance", {go: "company"}, "4"], ["Go to Growth", {go: "growth"}, "5"], ["Go to Client sites", {go: "sites"}, "6"], ["Go to Me & planner", {go: "me"}, "7"]];
   const extra = [], num = s.match(/^#?(\d{1,5})$/);
   if (num) for (const it of (pipeItems() || []).filter(i => String(i.n) === num[1])) extra.push(["Open " + (it.r === "vesper" ? "Vesper " : "") + "#" + it.n + ": " + cut(plain(it.t), 40), {pipe: pkey(it)}, it.st]);
   const fm = q.trim().match(/^(?:@|find |member )\s*(.{2,})$/i); if (fm) extra.push(["Find member: " + fm[1], {member: fm[1]}, "search"]);
