@@ -116,7 +116,7 @@ a{color:var(--cy);text-decoration:none}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}}
 
 /* ---------- views ---------- */
-#views{position:fixed;z-index:15;inset:0;padding:calc(var(--st) + var(--hudh,64px) + 22px) calc(12px + var(--sr)) calc(var(--sb) + 150px) calc(12px + var(--sl));overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+#views{position:fixed;z-index:15;inset:0;padding:calc(var(--st) + var(--hudh,64px) + 22px) calc(12px + var(--sr)) calc(var(--sb) + 172px) calc(12px + var(--sl));overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   background:rgba(4,6,10,.72);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);animation:rise .35s var(--ease) both;
   -webkit-mask-image:linear-gradient(transparent calc(var(--st) + var(--hudh,64px) + 2px),#000 calc(var(--st) + var(--hudh,64px) + 22px));mask-image:linear-gradient(transparent calc(var(--st) + var(--hudh,64px) + 2px),#000 calc(var(--st) + var(--hudh,64px) + 22px))}
 .view{max-width:1120px;margin:0 auto;display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
@@ -183,7 +183,7 @@ button.btn:disabled,button.btn[aria-disabled=true]{opacity:.38;cursor:not-allowe
 .badge[data-st=queued],.badge[data-st=sending]{--c:#93a4ba} .badge[data-st=awaiting_telegram_approval],.badge[data-st=manual],.badge[data-st=offline]{--c:var(--am)} .badge[data-st=running]{--c:var(--cy)} .badge[data-st=completed]{--c:var(--em)} .badge[data-st=rejected],.badge[data-st=failed]{--c:var(--rd)}
 .res{margin-top:6px;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.3);font-size:12.5px;line-height:1.45} .res b{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-bottom:3px}
 @media (max-width:899px){
-  #tbar{display:grid;grid-template-columns:1fr auto;overflow:visible;gap:6px} #tbar .tb{min-width:0;overflow:hidden} .tb-spend{justify-content:flex-start} .tb-spend .meter{flex:1;width:auto;min-width:40px}
+  #tbar{display:grid;grid-template-columns:1fr auto auto;overflow:visible;gap:6px} #tbar #t-spend{grid-column:1;grid-row:1} #tbar #t-pause{grid-column:2;grid-row:1} #tbar #t-inc{grid-column:3;grid-row:1} #tbar #t-relay{grid-column:1;grid-row:2} #tbar #t-gate{grid-column:2/4;grid-row:2} #tbar .tb{min-width:0;overflow:hidden} .tb-spend{justify-content:flex-start} .tb-spend .meter{flex:1;width:auto;min-width:40px}
   #t-relay,#t-gate{justify-content:flex-start} #t-relay span,#t-gate span{overflow:hidden;text-overflow:ellipsis}
 }
 @media (min-width:900px){.view{grid-template-columns:repeat(2,minmax(0,1fr))} .view .wide{grid-column:1/-1} #stack{top:calc(var(--st) + var(--hudh,64px) + 20px)}}
@@ -225,11 +225,16 @@ button.btn:disabled,button.btn[aria-disabled=true]{opacity:.38;cursor:not-allowe
 
 /* batch 3: 7 tabs, sites grid, planner */
 @media (max-width:899px){#dock{left:calc(8px + var(--sl));right:calc(8px + var(--sr));transform:none;justify-content:space-between;gap:2px}#dock button{min-width:0;flex:1;padding:6px 2px;font-size:9.5px;letter-spacing:-.01em}#dock svg{width:19px;height:19px}#dock .dot{right:4px}}
-.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}.site{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:12px}
-.site b{display:block;font-size:14px;margin-bottom:2px}.site .u{font-size:11.5px;color:var(--mut);word-break:break-all}.site dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:10px 0 8px;font-size:12.5px}.site dt{color:var(--mut)}.site dd{margin:0}
 .tline{display:grid;gap:6px}.ti{display:grid;grid-template-columns:86px 1fr;gap:10px;align-items:start;padding:8px 10px;border-radius:11px;background:rgba(255,255,255,.035);border-left:3px solid var(--c,var(--mut))}
 .ti time{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--mut)}.ti b{font-size:13.5px}.ti small{display:block;color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
 .clash{color:var(--rd);font-size:12.5px;margin:6px 0 0}.qb{display:flex;gap:8px}.qb input{flex:1;min-width:0;font:inherit;font-size:16px;padding:10px 12px;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.25);color:inherit}
+
+/* batch 4: overview, agents, incidents badge, thumb-friendly dock */
+.ov{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.ovt{display:block;text-align:left;font:inherit;color:inherit;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px 16px;cursor:pointer;min-height:118px}
+.ovt:hover,.ovt:focus-visible{border-color:var(--cy)}.ovt span{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}.ovt b{display:block;font-size:28px;margin:6px 0 4px;font-family:var(--mono)}.ovt em{font-style:normal;font-size:12.5px;color:var(--mut)}
+.ovt[data-s="alert"] b{color:var(--rd)}.ovt[data-s="warn"] b{color:var(--am)}.ovt[data-s="ok"] b{color:var(--em)}
+#t-inc[data-s="alert"]{color:var(--rd)}.offq{position:fixed;z-index:26;left:50%;transform:translateX(-50%);bottom:calc(var(--sb) + 84px);font-size:12px;padding:6px 12px;border-radius:999px;background:rgba(255,193,94,.15);color:var(--am);border:1px solid rgba(255,193,94,.4)}
+@media (max-width:899px){#dock{bottom:calc(var(--sb) + 8px);padding:7px}#dock button{min-height:58px;font-size:10px}#dock svg{width:22px;height:22px}}
 </style></head><body>
 <div id="floor" aria-label="Headquarters floor. Drag to move around, pinch or scroll to zoom, tap a station to open it.">
   <div id="world">
@@ -245,6 +250,7 @@ button.btn:disabled,button.btn[aria-disabled=true]{opacity:.38;cursor:not-allowe
     <span class="tb tb-pause" id="t-pause" data-s="idle"><i></i><span>OVER-BUDGET PAUSE</span></span>
     <span class="tb" id="t-relay" data-s="idle"><i></i><span>RELAY</span></span>
     <button class="tb" id="t-gate" type="button" data-s="idle"><i></i><span>SHIP GATE</span></button>
+    <button class="tb" id="t-inc" type="button" data-s="idle" aria-label="Incidents in the last 24 hours"><i></i><span>INCIDENTS</span></button>
   </div>
   <h1><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5ee6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>MILESET <span>HQ</span></h1>
   <button class="pill" id="sync" type="button" aria-label="Sync now"><i style="--c:var(--em)"></i><span id="synct">Connecting…</span> ↻</button>
@@ -272,16 +278,17 @@ button.btn:disabled,button.btn[aria-disabled=true]{opacity:.38;cursor:not-allowe
 
 <button id="cmdpill" class="glass solid" type="button" aria-label="Send Vesper a command"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span>Tell Vesper something…</span><kbd>⌘K</kbd></button>
 <nav id="dock" class="glass solid" aria-label="HQ sections">
+  <button type="button" data-v="overview"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="5" rx="2"/><rect x="13" y="10" width="8" height="11" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/></svg>Overview</button>
   <button type="button" data-v="floor" aria-current="page"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>Floor</button>
   <button type="button" data-v="ship"><svg viewBox="0 0 24 24"><path d="M12 3c3 2 5 6 5 10l-2 3H9l-2-3c0-4 2-8 5-10zM9 19l3 2 3-2"/><circle cx="12" cy="10" r="1.6"/></svg>Pipeline<b class="dot" id="d-ship" hidden></b></button>
   <button type="button" data-v="members"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20c.8-3.6 3.3-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M15.5 4.8a3.2 3.2 0 0 1 0 6.3M18 14.8c2 .7 3.2 2.4 3.6 5.2"/></svg>Members</button>
   <button type="button" data-v="company"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M21 20H3"/></svg>Finance</button>
   <button type="button" data-v="growth"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Growth</button>
-  <button type="button" data-v="sites"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/><circle cx="7" cy="8" r=".6"/></svg>Sites</button>
   <button type="button" data-v="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Me</button>
 </nav>
 <div id="pal" hidden></div>
 <div id="toasts" aria-live="polite"></div>
+<div class="offq" id="offq" role="status" hidden></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5ee6ff" stop-opacity=".35"/><stop offset="1" stop-color="#5ee6ff" stop-opacity="0"/></linearGradient></defs></svg>
 <script src="core.js?v=1"></script>
 <script src="ui.js?v=1"></script>

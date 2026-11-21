@@ -18,6 +18,9 @@ S.out = ls.get("hq-out", []).filter(r => Date.now() - r.at < 3 * 864e5).slice(0,
 S.opt = ls.get("hq-opt", {});
 { const c = ls.get("hq-order2", null); if (c && Array.isArray(c.list)){ S.order = c.list; S.orderAt = c.at; } }
 
+// "Open in HQ" from a Telegram approval card: #open=cmd:<command id> or #open=approvals. Read before anything rewrites
+// the address. It never carries the key (#111 stays held): the device already holds it.
+const OPEN = (location.hash.match(/(?:^#|&)open=([A-Za-z0-9:_-]{1,60})/) || [])[1] || "";
 // ---------- the private key: same flow as before (Vesper's private link carries #k=...; kept on this device only) ----------
 const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
 const IOS_BROWSER = !standalone && /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -109,6 +112,10 @@ async function boxPoll(){
   catch(e){ if (e.status === 404 || e.status === 405){ S.box.on = false; S.box.tried = Date.now(); } }
   for (const r of [...S.out, ...S.reads]) if (r.st === "offline") post(r);
 }
+// Offline queue (Nov 20 10:53pm): a command sent with no signal keeps its UUID and sealed envelope on this device
+// (localStorage) and goes out the moment the phone is back online: the same id, so Vesper runs it once.
+addEventListener("online", () => { for (const r of S.out) if (r.st === "offline") post(r).then(() => { ls.set("hq-out", S.out.map(x => ({...x, env: x.st === "offline" ? x.env : undefined}))); emit(); }); });
+const offlineCount = () => S.out.filter(r => r.st === "offline").length;
 /** A tab's own Tier 1 read (members, member, pipeline): sealed like any command, answered by Vesper's plain code
  *  ($0, no AI). The answer lives in memory only: member names and emails are never written to this device's storage.
  *  The same read within 90 s reuses the last answer. */
@@ -233,6 +240,6 @@ function model(){
   return {P, pub, h2, o, x, desks, mode, queue, needs, yours, drafts, shipped, nextRun, calls: live, spend, quiet, health, incidents, ok, locked: !S.priv,
           feed: (P.f || []).slice(0, 60), me: P.me || null}; }
 
-return {S, API, CAP, ROLE, IOS_BROWSER, keyStr, model, send, ask, phrase, plain, ago, when, money, syncNow, loadChecks, ls, optv, tier, blocked, pauseState, relayAge, FINAL,
+return {S, API, CAP, ROLE, IOS_BROWSER, OPEN, offlineCount, keyStr, model, send, ask, phrase, plain, ago, when, money, syncNow, loadChecks, ls, optv, tier, blocked, pauseState, relayAge, FINAL,
         on: f => subs.push(f), setToast: f => { toastFn = f; }, toast: (t, k) => toast(t, k), start: () => { start(); return tick(true); }, isFix, isHeld};
 })();

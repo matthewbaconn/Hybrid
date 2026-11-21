@@ -208,7 +208,7 @@ $("#stack").addEventListener("click", e => { const f = e.target.closest("[data-f
 // ---------- views ----------
 const views = $("#views");
 function show(v){ view = v; for (const b of $$("#dock button")) b[b.dataset.v === v ? "setAttribute" : "removeAttribute"]("aria-current", "page");
-  if (v === "members") loadRoster(); if (v === "company") loadFin(); if (v === "sites") loadSites(); if (v === "me") loadPlan();
+  if (v === "members") loadRoster(); if (v === "company") loadFin(); if (v === "me") loadPlan(); if (v === "ship") loadAgents(); drawMacros();
   views.hidden = v === "floor"; document.body.classList.toggle("inview", v !== "floor"); $("#floorctl").hidden = $("#stack").hidden = v !== "floor"; if (v !== "floor"){ views.scrollTop = 0; drawView(true); } else { drawRecap(); fit(); } }
 $("#dock").onclick = e => { const b = e.target.closest("button"); if (b) show(b.dataset.v); };
 const prState = p => p.m ? ["ok", "Shipped " + ago(p.m)] : p.draft ? ["paused", "Not ready"] : M.yours.includes(p) ? ["waiting", "Held by you"] : M.needs.includes(p) ? ["waiting", "Waiting for your OK"] : ["working", "Queued"];
@@ -218,7 +218,7 @@ function vShip(){
   const step = (p, n, cls, extra) => `<div class="step ${cls}" data-n="${n}" data-pr="${p.n}"><b>${esc(plain(p.t))} <span class="dim num">#${p.n}</span></b><div class="meta">${extra || ""}${chk(p)}</div></div>`;
   const cmds = S.out.slice(0, 8);
   let n = 0, h = cmds.length ? `<section class="card glass wide" id="c-cmds"><h2>Commands you sent</h2><p class="sub">Instant reads run at once; changes wait for your Approve in Telegram.</p><div class="rows">${cmds.map(r => `<div class="row" data-cmdrec="${esc(r.id)}" style="cursor:pointer"><div class="g"><b>${esc(r.label)}</b><span>${esc(ago(r.at))}${r.cost ? " · about " + money(r.cost) : ""}${r.say && !r.result ? " · " + esc(cut(plain(r.say), 120)) : ""}</span>${result(r)}</div>${badge(r.st)}</div>`).join("")}</div></section>` : "";
-  h += vPipe();
+  h += vPipe() + vAgents();
   h += `<section class="card glass wide"><h2>Ship gate</h2><p class="sub">In the exact order changes go live. One per hourly run, bug fixes first, then oldest first.${M.nextRun ? " Next run " + esc(when(M.nextRun)) + "." : ""}${S.orderErr ? " (GitHub is busy: showing the list from " + esc(ago(S.orderAt)) + ".)" : ""}</p>`;
   if (!S.order) h += empty("the release queue", "Loading the public change list from GitHub.");
   else { h += `<div class="tl">` + (M.queue.length ? M.queue.map((p, i) => step(p, ++n, "", `<span>${M.nextRun ? "Goes live around " + esc(when(M.nextRun + i * 3600e3)) : "Next in line"}</span><button class="btn sm warn" data-cmd='${JSON.stringify({t: "hold", n: p.n})}' data-label="Hold #${p.n}">Hold</button>`)).join("") : `<p class="mut" style="margin:0">Nothing is queued. The gate is clear.</p>`)
@@ -342,7 +342,7 @@ function playCards(){ const decks = [...HQ.ls.get("hq-decks", []), ...(M.h2.stud
 function stopCards(){ if (audio) audio.on = false; audio = null; try { speechSynthesis.cancel(); } catch(e){} drawView(true); }
 function drawView(force){ if (view === "floor") return; const a = document.activeElement; if (!force && a && views.contains(a) && /INPUT|TEXTAREA/.test(a.tagName)) return;
   const keep = {}; for (const el of $$("input,textarea", views)) if (el.id) keep[el.id] = el.value; const y = views.scrollTop;
-  if (setHTML(views, `<div class="view">${view === "ship" ? vShip() : view === "members" ? vMembers() : view === "company" ? vFinance() + vCompany() : view === "growth" ? vGrowth() : view === "sites" ? vSites() : vPlanner() + vMe()}</div>`)){ for (const id in keep){ const el = document.getElementById(id); if (el) el.value = keep[id]; } views.scrollTop = y; }
+  if (setHTML(views, `<div class="view">${view === "ship" ? vShip() : view === "members" ? vMembers() : view === "company" ? vFinance() + vCompany() : view === "growth" ? vGrowth() : view === "overview" ? vOverview() : vPlanner() + vMe()}</div>`)){ for (const id in keep){ const el = document.getElementById(id); if (el) el.value = keep[id]; } views.scrollTop = y; }
   if (view === "ship") for (const p of [...M.needs, ...M.queue].slice(0, 5)) if (!S.checks[p.sha]) HQ.loadChecks(p); }
 
 // ---------- HQ tabs, batch 1 (Nov 20 9:24pm): Pipeline board + Members. Every read is $0 (Vesper's plain code). ----------
@@ -375,7 +375,8 @@ function openPipe(k){ const it = (pipeItems() || []).find(i => pkey(i) === k); i
   const act = is111 ? `<p class="mut sm">#111 stays held and isolated by your standing word. HQ never sends a command for it.</p>`
     : it.st === "Awaiting Telegram Tap" ? `<button class="btn go" data-cmd='${esc(JSON.stringify(it.r === "vesper" ? {t: "install", n: it.n} : {t: "ship", n: it.n}))}' data-label="${it.r === "vesper" ? "Install Vesper upgrade" : "Approve"} #${it.n}">Request approval</button>`
     : held ? `<button class="btn" data-cmd='${esc(JSON.stringify({t: "unhold", n: it.n}))}' data-label="Release hold on #${it.n}">Release hold</button>`
-    : it.r === "app" && it.st !== "Live" ? `<button class="btn warn" data-cmd='${esc(JSON.stringify({t: "hold", n: it.n}))}' data-label="Hold #${it.n}">Hold</button>` : "";
+    : it.r === "app" && it.st !== "Live" ? `<button class="btn warn" data-cmd='${esc(JSON.stringify({t: "hold", n: it.n}))}' data-label="Hold #${it.n}">Hold</button>`
+    : it.r === "app" && it.st === "Live" && Date.now() - Date.parse(it.at) < 864e5 ? `<button class="btn warn" data-cmd='${esc(JSON.stringify({t: "rollback", n: it.n}))}' data-label="Roll back #${it.n}">Rollback to previous</button><span class="dim xs" style="align-self:center">within 24h · a revert goes through the ship gate</span>` : "";
   openDrawer("pipe:" + k, plain(it.t), (it.r === "vesper" ? "Vesper upgrade #" : "App change #") + it.n + " · " + (it.st === "Live" ? "went live " : "opened ") + ago(Date.parse(it.at)),
     `<section>${chip(stS(it.st), it.st)} ${chS(it.ch)}<div class="meta" style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">${it.loc.map(l => `<span class="loc" data-l="${esc(l)}">${esc(l)}</span>`).join("")}</div></section>
      <section><h3>What changes</h3><p style="margin:0">${esc(plain(it.sum) || "No description.")}</p><p class="dim sm" style="margin:8px 0 0">${it.files} file(s)${it.add != null ? `, +${it.add} −${it.del} lines` : ""}</p></section>
@@ -412,8 +413,8 @@ function openMember(uid){ const row = ((memRec && memRec.result && memRec.result
         <button class="btn${m.flag ? "" : " warn"}" data-cmd='${c(m.flag ? "unflag" : "flag")}' data-label="${m.flag ? "Unflag" : "Flag"} ${esc(who)}">${m.flag ? "Remove flag" : "Flag account"}</button>
         <button class="btn" disabled title="Mileset signs in with a password; there are no magic links">Magic link</button>
         <button class="btn" disabled title="Mileset has no trials: the Founding 100 are free for life">Grant trial days</button>
-        <button class="btn" disabled title="Needs a new admin endpoint on the Worker (a security change that waits for your SHIP IT)">Resend welcome</button></div>
-        <p class="dim xs" style="margin:8px 0 0">Magic links, trials and welcome resends aren't part of Mileset yet, so those stay off rather than pretend.</p></section>`; };
+        <button class="btn" data-cmd='${c("welcome")}' data-label="Resend welcome email to ${esc(who)}">Resend welcome</button></div>
+        <p class="dim xs" style="margin:8px 0 0">Magic links and trials aren't part of Mileset, so those stay off rather than pretend. Resend welcome works once the app's admin endpoint (#128) is live.</p></section>`; };
   openDrawer("member:" + uid, name, "Member", body(null));
   HQ.ask({t: "read", q: "member", arg: uid}).then(rec => { if (!rec) return; const upd = () => { if (drawerKey === "member:" + uid) $(".db", drawer).innerHTML = body(rec); };
     upd(); const iv = setInterval(() => { upd(); if (FINAL_ST.includes(rec.st) || drawerKey !== "member:" + uid) clearInterval(iv); }, 500); }); }
@@ -428,8 +429,8 @@ views.addEventListener("click", e => { const b = e.target.closest("[data-pf],[da
 views.addEventListener("input", e => { if (e.target.id === "m-q"){ MS.q = e.target.value; const was = document.activeElement === e.target, pos = e.target.selectionStart; drawView(true); const el = $("#m-q"); if (was && el){ el.focus(); try { el.setSelectionRange(pos, pos); } catch(_){} } } });
 views.addEventListener("keydown", e => { if (e.target.id === "m-q" && e.key === "Enter"){ MS.q = e.target.value; loadRoster(true); }
   const tr = e.target.closest && e.target.closest("tr[data-mr]"); if (tr && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); openMember(tr.dataset.mr); } });
-// 1-7 switch tabs (when not typing). 5 and 6 (Growth, Client Sites) arrive with batch 3; 5 opens Company for now.
-const TABKEYS = {1: "floor", 2: "ship", 3: "members", 4: "company", 5: "growth", 6: "sites", 7: "me"};   // 4 = Finance, 7 = Me & planner
+// 1-7 switch tabs (when not typing). Nov 20 10:53pm: Overview first; Client Sites removed.
+const TABKEYS = {1: "overview", 2: "floor", 3: "ship", 4: "members", 5: "company", 6: "growth", 7: "me"};
 addEventListener("keydown", e => { if (e.metaKey || e.ctrlKey || e.altKey || !pal.hidden) return; const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) || a && a.isContentEditable) return;
   const v = TABKEYS[e.key]; if (v){ e.preventDefault(); closeDrawer(); show(v); } });
 
@@ -481,22 +482,7 @@ views.addEventListener("click", e => { const b = e.target.closest("[data-fr],[da
 views.addEventListener("input", e => { if (e.target.id === "b-warn" || e.target.id === "b-cap"){ const w = +($("#b-warn") || {}).value || 80, c = +($("#b-cap") || {}).value || 0, v = $("#b-warnv"), d = $("#b-warnd");
   if (v) v.textContent = w + "%"; if (d) d.textContent = money(c * w / 100); } });
 
-// ---------- HQ tabs, batch 3 (Nov 20 9:24pm): Growth, Client Sites, Planner. Reads are $0; writes are Tier 2. ----------
-let siteRec = null, lastSites = null;
-function loadSites(fresh){ HQ.ask({t: "read", q: "sites", ...(fresh ? {fresh: 1} : {})}, fresh).then(r => { if (r){ siteRec = r; const iv = setInterval(() => { if (view === "sites") drawView(true); if (FINAL_ST.includes(r.st)) clearInterval(iv); }, 400); } }); }
-function vSites(){ const busy = siteRec && !FINAL_ST.includes(siteRec.st); if (siteRec && siteRec.result && siteRec.result.sites) lastSites = siteRec.result;
-  const R = (siteRec && siteRec.result) || (busy ? lastSites : null), rows = R && R.sites;   // a fresh check keeps the last results on screen
-  let h = `<section class="card glass wide" id="c-sites"><h2>Client sites</h2><p class="sub">Your local business sites and mockups: live HTTP status, SSL days left and the server's last-modified time. Checked by Vesper's plain code: $0.</p>
-    <div class="acts" style="margin:0 0 12px"><button class="btn go" data-sitecheck="1"${busy ? " disabled" : ""}>${busy ? "Checking…" : "Run uptime & SSL check"}</button><span class="dim xs" style="align-self:center">Instant · Tier 1${R && R.at ? " · last checked " + esc(ago(R.at * 1000)) : ""}</span></div>`;
-  if (!rows) h += siteRec && /failed|rejected/.test(siteRec.st) ? `<p class="mut">${esc(plain(siteRec.say || "Couldn't check the sites."))}</p>` : empty("your client sites", HQ.keyStr() ? "Asking Vesper (a few seconds)." : "Unlock HQ first.");
-  else if (!rows.length) h += `<p class="mut">No sites yet. Add the first one below.</p>`;
-  else h += `<div class="sgrid">${rows.map(r => `<div class="site"><b>${esc(r.name)}</b><div class="u">${esc(r.url)}</div>${chip(r.status === "UP" ? "ok" : "alert", r.status === "UP" ? (r.code || 200) + " OK" : r.status === "BLOCKED" ? "Blocked address" : "DOWN" + (r.code ? " (" + r.code + ")" : ""))}
-      <dl><dt>SSL</dt><dd${r.ssl != null && r.ssl < 21 ? ' style="color:var(--rd)"' : ""}>${r.ssl == null ? (r.url.startsWith("https") ? "couldn't read" : "no SSL (http)") : r.ssl + " days left"}</dd><dt>Response</dt><dd>${r.ms != null ? r.ms + " ms" : "–"}</dd><dt>Last deploy</dt><dd>${r.deploy ? esc(new Date(r.deploy).toLocaleDateString()) : "not reported by the server"}</dd>${r.notes ? `<dt>Requests</dt><dd>${esc(r.notes)}</dd>` : ""}</dl>
-      <button class="btn sm" data-cmd='${esc(JSON.stringify({t: "site", op: "remove", url: r.url}))}' data-label="Stop watching ${esc(r.name)}">Remove</button></div>`).join("")}</div>`;
-  return h + `</section><section class="card glass wide"><h2>Add a site</h2><p class="sub">Public http(s) addresses only. Adding one waits for your Approve in Telegram.</p>
-    <div class="srch"><input id="s-url" type="url" placeholder="https://client-site.com" autocomplete="off"><input id="s-name" type="text" placeholder="Name (optional)" autocomplete="off" style="max-width:38%"><button class="btn" data-siteadd="1">Add</button></div>
-    <input id="s-notes" type="text" placeholder="Open client requests or notes (optional)" autocomplete="off" style="width:100%;font:inherit;font-size:16px;padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.25);color:inherit"></section>`; }
-
+// ---------- HQ tabs, batch 3 (Nov 20 9:24pm): Growth, Planner (Client Sites removed Nov 20 10:53pm). Reads are $0; writes are Tier 2. ----------
 const PL = {range: "today"}; let planRec = null;
 function loadPlan(fresh){ HQ.ask({t: "read", q: "planner", range: PL.range}, fresh).then(r => { if (r){ planRec = r; const iv = setInterval(() => { if (view === "me") drawView(true); if (FINAL_ST.includes(r.st)) clearInterval(iv); }, 400); } }); }
 const PKC = {shift: ["Work", "#93a4ba"], deadline: ["Exam / due", "var(--rd)"], appointment: ["Block", "var(--cy)"], todo: ["To-do", "var(--mut)"], calendar: ["Calendar", "#b48cff"], race: ["Race", "var(--em)"], gate: ["Ship gate", "var(--am)"]};
@@ -509,15 +495,50 @@ function vPlanner(){ const P = planRec && planRec.result && planRec.result.plan;
   if (!P) return h + (planRec && /failed|rejected/.test(planRec.st) ? `<p class="mut">${esc(plain(planRec.say || "Couldn't load the planner."))}</p>` : empty("your timeline", HQ.keyStr() ? "Asking Vesper (a few seconds)." : "Unlock HQ first.")) + `</section>`;
   h += P.days.map(d => `<h3 style="margin:12px 0 6px">${esc(dayName(d.d))}</h3>${d.items.length ? `<div class="tline">${d.items.map(x => { const [l, c] = PKC[x.kind] || PKC.todo; return `<div class="ti" style="--c:${c}"><time>${x.t ? esc(hm(x.t)) + (x.e ? "<br>" + esc(hm(x.e)) : "") : "all day"}</time><div><small>${esc(l)}</small><b>${esc(plain(x.title))}</b></div></div>`; }).join("")}</div>` : `<p class="mut sm" style="margin:0">Nothing on.</p>`}${d.clash.map(c => `<p class="clash">⚠ Clash: ${esc(c)}</p>`).join("")}`).join("");
   return h + (P.calendar ? "" : `<p class="dim xs" style="margin:10px 0 0">Your calendar feed isn't connected yet, so this shows Vesper's agenda, races and gate windows. Give Vesper a private calendar (ICS) link to add it.</p>`) + `</section>`; }
-views.addEventListener("click", e => { const b = e.target.closest("[data-sitecheck],[data-siteadd],[data-pl],[data-qblock],[data-gpost]"); if (!b || b.disabled) return;
-  if (b.dataset.sitecheck){ loadSites(true); drawView(true); return; }
-  if (b.dataset.siteadd){ const u = ($("#s-url") || {}).value.trim(), n = ($("#s-name") || {}).value.trim(), no = ($("#s-notes") || {}).value.trim();
-    if (!/^https?:\/\/[^\s]+\.[^\s]+/.test(u)) return HQ.toast("Enter the full address, like https://client-site.com", "warn");
-    send({t: "site", op: "add", url: u, name: n, notes: no}, "Watch " + (n || u)); $("#s-url").value = $("#s-name").value = $("#s-notes").value = ""; return; }
+views.addEventListener("click", e => { const b = e.target.closest("[data-pl],[data-qblock],[data-gpost]"); if (!b || b.disabled) return;
   if (b.dataset.pl){ PL.range = b.dataset.pl; planRec = null; loadPlan(); drawView(true); return; }
   if (b.dataset.qblock){ const t = ($("#qb") || {}).value.trim(); if (!t) return $("#qb").focus(); send({t: "block", text: t}, "Block: " + cut(t, 50)); $("#qb").value = ""; return; }
   if (b.dataset.gpost){ const t = ($("#g-post") || {}).value.trim(); if (!t) return $("#g-post").focus(); send({t: "text", text: "Draft one Instagram post for Mileset about: " + t + ". Put it in Buffer as a draft only (don't schedule it) and show me the caption."}, "Draft post: " + cut(t, 40)); $("#g-post").value = ""; } });
 views.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "qb"){ const b = $("[data-qblock]"); if (b) b.click(); } });
+
+// ---------- HQ batch 4 (Nov 20 10:53pm): Executive Overview, Agents & team, incidents badge, rollback, deep links ----------
+let agRec = null;
+function loadAgents(fresh){ HQ.ask({t: "read", q: "agents"}, fresh).then(r => { if (r){ agRec = r; const iv = setInterval(() => { if (view === "ship") drawView(true); if (FINAL_ST.includes(r.st)) clearInterval(iv); }, 400); } }); }
+function vAgents(){ const A = agRec && agRec.result && agRec.result.agents;
+  let h = `<section class="card glass wide" id="c-agents"><h2>Agents &amp; team</h2><p class="sub">Vesper's own routines (they spend Vesper's API budget, so you can pause them) and the Claude contractors (they run on your Claude plan: $0 of Vesper's budget). Read by plain code: $0.</p>`;
+  if (!A) return h + (agRec && /failed|rejected/.test(agRec.st) ? `<p class="mut">${esc(plain(agRec.say || "Couldn't load the team."))}</p>` : empty("the team", HQ.keyStr() ? "Asking Vesper (a few seconds)." : "Unlock HQ first.")) + `</section>`;
+  h += `<h3 style="margin:4px 0 6px">Vesper routines · ${esc(money(A.total))} API spend today</h3><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Routine</th><th class="hide-s">When</th><th>Status</th><th class="hide-s">Last run</th><th>Spend today</th><th></th></tr></thead><tbody>`
+    + A.routines.map(r => `<tr><td><b>${esc(r.name)}</b>${r.note ? `<div class="e">${esc(cut(r.note, 90))}</div>` : ""}</td><td class="hide-s">${esc(r.when)}</td><td>${chip(r.paused ? "paused" : "ok", r.paused ? (r.by_hq ? "Paused (HQ)" : "Paused") : "On")}</td><td class="hide-s">${esc(r.last || "–")}</td><td>${esc(money(r.spend))}</td>
+      <td><button class="btn sm${r.paused ? " go" : " warn"}" data-cmd='${esc(JSON.stringify({t: "agent", op: r.paused ? "resume" : "pause", id: r.id}))}' data-label="${r.paused ? "Resume" : "Pause"} ${esc(r.name)}">${r.paused ? "Resume" : "Pause"}</button></td></tr>`).join("") + `</tbody></table></div>`;
+  const jobs = Object.entries(A.jobs || {}); if (jobs.length) h += `<p class="dim sm" style="margin:8px 0 0">Other spend today: ${jobs.map(([k, v]) => esc(k.replace(/^system:\s*/, "")) + " " + esc(money(v))).join(" · ")}</p>`;
+  h += `<h3 style="margin:16px 0 6px">Claude contractors</h3>` + (A.workers.length ? `<div class="rows">${A.workers.map(w => `<div class="row"><div class="g"><b>${esc(w.name)}</b><span>${w.last ? "Last run " + esc(w.last.replace("T", " ")) : "No run logged"}${w.next ? " · next " + esc(w.next.replace("T", " ")) : ""}${w.summary ? " · " + esc(cut(plain(w.summary), 100)) : ""}</span></div>${chip(/fail|error/i.test(w.result) ? "alert" : w.result ? "ok" : "idle", w.result || "Idle")}</div>`).join("")}</div><p class="dim xs" style="margin:6px 0 0">Contractors are scheduled tasks on claude.ai: pause them there. They cost $0 of Vesper's budget.</p>` : `<p class="mut sm">No contractor has reported yet.</p>`);
+  return h + `</section>`; }
+const incOf = () => { const I = (S.tel && S.tel.incidents) || null, dev = HQ.ls.get("hq-relay-drops", []).filter(t => Date.now() - t < 864e5).length;
+  return {mail: I ? I.mail || 0 : null, e5xx: I ? I.e5xx || 0 : null, relay: (I ? I.relay || 0 : 0) + dev, dev, open: M.incidents.length, total: (I ? (I.mail || 0) + (I.e5xx || 0) + (I.relay || 0) : 0) + dev + M.incidents.length, known: !!I}; };
+let wasStale = false;
+function trackRelay(){ const age = HQ.relayAge(), stale = age != null && age > 120; if (stale && !wasStale){ const d = HQ.ls.get("hq-relay-drops", []).filter(t => Date.now() - t < 864e5); d.push(Date.now()); HQ.ls.set("hq-relay-drops", d.slice(-50)); } wasStale = stale; }
+function drawInc(){ const el = $("#t-inc"); if (!el) return; const I = incOf(); el.dataset.s = I.total ? "alert" : I.known ? "ok" : "idle";
+  el.lastElementChild.textContent = phone() ? (I.total ? "⚠ " + I.total : I.known ? "✓ 0" : "⚠ –") : I.total ? "INCIDENTS " + I.total : I.known ? "NO INCIDENTS" : "INCIDENTS —"; el.title = "Last 24 hours: email failures, Worker 5xx errors and relay disconnects";
+  const p = $("#t-pause"), B = S.tel && S.tel.breaker; if (B && B.on && !HQ.pauseState().paused){ p.dataset.s = "warn"; p.lastElementChild.textContent = "BREAKER · " + Math.max(1, Math.round((B.until * 1000 - Date.now()) / 60000)) + " MIN"; p.title = "Burn breaker: $1.50 spent in 30 minutes, so routines and background AI pause for 30 minutes. Your messages and approvals still work."; }
+  const oq = $("#offq"), n = HQ.offlineCount(); oq.hidden = !n; if (n) oq.textContent = n + " command" + (n > 1 ? "s" : "") + " waiting for signal · they send by themselves"; }
+function openInc(){ const I = incOf(); openDrawer("inc", "Incidents · last 24 hours", "Email failures, Worker errors and relay disconnects",
+  `<section><div class="kpis">${[[I.mail, "Email failures (Resend)"], [I.e5xx, "Worker 5xx errors"], [I.relay, "Relay disconnects"], [I.open, "Open incidents"]].map(([v, l]) => `<div class="kpi"><b>${v == null ? "–" : v}</b><span>${l}</span></div>`).join("")}</div>
+   ${I.dev ? `<p class="dim sm" style="margin:8px 0 0">${I.dev} of the relay disconnects were seen by this device.</p>` : ""}${!I.known ? `<p class="mut sm">Server counts arrive with Vesper's heartbeat.</p>` : ""}</section>
+   ${M.incidents.length ? `<section><h3>Open incidents</h3><div class="rows">${M.incidents.map(r => `<div class="row"><div class="g"><b>${esc(plain(r[5]))}</b><span>${esc(plain(r[6]))}</span></div>${chip(r[1] === "critical" ? "alert" : "waiting", plain(r[2]))}</div>`).join("")}</div></section>` : ""}`); }
+$("#t-inc").onclick = openInc;
+function vOverview(){ const sp = M.spend, K = S.tel && S.tel.members, I = incOf(), G = S.tel && S.tel.gate, pipe = pipeItems() || [], nb = S.tel && S.tel.next_block;
+  const pend = S.out.filter(r => r.st === "awaiting_telegram_approval").length + M.needs.length + pipe.filter(i => i.r === "vesper" && i.st === "Awaiting Telegram Tap").length;
+  const fail = pipe.filter(i => i.st === "Tests Failing").length, nextN = G && G.next_n, B = S.tel && S.tel.breaker;
+  const tile = (go, label, val, sub, st) => `<button type="button" class="ovt" data-go="${go}" data-s="${st || ""}"><span>${label}</span><b>${val}</b><em>${sub}</em></button>`;
+  return `<section class="card glass wide" id="c-ov"><h2>Executive overview</h2><p class="sub">Everything at a glance, from Vesper's heartbeat and GitHub: $0. Tap a tile to go there.</p><div class="ov">
+    ${tile("members", "Active members", K && !K.err ? K.a7 : "–", K && !K.err ? `${K.a24} today · ${K.total} total` : "arrives with the heartbeat")}
+    ${tile("company", "Spend today", sp.known ? money(sp.today) : "–", `of ${money(sp.cap)} cap · ${sp.known ? sp.pct + "%" : "–"}${B && B.on ? " · breaker on" : ""}`, sp.pct >= 100 || HQ.pauseState().paused ? "alert" : sp.pct >= 80 || (B && B.on) ? "warn" : "ok")}
+    ${tile("ship", "Pending approvals", pend, pend ? "waiting for your tap" : "nothing waiting", pend ? "warn" : "ok")}
+    ${tile("ship", "Ship gate", nextN ? "#" + nextN : "Clear", `${G ? G.queue + " queued" : "–"} · next run ${cdText()}${fail ? ` · ${fail} failing` : ""}`, fail ? "alert" : "")}
+    ${tile("inc", "Incidents (24h)", I.total, I.known ? `${I.mail} email · ${I.e5xx} 5xx · ${I.relay} relay` : "server counts arrive with the heartbeat", I.total ? "alert" : I.known ? "ok" : "")}
+    ${tile("me", "Next on your calendar", nb ? hm(nb.t) : "–", nb ? esc(cut(plain(nb.title), 40)) + " · " + esc(dayName(nb.d)) : "nothing timed today or tomorrow")}
+  </div></section>`; }
+views.addEventListener("click", e => { const t = e.target.closest('.ovt[data-go="inc"]'); if (t){ e.stopPropagation(); openInc(); } }, true);
 
 // ---------- one click handler for every action button ----------
 document.addEventListener("click", e => {
@@ -542,7 +563,7 @@ function sugs(q){ const L = [["Status", {t: "read", q: "status"}, "instant"], ["
     ["Health check", {t: "read", q: "health"}, "instant"], ["Recent log", {t: "read", q: "log"}, "instant"], ["Ship gate", {t: "read", q: "gate"}, "instant"], ["I'm in class: hold non-urgent messages", {t: "focus", mode: "class"}, "focus"], ["Back to normal alerts", {t: "focus", mode: "normal"}, "focus"], ["Pause workers and spend", {t: "focus", mode: "paused"}, "focus"], ["I'm going over budget", "going over budget", "spend hold"],
     ...M.needs.map(p => ["Approve #" + p.n + ": " + cut(plain(p.t), 40), {t: "ship", n: p.n}, "ship gate"]), ...M.queue.map(p => ["Hold #" + p.n + ": " + cut(plain(p.t), 40), {t: "hold", n: p.n}, "ship gate"]),
     ...["Growth Sprint", "Dev Lead", "Product Lead"].map(r => ["Run " + r + " now", "run " + r.toLowerCase() + " now", "dispatch"])];
-  const s = q.trim().toLowerCase(), go = [["Go to Command floor", {go: "floor"}, "1"], ["Go to Pipeline", {go: "ship"}, "2"], ["Go to Members", {go: "members"}, "3"], ["Go to Finance", {go: "company"}, "4"], ["Go to Growth", {go: "growth"}, "5"], ["Go to Client sites", {go: "sites"}, "6"], ["Go to Me & planner", {go: "me"}, "7"]];
+  const s = q.trim().toLowerCase(), go = [["Go to Overview", {go: "overview"}, "1"], ["Go to Command floor", {go: "floor"}, "2"], ["Go to Pipeline", {go: "ship"}, "3"], ["Go to Agents & team", {go: "agents"}, "3"], ["Go to Members", {go: "members"}, "4"], ["Go to Finance", {go: "company"}, "5"], ["Go to Growth", {go: "growth"}, "6"], ["Go to Me & planner", {go: "me"}, "7"]];
   const extra = [], num = s.match(/^#?(\d{1,5})$/);
   if (num) for (const it of (pipeItems() || []).filter(i => String(i.n) === num[1])) extra.push(["Open " + (it.r === "vesper" ? "Vesper " : "") + "#" + it.n + ": " + cut(plain(it.t), 40), {pipe: pkey(it)}, it.st]);
   const fm = q.trim().match(/^(?:@|find |member )\s*(.{2,})$/i); if (fm) extra.push(["Find member: " + fm[1], {member: fm[1]}, "search"]);
@@ -557,7 +578,7 @@ function openPal(pre){ pal.hidden = false; palSel = 0; pal.innerHTML = `<div cla
   inp.onkeydown = e => { const n = pal._L.length + (inp.value.trim() ? 1 : 0); if (e.key === "ArrowDown"){ palSel = (palSel + 1) % Math.max(1, n); drawPal(); e.preventDefault(); } else if (e.key === "ArrowUp"){ palSel = (palSel - 1 + n) % Math.max(1, n); drawPal(); e.preventDefault(); }
     else if (e.key === "Enter"){ e.preventDefault(); const typed = inp.value.trim(), pick = pal._L[palSel]; if (typed && (!pick || palSel >= pal._L.length || !pick[0].toLowerCase().includes(typed.toLowerCase()))) runPal(typed, typed); else if (pick) runPal(pick[1], pick[0]); } else if (e.key === "Escape") closePal(); }; }
 function runPal(c, label){ if (c && typeof c === "object" && (c.go || c.pipe || c.member != null)){ closePal();
-    if (c.go) show(c.go); else if (c.pipe){ show("ship"); openPipe(c.pipe); } else { MS.q = c.member; show("members"); loadRoster(true); } return; }
+    if (c.go === "agents"){ show("ship"); setTimeout(() => { const el = document.getElementById("c-agents"); if (el) el.scrollIntoView({block: "start"}); }, 80); } else if (c.go) show(c.go); else if (c.pipe){ show("ship"); openPipe(c.pipe); } else { MS.q = c.member; show("members"); loadRoster(true); } return; }
   send(typeof c === "string" ? {t: "text", text: c} : c, label); const inp = $("#pal input"); if (inp){ inp.value = ""; palSel = 0; drawPal(); inp.focus(); } }
 function closePal(){ pal.hidden = true; pal.innerHTML = ""; }
 pal.addEventListener("click", e => { if (e.target === pal) return closePal(); const b = e.target.closest(".sug button"); if (!b) return; const i = +b.dataset.i, inp = $("#pal input"); i < 0 ? runPal(inp.value.trim(), inp.value.trim()) : runPal(pal._L[i][1], pal._L[i][0]); });
@@ -579,10 +600,17 @@ const STL = {sending: "Sending", queued: "Queued", awaiting_telegram_approval: "
 const badge = st => `<span class="badge" data-st="${esc(st)}">${esc(STL[st] || st)}</span>`;
 const result = r => r.result && r.result.lines ? `<div class="res"><b>${esc(r.result.title || "")}</b>${r.result.lines.map(l => esc(l)).join("<br>")}</div>` : "";
 let queued = false, lastLeft = null;
-function draw(){ if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; M = model(); drawFloor(); drawHud(); drawSync(); drawCall(); drawRecap(); drawLock(); drawView(); drawTbar(); drawMacros(); if (!pal.hidden) drawPal(); lockTier2();
+function draw(){ if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; M = model(); drawFloor(); drawHud(); drawSync(); drawCall(); drawRecap(); drawLock(); drawView(); drawTbar(); trackRelay(); drawInc(); drawMacros(); if (!pal.hidden) drawPal(); lockTier2();
   const left = [...$("#stack").children].some(c => !c.hidden); if (left !== lastLeft){ lastLeft = left; if (view === "floor" && !drawerKey && !pts.size) fit(lastLeft === null); } }); }
 buildFloor(); HQ.on(draw); draw(); fit(true); requestAnimationFrame(() => fit(true));
 addEventListener("resize", () => { if (layout()){ buildFloor(); for (const st of STN) delete st._i; draw(); } if (view === "floor" && !drawerKey) fit(true); drawHud(); });
 $("#stack").addEventListener("click", () => setTimeout(() => { if (view === "floor" && !drawerKey) fit(); }, 30));
+// Landing view (Nov 20 10:53pm): the Executive Overview once HQ is unlocked; the floor (with its unlock card) before.
+// "Open in HQ" from a Telegram card: #open=cmd:<id> opens that command's live drawer; #open=approvals opens Pipeline.
+addEventListener("hashchange", () => { const m = location.hash.match(/(?:^#|&)open=([A-Za-z0-9:_-]{1,60})/); if (m) openFrom(m[1]); });
+function openFrom(o){ if (o.startsWith("cmd:")){ show("ship"); const id = o.slice(4); let n = 0; const iv = setInterval(() => { if (S.out.some(r => r.id === id)){ clearInterval(iv); openCmd(id); } else if (++n > 20){ clearInterval(iv); HQ.toast("That approval was sent from another device. Its card is in Telegram; the queue is here.", "warn"); } }, 300); return true; }
+  if (o === "approvals"){ show("ship"); return true; } return false; }
+(() => { const o = HQ.OPEN; if (o){ try { history.replaceState(null, "", location.pathname + location.search + location.hash.replace(/[#&]?open=[A-Za-z0-9:_-]+/, "")); } catch(e){} }
+  if (!(o && openFrom(o)) && HQ.keyStr()) show("overview"); })();
 HQ.start();
 })();
