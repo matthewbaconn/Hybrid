@@ -12,7 +12,8 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 const here = p => fileURLToPath(new URL(p, import.meta.url));
 const errs = [], NEW = 'hq/next/index.html';
-const copies = ['hq/index.html', 'hq/next/index.html', 'hq/classic/index.html'].filter(p => fs.existsSync(here('../' + p)));
+// Nov 20: /hq/ is now the command floor (its own test: tests/hq_floor.mjs). This file keeps guarding the previous HQ (/hq/next/) and the rollback copy.
+const copies = ['hq/next/index.html', 'hq/classic/index.html'].filter(p => fs.existsSync(here('../' + p)));
 for (const p of copies) {   // one retry: hq.mjs has a few short fixed waits that can miss on a busy machine
   let out = null, last = '';
   for (let i = 0; i < 2 && out === null; i++) {
