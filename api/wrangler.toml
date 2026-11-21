@@ -30,6 +30,9 @@ namespace_id = "1101"
 
 [vars]
 APP_URL = "https://app.hybrdrunning.com/"
+# Vesper's server signing key, PUBLIC half (Ed25519, raw 32 bytes, base64). Checks signed admin actions such as
+# "Resend welcome" from HQ. The private half never leaves Vesper's server. Same key as keys/owner.pub in the vesper-relay repo.
+VESPER_ADMIN_PUB = "f3dxoMfc47NLascPsXRAnHtjR7W+FUMaEDOTtG74K94="
 
 [triggers]
 crons = ["*/15 * * * *"]
