@@ -950,12 +950,12 @@ a.scard{text-decoration:none;color:var(--ink)}
 .top .pill.demo{flex:none}
 @media (max-width:374px){.getapp span{display:none}.getapp{padding:0 11px}}
 /* back button stays reachable while you scroll a screen (Nov 20 mobile fixes) */
-.view > .scrbar{top:0;margin-top:calc(-1 * env(safe-area-inset-top,0px));padding-top:max(8px,env(safe-area-inset-top,0px))}
+.view > .scrbar{top:0;margin-top:calc(-1 * env(safe-area-inset-top,0px));padding-top:calc(env(safe-area-inset-top,0px) + 12px)}   /* breathing room under the status bar / Dynamic Island (Nov 20) */
 .view > .adet-h{top:var(--toph,0px);padding-top:8px}   /* a workout opens under the sticky Mileset header, so its back row sticks just below it */
 .view > .scrbar,.view > .adet-h{position:sticky;z-index:24;padding-bottom:8px;
   background:color-mix(in srgb,var(--bg) 96%,transparent);-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%)}
 /* header: sticky, see-through */
-.wrap > .top{position:sticky;top:0;z-index:25;padding:max(10px,env(safe-area-inset-top,0px)) 20px 10px;margin-top:calc(-1 * env(safe-area-inset-top,0px));
+.wrap > .top{position:sticky;top:0;z-index:25;padding:calc(env(safe-area-inset-top,0px) + 14px) 20px 10px;margin-top:calc(-1 * env(safe-area-inset-top,0px));
   background:color-mix(in srgb,var(--bg) 84%,transparent);-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%)}
 .iconbtn{background:transparent;border-radius:50%;transition:background-color .2s var(--ease)} .iconbtn:active{background:var(--sunk)}
 /* tab bar: flush with the bottom edge */
@@ -3709,7 +3709,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "117";
+const APP_VERSION = "118";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */

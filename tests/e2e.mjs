@@ -814,6 +814,12 @@ await check("Mobile 5: the Mileset logo is whole, white and never covered", asyn
     const mr = m.getBoundingClientRect(), wr = w.getBoundingClientRect(), tr = top.getBoundingClientRect(), cs = getComputedStyle(m);
     if (mr.height < 24 || mr.width < 6) out.push("bolt is " + Math.round(mr.width) + "x" + Math.round(mr.height) + " px");
     if (mr.top < tr.top - 1 || mr.bottom > tr.bottom + 1) out.push("bolt sticks out of the header");
+    // Nov 20, 7:15pm: the header sat right under the iPhone status bar. Its top padding is the safe area PLUS room.
+    const pt = parseFloat(getComputedStyle(top).paddingTop);
+    const rule = [...document.styleSheets].flatMap(sh => { try { return [...sh.cssRules]; } catch(e){ return []; } })
+      .filter(r => r.selectorText === ".wrap > .top" && /padding/.test(r.cssText)).map(r => r.cssText).pop() || "";   // env() in a shorthand has no longhand value
+    if (pt < 12) out.push("header has only " + pt + "px above the logo");
+    if (!/calc\(env\(safe-area-inset-top[^)]*\) \+ 1\dpx\)/.test(rule)) out.push("header top padding isn't the safe area plus room (" + rule.slice(0, 120) + ")");
     if (cs.filter !== "none" || +cs.opacity < 1 || cs.color !== "rgb(255, 255, 255)") out.push("bolt is dimmed (" + cs.filter + ", " + cs.opacity + ", " + cs.color + ")");
     if (w.scrollWidth > w.clientWidth + 1) out.push("MILESET is cut off");
     for (const o of top.querySelectorAll(".pill, .getapp, .iconbtn")){ const r = o.getBoundingClientRect(); if (r.width && r.left < wr.right - 1 && r.right > mr.left) out.push("\"" + o.textContent.trim() + "\" sits on top of the logo"); }
