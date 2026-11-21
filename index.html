@@ -3709,7 +3709,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "117";
+const APP_VERSION = "118";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3874,9 +3874,13 @@ function whatsNew(force){
   if (!plan || mode === "sample" || setup || $(".back")) return;
   let seen = "", off = ""; try { seen = localStorage.getItem("hy-new") || ""; off = localStorage.getItem("hy-nonew") || ""; } catch(e){}
   if (!force && (seen === NEW_ID || off)) return;   // hy-nonew: automated tests
+  // First look on this device (a new member): nothing to catch up on. Before Nov 20 they got every entry since Nov 14,
+  // and a tap outside the sheet never marked it seen, so it came back on every open and blocked the reminder ask.
+  if (!force && !seen){ try { localStorage.setItem("hy-new", NEW_ID); } catch(e){} return; }
   wnPill(false);
   const list = NEWS.filter(x => (!x[4] || plan.profile.sex === x[4]) && (force || !seen || (x[5] || "2026-11-14") > seen));
   if (!list.length) return;
+  try { localStorage.setItem("hy-new", NEW_ID); } catch(e){}   // shown once, however it's closed
   const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
   b.innerHTML = '<div class="sheet wnew" role="dialog" aria-modal="true" aria-labelledby="wn-h"><p class="kick">New in Mileset</p><h2 id="wn-h">Here\'s what changed</h2>' +
     list.map(x => '<div class="wn">' + ic(x[0]) + '<div><b>' + x[1] + '</b><p>' + x[2] + '</p>' + (x[3] ? '<button class="linkbtn" type="button" data-act="wngo" data-to="' + x[3] + '">Show me</button>' : '') + '</div></div>').join("") +
@@ -3891,16 +3895,30 @@ function wnPill(on){
   const b = document.createElement("button"); b.id = "wnpill"; b.type = "button"; b.dataset.act = "wnback"; b.innerHTML = '‹ Back to What\'s new';
   document.body.appendChild(b);
 }
-function askNotif(){
-  if (mode !== "account" || !plan || setup || authv || !pushInfo.key || !pushOK() || pushState.on || $(".back")) return;
-  const denied = Notification.permission === "denied"; let last = 0; try { last = +localStorage.getItem("hy-nask") || 0; } catch(e){}
-  if (Date.now() - last < (denied ? 7 : 3) * 864e5) return;
+function askNotif(first){
+  if (mode !== "account" || !plan || setup || authv || !pushInfo.key || pushState.on || $(".back")) return;
+  const ios = !pushOK();   // iPhone in a Safari tab: reminders only work once Mileset is on the Home Screen
+  if (ios && !(first && isIOS && !standalone())) return;
+  const denied = !ios && Notification.permission === "denied"; let last = 0; try { last = +localStorage.getItem("hy-nask") || 0; } catch(e){}
+  if (Date.now() - last < (denied ? 7 : 3) * 864e5) return;   // a new member has never been asked, so the first-plan ask always shows
+  if (first && denied) return;   // just built a plan: don't open with a Settings lecture
   try { localStorage.setItem("hy-nask", Date.now()); } catch(e){}
   const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
-  b.innerHTML = '<div class="sheet nask" role="dialog" aria-modal="true" aria-labelledby="nask-h"><div class="nask-i">' + ic("bell") + '</div><h2 id="nask-h">' + (denied ? 'Notifications are off' : 'Turn on notifications?') + '</h2>' +
-    '<p>' + (denied ? 'Mileset can\'t reach you. To get your morning readiness and workout summaries, open your phone\'s Settings → Notifications → Mileset and allow them.' : 'Get your readiness score when you wake up, a summary after each workout and a short Monday recap. You can change this any time in Settings.') + '</p>' +
-    (denied ? '<button class="btn primary block" type="button" data-act="nasknot">OK</button>' : '<button class="btn primary block" type="button" data-act="naskyes">Allow</button><button class="btn block" type="button" data-act="nasknot">Not now</button>') + '</div>';
+  const h = ios ? 'Get reminders for your workouts' : denied ? 'Notifications are off' : first ? 'Want a reminder for your workouts?' : 'Turn on notifications?';
+  const p = ios ? 'Your plan is ready. On iPhone, Mileset can send reminders once it\'s on your Home Screen: today\'s workout each morning and a summary after each run. It takes 3 taps.'
+    : denied ? 'Mileset can\'t reach you. To get your morning readiness and workout summaries, open your phone\'s Settings → Notifications → Mileset and allow them.'
+    : first ? 'Your plan is ready. Turn on notifications and Mileset sends today\'s workout each morning and a summary after each run. You can change this any time in Settings.'
+    : 'Get your readiness score when you wake up, a summary after each workout and a short Monday recap. You can change this any time in Settings.';
+  b.innerHTML = '<div class="sheet nask" role="dialog" aria-modal="true" aria-labelledby="nask-h"><div class="nask-i">' + ic("bell") + '</div><h2 id="nask-h">' + h + '</h2><p>' + p + '</p>' +
+    (denied ? '<button class="btn primary block" type="button" data-act="nasknot">OK</button>' : '<button class="btn primary block" type="button" data-act="' + (ios ? 'naskapp">Show me how' : 'naskyes">Allow') + '</button><button class="btn block" type="button" data-act="nasknot">Not now</button>') + '</div>';
   document.body.appendChild(b);
+}
+/* Activation (incident activation-none-trained, Nov 20, 2026: 3 of 13 members with a plan have trained, and only 2 of
+   12 plan holders could get a reminder). Ask right after the FIRST plan is built, while the member is still here.
+   Before, the only ask came on a later open, which most new members never made. */
+function firstRemind(){
+  try { localStorage.setItem("hy-new", NEW_ID); } catch(e){}   // a brand-new member has no "What's new" to catch up on
+  setTimeout(() => { if (pushOK()) checkPush().then(() => askNotif(true)); else askNotif(true); }, 1200);
 }
 function closeMenu(){ const b = $(".back:not(.out)");
   if (b && b.classList.contains("askback") && !reduceMotion){ b.classList.add("out"); const sh = b.querySelector(".sheet.asks"); if (sh) sh.classList.replace("asks", "asks-out"); setTimeout(() => b.remove(), 170); }   // the coach sheet slides down instead of vanishing
@@ -4156,6 +4174,7 @@ document.addEventListener("click", ev => {
     if (mode === "account" && !plan && setup.step >= 1) api("POST", "/api/account/setup-step", {step: setup.step}).catch(() => {});
     if (mode === "account" && !plan && me && setup.step >= 1 && setup.step <= 3) setupDraft.set(me.id, setup);
     if (setup.step === 4){
+      const firstPlan = !plan || !!plan.profile.sample;   // their first real plan: ask for reminders right after (firstRemind)
       const prof = {...setup.p, start: mondayOf(TODAY), built: TODAY, pv: HP.PLAN_V}; delete prof.sample; delete prof.swaps; if (plan && plan.profile.myWorkouts && !prof.myWorkouts) prof.myWorkouts = plan.profile.myWorkouts;   // your own workouts survive a new plan   // a new plan starts with no moved days   // built: the day they made it, so earlier days that week never read as missed
       // training location: from "Use my location", or look up the typed city (doesn't hold up the plan)
       const cur = (wxLoc() || {}).place || "", city = setup.city || "";
@@ -4171,6 +4190,7 @@ document.addEventListener("click", ev => {
       Promise.all([wait, saving]).then(() => {
         if (mode === "account") Object.keys(done).forEach(k => { if (k >= TODAY) delete done[k]; });
         plan = buildPlan(prof); setup = null; setupDraft.clear(); save(); setTab("today", true);
+        if (firstPlan && mode === "account") firstRemind();
       }).catch(e => { setup.step = 3; setup.err = e.message; render(); });
       return;
     }
@@ -4516,6 +4536,7 @@ document.addEventListener("click", ev => {
   }
   if (act === "fday"){ captureFood(); fdate = addDays(fdate, +a.dataset.dir); if (fdate > TODAY) fdate = TODAY; fs.err = ""; fs.note = ""; render(); return; }
   if (act === "nasknot"){ closeMenu(); return; }
+  if (act === "naskapp"){ closeMenu(); openInstall(); return; }
   if (act === "wndone"){ wnSeen(); wnPill(false); return; }
   if (act === "wngo"){ const to = a.dataset.to; wnSeen(); if (to === "progress" || to === "activities" || to === "plan"){ scr = null; actSel = null; tab = to === "progress" ? "training" : to; render(); window.scrollTo(0, 0); } else go(to); wnPill(true); return; }
   if (act === "wnback" || act === "wnopen"){ wnPill(false); whatsNew(true); return; }
