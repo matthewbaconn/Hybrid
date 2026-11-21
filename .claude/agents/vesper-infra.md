@@ -12,8 +12,8 @@ Checks, cheapest first. Reuse what already ran instead of re-testing:
 1. GitHub Actions: `gh run list -L 10` (Nightly check, Deploy API, pages build). For failures:
    `gh run view <id> --log-failed | tail -40`.
 2. Live status and latency, one line each:
-   `for u in https://app.hybrdrunning.com/ https://hybrdrunning.com/ https://hybrid-api.hybridapp.workers.dev/api/health https://hybrid-api.hybridapp.workers.dev/api/founding; do curl -s -o /dev/null -w "%{http_code} %{time_total}s $u\n" "$u"; done`
-   Old domains (hybridrunnin.com) should 301 to hybrdrunning.com.
+   `for u in https://app.milesetapp.com/ https://milesetapp.com/ https://hybrid-api.hybridapp.workers.dev/api/health https://hybrid-api.hybridapp.workers.dev/api/founding; do curl -s -o /dev/null -w "%{http_code} %{time_total}s $u\n" "$u"; done`
+   Old domains (hybrdrunning.com, hybridrunnin.com) should 301 to milesetapp.com; app.hybrdrunning.com still serves the app (Home Screen installs).
 3. Event log (failed AI calls, Strava/Garmin, emails, push): dispatch and read it with
    `gh workflow run events.yml -f kinds='ai_%,strava%,garmin%,wake%,bulk_mail,welcome_mail,pw_%,push'`,
    wait ~70 s, then `gh run view <latest id> --log | grep -E '"(ts|kind|ok|detail)"'`. Flag rows with ok = 0.

@@ -34,11 +34,11 @@ namespace_id = "1101"
   period = 60
 
 [vars]
-APP_URL = "https://app.hybrdrunning.com/"
+APP_URL = "https://app.milesetapp.com/"
 # The domain switch (api/domains.mjs). "off": milesetapp.com serves alongside hybrdrunning.com, nothing moves.
 # "on" (only after milesetapp.com DNS and Resend are verified): the old website 301s to milesetapp.com, browser tabs move
 # to app.milesetapp.com with their login, HQ hops with its key, and email links point at app.milesetapp.com.
-MILESET_DOMAIN = "off"
+MILESET_DOMAIN = "on"
 # Vesper's server signing key, PUBLIC half (Ed25519, raw 32 bytes, base64). Checks signed admin actions such as
 # "Resend welcome" from HQ. The private half never leaves Vesper's server. Same key as keys/owner.pub in the vesper-relay repo.
 VESPER_ADMIN_PUB = "f3dxoMfc47NLascPsXRAnHtjR7W+FUMaEDOTtG74K94="
