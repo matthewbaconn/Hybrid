@@ -25,4 +25,20 @@ let bad = false; try { open((await get(BOX)).rows.find(x => x.d === "out"), "mil
 for (const [b, why] of [[{d: "x", ...seal(cmd, "a")}, "unknown kind"], [{d: "in", iv: "short", ct: "A".repeat(40)}, "bad iv"], [{d: "in", iv: "A".repeat(16), ct: "A".repeat(9000)}, "oversized command"], [{d: "in"}, "empty"]])
   check((await post(BOX, b)).status === 400, "refused: " + why);
 check((await fetch(`${API}/api/hq/box/nothex`)).status >= 400 && (await fetch(`${API}/api/hq/box/`)).status >= 400, "no listing without a mailbox id");
+// Nov 20 command tiers: command ids make retries safe, and the sealed telemetry heartbeat has its own read endpoint.
+const CID = crypto.randomUUID(), env1 = seal({command_id: CID, ts: Date.now(), t: "read", q: "spend"}, "mileset-hq-cmd-v1");
+const r1 = await (await post(BOX, {d: "in", cid: CID, ...env1})).json(), r2 = await (await post(BOX, {d: "in", cid: CID, ...seal({command_id: CID, t: "x"}, "mileset-hq-cmd-v1")})).json();
+check(r1.id > 0 && r2.id === r1.id && r2.dup === true, "a retried command (same command id) is not stored twice");
+check((await get(BOX, "?d=in")).rows.filter(x => x.cid === CID).length === 1, "only one row exists for that command id");
+const s1 = await (await post(BOX, {d: "out", cid: CID + ":1", ...seal({command_id: CID, status: "running"}, "mileset-hq-ack-v1")})).json(),
+      s2 = await (await post(BOX, {d: "out", cid: CID + ":2", ...seal({command_id: CID, status: "completed"}, "mileset-hq-ack-v1")})).json(),
+      s1b = await (await post(BOX, {d: "out", cid: CID + ":1", ...seal({command_id: CID, status: "running"}, "mileset-hq-ack-v1")})).json();
+check(s2.id > s1.id && s1b.id === s1.id && s1b.dup, "each status update is stored once, in order");
+for (const [bb, why] of [[{d: "in", cid: "not-a-uuid", ...seal({}, "a")}, "a command id that isn't a UUID"], [{d: "state", cid: crypto.randomUUID(), ...seal({}, "a")}, "a command id on a state row"]])
+  check((await post(BOX, bb)).status === 400, "refused: " + why);
+let t0 = await (await fetch(`${API}/api/hq/tel/${BOX}`)).json(); check(t0.tel === null && t0.now, "telemetry endpoint answers even before the first heartbeat");
+await post(BOX, {d: "tel", ...seal({at: 1}, "mileset-hq-tel-v1")}); await post(BOX, {d: "tel", ...seal({at: 2}, "mileset-hq-tel-v1")});
+const t1 = (await (await fetch(`${API}/api/hq/tel/${BOX}`)).json()).tel;
+check(t1 && open(t1, "mileset-hq-tel-v1").at === 2, "telemetry endpoint returns only the newest sealed heartbeat");
+check((await (await fetch(`${API}/api/hq/tel/${OTHER}`)).json()).tel === null, "another key's telemetry is empty");
 console.log(`hq mailbox: ${n - errs.length} of ${n} checks pass`); if (errs.length) process.exit(1);
