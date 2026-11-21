@@ -869,7 +869,7 @@ await check("Log out and back in (data kept)", async () => {
   await settings(); await page.click('[data-act="logout"]'); await page.waitForSelector(".welcome h1", {timeout: 10000});
   await page.click('[data-act="authlogin"]'); await page.fill("#a-email", email); await page.fill("#a-pass", pass); await page.click('#authform [type="submit"]');
   await page.waitForSelector(".hub-hero", {timeout: 15000}); await page.waitForTimeout(800);
-  await open("fuel"); const after = await page.locator(".card:has(.fdate) .fl li").count(); await back(); await open("weight"); const w = failedChecks.has("Weigh-in") ? "not checked (Weigh-in failed)" : await page.innerText(".wrow b"); await back();
+  await open("fuel"); const after = await page.locator(".card:has(.fdate) .fl li").count(); await back(); await open("weight"); const w = SMOKE ? "not checked (smoke run skips Weigh-in)" : failedChecks.has("Weigh-in") ? "not checked (Weigh-in failed)" : await page.innerText(".wrow b"); await back();
   if (after !== before) throw new Error("food items " + before + " → " + after); return after + " food items, weight " + w;
 });
 await check("Delete account", async () => {
