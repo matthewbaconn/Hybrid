@@ -2,12 +2,13 @@ import "../plan.js";
 import { buildPushPayload } from "@block65/webcrypto-web-push";
 import { safeDetail, errName, apiErrType, routeOf, GARMIN_TYPES } from "./events_safe.mjs";
 import { visitKind } from "./visits.mjs";
+import { SITE_HOSTS, allowOrigin, returnFor, siteRoute, hqHop, siteKind, appHome, siteHome, isLive, NEW } from "./domains.mjs";
 const HP = globalThis.HP;
 // Hybrid API: accounts, saved plans, workout check-offs, food log and AI food reading.
 // Runs on Cloudflare Workers with a D1 database (binding DB). Secrets: ANTHROPIC_API_KEY.
 // Auth: email + password (PBKDF2-SHA256, per-user salt); sessions are random bearer tokens,
 // stored only as SHA-256 hashes, valid 90 days.
-const ORIGINS = ["https://app.hybrdrunning.com", "https://hybrdrunning.com", "https://app.hybridrunnin.com", "https://matthewbaconn.github.io", "http://localhost:8000", "http://127.0.0.1:8000"];
+// Allowed origins, hosts and redirects live in ./domains.mjs (Nov 21: milesetapp.com alongside hybrdrunning.com).
 const AI_PER_DAY = 30;            // photo/text food reads per person per day (protects the API bill)
 const MAX_IMAGE_B64 = 2_000_000;
 const SESSION_DAYS = 90;
@@ -36,9 +37,9 @@ async function hashPassword(password, salt){
 }
 function safeEqual(a, b){ if (a.length !== b.length) return false; let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i); return r === 0; }
 
-function corsFor(req){
+function corsFor(req, env){
   const o = req.headers.get("Origin") || "";
-  return {"Access-Control-Allow-Origin": ORIGINS.includes(o) ? o : ORIGINS[0], "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  return {"Access-Control-Allow-Origin": allowOrigin(o, env), "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type, Authorization", "Access-Control-Max-Age": "86400", "Vary": "Origin"};
 }
 const reply = (h, obj, status = 200) => new Response(JSON.stringify(obj), {status, headers: {...h, "Content-Type": "application/json", "Cache-Control": "no-store"}});
@@ -167,17 +168,20 @@ async function analyze(env, user, b){
    Domain must be this Worker's host. New Strava apps allow 1 connected athlete until Strava approves more. */
 const STRAVA = "https://www.strava.com";
 const TYPE_MAP = t => /Run/.test(t) ? "run" : /Ride|Cycl|Bike/.test(t) ? "bike" : /Swim/.test(t) ? "swim" : /Weight|Workout|Crossfit|HIIT|Strength/.test(t) ? "lift" : "other";
-function appUrl(env, q, ret){ return (ret || env.APP_URL || "https://matthewbaconn.github.io/Hybrid/") + "?strava=" + q + "#today"; }
+function appUrl(env, q, ret){ return (ret || appHome(env)) + "?strava=" + q + "#today"; }
 // the app's address the person started from, so sign-ins send them back to the same place (old github.io or the new domain)
-function retFor(req){ const o = req.headers.get("Origin") || ""; return o === "https://app.hybrdrunning.com" || o === "https://app.hybridrunnin.com" ? o + "/" : o === "https://matthewbaconn.github.io" ? o + "/Hybrid/" : null; }
-/* ---------- hybrdrunning.com: the website and the app, served from GitHub Pages ----------
-   The old hybridrunnin.com website forwards to the new one. The old app address still serves the app,
-   which then moves itself (and the person's login) to app.hybrdrunning.com. */
-const SITE_HOSTS = new Set(["hybrdrunning.com", "www.hybrdrunning.com", "app.hybrdrunning.com", "hybridrunnin.com", "www.hybridrunnin.com", "app.hybridrunnin.com"]);
+function retFor(req){ return returnFor(req.headers.get("Origin") || ""); }
+/* ---------- the website and the app, served from GitHub Pages ----------
+   milesetapp.com (Nov 21) and hybrdrunning.com serve the same pages; api/domains.mjs decides what moves where and when
+   (the MILESET_DOMAIN switch). The oldest hybridrunnin.com addresses forward too. An old app address keeps serving the
+   app, which moves a browser tab (and its login) to the new one itself. */
 const PAGES = "https://matthewbaconn.github.io/Hybrid";
 async function site(req, host, env, ctx){
   const u = new URL(req.url);
-  if (host === "www.hybrdrunning.com" || host === "hybridrunnin.com" || host === "www.hybridrunnin.com") return Response.redirect("https://hybrdrunning.com" + u.pathname + u.search, 301);
+  const go = siteRoute(host, u.pathname, u.search, env);
+  if (go.redirect) return Response.redirect(go.redirect, 301);
+  if (go.hop) return new Response(hqHop(), {headers: {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store",
+    "X-Frame-Options": "DENY", "Content-Security-Policy": "frame-ancestors 'none'", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex"}});
   if (req.method !== "GET" && req.method !== "HEAD") return new Response("Method not allowed", {status: 405});
   if (/^\/(\.claude|\.github|CLAUDE(\.local)?\.md|api\/|tests\/|mail\/)/i.test(u.pathname)) return new Response("Not found", {status: 404});   // repo internals stay off the live domains
   const shared = /^\/(brand\/|privacy\.html$|icon-|apple-touch-icon)/.test(u.pathname);
@@ -197,10 +201,10 @@ async function site(req, host, env, ctx){
    Real page loads only (GET, 200, HTML, not a known bot or link preview), on the public site and the app's front door. */
 const BOT_UA = /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|telegram|discord|slack|curl|wget|python|headless|lighthouse|monitor|uptime|pingdom|playwright/i;
 function viewPath(host, pathname){
-  if (host !== "hybrdrunning.com" && host !== "app.hybrdrunning.com") return null;
+  const kind = siteKind(host); if (!kind) return null;
   let p = String(pathname || "/").toLowerCase().replace(/index\.html$/, "").replace(/\.html$/, "").replace(/\/+$/, "") || "/";
   if (!/^\/[a-z0-9\-\/]{0,60}$/.test(p)) return null;
-  if (host === "app.hybrdrunning.com") return p === "/" ? "app:/" : null;      // only the app's front door, never in-app paths
+  if (kind === "app") return p === "/" ? "app:/" : null;      // only the app's front door, never in-app paths
   return p;
 }
 function countView(env, ctx, req, host, u, r){
@@ -836,7 +840,7 @@ async function pushTo(env, userId, msg){
   const topic = (await sha256(msg.tag || "hybrid")).slice(0, 24);
   for (const s of subs){
     try {
-      const payload = await buildPushPayload({data: JSON.stringify({url: (env.APP_URL || "") + "#today", ...msg}), options: {ttl: 6 * 3600, urgency: "normal", topic}},
+      const payload = await buildPushPayload({data: JSON.stringify({url: "./#today", ...msg}), options: {ttl: 6 * 3600, urgency: "normal", topic}},
         {endpoint: s.endpoint, expirationTime: null, keys: {p256dh: s.p256dh, auth: s.auth}}, vapid);
       const r = await fetch(s.endpoint, payload);
       if (r.status === 404 || r.status === 410){ await env.DB.prepare("DELETE FROM push_subs WHERE endpoint = ?").bind(s.endpoint).run(); await logEvent(env, "push", false, "expired subscription removed (" + r.status + ")"); }
@@ -968,13 +972,12 @@ async function cron(env, ctx){
 async function tellOwnerSignup(env, name, email){
   const own = await ownerId(env), total = (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE " + REAL()).first()).n;
   const who = (name ? name + " · " : "") + email;
-  if (own) await pushTo(env, own, {title: "New Mileset sign-up", body: who + " · " + total + " members now", tag: "signup", url: (env.APP_URL || "") + "#members"}).catch(() => {});
+  if (own) await pushTo(env, own, {title: "New Mileset sign-up", body: who + " · " + total + " members now", tag: "signup", url: "./#members"}).catch(() => {});
   if (env.RESEND_API_KEY){
     const esc2 = x => String(x).replace(/[<>&"]/g, "");
-    const r = await fetch(env.RESEND_URL || "https://api.resend.com/emails", {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"},
-      body: JSON.stringify({from: env.MAIL_FROM || "Mileset <no-reply@hybrdrunning.com>", to: [env.OWNER_NOTIFY || "milesetapp@gmail.com"], subject: "New sign-up: " + (name || email),
+    const r = await sendMail(env, {to: [env.OWNER_NOTIFY || "milesetapp@gmail.com"], subject: "New sign-up: " + (name || email),
         text: who + " just joined Mileset. You have " + total + " members.\n\nSee everyone in the app: More → Members.",
-        html: '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;color:#111"><p><b>' + esc2(name || "Someone") + '</b> (' + esc2(email) + ') just joined Mileset.</p><p>You have <b>' + total + '</b> members.</p><p style="color:#666">See everyone in the app: More → Members.</p></div>'})}).catch(() => null);
+        html: '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;color:#111"><p><b>' + esc2(name || "Someone") + '</b> (' + esc2(email) + ') just joined Mileset.</p><p>You have <b>' + total + '</b> members.</p><p style="color:#666">See everyone in the app: More → Members.</p></div>'}).catch(() => null);
     await logEvent(env, "signup_notice", !!(r && r.ok), r ? "HTTP " + r.status : "net");
   }
 }
@@ -994,6 +997,29 @@ async function foundingLeft(env){
   return Math.max(0, FOUNDING_MAX - n);
 }
 /* email header: the Mileset profile picture + name (hosted with the app; alt text shows if images are off) */
+/* ---------- sending email (Resend) ----------
+   Nov 21 (milesetapp.com): mail goes out from hello@milesetapp.com. Until Resend has verified that domain it refuses
+   the sender (403/422), so the same email is sent once more from the verified hybrdrunning.com address, and this
+   copy of the Worker skips the new sender for an hour instead of failing every email. Once the MILESET_DOMAIN switch is
+   on, app links inside the email point at app.milesetapp.com. Returns Resend's response, or null on a network error. */
+const MAIL_NEW = "Mileset <hello@milesetapp.com>", MAIL_OLD = "Mileset <no-reply@hybrdrunning.com>";
+let mailNewSkipUntil = 0;
+function brandLinks(env, x){ return isLive(env) && typeof x === "string" ? x.split("https://app.hybrdrunning.com/").join("https://" + NEW.app + "/") : x; }
+async function sendMail(env, payload, batch = false){
+  const url = (env.RESEND_URL || "https://api.resend.com/emails").replace(/\/emails$/, batch ? "/emails/batch" : "/emails");
+  const fix = m => ({...m, html: brandLinks(env, m.html), text: brandLinks(env, m.text)});
+  const send = from => fetch(url, {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"},
+    body: JSON.stringify(batch ? payload.map(m => ({from, ...fix(m)})) : {from, ...fix(payload)})}).catch(() => null);
+  const primary = env.MAIL_FROM_NEW || MAIL_NEW, fallback = env.MAIL_FROM || MAIL_OLD;
+  if (primary !== fallback && Date.now() >= mailNewSkipUntil){
+    const r = await send(primary);
+    if (r && r.ok) return r;
+    if (r && r.status !== 403 && r.status !== 422) return r;              // a real failure, not the sender: don't send twice
+    mailNewSkipUntil = Date.now() + 3600e3;
+    console.log("mail: new sender refused (" + (r ? r.status : "net") + "), using the verified one");
+  }
+  return send(fallback);
+}
 const MAIL_HEAD = '<table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:22px"><tr><td style="padding-right:12px"><img src="https://app.hybrdrunning.com/brand/profile-240.png" width="52" height="52" alt="Mileset" style="display:block;border-radius:12px;border:0"></td>' +
   '<td style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-weight:800;font-size:20px;letter-spacing:-.02em;color:#111">Mileset</td></tr></table>';
 /* welcome email to each new member, signed by Matthew */
@@ -1012,8 +1038,7 @@ async function welcomeMail(env, id, name, email){
     '<p style="margin:0">Matthew<br><span style="color:#666">Mileset</span></p>' +
     '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this because you just made a Mileset account.' + (env.MAIL_ADDRESS ? ' ' + esc2(env.MAIL_ADDRESS) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe from updates</a></p></div>';
   const text = paras.join("\n\n") + "\n\n" + steps.map(t => "- " + t).join("\n") + "\n\n" + end.join("\n\n") + "\n\nOpen Mileset: https://app.hybrdrunning.com/\n\nMatthew\nMileset\n\nUnsubscribe from updates: " + unsub;
-  const r = await fetch(env.RESEND_URL || "https://api.resend.com/emails", {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"},
-    body: JSON.stringify({from: env.MAIL_FROM || "Mileset <no-reply@hybrdrunning.com>", to: [email], reply_to: "milesetapp@gmail.com", subject: "Welcome to Mileset, " + first, html, text, headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}})}).catch(() => null);
+  const r = await sendMail(env, {to: [email], reply_to: "milesetapp@gmail.com", subject: "Welcome to Mileset, " + first, html, text, headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}}).catch(() => null);
   await logEvent(env, "welcome_mail", !!(r && r.ok), r ? "HTTP " + r.status : "net");
 }
 /* day-7 nudge (member contact policy, approved Nov 13): once per member ever, only to members who signed up
@@ -1090,8 +1115,7 @@ async function firstWorkoutMail(env, id, name, email, when, title){
     '<p style="margin:0">Matthew<br><span style="color:#666">Mileset</span></p>' +
     '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this once, because you built a Mileset plan.' + (env.MAIL_ADDRESS ? ' ' + esc2(env.MAIL_ADDRESS) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe from updates</a></p></div>';
   const text = paras.join("\n\n") + "\n\nOpen today's workout: https://app.hybrdrunning.com/#today\n\nMatthew\nMileset\n\nUnsubscribe from updates: " + unsub;
-  const r = await fetch(env.RESEND_URL || "https://api.resend.com/emails", {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"},
-    body: JSON.stringify({from: env.MAIL_FROM || "Mileset <no-reply@hybrdrunning.com>", to: [email], reply_to: "milesetapp@gmail.com", subject: "Your first workout, " + first, html, text, headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}})}).catch(() => null);
+  const r = await sendMail(env, {to: [email], reply_to: "milesetapp@gmail.com", subject: "Your first workout, " + first, html, text, headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}}).catch(() => null);
   return !!(r && r.ok);
 }
 async function nudgeMail(env, id, name, email){
@@ -1107,8 +1131,7 @@ async function nudgeMail(env, id, name, email){
     '<p style="margin:0">Matthew<br><span style="color:#666">Mileset</span></p>' +
     '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this once, because you made a Mileset account a week ago.' + (env.MAIL_ADDRESS ? ' ' + esc2(env.MAIL_ADDRESS) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe from updates</a></p></div>';
   const text = paras.join("\n\n") + "\n\nBuild my plan: https://app.hybrdrunning.com/\n\nMatthew\nMileset\n\nUnsubscribe from updates: " + unsub;
-  const r = await fetch(env.RESEND_URL || "https://api.resend.com/emails", {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"},
-    body: JSON.stringify({from: env.MAIL_FROM || "Mileset <no-reply@hybrdrunning.com>", to: [email], reply_to: "milesetapp@gmail.com", subject: "Quick question, " + first, html, text, headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}})}).catch(() => null);
+  const r = await sendMail(env, {to: [email], reply_to: "milesetapp@gmail.com", subject: "Quick question, " + first, html, text, headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}}).catch(() => null);
   await logEvent(env, "nudge_mail", !!(r && r.ok), r ? "HTTP " + r.status : "net");
   return !!(r && r.ok);
 }
@@ -1131,11 +1154,11 @@ async function sendUpdate(env, owner, subject, message, test){
         body.split(/\n{2,}/).map(par => '<p style="margin:0 0 14px">' + linkify(esc2(par)).replace(/\n/g, "<br>") + '</p>').join("") +
         '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Open Mileset</a></p>' +
         '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this because you have a Mileset account.' + (addr ? ' ' + esc2(addr) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe</a></p></div>';
-      batch.push({from: env.MAIL_FROM || "Mileset <no-reply@hybrdrunning.com>", to: [u.email], reply_to: "milesetapp@gmail.com", subject: (test ? "[Test] " : "") + subject,
+      batch.push({to: [u.email], reply_to: "milesetapp@gmail.com", subject: (test ? "[Test] " : "") + subject,
         html, text: body + "\n\nOpen Mileset: https://app.hybrdrunning.com/\n\n" + (addr ? addr + "\n" : "") + "Unsubscribe: " + unsub,
         headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}});
     }
-    const r = await fetch((env.RESEND_URL || "https://api.resend.com/emails").replace(/\/emails$/, "/emails/batch"), {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"}, body: JSON.stringify(batch)}).catch(() => null);
+    const r = await sendMail(env, batch, true);
     if (r && r.ok) sent += batch.length; else { failed += batch.length; await logEvent(env, "bulk_mail", false, r ? "HTTP " + r.status : "net"); }
   }
   await logEvent(env, "bulk_mail", failed === 0, (test ? "test " : "") + sent + " sent, " + failed + " failed");
@@ -1196,6 +1219,9 @@ async function foodMcp(req, env, key){
 async function route(req, env, path, ctx){
   const M = req.method;
   if (M === "GET" && path === "/api/health") return {ok: true};
+  // Nov 21: where the app and site live now. A browser tab on an older app address moves (with its login) only when
+  // live is true, i.e. once Matthew turns MILESET_DOMAIN on after DNS and Resend are verified. Free: no database.
+  if (M === "GET" && path === "/api/home") return {live: isLive(env), app: appHome(env), site: siteHome(env)};
 
   if (M === "POST" && path === "/api/signup"){
     await limit(env, "auth:" + (req.headers.get("CF-Connecting-IP") || "x"));
@@ -1225,7 +1251,7 @@ async function route(req, env, path, ctx){
     const q = new URL(req.url).searchParams, st = q.get("state") || "";
     const row = await env.DB.prepare("SELECT user_id, created, verifier, ret FROM oauth_states WHERE state = ?").bind(st).first();
     await env.DB.prepare("DELETE FROM oauth_states WHERE state = ? OR created < ?").bind(st, new Date(Date.now() - 3600e3).toISOString()).run();
-    const go = code => Response.redirect(((row && row.ret) || env.APP_URL || "https://matthewbaconn.github.io/Hybrid/") + "?garmin=" + code + "#today", 302);
+    const go = code => Response.redirect(((row && row.ret) || appHome(env)) + "?garmin=" + code + "#today", 302);
     if (!row || !row.verifier || Date.parse(row.created) < Date.now() - 1800e3) return go("expired");
     if (q.get("error") || !q.get("code")) return go("cancelled");
     const cb = new URL(req.url).origin + "/api/garmin/callback";
@@ -1436,7 +1462,7 @@ async function route(req, env, path, ctx){
     if (u){
       const recent = await env.DB.prepare("SELECT COUNT(*) AS n FROM pw_resets WHERE user_id = ? AND expires > ?").bind(u.id, new Date().toISOString()).first();
       if (!recent || recent.n < 3){
-        const code = rand(32), link = (env.APP_URL || "https://app.hybrdrunning.com/") + "#reset=" + code;
+        const code = rand(32), link = appHome(env) + "#reset=" + code;
         await env.DB.prepare("INSERT INTO pw_resets (token_hash, user_id, expires) VALUES (?, ?, ?)").bind(await sha256(code), u.id, new Date(Date.now() + 3600e3).toISOString()).run();
         const hi = u.name ? "Hi " + String(u.name).split(" ")[0].replace(/[<>&"]/g, "") + "," : "Hi,";
         const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111">' +
@@ -1444,9 +1470,8 @@ async function route(req, env, path, ctx){
           '<p style="font-size:16px;margin:22px 0 8px">' + hi + '</p><p style="font-size:16px;line-height:1.5;margin:0 0 20px">Tap the button to pick a new password. The link works once and expires in 1 hour.</p>' +
           '<p><a href="' + link + '" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:13px 22px;border-radius:6px">Choose a new password</a></p>' +
           '<p style="font-size:13px;color:#666;line-height:1.5;margin-top:24px">If you didn\'t ask for this, ignore this email. Your password stays the same.</p></div>';
-        const r = await fetch(env.RESEND_URL || "https://api.resend.com/emails", {method: "POST", headers: {Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json"},
-          body: JSON.stringify({from: env.MAIL_FROM || "Mileset <no-reply@hybrdrunning.com>", to: [email], reply_to: "milesetapp@gmail.com", subject: "Reset your Mileset password", html,
-            text: hi + "\n\nOpen this link to pick a new password (works once, expires in 1 hour):\n" + link + "\n\nIf you didn't ask for this, ignore this email."})}).catch(() => null);
+        const r = await sendMail(env, {to: [email], reply_to: "milesetapp@gmail.com", subject: "Reset your Mileset password", html,
+            text: hi + "\n\nOpen this link to pick a new password (works once, expires in 1 hour):\n" + link + "\n\nIf you didn't ask for this, ignore this email."}).catch(() => null);
         await logEvent(env, "pw_reset_mail", !!(r && r.ok), r ? (r.ok ? "sent" : "HTTP " + r.status) : "net");
       }
     }
@@ -1997,7 +2022,7 @@ export default {
     if (SITE_HOSTS.has(host)){
       try { return await site(req, host, env, ctx); } catch(e){ return new Response("Mileset is having a moment. Try again in a minute.", {status: 502}); }
     }
-    const h = corsFor(req), path = new URL(req.url).pathname.replace(/\/+$/, "");
+    const h = corsFor(req, env), path = new URL(req.url).pathname.replace(/\/+$/, "");
     if (path.startsWith("/mcp/food/")){ try { return await foodMcp(req, env, path.slice(10)); } catch(e){ return new Response(JSON.stringify({jsonrpc: "2.0", id: null, error: {code: -32603, message: "Server error"}}), {status: 500, headers: {"Content-Type": "application/json"}}); } }
     if (req.method === "OPTIONS") return new Response(null, {status: 204, headers: h});
     try { const out = await route(req, env, path, ctx); return out instanceof Response ? out : reply(h, out); }

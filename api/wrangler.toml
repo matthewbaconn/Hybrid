@@ -2,9 +2,14 @@ name = "hybrid-api"
 main = "worker.js"
 compatibility_date = "2026-06-01"
 workers_dev = true
-# hybrdrunning.com = website, app.hybrdrunning.com = the app (both proxied from GitHub Pages by this Worker).
-# The old hybridrunnin.com addresses forward to the new ones.
+# milesetapp.com (Nov 21, 2026) and hybrdrunning.com = website, app.milesetapp.com / app.hybrdrunning.com = the app
+# (all proxied from GitHub Pages by this Worker; api/domains.mjs decides what moves where). The oldest hybridrunnin.com
+# addresses forward too. The milesetapp.com zone must be active in this Cloudflare account before this deploys:
+# Cloudflare creates these DNS records itself for custom domains.
 routes = [
+  { pattern = "milesetapp.com", custom_domain = true },
+  { pattern = "www.milesetapp.com", custom_domain = true },
+  { pattern = "app.milesetapp.com", custom_domain = true },
   { pattern = "hybridrunnin.com", custom_domain = true },
   { pattern = "www.hybridrunnin.com", custom_domain = true },
   { pattern = "app.hybridrunnin.com", custom_domain = true },
@@ -30,6 +35,10 @@ namespace_id = "1101"
 
 [vars]
 APP_URL = "https://app.hybrdrunning.com/"
+# The domain switch (api/domains.mjs). "off": milesetapp.com serves alongside hybrdrunning.com, nothing moves.
+# "on" (only after milesetapp.com DNS and Resend are verified): the old website 301s to milesetapp.com, browser tabs move
+# to app.milesetapp.com with their login, HQ hops with its key, and email links point at app.milesetapp.com.
+MILESET_DOMAIN = "off"
 # Vesper's server signing key, PUBLIC half (Ed25519, raw 32 bytes, base64). Checks signed admin actions such as
 # "Resend welcome" from HQ. The private half never leaves Vesper's server. Same key as keys/owner.pub in the vesper-relay repo.
 VESPER_ADMIN_PUB = "f3dxoMfc47NLascPsXRAnHtjR7W+FUMaEDOTtG74K94="
