@@ -1,0 +1,53 @@
+name: Post-deploy phone smoke test
+
+# Right after a change to the app, site or API merges to main and goes live (Matthew, Nov 20, 2026): an iPhone-sized
+# browser (390x844) signs up a throwaway account, builds a plan, logs a workout and runs every "Mobile" check
+# (exact paces, pull-down after a run summary, no light/dark flicker on Plan, tabs keep their place, logo visible,
+# Back stays reachable), then deletes the account. The AI coach is off for that account, so it costs $0.
+# A failure shows here, and Vesper's server alerts Matthew within 5 minutes (vesper/sweep.py).
+on:
+  push:
+    branches: [main]
+    paths: ["index.html", "plan.js", "sw.js", "api/**", "home/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: post-deploy-smoke
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04     # the browser-test tool doesn't support the newest runner image yet
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install browser
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Wait until this version is live
+        run: |
+          want=$(grep -o 'const APP_VERSION = "[0-9]*"' index.html | grep -o '[0-9]\+')
+          got=""
+          for i in $(seq 1 60); do
+            got=$(curl -sf "https://app.hybrdrunning.com/?v=$RANDOM" | grep -o 'const APP_VERSION = "[0-9]*"' | grep -o '[0-9]\+' || true)
+            [ "$got" = "$want" ] && break
+            sleep 10
+          done
+          echo "live app version: ${got:-?} (this commit: $want)"
+          sleep 60    # the API deploys in parallel (api.yml); give it a minute after the pages are live
+      - name: Phone smoke test against the live app
+        run: SMOKE=1 node tests/e2e.mjs
+      - name: Save screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-deploy-screenshots
+          path: e2e-shots
+          retention-days: 7
