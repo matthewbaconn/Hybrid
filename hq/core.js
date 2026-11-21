@@ -135,7 +135,7 @@ async function post(rec){
 async function send(cmd, label){
   if (blocked(cmd)){ toast("Paused: today's spend cap is reached, so changes from HQ wait. Hold still works; lift the pause in Telegram.", "warn"); return null; }
   const id = uuid(), rec = {id, at: Date.now(), label: label || phrase(cmd), st: "sending", tier: tier(cmd)};
-  rec.cmd = {command_id: id, ts: rec.at, ...cmd}; S.out.unshift(rec); S.out = S.out.slice(0, 40);
+  rec.cmd = {command_id: id, id, ts: rec.at, ...cmd};   // "id" too, so the Vesper already installed (before tiers) still answers S.out.unshift(rec); S.out = S.out.slice(0, 40);
   if (cmd.t === "focus") opt("mode", cmd.mode); if (cmd.t === "ship") opt("ship:" + cmd.n, 1); if (cmd.t === "hold") opt("hold:" + cmd.n, 1); if (cmd.t === "unhold") opt("hold:" + cmd.n, 0);
   if (cmd.t === "defer") opt("defer:" + cmd.key, Date.now() + 864e5); if (cmd.t === "greenlight") opt("green:" + cmd.n, 1);
   emit(); await post(rec); ls.set("hq-out", S.out.map(r => ({...r, env: r.st === "offline" ? r.env : undefined}))); emit();
