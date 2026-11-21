@@ -182,7 +182,8 @@ function drawCall(){ const el = $("#call"), C = M.calls; el.hidden = !C.length; 
       <button class="btn" data-cmd='${esc(JSON.stringify({t: "defer", key: c.key, title: c.title}))}' data-label="Deferred: ${esc(cut(c.title, 40))}">Defer a day</button>${c.url ? `<a class="btn" href="${esc(c.url)}" target="_blank" rel="noopener">Details</a>` : ""}</div></div>`).join("")}</div>`); }
 function recapLines(){ const b = M.h2.brief; if (b && Array.isArray(b.lines) && b.lines.length) return b.lines.slice(0, 3).map(plain);
   if (M.locked && !S.order) return null; const out = [], sh = M.shipped.filter(p => Date.now() - Date.parse(p.m) < 864e5);
-  out.push(sh.length ? sh.length + " change" + (sh.length > 1 ? "s" : "") + " went live in the last day: " + sh.slice(0, 3).map(p => cut(plain(p.t), 46)).join("; ") + "." : "Nothing new went live in the last day.");
+  const lv = M.h2.live || [];
+  out.push(lv.length ? "Went live today: " + lv.slice(-3).map(x => cut(plain(x.replace(/\s*·\s*undo:.*$/i, "")), 70)).join("; ") + "." : sh.length ? sh.length + " change" + (sh.length > 1 ? "s" : "") + " went live in the last day: " + sh.slice(0, 3).map(p => cut(plain(p.t), 46)).join("; ") + "." : "Nothing new went live in the last day.");
   out.push(M.queue.length ? "Next to ship: " + cut(plain(M.queue[0].t), 60) + (M.nextRun ? ", around " + when(M.nextRun) : "") + (M.queue.length > 1 ? " (" + (M.queue.length - 1) + " more behind it)" : "") + "." : "Nothing is queued to ship right now.");
   out.push(M.calls.length ? M.calls.length + " thing" + (M.calls.length > 1 ? "s need" : " needs") + " your call (top of this screen)." : M.ok ? "Nothing needs you. Everything's running." : "The site or app needs attention: tap the health light.");
   return out; }
