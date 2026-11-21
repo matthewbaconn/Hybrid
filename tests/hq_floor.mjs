@@ -111,6 +111,13 @@ async function run(name, ctxOpt, phone){
   check(!/TEST PRIVATE/.test(await page.content()), T("without the key no private words are shown"));
   check(await page.locator('.stn[data-id="dev"][data-s="working"]').count() === 1, T("public snapshot still shows who is working"));
   await shot("1-locked");
+  // 1b. Nov 21: a home-screen app can't take the key from Telegram; it takes the link pasted into the lock card
+  check(await page.isVisible("#lock #ukey") && /hq link/.test(await page.innerText("#lock")), T("the lock card offers paste-to-unlock"));
+  await page.fill("#ukey", "not a link"); await page.click("#ugo"); check(/doesn't look like/.test(await page.innerText("#umsg")), T("paste-to-unlock: a wrong paste says so"));
+  await page.fill("#ukey", "https://app.milesetapp.com/hq/#k=" + KEY); await page.click("#ugo");
+  await page.waitForFunction(() => /\$0\.67/.test(document.querySelector("#t-amt").textContent), null, {timeout: 8000}).catch(() => {});
+  check((await page.evaluate(() => localStorage.getItem("hq-k"))) === KEY && /\$0\.67/.test(await page.innerText("#t-amt")), T("paste-to-unlock: the pasted link unlocks this device"));
+  await page.evaluate(() => localStorage.removeItem("hq-k")); await page.goto(BASE); await page.reload(); await page.waitForTimeout(400);
   // 2. unlock with the private link
   await page.goto(BASE + "#k=" + KEY); await page.reload(); await page.waitForFunction(() => /\$0\.67/.test(document.querySelector("#t-amt").textContent), null, {timeout: 8000});
   const url = page.url(); check(phone ? /#k=/.test(url) : !/k=/.test(url), T(phone ? "iPhone Safari keeps the key in the address for Add to Home Screen (unchanged)" : "the key is wiped from the address after unlocking (unchanged)"));

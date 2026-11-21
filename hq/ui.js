@@ -587,8 +587,19 @@ addEventListener("keydown", e => { if ((e.metaKey || e.ctrlKey) && e.key.toLower
 
 // ---------- lock card ----------
 function drawLock(){ const el = $("#lock"), need = !HQ.keyStr() || (S.privErr && S.privErr !== "locked" && !S.priv); el.hidden = !need || view !== "floor" || !!drawerKey; if (el.hidden) return;
+  const mode = HQ.keyStr() ? "closed:" + S.privErr : "paste"; if (el.dataset.mode === mode) return; el.dataset.mode = mode;   // never wipe what he's typing
   el.innerHTML = HQ.keyStr() ? `<h2 style="margin:0 0 6px;font-size:18px">The private office is closed</h2><p class="mut" style="margin:0">${esc(S.privErr)}</p><p class="dim sm" style="margin:10px 0 0">The floor still shows who is working. Words, money and your agenda need the key.</p>`
-    : `<h2 style="margin:0 0 6px;font-size:18px">Open HQ from Vesper's private link</h2><p class="mut" style="margin:0">This device doesn't hold your HQ key yet. Tap the HQ link Vesper sent you in Telegram once and everything unlocks here.</p><p class="dim sm" style="margin:10px 0 0">Until then the floor shows only who is working, never the words.</p>`; }
+    // Nov 21 1:26pm: an iPhone home-screen app keeps its own storage and opens the page's start address (no key), so
+    // tapping the link in Telegram unlocks Safari, never the app. The app takes the link pasted in here, once.
+    : `<h2 style="margin:0 0 6px;font-size:18px">Unlock HQ on this device</h2><p class="mut" style="margin:0">In Telegram, text Vesper <b>hq link</b>, copy the private link it sends (the Phone one), and paste it here. Once per device.</p>
+      <div style="display:flex;gap:8px;margin:12px 0 0"><input id="ukey" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your private HQ link" aria-label="Private HQ link" style="flex:1;min-width:0;font:inherit;font-size:16px;color:var(--ink);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:12px;padding:10px 12px"><button id="ugo" type="button" style="font:inherit;font-weight:600;color:#04060a;background:var(--em);border:0;border-radius:12px;padding:10px 14px">Unlock</button></div>
+      <p id="umsg" class="dim sm" style="margin:8px 0 0">The floor shows who is working until then, never the words.</p>`; }
+function tryUnlock(){ const inp = $("#ukey"), msg = $("#umsg"); if (!inp) return; const m = String(inp.value || "").trim().match(/(?:k=)?([A-Za-z0-9_-]{40,})\s*$/);
+  if (!m){ msg.textContent = "That doesn't look like the private link. Copy the whole link Vesper sent."; return; }
+  try { localStorage.setItem("hq-k", m[1]); } catch(e){ msg.textContent = "This browser won't let HQ remember the key (private browsing?)."; return; }
+  inp.value = ""; msg.textContent = "Unlocking…"; location.hash = "k=" + m[1]; }   // core's hashchange takes it, tidies the address and syncs
+document.addEventListener("click", e => { if (e.target.closest && e.target.closest("#ugo")) tryUnlock(); });
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target && e.target.id === "ukey") tryUnlock(); });
 
 // ---------- draw loop ----------
 // Tier 2 actions (anything that changes something) are switched off while the over-budget pause is on; Hold stays.
