@@ -9,6 +9,12 @@ import { chromium } from "playwright";
 import fs from "fs";
 const SITE = process.env.SITE || "https://app.hybrdrunning.com/";
 const SHOTS = process.env.SHOTS || "e2e-shots";
+// SMOKE=1: the post-deploy phone smoke test (.github/workflows/post-deploy.yml, Matthew Nov 20): right after a merge
+// goes live it runs only the core flow (sign up, plan, log a workout, Plan and Activities tabs) and every "Mobile"
+// check, with the AI coach switched off for the throwaway account, so it costs $0 and finishes in a few minutes.
+const SMOKE = !!process.env.SMOKE;
+const SMOKE_ONLY = /^(Site loads|Sample runner|Sign-up needs|Sign up|Smoke:|Build a plan|Log a workout|Plan tab|Activities tab|Mobile |Log out|Delete account)/;
+let smokeSkipped = 0;
 const FAST = !!process.env.LOCAL;          // local runs: no internet weather/AI waits
 fs.mkdirSync(SHOTS, {recursive: true});
 // " Playwright MilesetTest" marks this as test traffic: the live visit counter (api/worker.js BOT_UA) skips it, so the
@@ -45,6 +51,7 @@ async function recover(name){
 }
 // opts.needs: checks this one continues from (not run if any failed). opts.needsOne: not run only if ALL of them failed.
 async function check(name, fn, opts){
+  if (SMOKE && !SMOKE_ONLY.test(name)){ smokeSkipped++; return; }      // not part of the post-deploy smoke test
   step = name;
   const dead = opts && opts.needs && [].concat(opts.needs).find(n => failedChecks.has(n));
   const allDead = opts && opts.needsOne && opts.needsOne.every(n => failedChecks.has(n)) && opts.needsOne[0];
@@ -106,6 +113,11 @@ await check("Sign-up needs the 18+ / terms box", async () => { await page.fill("
   if (!/not a dietitian/.test(h) || !/866-662-1235/.test(h)) throw new Error("health notice text"); return "blocked until checked · notice opens";
 });
 await check("Sign up", async () => { await page.fill("#a-name", "Nightly"); await page.fill("#a-email", email); await page.fill("#a-pass", pass); await page.check("#a-agree"); await page.click('#authform [type="submit"]'); await page.waitForSelector("h2.sec-t >> text=What's your goal?", {timeout: 15000}); });
+if (SMOKE) await check("Smoke: AI coach off for the test account (no AI cost)", async () => {
+  const r = await page.evaluate(async api => { const t = localStorage.getItem("hp-token"); const x = await fetch(api + "/api/settings", {method: "PUT", headers: {"Content-Type": "application/json", Authorization: "Bearer " + t}, body: JSON.stringify({ai: false})}); return x.status; },
+    await page.evaluate(() => { const m = document.documentElement.innerHTML.match(/const API = "([^"]+)"/); return m ? m[1] : ""; }));
+  if (r !== 200) throw new Error("settings answered " + r); return "coach off";
+});
 await check("Build a plan (4 steps)", async () => {
   await page.click('label.opt:has(input[value="half"])');
   const race = new Date(Date.now() + 84 * 864e5).toISOString().slice(0, 10);
@@ -863,7 +875,7 @@ await check("Log out and back in (data kept)", async () => {
   await settings(); await page.click('[data-act="logout"]'); await page.waitForSelector(".welcome h1", {timeout: 10000});
   await page.click('[data-act="authlogin"]'); await page.fill("#a-email", email); await page.fill("#a-pass", pass); await page.click('#authform [type="submit"]');
   await page.waitForSelector(".hub-hero", {timeout: 15000}); await page.waitForTimeout(800);
-  await open("fuel"); const after = await page.locator(".card:has(.fdate) .fl li").count(); await back(); await open("weight"); const w = failedChecks.has("Weigh-in") ? "not checked (Weigh-in failed)" : await page.innerText(".wrow b"); await back();
+  await open("fuel"); const after = await page.locator(".card:has(.fdate) .fl li").count(); await back(); await open("weight"); const w = SMOKE ? "not checked (smoke run skips Weigh-in)" : failedChecks.has("Weigh-in") ? "not checked (Weigh-in failed)" : await page.innerText(".wrow b"); await back();
   if (after !== before) throw new Error("food items " + before + " → " + after); return after + " food items, weight " + w;
 });
 await check("Delete account", async () => {
@@ -876,5 +888,6 @@ if (consoleErrors.length) fail("No JavaScript errors", consoleErrors.slice(0, 5)
 await browser.close();
 const summary = "## Hybrid browser test\n\n" + results.map(r => "- " + r).join("\n") + "\n";
 if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+if (SMOKE) console.log("smoke run: " + smokeSkipped + " longer checks left to the nightly run");
 console.log("\n" + (problems.length ? problems.length + " problem(s)" : "All browser checks passed.") + (notRun.length ? " · " + notRun.length + " not run (they continue from a failed check)" : "") + (recoveries ? " · recovered " + recoveries + " time(s)" : ""));
 if (problems.length){ for (const p of problems) console.log("::error::" + p); process.exit(1); }
