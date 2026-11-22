@@ -863,7 +863,8 @@ await check("Mobile 6: Back stays on screen while you scroll, and the phone's ow
   await tab("more"); await settleNav(); await page.click('[data-scr="faq"]'); await page.waitForSelector(".scrbar"); await settleNav(); await page.evaluate(() => window.scrollTo(0, 900)); await page.waitForTimeout(150);
   if (await page.evaluate(() => window.scrollY) < 100) out.push("FAQ too short to test scrolling");
   let e = await reach('.scrbar [data-act="back"]'); if (e) out.push("FAQ: " + e);
-  if (await page.evaluate(() => history.length) !== len0) out.push("iPhone: opening a screen added a history step (that switches on iOS's own swipe-Back on top of the app's)");
+  const guarded = () => page.evaluate(() => !!(history.state && history.state.hy));   // the app's guard step is the current history entry
+  if (await guarded() || await page.evaluate(() => history.length) !== len0) out.push("iPhone: an open screen sits on a history step (that switches on iOS's own swipe-Back on top of the app's)");
   await swipeBack(page); if (await page.$(".scrbar")) out.push("iPhone: the swipe left the FAQ open"); if (!(await page.isVisible("#tabbar"))) out.push("iPhone: the swipe left the app");
   await tab("more"); await settleNav(); await page.click('[data-scr="settings"]'); await page.waitForSelector(".scrbar"); await settleNav();
   await page.click('[data-scr="set-acct"]'); await settleNav(); await page.waitForTimeout(300); await page.click('[data-scr="set-profile"]'); await settleNav(); await page.waitForTimeout(300);
@@ -871,7 +872,7 @@ await check("Mobile 6: Back stays on screen while you scroll, and the phone's ow
   await swipeBack(page); if ((await title(page)) !== "Account and profile") out.push("iPhone: one swipe from Body and goals landed on \"" + (await title(page)) + "\", not Account and profile");
   await swipeBack(page); if ((await title(page)) !== "Settings") out.push("iPhone: the second swipe landed on \"" + (await title(page)) + "\", not Settings");
   await swipeBack(page); if (await page.$(".scrbar")) out.push("iPhone: the third swipe left Settings open");
-  if (await page.evaluate(() => history.length) !== len0) out.push("iPhone: a history step was left behind after the screens closed");
+  if (await guarded() || await page.evaluate(() => history.length) !== len0) out.push("iPhone: a history step was left behind after the screens closed");
   await tab("activities"); await page.waitForSelector(".actc", {timeout: 5000}); await page.click(".actc >> nth=0"); await page.waitForSelector(".adet-h"); await settleNav();
   await page.evaluate(() => window.scrollTo(0, 700)); await page.waitForTimeout(150);
   if (await page.evaluate(() => window.scrollY) > 100){ e = await reach('[data-act="actback"]'); if (e) out.push("workout: " + e); }
