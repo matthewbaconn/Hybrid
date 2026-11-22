@@ -371,7 +371,9 @@ await check("Ask bar: shows only when the server says so; ask, confirm a move, p
   const shown = await page.locator("#askbar").isVisible();
   if (says !== null && shown !== says) throw new Error("the server says the ask bar is " + (says ? "on" : "off") + " for this account but the app " + (shown ? "shows" : "hides") + " it");
   // Switch the preview on for this account in the app's view only, with a stand-in coach (no AI call, nothing leaves the test).
-  await tab("plan"); await page.waitForSelector(".day-h .mvb");
+  // wait for the week, not for a Move button: on the last day of the week (Sunday) this week has no day left to move,
+  // so ".day-h .mvb" never appears until next week is opened below (every PR's checks failed on Sunday UTC, Nov 22).
+  await tab("plan"); await page.waitForSelector(".day[id^='d-']");
   // a future day with a workout whose next day is a valid target (a rest day can carry a Move button too, and the coach's
   // Move is only offered for a day that has sessions: picking the first future day failed on days the plan rests, Nov 18).
   // Look at this week AND next week: late in the week the days left can all be rest days, or the next day is the following
