@@ -16,6 +16,7 @@ const ls = { get(k, d){ try { const v = localStorage.getItem(k); return v == nul
              set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} } };
 S.out = ls.get("hq-out", []).filter(r => Date.now() - r.at < 3 * 864e5).slice(0, 40);
 S.opt = ls.get("hq-opt", {});
+for (const k of Object.keys(S.opt)) if (k.startsWith("defer:") && !(S.opt[k].v > Date.now())) delete S.opt[k];   // ended defers
 { const c = ls.get("hq-order2", null); if (c && Array.isArray(c.list)){ S.order = c.list; S.orderAt = c.at; } }
 
 // "Open in HQ" from a Telegram approval card: #open=cmd:<command id> or #open=approvals. Read before anything rewrites
@@ -161,7 +162,10 @@ async function send(cmd, label){
   else if (rec.st === "locked") toast("Open HQ from Vesper's private link first.", "warn");
   tick(); return rec; }
 function opt(k, v){ S.opt[k] = {v, at: Date.now()}; ls.set("hq-opt", S.opt); }
-const optv = k => { const o = S.opt[k]; return o && Date.now() - o.at < 30 * 60e3 ? o.v : undefined; };
+// A screen change waits 30 min for Vesper's confirmation; a "Defer a day" keeps its own end time (Nov 21: deferred cards
+// came back after 30 min because defers shared the 30-minute limit).
+const optv = k => { const o = S.opt[k]; if (!o) return undefined; if (k.startsWith("defer:")) return o.v > Date.now() ? o.v : undefined;
+  return Date.now() - o.at < 30 * 60e3 ? o.v : undefined; };
 function copy(t){ try { navigator.clipboard.writeText(t).catch(() => {}); } catch(e){} }
 let toastFn = () => {}; const toast = (t, kind) => toastFn(t, kind);
 
@@ -226,7 +230,7 @@ function model(){
   const calls = [];
   for (const p of needs) calls.push({key: "pr:" + p.n, kind: "pr", n: p.n, title: plain(p.t), why: plain(String(p.b).replace(/^\s*NEEDS MATTHEW:?\s*/i, "").split(/\n\s*\n/)[0]).slice(0, 220), url: p.url});
   for (const a of P.a || []){ if (a.k === "pr" && a.repo === "Hybrid"){ if (calls.some(c => c.n === a.n) || !needs.some(p => p.n === a.n)) continue; }
-    calls.push({key: (a.k || "x") + ":" + (a.repo || "") + (a.n || a.title), kind: a.k === "pr" ? (a.repo === "Hybrid" ? "pr" : "upgrade") : "ask", n: a.n, title: plain(a.title), why: plain(a.why || ""), url: a.url}); }
+    calls.push({key: (a.k || "x") + ":" + (a.repo || "") + (a.n || String(a.title || "").replace(/\d+/g, "#")), kind: a.k === "pr" ? (a.repo === "Hybrid" ? "pr" : "upgrade") : "ask", n: a.n, title: plain(a.title), why: plain(a.why || ""), url: a.url}); }
   const live = calls.filter(c => !(optv("defer:" + c.key) > Date.now()) && optv("ship:" + c.n) !== 1 && optv("hold:" + c.n) !== 1);
   // spend
   const m = P.money || {}, sp = o.spend || {}, T = (S.tel && S.tel.spend) || null, capDay = T ? +T.cap : +(h2.spend && h2.spend.daily_cap) || CAP;

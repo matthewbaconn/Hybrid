@@ -141,6 +141,16 @@ async function run(name, ctxOpt, phone){
   check(await page.locator('.stn[data-id="qa"][data-s="waiting"]').count() === 1 && await page.locator('.stn[data-id="stark"][data-s="idle"]').count() === 1 && await page.locator('.stn[data-id="personal"][data-s="ok"]').count() === 1, T("status halos: waiting on approval, idle, on track"));
   if (phone) await page.click("#call [data-fold]").catch(() => {});
   const call = await page.innerText("#call"); check(/Needs your call · 2/i.test(call) && /TEST held change/.test(call) && /Approve/.test(call) && /Hold/.test(call) && /Defer/.test(call) && !/dock key/.test(call), T("Needs Your Call banner with Approve / Hold / Defer; a change held by you is not nagged"));
+  // Nov 21: a "Defer a day" lasts the day (it came back after 30 min). Checked in a second tab so this one keeps its state.
+  { const p2 = await ctx.newPage(), n = t => +((/Needs your call · (\d+)/i.exec(t) || [])[1] || 0);
+    const callTxt = async () => { await p2.waitForFunction(() => /Needs your call/i.test((document.querySelector("#call") || {}).textContent || ""), null, {timeout: 9000}).catch(() => {});
+      return p2.evaluate(() => (document.querySelector("#call") || {}).textContent || ""); };
+    await p2.goto(BASE); await p2.waitForSelector(".stn", {state: "attached"}); const before = await callTxt();
+    await p2.evaluate(() => { const o = JSON.parse(localStorage.getItem("hq-opt") || "{}"); o["defer:pr:1"] = {v: Date.now() + 20 * 3600e3, at: Date.now() - 40 * 60e3}; localStorage.setItem("hq-opt", JSON.stringify(o)); });
+    await p2.reload(); const after = await callTxt();
+    check(/TEST held change/.test(before) && !/TEST held change/.test(after) && n(after) === n(before) - 1, T("a deferred card stays hidden for the day, not 30 minutes"));
+    await p2.evaluate(() => { const o = JSON.parse(localStorage.getItem("hq-opt") || "{}"); delete o["defer:pr:1"]; localStorage.setItem("hq-opt", JSON.stringify(o)); });
+    await p2.close(); }
   if (phone) await page.click("#recap [data-fold]").catch(() => {});
   check(await page.locator("#recap li").count() === 3, T("recap card has 3 plain bullets")); await shot("2-floor");
   if (phone){ await page.click("#recap [data-fold]"); await page.click("#call [data-fold]"); }
