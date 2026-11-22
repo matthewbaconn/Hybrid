@@ -985,7 +985,7 @@ a.scard{text-decoration:none;color:var(--ink)}
 .tc-s .tc-g{stroke:rgba(255,255,255,.3);stroke-width:1}
 .tc-s .dot{stroke:var(--tcbg);stroke-width:2;transform-box:fill-box;transform-origin:center;transition:transform .12s} .tc-s .dot.on{transform:scale(1.5)}
 .tc-s .hit{fill:transparent;cursor:pointer}
-.tc-k{margin-top:-2px} .tc-k i.ln{width:14px;height:2px;border-radius:1px} .tc-k i.dash{width:14px;height:1px;border-radius:0;background:#C9CDD8;opacity:.7}
+.tc-k{margin-top:-2px} .tc-k i.ln{width:14px;height:2px;border-radius:1px} .tc-k i.pt{width:8px;height:8px;border-radius:50%} .tc-k i.dash{width:14px;height:1px;border-radius:0;background:#C9CDD8;opacity:.7}
 .mseg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;padding:3px;border-radius:9px;background:var(--sunk)}
 .mseg button{border:0;background:none;color:var(--muted);font:600 12.5px/1 var(--f-body);padding:0 4px;min-height:36px;border-radius:7px;white-space:nowrap;transition:background .15s,color .15s}
 .mseg button[aria-pressed="true"]{background:#2C303B;color:var(--ink)}
@@ -1889,7 +1889,7 @@ setInterval(() => autoSync(true), 10 * 60e3);
    the numbers and it can get overwhelming"). It draws a real y-axis, puts the number on the marks, draws your goal or
    average as a brighter line that is named under the chart, and keeps a readout above the chart that follows your finger:
    tap or slide across to read any day (tcPick). Everything it prints goes through esc().
-   o: {n, kind: "bar" | "line", vals, color | series: [{vals, color, name}], read: i => {v, u, d, n} (value, unit, day, note),
+   o: {n, kind: "bar" | "line", vals, color | series: [{vals, color, name, w, line: false for dots only, r}], read: i => {v, u, d, n} (value, unit, day, note),
    short: v => the label on a mark, labels: "all" | "ends", refs: [{v, name}], ymax + ticks (a fixed scale), whole, yfmt,
    xl: x labels, sel, dim: i => a paler bar, hero, rcls, act, keys: extra legend entries, aria}.
    A bar's value may be [[v, color], …] for a stacked bar. */
@@ -1944,18 +1944,18 @@ function tChart(o){
         if (yb - yt > .4) g += '<path d="M' + f1(x) + ' ' + f1(yb) + 'V' + f1(yt + r) + 'Q' + f1(x) + ' ' + f1(yt) + ' ' + f1(x + r) + ' ' + f1(yt) + 'H' + f1(x + bw - r) + 'Q' + f1(x + bw) + ' ' + f1(yt) + ' ' + f1(x + bw) + ' ' + f1(yt + r) + 'V' + f1(yb) + 'Z" fill="' + c + '"/>';
         y = yt; });
       if (g) s += '<g' + at('m' + (o.dim && o.dim(i) ? ' dim' : ''), i) + '>' + g + '</g>'; });
-  } else series.forEach(se => {
+  } else series.slice().reverse().forEach(se => {
     let d = '', pen = false;
     se.vals.forEach((v, i) => { if (v == null){ pen = false; return; } d += (pen ? 'L' : 'M') + f1(X(i)) + ' ' + f1(Y(v)); pen = true; });
-    s += '<path d="' + d + '" fill="none" stroke="' + se.color + '" stroke-width="' + (se.w || 2) + '" stroke-linecap="round" stroke-linejoin="round"/>';
-    if (n <= 31) se.vals.forEach((v, i) => { if (v != null) s += '<circle' + at('dot', i) + ' cx="' + f1(X(i)) + '" cy="' + f1(Y(v)) + '" r="3.5" fill="' + se.color + '"/>'; });
+    if (se.line !== false) s += '<path d="' + d + '" fill="none" stroke="' + se.color + '" stroke-width="' + (se.w || 2) + '" stroke-linecap="round" stroke-linejoin="round"/>';
+    if (n <= 31 || se.line === false) se.vals.forEach((v, i) => { if (v != null) s += '<circle' + at('dot', i) + ' cx="' + f1(X(i)) + '" cy="' + f1(Y(v)) + '" r="' + (se.r || 3.5) + '" fill="' + se.color + '"/>'; });
   });
   labs.forEach((L, i) => { if (L.t !== '') s += '<text' + at('v' + (L.show ? '' : ' h'), i) + ' x="' + f1(Math.min(W - 10, X(i))) + '" y="' + f1(L.y) + '" text-anchor="middle">' + esc(L.t) + '</text>'; });
   (o.xl || []).forEach((l, i) => { if (!l) return; const edge = slot < 20 && (i === 0 || i === n - 1);
     s += '<text' + at('x', i) + ' x="' + f1(edge ? (i ? W : GL) : X(i)) + '" y="' + (H - 6) + '" text-anchor="' + (edge ? (i ? 'end' : 'start') : 'middle') + '">' + esc(l) + '</text>'; });
   reads.forEach((R, i) => {
     s += '<rect class="hit" x="' + f1(GL + slot * i) + '" y="0" width="' + f1(slot) + '" height="' + H + '" data-act="' + (o.act || 'tcp') + '" data-i="' + i + '" data-x="' + f1(X(i)) + '" data-v="' + esc(R.v) + '" data-u="' + esc(R.u || '') + '" data-d="' + esc(R.d) + '" data-n="' + esc(R.n || '') + '"/>'; });
-  const key = (one ? [] : series.map(se => '<span><i class="ln" style="--c:' + se.color + '"></i>' + esc(se.name) + '</span>')).concat(refs.map(r => '<span><i class="dash"></i>' + esc(r.name) + '</span>'), o.keys || []).join('');
+  const key = (one ? [] : series.map(se => '<span><i class="' + (se.line === false ? 'pt' : 'ln') + '" style="--c:' + se.color + '"></i>' + esc(se.name) + '</span>')).concat(refs.map(r => '<span><i class="dash"></i>' + esc(r.name) + '</span>'), o.keys || []).join('');
   const R = reads[sel];
   return '<div class="tc' + (o.hero ? ' hero' : '') + '"><div class="tc-r' + (o.rcls ? ' ' + o.rcls : '') + '"><p><b class="tc-v">' + esc(R.v) + '</b><small class="tc-u">' + esc(R.u || '') + '</small></p><div><span class="tc-d">' + esc(R.d) + '</span><span class="tc-n">' + esc(R.n || '') + '</span></div></div>' +
     s + '</svg>' + (key ? '<div class="legend tc-k">' + key + '</div>' : '') + '</div>';
@@ -1976,17 +1976,6 @@ addEventListener("pointermove", e => {
   const t = document.elementFromPoint(e.clientX, e.clientY);
   if (t && t.classList && t.classList.contains("hit")) tcPick(t);
 }, {passive: true});
-function lineChart(series, aria){
-  // series: [{pts:[[i, v]], color, dash, dots}] over n x-slots; values share one scale
-  const W = 340, H = 150, all = series.flatMap(s => s.pts.map(p => p[1])), lo = Math.floor(Math.min(...all) - 1), hi = Math.ceil(Math.max(...all) + 1), n = Math.max(...series.flatMap(s => s.pts.map(p => p[0]))) || 1;
-  const X = i => 30 + i / n * (W - 40), Y = v => 10 + (hi - v) / (hi - lo) * (H - 30);
-  let s = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(aria) + '">';
-  [lo, Math.round((lo + hi) / 2), hi].forEach(v => s += '<line x1="30" x2="' + W + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="var(--line)"/><text x="0" y="' + (Y(v) + 3).toFixed(1) + '">' + v + '</text>');
-  series.forEach(se => { if (!se.pts.length) return; const d = se.pts.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1)).join("");
-    s += '<path d="' + d + '" fill="none" stroke="' + se.color + '" stroke-width="' + (se.w || 2.4) + '" stroke-linecap="round" stroke-linejoin="round"' + (se.dash ? ' stroke-dasharray="5 5"' : '') + '/>';
-    if (se.dots) se.pts.forEach(p => s += '<circle cx="' + X(p[0]).toFixed(1) + '" cy="' + Y(p[1]).toFixed(1) + '" r="2.6" fill="' + se.color + '"/>'); });
-  return s + '</svg>';
-}
 
 /* ---------- Recovery tab ---------- */
 /* Nov 21 (Matthew: "more detailed and easier to read"): one Today card (the score, where it sits between the plan's three
@@ -2089,15 +2078,23 @@ let wRange = 42;
 function wAsk(){ try { return localStorage.getItem("hy-wask") !== "off"; } catch(e){ return true; } }
 function bodyCards(){
   const N = wRange, p = plan.profile, days = Array.from({length: N}, (_, i) => addDays(TODAY, i - N + 1));
-  const pts = [], avgPts = []; days.forEach((d, i) => { if (weights[d]) pts.push([i, weights[d]]); const a = avgWeight(d); if (a && Object.keys(weights).some(k => k <= d && k > addDays(d, -7))) avgPts.push([i, Math.round(a * 10) / 10]); });
+  const r1 = v => Math.round(v * 10) / 10, wv = days.map(d => weights[d] || null), av = days.map(d => { const a = avgWeight(d); return a && Object.keys(weights).some(k => k <= d && k > addDays(d, -7)) ? r1(a) : null; });
+  const nW = wv.filter(v => v != null).length, sg = v => (v <= 0 ? '−' : '+') + Math.abs(v).toFixed(1);
   let h = '<section class="card" style="--tone:var(--lift)"><div class="card-h">' + ic("scale") + '<span class="lbl">Body weight</span><div class="wrng" role="group" aria-label="Range">' + [[42, "6 wk"], [120, "4 mo"]].map(([n, l]) => '<button type="button" data-act="wrange" data-n="' + n + '" aria-pressed="' + (wRange === n) + '"' + (wRange === n ? ' class="on"' : '') + '>' + l + '</button>').join("") + '</div>';
-  if (pts.length >= 2){
-    const a = avgWeight(TODAY), b = avgWeight(addDays(TODAY, -7)), wk = a && b ? a - b : null;
-    const series = [{pts, color: "var(--muted)", w: 1.2, dots: true}, {pts: avgPts, color: "var(--lift)", w: 2.8}];
-    if (p.goalWeight) series.push({pts: [[0, p.goalWeight], [N - 1, p.goalWeight]], color: "var(--long)", dash: true, w: 1.6});
-    const first = pts[0][1], tot = a ? a - (avgPts.length ? avgPts[0][1] : first) : 0;
-    h += '</div><p class="wsum">' + (wk != null ? '<span><b>' + (wk <= 0 ? '−' : '+') + Math.abs(wk).toFixed(1) + '</b> lb this week</span>' : '') + (avgPts.length > 7 ? '<span><b>' + (tot <= 0 ? '−' : '+') + Math.abs(tot).toFixed(1) + '</b> lb since ' + fmtD(days[avgPts[0][0]]) + '</span>' : '') + '<span><b>' + pts.length + '</b> weigh-ins</span></p>' + lineChart(series, "Daily weigh-ins and 7-day average") +
-      '<div class="legend"><span><i style="--c:var(--lift)"></i>7-day average</span><span><i style="--c:var(--muted)"></i>Weigh-ins</span>' + (p.goalWeight ? '<span><i style="--c:var(--long)"></i>Goal ' + p.goalWeight + ' lb</span>' : '') + '</div>' +
+  if (nW >= 2){
+    const a = avgWeight(TODAY), b = avgWeight(addDays(TODAY, -7)), wk = a && b ? a - b : null, i0 = av.findIndex(v => v != null), nA = av.filter(v => v != null).length;
+    const tot = a ? a - (i0 >= 0 ? av[i0] : wv.find(v => v != null)) : 0, got = wv.concat(av).filter(v => v != null), lo = Math.min(...got), hi = Math.max(...got), g = p.goalWeight;
+    // the goal line is drawn only when it is close enough not to squash the trend flat; the Goal figure below always shows it
+    const goalNear = g && g > lo - Math.max(3, hi - lo) && g < hi + Math.max(3, hi - lo), every = N > 60 ? 30 : 7;
+    const dn = d => d === TODAY ? 'Today' : DAYS[dow(d)] + ', ' + fmtD(d);
+    h += '</div>' + tChart({n: N, kind: "line", H: 190, series: [{vals: av, color: "var(--lift)", name: "7-day average", w: 2.6}, {vals: wv, color: "#8D94A6", name: "Weigh-ins", line: false, r: N > 60 ? 2.2 : 2.8}],
+        refs: goalNear ? [{v: g, name: 'Goal ' + g + ' lb'}] : [], xl: days.map((d, i) => (N - 1 - i) % every ? '' : i === N - 1 ? 'Today' : shortD(d)),
+        read: i => ({v: av[i] != null ? av[i].toFixed(1) : wv[i] != null ? wv[i].toFixed(1) : '–', u: av[i] != null || wv[i] != null ? 'lb' : '', d: dn(days[i]),
+          n: av[i] != null ? '7-day average · ' + (wv[i] != null ? 'weighed in at ' + wv[i].toFixed(1) : 'no weigh-in') : wv[i] != null ? 'Weigh-in' : 'No weigh-in'}),
+        aria: "Daily weigh-ins and 7-day average, last " + N + " days"}) +
+      '<div class="figs"><div><span>This week</span><b>' + (wk != null ? sg(wk) + ' lb' : '–') + '</b><small>7-day average</small></div>' +
+      '<div><span>' + (nA > 7 ? 'Since ' + fmtD(days[i0]) : 'Weigh-ins') + '</span><b>' + (nA > 7 ? sg(tot) + ' lb' : nW) + '</b><small>' + (nA > 7 ? nW + ' weigh-ins' : 'so far') + '</small></div>' +
+      (g ? '<div><span>Goal</span><b>' + g + ' lb</b><small>' + (a ? (Math.abs(a - g) < .05 ? 'reached' : Math.abs(a - g).toFixed(1) + ' lb to go') : '') + '</small></div>' : '<div><span>7-day average</span><b>' + (a ? a.toFixed(1) + ' lb' : '–') + '</b><small>today</small></div>') + '</div>' +
       (wk != null && p.goalWeight && p.goalWeight < a ? '<p class="sub">' + (-wk > 1.5 ? 'Losing over 1.5 lb a week can cost muscle. Eating a bit more on training days helps.' : -wk >= .4 ? 'Losing at a muscle-safe pace. Keep going.' : 'Weight is holding steady. If that lasts two weeks, trim about 150 cal a day.') + '</p>' : '');
   } else h += '</div><p class="sub">Weigh in on a few mornings and your trend shows here. The 7-day average smooths out water-weight swings.</p>';
   h += '</section>';
