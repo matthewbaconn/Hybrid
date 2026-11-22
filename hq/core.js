@@ -96,7 +96,7 @@ function tier(cmd){ if (heldRefs(cmd).length) return 2; if (cmd.t === "read" || 
 /** the over-budget pause: from the heartbeat when there is one, else from the office */
 function pauseState(){ const sp = S.tel && S.tel.spend; if (sp) return {paused: !!sp.paused, reason: sp.reason || ""};
   const h = ((S.priv || {}).hq2 || {}).spend || {}; return {paused: !!(h.throttled || h.critical), reason: h.throttled ? "spend hold" : h.critical ? "critical only" : ""}; }
-const safeWhenPaused = cmd => cmd.t === "hold" || cmd.t === "focus" || (cmd.t === "budget" && ["pause", "resume", "cap"].includes(cmd.op));   // the way out of a pause always works
+const safeWhenPaused = cmd => cmd.t === "hold" || cmd.t === "focus" || cmd.t === "block" || cmd.t === "agenda" || (cmd.t === "budget" && ["pause", "resume", "cap"].includes(cmd.op));   // his agenda costs $0   // the way out of a pause always works
 const blocked = cmd => tier(cmd) === 2 && pauseState().paused && !safeWhenPaused(cmd);
 const uuid = () => crypto.randomUUID ? crypto.randomUUID() : ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
 const FINAL = ["completed", "rejected", "failed"];

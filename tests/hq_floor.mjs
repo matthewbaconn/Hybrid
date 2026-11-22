@@ -63,7 +63,7 @@ async function run(name, ctxOpt, phone){
     : c.q === "agents" ? {title: "Agents & team", lines: ["3 of 4 routines on"], agents: {total: 0.42, jobs: {"Matthew's messages": 0.3, "Mac voice": 0.05},
         routines: [{id: "market", name: "Market scan", when: "every day · 09:13", paused: false, by_hq: false, last: "2026-11-20", spend: 0.07, note: ""}, {id: "brief", name: "Morning business brief", when: "every day · morning", paused: true, by_hq: false, last: "", spend: 0, note: "Paused Nov 14 (dedupe)"}],
         workers: [{id: "worker", name: "Worker / ship gate", result: "shipped", last: "2026-11-20T21:42:00", next: "2026-11-20T22:42:00", summary: "Shipped #105"}, {id: "dev-lead", name: "Dev Lead", result: "failed", last: "2026-11-20T18:00:00", next: "", summary: "Tests red"}]}}
-    : c.q === "planner" ? {title: "Planner", lines: ["4 item(s)"], plan: {range: c.range, calendar: false, days: [{d: new Date().toISOString().slice(0, 10), items: [{t: "04:30", e: "12:30", title: "Work", kind: "shift"}, {t: "10:00", e: "11:00", title: "Pharm exam", kind: "deadline"}, {t: "22:15", e: "22:30", title: "Ship-gate window", kind: "gate"}, {t: "", e: "", title: "Turkey Trot 5K", kind: "race"}], clash: ["Work overlaps Pharm exam"]}].concat(c.range === "week" ? [{d: "2026-11-22", items: [], clash: []}] : [])}}
+    : c.q === "planner" ? {title: "Planner", lines: ["4 item(s)"], plan: {range: c.range, calendar: false, days: [{d: new Date().toISOString().slice(0, 10), items: [{t: "04:30", e: "12:30", title: "Work", kind: "shift", src: "agenda", id: 7, rep: "mon,thu"}, {t: "10:00", e: "11:00", title: "Pharm exam", kind: "deadline", src: "agenda", id: 8, rep: ""}, {t: "22:15", e: "22:30", title: "Ship-gate window", kind: "gate"}, {t: "", e: "", title: "Turkey Trot 5K", kind: "race"}], clash: ["Work overlaps Pharm exam"]}].concat(c.range === "week" ? [{d: "2026-11-22", items: [], clash: []}] : [])}}
     : {title: "Spend", lines: ["Today: $0.67 of the $5.00 daily cap ($4.33 left).", "Over-budget pause: armed"]};
   const vesper = c => { if (t1(c)){ say(c, "running"); say(c, "completed", {ok: true, say: "read " + (c.q || c.t), result: c.t === "defer" ? null : readRes(c)}); return; }
     say(c, "awaiting_telegram_approval", {say: "Waiting for your Approve in Telegram.", cost: c.t === "text" ? 0.15 : 0, tier: 2});
@@ -332,6 +332,21 @@ async function run(name, ctxOpt, phone){
   const qb0 = cmds.length; await page.fill("#qb", "Block 90 mins tomorrow at 7am for NCLEX sleep & pain review"); await page.keyboard.press("Enter"); await page.waitForTimeout(400);
   check(cmds[qb0] && cmds[qb0].t === "block" && /NCLEX/.test(cmds[qb0].text) && UUIDRE.test(cmds[qb0].command_id) && await page.evaluate(() => HQ.tier({t: "block", text: "x"})) === 2,
         T("Quick-block bar: natural language goes to Vesper as a Tier 2 command (Approve / Reject card before writing)"));
+  // Nov 21: edit or delete his own agenda items from the Planner (calendar, races and gate windows stay read-only)
+  await page.click('#c-plan [data-pl="today"]').catch(() => {}); await page.waitForFunction(() => /Pharm exam/.test((document.querySelector("#c-plan") || {}).textContent || ""), null, {timeout: 9000}).catch(() => {});
+  check(await page.locator("#c-plan [data-aged]").count() === 2, T("Planner: Edit on each agenda item, none on races or ship-gate windows"));
+  await page.click('#c-plan [data-aged="8"]'); await page.waitForSelector("#pe-start");
+  check(await page.inputValue("#pe-start") === "10:00" && await page.inputValue("#pe-day") !== "", T("Planner edit: opens with the item's own day and time"));
+  await page.fill("#pe-start", "13:00"); await page.fill("#pe-end", "14:00"); const ae0 = cmds.length; await page.click("#c-plan [data-pesave]"); await page.waitForTimeout(500);
+  const mv = cmds.slice(ae0).find(c => c.t === "agenda");
+  check(mv && mv.op === "move" && mv.id === 8 && mv.start === "13:00" && mv.end === "14:00" && /^\d{4}-\d{2}-\d{2}$/.test(mv.day) && UUIDRE.test(mv.command_id), T("Planner edit: Save sends the new time and day to Vesper"));
+  await page.click('#c-plan [data-aged="7"]').catch(() => {}); await page.waitForSelector("[data-pedel]").catch(() => {});
+  check(await page.locator("#pe-day").count() === 0 && /every Mon, Thu/.test(await page.innerText("#c-plan")), T("Planner edit: a weekly item changes its time every week (no day box)"));
+  const ad0 = cmds.length; await page.click("[data-pedel]"); await page.waitForTimeout(200);
+  check(!cmds.slice(ad0).some(c => c.t === "agenda") && /Tap again to delete/.test(await page.innerText("#c-plan")), T("Planner delete: the first tap only asks to confirm"));
+  await page.click("[data-pedel]"); await page.waitForTimeout(400);
+  const rm = cmds.slice(ad0).find(c => c.t === "agenda");
+  check(rm && rm.op === "remove" && rm.id === 7, T("Planner delete: the second tap deletes it"));
   await shot("15-planner");
 
   // HQ batch 4: Executive Overview, incidents badge, burn breaker, Agents & team, rollback, Open in HQ, offline queue
