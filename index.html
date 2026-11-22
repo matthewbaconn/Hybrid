@@ -2850,9 +2850,12 @@ function sessHtml(s, key, big){
 function missedCard(){
   for (let k = 1; k <= 3; k++){
     const date = addDays(TODAY, -k); let sk = null; try { sk = localStorage.getItem("hy-mskip-" + date); } catch(e){}
-    if (sk || !missedDay(date) || !moveTargets(date).length) continue;
-    return '<section class="card mcard" style="--tone:var(--warn,#E8A33D)"><div class="card-h">' + ic("cal") + '<span class="lbl">Missed ' + (/^yesterday$/i.test(dayName(date)) ? 'yesterday' : dayName(date)) + '</span></div>' +
-      '<p><b>' + esc(dayLabel(dayOf(date))) + '</b> didn\'t get done. Life happens. Move it to a day you can do it.</p><div class="row"><button class="btn primary" type="button" data-act="mvopen" data-date="' + date + '">' + ic("swap") + 'Move it</button><button class="linkbtn" type="button" data-act="mskip" data-date="' + date + '">Skip it</button></div></section>';
+    if (sk || !missedDay(date)) continue;
+    /* activation incident, Nov 22: members came back daily (check-ins, food) but almost none checked off a workout. This card
+       told anyone who trained and forgot to tap "didn't get done" and offered only Move/Skip, so the run never counted. */
+    const mv = moveTargets(date).length, wd = /^yesterday$/i.test(dayName(date)) ? 'yesterday' : dayName(date);
+    return '<section class="card mcard" style="--tone:var(--warn,#E8A33D)"><div class="card-h">' + ic("cal") + '<span class="lbl">Not checked off: ' + wd + '</span></div>' +
+      '<p><b>' + esc(dayLabel(dayOf(date))) + '</b> isn\'t checked off. Did you do it? If not, life happens' + (mv ? ': move it to a day you can do it.' : '.') + '</p><div class="row"><button class="btn primary" type="button" data-act="mdid" data-date="' + date + '">' + ic("check") + 'I did it</button>' + (mv ? '<button class="btn" type="button" data-act="mvopen" data-date="' + date + '">' + ic("swap") + 'Move it</button>' : '') + '<button class="linkbtn" type="button" data-act="mskip" data-date="' + date + '">Skip it</button></div></section>';
   }
   return '';
 }
@@ -3933,7 +3936,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "126";
+const APP_VERSION = "127";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -4055,8 +4058,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-21.2";
+const NEW_ID = "2026-11-22";
 const NEWS = [
+  ["check", "Forgot to check off a workout?", "If a past workout isn't checked off, Today asks if you did it. Tap I did it and it counts, or move it or skip it.", null, null, "2026-11-22"],
   ["heart", "Recovery, all in one place", "Recovery opens with today's readiness and every number behind it, next to your own normal. One chart switches between readiness, sleep and, with a watch, HRV and resting heart rate, over 14 or 30 days.", "recovery", null, "2026-11-21.2"],
   ["bars", "Charts that show their numbers", "Charts on Progress and Recovery now have their values on them. Tap or slide across one to read any day or week, and switch the weekly chart between run miles and training time.", "progress", null, "2026-11-21.2"],
   ["bolt", "Know when your first workout is", "New to Mileset? On a rest day, Today shows your first workout and when it is, with a button to link your watch so runs check off on their own.", null, null, "2026-11-21"],
@@ -4853,6 +4857,14 @@ document.addEventListener("click", ev => {
   if (act === "chgreset"){ setCustom(null, "Back to the planned workout."); return; }
   if (act === "mvopen"){ closeMenu(); if (canMoveFrom(a.dataset.date)) openMove(a.dataset.date); return; }
   if (act === "mvsel"){ if (mv){ mv.pick = mv.pick === a.dataset.d ? null : a.dataset.d; mvRender(); const c = $(".sheet.mvs .mvpv"); if (c) c.scrollIntoView({block: "nearest", behavior: "smooth"}); } return; }
+  if (act === "mdid"){
+    const date = a.dataset.date, d = dayOf(date); if (!d) return;
+    const keys = d.sessions.map((x, i) => date + "-" + i).filter(k => !done[k]), firstEver = keys.length && !Object.keys(done).length && !acts.length;
+    keys.forEach(k => { done[k] = 1; }); save(); render();
+    toast(firstEver ? "First workout checked off. The first one is the hardest. Nice work." : "Checked off. Nice work.");
+    if (mode === "account") keys.forEach(k => api("PUT", "/api/done", {key: k, done: true}).catch(e => { delete done[k]; render(); toast(e.message); }));
+    return;
+  }
   if (act === "mskip"){ try { localStorage.setItem("hy-mskip-" + a.dataset.date, "1"); } catch(e){} render(); return; }
   if (act === "mvpick"){ doMove(a.dataset.a, a.dataset.b); return; }
   if (act === "aiset"){ a.disabled = true; setAi(a.dataset.v === "1"); return; }
