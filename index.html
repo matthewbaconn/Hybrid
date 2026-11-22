@@ -188,14 +188,6 @@ button{cursor:pointer}
 
 /* recovery */
 .banner{border-radius:7px;padding:12px 14px;font-size:14px;background:color-mix(in srgb,var(--work) 12%,transparent);border:1px solid color-mix(in srgb,var(--work) 32%,transparent)}
-.rings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-.rg{display:grid;justify-items:center;gap:6px;padding:4px 6px;min-width:0}
-.rg + .rg{border-left:1px solid var(--line)}
-.rg-w{position:relative;width:min(100%,104px);aspect-ratio:1}
-.rg-w svg{width:100%;height:100%;transform:rotate(-90deg);display:block}
-.rg-w b{position:absolute;inset:0;display:grid;place-items:center;font:800 20px/1 var(--f-display);white-space:nowrap}
-.rg > span{font:700 11px/1.2 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center}
-.rg > small{font-size:12px;color:var(--muted);text-align:center}
 .verdict{border-radius:7px;padding:14px 16px;background:linear-gradient(135deg,color-mix(in srgb,var(--good) 24%,#14161C),#14161C 75%);border:1px solid color-mix(in srgb,var(--good) 40%,transparent);display:grid;gap:4px}
 .verdict b{font:700 19px/1.2 var(--f-display);color:var(--good)}
 .rules{margin:0;padding:0;list-style:none;display:grid;gap:10px}
@@ -323,7 +315,6 @@ button{cursor:pointer}
 .splits .sp.hd{font-size:12px;color:var(--muted)}
 .splits .sp i{display:block;height:10px;border-radius:999px;background:var(--easy)}
 .splits .sp em{font-style:normal;text-align:right;color:var(--muted)}
-.wtiles small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
 .rpl{display:grid;gap:10px}
 .rp{background:var(--sunk);border-radius:6px;padding:12px;display:grid;gap:6px}
 .rp p{margin:0;font-size:14.5px;white-space:pre-wrap;overflow-wrap:anywhere} .rp span{font-size:12px;color:var(--muted)}
@@ -339,13 +330,6 @@ button{cursor:pointer}
 .prog-h{display:flex;align-items:baseline;justify-content:space-between}
 .prog-h h2{font:800 24px/1.1 var(--f-display);letter-spacing:-.02em;margin:0}
 .prog-h button{border:0;background:none;color:var(--accent-2);font-weight:600;font-size:15px;padding:4px 0}
-.prog-top{display:flex;justify-content:space-between;align-items:flex-end;margin-top:-6px}
-.prog-top span{display:block;font-size:13px;color:var(--muted)} .prog-top b{font:800 42px/1 var(--f-display);letter-spacing:-.04em} .prog-top b small{font:600 16px var(--f-body);color:var(--muted);margin-left:3px}
-.prog-top .rt{text-align:right} .prog-top .rt b{font-size:26px}
-.prog-top em{display:block;font-style:normal;font-size:13px;color:var(--muted);margin-top:6px}
-.pchart{display:block;width:100%;height:auto;touch-action:pan-y}
-.pchart text{fill:var(--muted);font:500 11px var(--f-body)}
-.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .pc{background:var(--surface);border:1px solid #262A35;border-radius:16px;padding:18px;display:grid;gap:10px;align-content:start;min-width:0;text-align:left;color:var(--ink)}
 .pc.wide{grid-column:1/-1}
 .pc[data-act]{cursor:pointer}
@@ -356,15 +340,6 @@ button{cursor:pointer}
 .pc .pf{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--muted);min-width:0} .pc .pf b{color:var(--ink);white-space:nowrap}
 .pc .pf b.up{color:var(--long)} .pc .pf b.down{color:var(--accent-2)}
 .pc svg{display:block;width:100%;height:auto}
-.gauge{position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,#3B82F6 0 40%,#34D399 40% 72%,#FACC15 72% 84%,#FF5C6C 84%)}
-.gauge i{position:absolute;top:-4px;width:3px;height:18px;border-radius:2px;background:#fff;box-shadow:0 0 0 2px var(--surface)}
-.fbars{display:grid;gap:7px} .fbars div{height:8px;border-radius:999px;background:var(--sunk);overflow:hidden} .fbars i{display:block;height:100%;border-radius:999px}
-.zbars{display:grid;grid-template-columns:auto repeat(5,1fr);gap:8px;align-items:end}
-.zbars > b{font:800 28px/1 var(--f-display);letter-spacing:-.03em;padding-right:8px;align-self:center}
-.zbars > div{display:grid;gap:6px;justify-items:center}
-.zbars > div i{display:block;width:100%;border-radius:4px 4px 2px 2px;min-height:5px}
-.zbars > div span{font-size:12px;color:var(--muted);font-weight:600}
-.rings3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .prs .pr{display:flex;justify-content:space-between;align-items:center;padding:14px 0;gap:10px}
 .prs .pr + .pr{border-top:1px solid rgba(255,255,255,.06)}
 .prs .pr b{display:block;font-weight:600} .prs .pr span{font-size:12.5px;color:var(--muted)} .prs .pr em{font-style:normal;font:700 18px var(--f-display);white-space:nowrap}
@@ -889,7 +864,6 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .verdict{background:color-mix(in srgb,var(--good) 10%,#14161C)} .verdict.v1{background:color-mix(in srgb,var(--work) 10%,#14161C)} .verdict.v2{background:color-mix(in srgb,var(--race) 10%,#14161C)}
 .inst{background:color-mix(in srgb,var(--accent) 12%,#14161C)}
 .scard{background:var(--surface)} .scard.hi{background:color-mix(in srgb,var(--accent) 14%,var(--surface))} .icard{background:var(--surface)}
-.rg-w circle{filter:none!important}
 a.scard{text-decoration:none;color:var(--ink)}
 .scards{gap:0;border:1px solid #262A35;border-radius:16px;overflow:hidden;background:var(--surface)}
 .scards > .scard{border:0;border-radius:0;background:none;padding:15px 16px;gap:14px;border-top:1px solid #22252E;transform:none}
@@ -908,7 +882,6 @@ a.scard{text-decoration:none;color:var(--ink)}
 .pl-btns .pl-end{background:var(--pt);border-color:var(--pt);color:#fff}.pl-opts{display:flex;gap:10px;justify-content:center;margin-top:10px}.pl-opts button{min-height:40px;padding:0 16px;font-size:13px;color:var(--muted)}
 .talk{display:block;font-style:normal;font-size:12px;color:var(--muted);margin-top:2px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px}.chips button{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 13px/1 inherit}.chips button[aria-pressed="true"]{background:var(--race);border-color:var(--race);color:#fff}
-.fbar{display:grid;grid-template-columns:1fr 90px 44px;gap:10px;align-items:center;margin:8px 0;font-size:13.5px}.fbar span{color:var(--muted)}.fbar div{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden}.fbar i{display:block;height:100%;border-radius:4px}.fbar b{text-align:right;font-variant-numeric:tabular-nums}
 .pc[role="button"]{cursor:pointer}.pc .ph i{margin-left:auto;font-style:normal;color:var(--muted)}
 .wnew .kick{margin:0;font:700 12px/1 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2)}.wnew h2{margin:-4px 0 4px}
 .wn{display:grid;grid-template-columns:22px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line)}.wn svg{width:20px;height:20px;color:var(--accent-2);margin-top:2px}.wn b{display:block}.wn p{margin:3px 0 0;font-size:14px;color:var(--muted);line-height:1.45}.wn .linkbtn{padding:6px 0 0;font-size:14px}
@@ -940,7 +913,6 @@ a.scard{text-decoration:none;color:var(--ink)}
 .days{gap:8px}
 .hub-hero{margin-inline:0;padding:28px 20px 26px}
 .view > .sec-t{padding-top:10px;font-size:28px;letter-spacing:-.03em}
-.view > svg.pchart{padding-inline:12px}
 .view > .hello{padding-top:6px;padding-bottom:0}
 .view > .hello > .wxs,.view > .hello > .racecd{width:calc(100% + 40px);max-width:none;margin-inline:-20px;border-radius:0;border-left:0;border-right:0;padding-inline:20px}
 .view > .hello > .wxs{border-top:1px solid var(--line);border-bottom:0;margin-top:16px;background:transparent}
@@ -988,6 +960,81 @@ a.scard{text-decoration:none;color:var(--ink)}
 @media (prefers-reduced-motion:reduce){.back,.sheet{animation:none}::view-transition-old(root),::view-transition-new(root){animation:none}.btn:active,.card[data-act]:active,.actc:active{transform:none}}
 /* big screens: keep a centred column, rounded like a phone screen */
 @media (min-width:700px){.wrap{max-width:640px;padding-top:12px}.view > .card,.view > .pc.wide,.days > .card,.hub-hero{border-radius:14px}.tabbar{max-width:640px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}}
+/* ===== Recovery and Progress, refined (Nov 21, Matthew: "more detailed and easier to read ... the graphs don't really show
+   all the numbers ... try not to make it look vibe coded"). One chart (.tc: a real axis, the number on the marks, a readout
+   that follows your finger), plain rows of label and number where the rings were, and a labelled scale under every bar
+   that used to stand on its own. Undo = revert this PR. ===== */
+.tc{display:grid;gap:10px;min-width:0;--tcbg:var(--surface)}
+.tc-r{display:flex;align-items:flex-end;gap:14px;min-height:46px}
+.tc-r p{display:flex;align-items:baseline;gap:4px;white-space:nowrap}
+.tc-v{font:800 30px/1 var(--f-display);letter-spacing:-.03em}
+.tc-u{font:600 14px/1 var(--f-body);color:var(--muted)}
+.tc-r > div{display:grid;gap:3px;min-width:0;padding-bottom:2px}
+.tc-d{font:600 13px/1.25 var(--f-body);color:var(--ink)}
+.tc-n{font-size:12.5px;line-height:1.3;color:var(--muted);min-height:16px;overflow-wrap:anywhere}
+.tc.hero{--tcbg:var(--bg)} .tc.hero .tc-r{flex-direction:column;align-items:flex-start;gap:8px;min-height:92px} .tc.hero .tc-v{font-size:46px;letter-spacing:-.04em} .tc.hero .tc-u{font-size:16px}
+.tc-s{display:block;width:100%;height:auto;overflow:visible;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.tc-s text{font:500 10px var(--f-body);fill:var(--muted)}
+.tc-s .g{stroke:rgba(255,255,255,.07);stroke-width:1}
+.tc-s .rf{stroke:#C9CDD8;stroke-width:1;opacity:.5}
+.tc-s text.ry{fill:var(--ink);font-weight:700}
+.tc-s text.v{font-size:9.5px;font-weight:600;paint-order:stroke;stroke:var(--tcbg);stroke-width:3px;stroke-linejoin:round}
+.tc-s text.v.h{display:none}
+.tc-s text.on{fill:var(--ink);font-weight:700} .tc-s text.v.h.on{display:inline}
+.tc-s .m{opacity:.8;transition:opacity .12s} .tc-s .m.dim{opacity:.38} .tc-s .m.on{opacity:1} .tc-s .m.dim.on{opacity:.6}
+.tc-s .tc-g{stroke:rgba(255,255,255,.3);stroke-width:1}
+.tc-s .dot{stroke:var(--tcbg);stroke-width:2;transform-box:fill-box;transform-origin:center;transition:transform .12s} .tc-s .dot.on{transform:scale(1.5)}
+.tc-s .hit{fill:transparent;cursor:pointer}
+.tc-k{margin-top:-2px} .tc-k i.ln{width:14px;height:2px;border-radius:1px} .tc-k i.pt{width:8px;height:8px;border-radius:50%} .tc-k i.dash{width:14px;height:1px;border-radius:0;background:#C9CDD8;opacity:.7}
+.mseg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;padding:3px;border-radius:9px;background:var(--sunk)}
+.mseg button{border:0;background:none;color:var(--muted);font:600 12.5px/1 var(--f-body);padding:0 4px;min-height:36px;border-radius:7px;white-space:nowrap;transition:background .15s,color .15s}
+.mseg button[aria-pressed="true"]{background:#2C303B;color:var(--ink)}
+.pseg{display:flex} .pseg .mseg{grid-auto-columns:auto;background:var(--surface)} .pseg .mseg button{padding:0 16px}
+.figs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.figs > div{display:grid;gap:3px;align-content:start;min-width:0;padding:12px;border-radius:8px;background:var(--sunk)}
+.figs span{font-size:12px;color:var(--muted)} .figs b{font:800 20px/1.1 var(--f-display);white-space:nowrap} .figs small{font-size:11.5px;line-height:1.3;color:var(--muted);min-height:15px}
+/* Recovery: today */
+.card.rtoday .verdict{display:flex;align-items:center;gap:16px;padding:0;border:0;border-radius:0;background:none}
+.rnum{flex:none;font:800 56px/1 var(--f-display);font-style:normal;letter-spacing:-.04em;color:var(--ink)}
+.card.rtoday .verdict > div{display:grid;gap:4px;min-width:0}
+.card.rtoday .verdict b{font:700 20px/1.15 var(--f-display)}
+.card.rtoday .verdict span{font-size:14.5px;line-height:1.4;color:var(--ink)}
+.rscale{display:grid;gap:7px}
+.rs-bar,.lg-bar{position:relative;display:grid;gap:2px;height:6px} .rs-bar{grid-template-columns:50fr 20fr 30fr}
+.rs-bar i,.lg-bar i{border-radius:3px;opacity:.28} .rs-bar i.on,.lg-bar i.on{opacity:1}
+.rs-bar .z2{background:var(--crit)} .rs-bar .z1{background:var(--warn)} .rs-bar .z0{background:var(--good)}
+.rs-bar u,.lg-bar u{position:absolute;top:-5px;width:4px;height:16px;margin-left:-2px;border-radius:2px;background:#fff;box-shadow:0 0 0 2px var(--surface)}
+.rs-t{position:relative;height:14px;font-size:11px;line-height:14px;color:var(--muted)}
+.rs-t span{position:absolute;left:0;transform:translateX(-50%)} .rs-t span:first-child{transform:none} .rs-t span:last-child{transform:translateX(-100%)}
+.rrows{display:grid}
+.rrow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-top:1px solid rgba(255,255,255,.06)}
+.rrow > div{min-width:0}
+.rrow b{display:block;font-weight:600;font-size:15px}
+.rrow span{display:flex;align-items:center;gap:7px;margin-top:2px;font-size:12.5px;color:var(--muted)}
+.rrow i{flex:none;width:7px;height:7px;border-radius:50%;background:var(--c)}
+.rrow em{display:flex;align-items:baseline;gap:4px;font:700 19px/1 var(--f-display);font-style:normal;white-space:nowrap}
+.rrow em i{align-self:center;margin-right:3px} .rrow em small{font:600 12px/1 var(--f-body);color:var(--muted)}
+.rgrp{margin:0;padding:14px 0 8px;border-top:1px solid rgba(255,255,255,.06);font:600 12.5px var(--f-body);color:var(--muted)}
+.rgrp + .rrow{border-top:0}
+/* Progress */
+.pgh{margin:14px 0 -2px;font:600 13px/1.3 var(--f-body);letter-spacing:0;color:var(--muted)}
+.pc.wide{gap:14px}
+.pk{margin:0;font-size:14px;line-height:1.45;color:#C9CDD8} .pk b{color:var(--ink)}
+.lgauge{display:grid;gap:6px}
+.lg-bar,.lg-t{grid-template-columns:40fr 25fr 10fr 25fr} .lg-t{display:grid;gap:2px}
+.lg-bar i:nth-child(1){background:var(--swim)} .lg-bar i:nth-child(2){background:var(--good)} .lg-bar i:nth-child(3){background:var(--warn)} .lg-bar i:nth-child(4){background:var(--crit)}
+.lg-t span{font-size:11px;line-height:14px;color:var(--muted);text-align:center;white-space:nowrap} .lg-t span.on{color:var(--ink);font-weight:600}
+.mrows{display:grid;gap:14px}
+.mrow{display:grid;gap:7px}
+.mrow > div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px}
+.mrow span{min-width:0;font-weight:600} .mrow span small{margin-left:7px;font-weight:400;font-size:12.5px;color:var(--muted)}
+.mrow b{font:700 15px/1 var(--f-display);white-space:nowrap} .mrow b small{margin-left:7px;font:500 12.5px var(--f-body);color:var(--muted)}
+.mrow > i{display:block;height:6px;border-radius:3px;background:var(--sunk);overflow:hidden} .mrow u{display:block;height:100%;border-radius:3px}
+.zseg{display:flex;gap:2px;height:22px} .zseg i{flex:1 0 4px;min-width:4px;border-radius:4px}
+.zcols{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.zcols div{display:grid;gap:3px;min-width:0}
+.zcols span{display:flex;align-items:center;gap:5px;font:600 12px var(--f-body);color:var(--muted)} .zcols span i{width:8px;height:8px;border-radius:2px;background:var(--c)}
+.zcols b{font:700 13.5px/1.1 var(--f-display);white-space:nowrap} .zcols small{font-size:10.5px;color:var(--muted);white-space:nowrap}
 </style>
 </head>
 <body>
@@ -1091,7 +1138,7 @@ function loadAccount(j){
   // (it was never sent before: the old trigger was Next on the welcome screen, which account members never see)
   if (!plan) api("POST", "/api/account/setup-step", {step: 0}).catch(() => {});
 }
-function signedOut(){ scr = null; feat = {}; inv = null; revOpen = false; aiSt = {on: true, asked: true, needs: false, available: false}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
+function signedOut(){ scr = null; feat = {}; inv = null; revOpen = false; aiSt = {on: true, asked: true, needs: false, available: false}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); dev = {}; acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
 const checkins = S.checkins || {};          // date -> {sleep_h, sleep_q, soreness, energy, stress}
 const weights = S.weights || {};            // date -> lb
@@ -1678,6 +1725,16 @@ function mountMaps(){
 /* sample runner: a few made-up activities so the tab isn't empty */
 function loopPts(lat, lng, w, h, n){ const out = []; for (let i = 0; i <= n; i++){ const t = i / n * 4, side = Math.floor(t) % 4, f = t - Math.floor(t);
   const p = side === 0 ? [lat, lng + w * f] : side === 1 ? [lat - h * f, lng + w] : side === 2 ? [lat - h, lng + w * (1 - f)] : [lat - h * (1 - f), lng]; out.push([p[0] + Math.sin(i * 1.7) * 0.00002, p[1] + Math.cos(i * 1.3) * 0.00002]); } return out; }
+/* ...and a month of made-up watch numbers, so Recovery is a real screen for someone looking around and not a check-in
+   prompt (Nov 21). Marked source "sample" (never shown as Garmin's), the same all day (seeded by the date), and last night
+   is an ordinary good night. Kept in dev only while the sample runner is on screen: loadAccount and signedOut replace it. */
+function sampleDev(){
+  const out = {}, rnd = s => { let h = 2166136261; for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return ((h >>> 0) % 1000) / 1000; };
+  for (let i = 0; i < 30; i++){ const d = addDays(TODAY, -i), r = k => rnd(d + k);
+    out[d] = {date: d, source: "sample", sleep_h: i ? Math.round((6.5 + r("s") * 1.8) * 100) / 100 : 7.6, sleep_score: i ? Math.round(66 + r("q") * 24) : 84, rhr: i ? Math.round(49 + r("r") * 5) : 50, hrv: i ? Math.round(60 + r("h") * 20) : 72,
+      steps: Math.round(6500 + r("t") * 7000), active_cal: Math.round(450 + r("c") * 600)}; }
+  return out;
+}
 function sampleActs(){
   const loop = loopPts(27.6531, -80.4402, .0105, .0072, 120), out = loopPts(27.6448, -80.3972, .0032, .028, 160);
   return [
@@ -1838,90 +1895,218 @@ addEventListener("pageshow", () => autoSync());
 setInterval(() => autoSync(true), 10 * 60e3);
 
 /* ---------- charts ---------- */
-function barChart(vals, labels, color, goal, fmt, aria){
-  const W = 340, H = 130, n = vals.length, gap = n > 10 ? 4 : 8, bw = (W - gap * (n - 1)) / n, max = Math.max(goal || 0, ...vals.map(v => v || 0)) * 1.1 || 1;
-  let s = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(aria) + '">';
-  vals.forEach((v, i) => { const x = i * (bw + gap); if (v == null){ s += '<rect x="' + x.toFixed(1) + '" y="' + (H - 20) + '" width="' + bw.toFixed(1) + '" height="2" rx="1" fill="var(--line)"/>'; }
-    else { const hh = Math.max(3, v / max * (H - 30)); s += '<rect x="' + x.toFixed(1) + '" y="' + (H - 18 - hh).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hh.toFixed(1) + '" rx="' + Math.min(6, bw / 3).toFixed(1) + '" fill="' + (typeof color === "function" ? color(v, i) : color) + '"/>'; }
-    if (labels[i]) s += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 4) + '" text-anchor="middle">' + esc(labels[i]) + '</text>'; });
-  if (goal){ const y = (H - 18 - goal / max * (H - 30)).toFixed(1); s += '<line x1="0" x2="' + W + '" y1="' + y + '" y2="' + y + '" stroke="var(--muted)" stroke-dasharray="4 4" opacity=".7"/>'; }
-  return s + '</svg>';
+/* tChart: the one chart behind every trend on Recovery and Progress (Nov 21, Matthew: "the graphs don't really show all
+   the numbers and it can get overwhelming"). It draws a real y-axis, puts the number on the marks, draws your goal or
+   average as a brighter line that is named under the chart, and keeps a readout above the chart that follows your finger:
+   tap or slide across to read any day (tcPick). Everything it prints goes through esc().
+   o: {n, kind: "bar" | "line", vals, color | series: [{vals, color, name, w, line: false for dots only, r}], read: i => {v, u, d, n} (value, unit, day, note),
+   short: v => the label on a mark, labels: "all" | "ends", refs: [{v, name}], ymax + ticks (a fixed scale), whole, yfmt,
+   xl: x labels, sel, dim: i => a paler bar, hero, rcls, act, keys: extra legend entries, aria}.
+   A bar's value may be [[v, color], …] for a stacked bar. */
+function niceAxis(lo, hi, whole){
+  if (!(hi > lo)) hi = lo + 1;
+  const raw = (hi - lo) / 3, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = Math.max(whole ? 1 : 0, (whole ? [1, 2, 5, 10] : [1, 2, 2.5, 5, 10]).map(m => m * mag).find(s => s >= raw - 1e-9));
+  const a = Math.floor(lo / step + 1e-9) * step, b = Math.ceil(hi / step - 1e-9) * step, t = [];
+  for (let v = a; v <= b + step / 2; v += step) t.push(Math.round(v * 1e4) / 1e4);
+  return {lo: a, hi: b, ticks: t};
 }
-function lineChart(series, aria){
-  // series: [{pts:[[i, v]], color, dash, dots}] over n x-slots; values share one scale
-  const W = 340, H = 150, all = series.flatMap(s => s.pts.map(p => p[1])), lo = Math.floor(Math.min(...all) - 1), hi = Math.ceil(Math.max(...all) + 1), n = Math.max(...series.flatMap(s => s.pts.map(p => p[0]))) || 1;
-  const X = i => 30 + i / n * (W - 40), Y = v => 10 + (hi - v) / (hi - lo) * (H - 30);
-  let s = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(aria) + '">';
-  [lo, Math.round((lo + hi) / 2), hi].forEach(v => s += '<line x1="30" x2="' + W + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="var(--line)"/><text x="0" y="' + (Y(v) + 3).toFixed(1) + '">' + v + '</text>');
-  series.forEach(se => { if (!se.pts.length) return; const d = se.pts.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1)).join("");
-    s += '<path d="' + d + '" fill="none" stroke="' + se.color + '" stroke-width="' + (se.w || 2.4) + '" stroke-linecap="round" stroke-linejoin="round"' + (se.dash ? ' stroke-dasharray="5 5"' : '') + '/>';
-    if (se.dots) se.pts.forEach(p => s += '<circle cx="' + X(p[0]).toFixed(1) + '" cy="' + Y(p[1]).toFixed(1) + '" r="2.6" fill="' + se.color + '"/>'); });
-  return s + '</svg>';
+function tChart(o){
+  const n = o.n, W = 340, H = o.H || 172, GL = 30, T = 20, B = 22, PW = W - GL - 4, PH = H - T - B, bar = o.kind !== "line", f1 = x => x.toFixed(1);
+  const series = o.series || [{vals: o.vals, color: o.color}], vals = series[0].vals, one = series.length === 1;
+  const tot = v => Array.isArray(v) ? v.reduce((t, q) => t + q[0], 0) : v;
+  const refs = (o.refs || []).filter(r => r.v != null), xs = series.flatMap(se => se.vals.map(tot)).filter(v => v != null).concat(refs.map(r => r.v));
+  let ax;
+  if (o.ymax) ax = {lo: 0, hi: o.ymax, ticks: o.ticks};
+  else {
+    let lo = 0, hi = 1;
+    if (xs.length){ hi = Math.max(...xs); lo = bar ? 0 : Math.min(...xs); }
+    if (!bar){ const pd = Math.max((hi - lo) * .06, o.whole ? 1 : .1); lo = Math.max(0, lo - pd); hi += pd; }
+    ax = niceAxis(lo, hi || 1, o.whole);
+  }
+  const slot = PW / n, X = i => GL + slot * (i + .5), Y = v => T + (1 - (v - ax.lo) / (ax.hi - ax.lo)) * PH, y0 = T + PH, yf = o.yfmt || String;
+  const have = vals.map((v, i) => v != null ? i : -1).filter(i => i >= 0);
+  const sel = o.sel != null ? o.sel : have.length ? have[have.length - 1] : n - 1;
+  const at = (c, i) => ' class="' + c + (i === sel ? ' on' : '') + '" data-m="' + i + '"';
+  const reads = Array.from({length: n}, (_, i) => o.read(i));
+  let s = '<svg class="tc-s" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.aria + (n <= 31 ? ': ' + reads.map(R => R.d + ' ' + R.v + (R.u ? ' ' + R.u : '')).join(', ') : '')) + '">';
+  const refY = refs.map(r => Y(r.v)), labs = [];
+  if (one && o.short && have.length){
+    const hiI = have.reduce((b, i) => tot(vals[i]) > tot(vals[b]) ? i : b), loI = have.reduce((b, i) => tot(vals[i]) < tot(vals[b]) ? i : b);
+    have.forEach(i => { const v = tot(vals[i]), a = vals[i - 1], b = vals[i + 1];
+      const dip = !bar && (a != null || b != null) && (a == null || a >= v) && (b == null || b >= v) && Y(v) < y0 - 11;
+      labs[i] = {y: dip ? Y(v) + 15 : Math.max(9, Y(v) - (bar ? 5 : 8)), show: o.labels === "all" || i === hiI || i === loI, t: o.short(v, i)}; });
+  }
+  ax.ticks.forEach(v => { const y = Y(v); s += '<line class="g" x1="' + GL + '" x2="' + W + '" y1="' + f1(y) + '" y2="' + f1(y) + '"/>' +
+    (refY.some(q => Math.abs(q - y) < 14) ? '' : '<text x="' + (GL - 7) + '" y="' + f1(y + 3.5) + '" text-anchor="end">' + esc(yf(v)) + '</text>'); });
+  refs.forEach((r, k) => { const y = refY[k]; let d = '', open = false;
+    for (let i = 0; i < n; i++){ const L = labs[i], hit = L && L.show && L.t !== '' && y > L.y - 11 && y < L.y + 4;
+      if (!hit && !open){ d += 'M' + f1(GL + slot * i) + ' ' + f1(y); open = true; } else if (hit && open){ d += 'H' + f1(GL + slot * i); open = false; } }
+    if (open) d += 'H' + W;
+    s += '<path class="rf" d="' + d + '" fill="none"/><text class="ry" x="' + (GL - 7) + '" y="' + f1(y + 3.5) + '" text-anchor="end">' + esc(yf(r.v)) + '</text>'; });
+  s += '<line class="tc-g" x1="' + f1(X(sel)) + '" x2="' + f1(X(sel)) + '" y1="' + (T - 8) + '" y2="' + f1(y0) + '"/>';
+  if (bar){
+    const bw = Math.min(22, Math.max(2.4, slot - (slot >= 16 ? 6 : slot >= 8 ? 3 : 1.4)));
+    vals.forEach((v, i) => { if (v == null) return;
+      const segs = Array.isArray(v) ? v.filter(q => q[0] > 0) : [[v, typeof o.color === "function" ? o.color(v, i) : o.color]], x = X(i) - bw / 2;
+      let y = y0, g = '';
+      segs.forEach(([q, c], k) => { const top = k === segs.length - 1, hh = Math.max(segs.length === 1 ? 2 : 0, q / (ax.hi - ax.lo) * PH), yt = y - hh, yb = y - (k ? 1.5 : 0), r = top ? Math.max(0, Math.min(3.5, bw / 2, yb - yt)) : 0;
+        if (yb - yt > .4) g += '<path d="M' + f1(x) + ' ' + f1(yb) + 'V' + f1(yt + r) + 'Q' + f1(x) + ' ' + f1(yt) + ' ' + f1(x + r) + ' ' + f1(yt) + 'H' + f1(x + bw - r) + 'Q' + f1(x + bw) + ' ' + f1(yt) + ' ' + f1(x + bw) + ' ' + f1(yt + r) + 'V' + f1(yb) + 'Z" fill="' + c + '"/>';
+        y = yt; });
+      if (g) s += '<g' + at('m' + (o.dim && o.dim(i) ? ' dim' : ''), i) + '>' + g + '</g>'; });
+  } else series.slice().reverse().forEach(se => {
+    let d = '', pen = false;
+    se.vals.forEach((v, i) => { if (v == null){ pen = false; return; } d += (pen ? 'L' : 'M') + f1(X(i)) + ' ' + f1(Y(v)); pen = true; });
+    if (se.line !== false) s += '<path d="' + d + '" fill="none" stroke="' + se.color + '" stroke-width="' + (se.w || 2) + '" stroke-linecap="round" stroke-linejoin="round"/>';
+    if (n <= 31 || se.line === false) se.vals.forEach((v, i) => { if (v != null) s += '<circle' + at('dot', i) + ' cx="' + f1(X(i)) + '" cy="' + f1(Y(v)) + '" r="' + (se.r || 3.5) + '" fill="' + se.color + '"/>'; });
+  });
+  labs.forEach((L, i) => { if (L.t !== '') s += '<text' + at('v' + (L.show ? '' : ' h'), i) + ' x="' + f1(Math.min(W - 10, X(i))) + '" y="' + f1(L.y) + '" text-anchor="middle">' + esc(L.t) + '</text>'; });
+  (o.xl || []).forEach((l, i) => { if (!l) return; const edge = slot < 20 && (i === 0 || i === n - 1);
+    s += '<text' + at('x', i) + ' x="' + f1(edge ? (i ? W : GL) : X(i)) + '" y="' + (H - 6) + '" text-anchor="' + (edge ? (i ? 'end' : 'start') : 'middle') + '">' + esc(l) + '</text>'; });
+  reads.forEach((R, i) => {
+    s += '<rect class="hit" x="' + f1(GL + slot * i) + '" y="0" width="' + f1(slot) + '" height="' + H + '" data-act="' + (o.act || 'tcp') + '" data-i="' + i + '" data-x="' + f1(X(i)) + '" data-v="' + esc(R.v) + '" data-u="' + esc(R.u || '') + '" data-d="' + esc(R.d) + '" data-n="' + esc(R.n || '') + '"/>'; });
+  const key = (one ? [] : series.map(se => '<span><i class="' + (se.line === false ? 'pt' : 'ln') + '" style="--c:' + se.color + '"></i>' + esc(se.name) + '</span>')).concat(refs.map(r => '<span><i class="dash"></i>' + esc(r.name) + '</span>'), o.keys || []).join('');
+  const R = reads[sel];
+  return '<div class="tc' + (o.hero ? ' hero' : '') + '"><div class="tc-r' + (o.rcls ? ' ' + o.rcls : '') + '"><p><b class="tc-v">' + esc(R.v) + '</b><small class="tc-u">' + esc(R.u || '') + '</small></p><div><span class="tc-d">' + esc(R.d) + '</span><span class="tc-n">' + esc(R.n || '') + '</span></div></div>' +
+    s + '</svg>' + (key ? '<div class="legend tc-k">' + key + '</div>' : '') + '</div>';
 }
+function tcPick(el){
+  const root = el.closest(".tc"), i = el.dataset.i; if (!root || root.dataset.sel === i) return;
+  const put = (q, t) => { const x = root.querySelector(q); if (x) x.textContent = t || ''; };
+  root.dataset.sel = i;
+  root.querySelectorAll(".on").forEach(x => x.classList.remove("on"));
+  root.querySelectorAll('[data-m="' + i + '"]').forEach(x => x.classList.add("on"));
+  put(".tc-v", el.dataset.v); put(".tc-u", el.dataset.u); put(".tc-d", el.dataset.d); put(".tc-n", el.dataset.n);
+  const g = root.querySelector(".tc-g"); if (g){ g.setAttribute("x1", el.dataset.x); g.setAttribute("x2", el.dataset.x); }
+  if (el.dataset.act === "pwk") progSel = +i;
+}
+// slide a finger (or the mouse) across a chart and the readout follows; up-and-down still scrolls the page
+addEventListener("pointermove", e => {
+  if (!(e.target && e.target.closest && e.target.closest(".tc-s"))) return;
+  const t = document.elementFromPoint(e.clientX, e.clientY);
+  if (t && t.classList && t.classList.contains("hit")) tcPick(t);
+}, {passive: true});
 
-/* ---------- Recovery tab (from the person's own check-ins) ---------- */
+/* ---------- Recovery tab ---------- */
+/* Nov 21 (Matthew: "more detailed and easier to read"): one Today card (the score, where it sits between the plan's three
+   zones, and every number it comes from next to your own normal) and one chart (14 or 30 days) you switch between readiness, sleep,
+   HRV and resting heart rate, in place of four charts stacked with no numbers on them. */
+let recM = null, recN = 14;
+const REC_SAY = ["Train as planned.", "Today's session is trimmed. See the note on the Today tab.", "Today is easy or rest. Your workout moves later in the week."];
+const hm = h => { const m = Math.round(h * 60); return Math.floor(m / 60) + 'h ' + pad(m % 60) + 'm'; };
+const hmShort = h => { const m = Math.round(h * 60); return m < 60 ? m + ' min' : hm(h); };
+const SLEEP_GOAL = 7.5;
+function recRow(label, val, unit, sub, cmp){   // cmp: 1 a good sign, -1 worth a look, 0 neither
+  const dot = cmp ? '<i style="--c:var(--' + (cmp > 0 ? 'good' : 'warn') + ')" title="' + (cmp > 0 ? 'A good sign' : 'Worth a look') + '"></i>' : '';
+  return '<div class="rrow"><div><b>' + label + '</b>' + (sub ? '<span>' + dot + esc(sub) + '</span>' : '') + '</div><em>' + (sub ? '' : dot) + esc(val) + (unit ? '<small>' + unit + '</small>' : '') + '</em></div>';
+}
+function vsNormal(v, a, unit){
+  if (!v || !a) return 'Your normal shows after 3 nights';
+  const d = Math.round(v - a), nrm = Math.round(a);
+  return d === 0 ? 'Right at your normal of ' + nrm : Math.abs(d) + unit + (d > 0 ? ' above' : ' below') + ' your normal of ' + nrm;
+}
+function watchRows(t, sig, skipSleep){
+  let h = '';
+  if (t.sleep_h && !skipSleep){ const gap = SLEEP_GOAL - t.sleep_h; h += recRow("Sleep", hm(t.sleep_h), '', gap <= 0 ? 'Met your ' + SLEEP_GOAL + ' h goal' : hmShort(gap) + ' short of your ' + SLEEP_GOAL + ' h goal', t.sleep_h >= 7 ? 1 : t.sleep_h < 6 ? -1 : 0); }
+  if (t.sleep_score != null) h += recRow("Sleep score", t.sleep_score, '', t.sleep_score >= 80 ? 'Good' : t.sleep_score >= 60 ? 'Fair' : 'Poor', t.sleep_score >= 80 ? 1 : t.sleep_score < 60 ? -1 : 0);
+  if (t.hrv){ const a = sig && sig.hrvA, pc = a ? (t.hrv - a) / a : 0; h += recRow("HRV", Math.round(t.hrv), 'ms', vsNormal(t.hrv, a, ' ms'), pc <= -.12 ? -1 : pc >= .08 ? 1 : 0); }
+  if (t.rhr){ const a = sig && sig.rhrA, df = a ? t.rhr - a : 0; h += recRow("Resting heart rate", Math.round(t.rhr), 'bpm', vsNormal(t.rhr, a, ' bpm'), df >= 5 ? -1 : df <= -3 ? 1 : 0); }
+  if (t.bb != null) h += recRow("Body Battery", t.bb, '', 'When you woke up', 0);
+  if (t.stress != null) h += recRow("Stress", t.stress, '', 'Average for the day', 0);
+  if (t.steps != null) h += recRow("Steps", comma(t.steps), '', t.active_cal != null ? comma(t.active_cal) + ' active calories' : '', 0);
+  return h;
+}
+function checkinRows(c, skipSleep){
+  const word = (k, v) => ((CIQ.find(q => q[0] === k)[2].find(x => x[0] === v) || [])[1] || '–');
+  return (skipSleep ? recRow("Sleep quality", word("sleep_q", c.sleep_q), '', '', c.sleep_q >= 4 ? 1 : c.sleep_q <= 2 ? -1 : 0)
+      : recRow("Sleep", c.sleep_h >= 9 ? '9+' : c.sleep_h < 5 ? 'Under 5' : c.sleep_h, 'h', word("sleep_q", c.sleep_q) + ' quality', c.sleep_h >= 7 ? 1 : c.sleep_h < 6 ? -1 : 0)) +
+    recRow("Legs", ["", "Fresh", "A little sore", "Some soreness", "Sore", "Very sore"][c.soreness] || '–', '', '', c.soreness <= 2 ? 1 : c.soreness >= 4 ? -1 : 0) +
+    recRow("Energy", word("energy", c.energy), '', '', c.energy >= 4 ? 1 : c.energy <= 2 ? -1 : 0) +
+    recRow("Stress", c.stress === 5 ? 'Very high' : word("stress", c.stress), '', '', c.stress <= 2 ? 1 : c.stress >= 4 ? -1 : 0);
+}
 function renderRecovery(){
-  const c = checkins[TODAY], r = readiness(c, sigOn(TODAY)), days = Array.from({length: 14}, (_, i) => addDays(TODAY, i - 13));
-  let h = '<h2 class="sec-t">Recovery</h2>';
-  if (r && !c){ const sg = sigOn(TODAY);
-    h += '<section class="card" style="--tone:var(--' + r.tone + ')"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span><span class="r">from your watch</span></div><div class="rings">' +
-      ring(r.score, 100, "var(--" + r.tone + ")", "Readiness", String(r.score), r.word) + (sg.sleep_h ? ring(sg.sleep_h, 8, "var(--accent-2)", "Sleep", (Math.round(sg.sleep_h * 10) / 10) + " h", sg.sleep_score != null ? "score " + sg.sleep_score : "last night") : '') +
-      (sg.hrv ? ring(sg.hrv, sg.hrvA ? sg.hrvA * 1.3 : 120, "var(--lift)", "HRV", sg.hrv + " ms", sg.hrvA ? "normal " + Math.round(sg.hrvA) : "last night") : '') + '</div>' +
-      '<div class="verdict v' + r.level + '"><b>' + r.word + '</b><span>' + ["Train as planned.", "Today's session is trimmed. See the note on the Today tab.", "Today is easy or rest. Your workout moves later in the week."][r.level] + '</span></div>' + feelBtn() + '</section>'; }
-  else if (r) h += '<section class="card" style="--tone:var(--' + r.tone + ')"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span></div><div class="rings">' +
-    ring(r.score, 100, "var(--" + r.tone + ")", "Readiness", String(r.score), r.word) + ring(c.sleep_h, 8, "var(--accent-2)", "Sleep", (c.sleep_h >= 9 ? "9+" : c.sleep_h < 5 ? "<5" : c.sleep_h) + " h", ["", "awful", "poor", "OK", "good", "great"][c.sleep_q] + " quality") +
-    ring(6 - c.soreness, 5, "var(--lift)", "Legs", ["", "fresh", "light", "some", "sore", "very sore"][c.soreness], "energy " + ["", "very low", "low", "OK", "good", "great"][c.energy]) + '</div>' +
-    '<div class="verdict v' + r.level + '"><b>' + r.word + '</b><span>' + ["Train as planned.", "Today's session is trimmed. See the note on the Today tab.", "Today is easy or rest. Your workout moves later in the week."][r.level] + '</span></div></section>';
-  else h += '<section class="card" style="--tone:var(--long)"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span></div>' + (watchLinked() ? '<p class="sub">Your readiness shows here once your watch syncs last night\'s sleep.</p>' + (watchFeeding() ? feelBtn() : '<button class="linkbtn" type="button" data-act="gotoday">Check in by hand</button>') : '<p class="sub">Do the 20-second morning check-in and your readiness shows here.</p><button class="btn primary" type="button" data-act="gotoday">Do today\'s check-in</button>') + '</section>';
-  h += watchCard(days);
-  const rs = days.map(d => { const x = readiness(checkins[d], sigOn(d)); return x ? x.score : null; }), sl = days.map(d => dev[d] && dev[d].sleep_h ? Math.round(dev[d].sleep_h * 10) / 10 : checkins[d] ? checkins[d].sleep_h : null);
-  const lab = days.map((d, i) => i % 2 === 1 ? '' : String(parseD(d).getUTCDate()));
-  const avg = a => { const v = a.filter(x => x != null); return v.length ? v.reduce((p, q) => p + q, 0) / v.length : null; };
-  const n = rs.filter(x => x != null).length;
-  h += '<section class="card" style="--tone:var(--long)"><div class="card-h">' + ic("gauge") + '<span class="lbl">Readiness · 14 days</span><span class="r">' + (n ? 'avg ' + Math.round(avg(rs)) : 'no check-ins yet') + '</span></div>' +
-    barChart(rs, lab, v => v >= 70 ? "var(--long)" : v >= 50 ? "var(--work)" : "var(--race)", 70, null, "Readiness score for each of the last 14 days") + '</section>';
-  h += '<section class="card" style="--tone:var(--accent-2)"><div class="card-h">' + ic("moon") + '<span class="lbl">Sleep · 14 days</span><span class="r">' + (avg(sl) ? 'avg ' + avg(sl).toFixed(1) + ' h · goal 7.5' : 'goal 7.5 h') + '</span></div>' +
-    barChart(sl, lab, v => v >= 7 ? "var(--accent-2)" : "var(--work)", 7.5, null, "Hours of sleep for each of the last 14 nights") + '</section>';
+  const c = checkins[TODAY], sg = sigOn(TODAY), r = readiness(c, sg), days = Array.from({length: 14}, (_, i) => addDays(TODAY, i - 13));
+  const yd = addDays(TODAY, -1), tDay = dev[TODAY] ? TODAY : yd, t = dev[tDay], sig = t ? sigOn(tDay) : null, garminIn = !!(dev[TODAY] && dev[TODAY].source === "garmin");
+  let h = '<h2 class="sec-t">Recovery</h2><section class="card rtoday" style="--tone:var(--' + (r ? r.tone : 'long') + ')"><div class="card-h">' + ic("heart") + '<span class="lbl">Today</span>' + (r ? '<span class="r">' + (c ? 'from your check-in' : 'from your watch') + '</span>' : '') + '</div>';
+  if (r) h += '<div class="verdict v' + r.level + '"><i class="rnum" aria-label="Readiness ' + r.score + ' out of 100">' + r.score + '</i><div><b>' + r.word + '</b><span>' + REC_SAY[r.level] + '</span></div></div>' +
+    '<div class="rscale" aria-hidden="true"><div class="rs-bar"><i class="z2' + (r.level === 2 ? ' on' : '') + '"></i><i class="z1' + (r.level === 1 ? ' on' : '') + '"></i><i class="z0' + (r.level === 0 ? ' on' : '') + '"></i><u style="left:' + Math.max(1, Math.min(99, r.score)) + '%"></u></div>' +
+    '<div class="rs-t"><span>0</span><span style="left:50%">50</span><span style="left:70%">70</span><span style="left:100%">100</span></div></div>' + gAttr(garminIn);
+  else h += watchLinked() ? '<p class="sub">Your readiness shows here once your watch syncs last night\'s sleep.</p>' + (watchFeeding() ? '' : '<button class="linkbtn" type="button" data-act="gotoday">Check in by hand</button>')
+    : '<p class="sub">Do the 20-second morning check-in and your readiness shows here.</p><button class="btn primary" type="button" data-act="gotoday">Do today\'s check-in</button>';
+  const rows = (c ? checkinRows(c, !!(t && t.sleep_h && tDay === TODAY)) : '') + (t && c ? '<p class="rgrp">From your watch' + (tDay === TODAY ? '' : ', yesterday') + '</p>' : !r && t ? '<p class="rgrp">From your watch, ' + (tDay === TODAY ? 'so far today' : 'yesterday') + '</p>' : '') + (t ? watchRows(t, sig) : '');
+  if (rows) h += '<div class="rrows">' + rows + '</div>';
+  if (r && sig && tDay === TODAY && sig.notes.length) h += '<p class="fbnote">' + ic("gauge") + '<span>' + esc(sig.notes.join(", ").replace(/^./, x => x.toUpperCase())) + '.' + (sig.pen ? ' Readiness is lowered a little to match.' : '') + '</span></p>';
+  if (mode === "account" && !days.some(d => dev[d])) h += '<p class="sub">No watch data yet. Add sleep and heart rate from your iPhone and your readiness uses them.</p><button class="btn block" type="button" data-act="menu">Set up in Settings</button>';
+  h += (r && !c || (!r && watchLinked() && watchFeeding()) ? feelBtn() : '') + '</section>' + recTrends();
   h += '<section class="card" style="--tone:var(--work)"><div class="card-h">' + ic("gauge") + '<span class="lbl">How the plan adapts</span></div><ul class="rules">' +
-    '<li><i style="--c:var(--long)"></i><span><b>Green (70+):</b> train as planned.</span></li>' +
-    '<li><i style="--c:var(--work)"></i><span><b>Amber (50–69):</b> workouts lose a rep, long runs get 2 mi shorter, easy runs stay strictly easy.</span></li>' +
-    '<li><i style="--c:var(--race)"></i><span><b>Red (under 50, or under 5 h sleep):</b> today becomes easy or rest and the workout moves later in the week.</span></li></ul>' +
+    '<li><i style="--c:var(--good)"></i><span><b>Green (70+):</b> train as planned.</span></li>' +
+    '<li><i style="--c:var(--warn)"></i><span><b>Amber (50–69):</b> workouts lose a rep, long runs get 2 mi shorter, easy runs stay strictly easy.</span></li>' +
+    '<li><i style="--c:var(--crit)"></i><span><b>Red (under 50, or under 5 h sleep):</b> today becomes easy or rest and the workout moves later in the week.</span></li></ul>' +
     '<p class="sub">Readiness comes from your sleep, soreness, energy and stress. If your watch sends HRV and resting heart rate, a clearly low HRV or high resting HR lowers it a little.</p></section>';
   return h;
 }
-
-const hm = h => Math.floor(h) + 'h ' + pad(Math.round((h % 1) * 60)) + 'm';
-function watchCard(days){
-  const has = days.some(d => dev[d]), t = dev[TODAY] || dev[addDays(TODAY, -1)], sig = sigOn(dev[TODAY] ? TODAY : addDays(TODAY, -1));
-  if (!has) return mode === "account" ? '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("watch") + '<span class="lbl">From your watch</span></div><p class="sub">No watch data yet. Add sleep and heart rate from your iPhone and your readiness uses them.</p><button class="btn block" type="button" data-act="menu">Set up in Settings</button></section>' : '';
-  const tile = (k, v, sub) => '<div><span>' + k + '</span><b>' + v + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</div>';
-  const vs = (v, a, unit, lowGood) => a && v ? (Math.round(v - a) === 0 ? 'normal' : (v > a ? '+' : '−') + Math.abs(Math.round(v - a)) + unit + ' vs normal') : '';
-  let h = '<section class="card" style="--tone:var(--easy)"><div class="card-h">' + ic("watch") + '<span class="lbl">From your watch</span><span class="r">' + (dev[TODAY] ? 'today' : t ? 'yesterday' : '') + '</span></div>';
-  if (t) h += '<div class="wsum wtiles">' + tile("Sleep", t.sleep_h ? hm(t.sleep_h) : '–', t.sleep_score != null ? 'score ' + t.sleep_score : '') + tile("Resting HR", t.rhr ? t.rhr : '–', sig ? vs(t.rhr, sig.rhrA, ' bpm') : '') + tile("HRV", t.hrv ? t.hrv + ' ms' : '–', sig ? vs(t.hrv, sig.hrvA, ' ms') : '') + '</div>' +
-    (t.bb != null || t.stress != null ? '<div class="wsum wtiles">' + (t.bb != null ? tile("Body Battery", t.bb, 'at wake') : '') + (t.stress != null ? tile("Stress", t.stress, 'average') : '') + (t.sleep_score != null ? tile("Sleep score", t.sleep_score, t.sleep_score >= 80 ? 'good' : t.sleep_score >= 60 ? 'fair' : 'poor') : '') + '</div>' : '') +
-    (t.steps != null || t.active_cal != null ? '<p class="sub">' + [t.steps != null ? comma(t.steps) + ' steps' : '', t.active_cal != null ? comma(t.active_cal) + ' active cal' : ''].filter(Boolean).join(' · ') + '</p>' : '') +
-    (sig && sig.notes.length ? '<p class="fbnote">' + ic("gauge") + '<span>' + esc(sig.notes.join(", ").replace(/^./, x => x.toUpperCase())) + '.' + (sig.pen ? ' Readiness is lowered a little to match.' : '') + '</span></p>' : '');
-  else h += '<p class="sub">Nothing from your watch today yet.</p>';
-  const lab = days.map((d, i) => i % 2 === 1 ? '' : String(parseD(d).getUTCDate()));
-  const hv = days.map(d => dev[d] && dev[d].hrv || null), rh = days.map(d => dev[d] && dev[d].rhr || null);
-  if (hv.filter(Boolean).length >= 2) h += '<div class="card-h" style="--tone:var(--easy)"><span class="lbl">HRV · 14 days</span></div>' + barChart(hv, lab, () => "var(--easy)", null, null, "Heart rate variability for each of the last 14 days");
-  if (rh.filter(Boolean).length >= 2) h += '<div class="card-h" style="--tone:var(--race)"><span class="lbl">Resting HR · 14 days</span></div>' + barChart(rh, lab, () => "var(--race)", null, null, "Resting heart rate for each of the last 14 days");
-  return h + '</section>';
+function recTrends(){
+  // 30 days is offered once there is anything older than two weeks to show
+  const old = addDays(TODAY, -13), deep = Object.keys(dev).concat(Object.keys(checkins)).some(k => k < old), N = deep && recN === 30 ? 30 : 14;
+  const days = Array.from({length: N}, (_, i) => addDays(TODAY, i - N + 1)), rd = days.map(d => readiness(checkins[d], sigOn(d)));
+  const fromWatch = days.map(d => !!(dev[d] && dev[d].sleep_h));
+  const S = {ready: rd.map(x => x ? x.score : null), sleep: days.map((d, i) => fromWatch[i] ? dev[d].sleep_h : checkins[d] ? checkins[d].sleep_h : null),
+    hrv: days.map(d => dev[d] && dev[d].hrv || null), rhr: days.map(d => dev[d] && dev[d].rhr || null)};
+  const M = [["ready", "Readiness", 1], ["sleep", "Sleep", 1], ["hrv", "HRV", 2], ["rhr", "Resting HR", 2]].filter(m => S[m[0]].filter(v => v != null).length >= m[2]);
+  if (!M.length) return '<section class="card" style="--tone:var(--long)"><div class="card-h">' + ic("bars") + '<span class="lbl">Last 14 days</span></div><p class="sub">Your readiness, sleep and heart numbers build up here day by day. Two mornings of check-ins or watch data start the chart.</p></section>';
+  const k = (M.find(m => m[0] === recM) || M[0])[0], vals = S[k], got = vals.filter(v => v != null), avg = got.reduce((a, b) => a + b, 0) / got.length;
+  const iLo = vals.indexOf(Math.min(...got)), iHi = vals.indexOf(Math.max(...got)), n1 = x => Math.round(x * 10) / 10;
+  const yd = addDays(TODAY, -1), dn = d => d === TODAY ? 'Today' : d === yd ? 'Yesterday' : DAYS[dow(d)] + ', ' + fmtD(d), sd = d => d === TODAY ? 'Today' : fmtD(d);
+  let lastMon = null;
+  const xl = days.map((d, i) => { if ((N - 1 - i) % (N > 14 ? 7 : 2)) return ''; if (i === N - 1) return 'Today'; const mo = d.slice(5, 7), out = (mo !== lastMon ? MON[+mo - 1] + ' ' : '') + (+d.slice(8, 10)); lastMon = mo; return out; });
+  const sigs = days.map(d => dev[d] ? sigOn(d) : null), lastSig = sigs.filter(Boolean).slice(-1)[0], nrm = lastSig ? (k === "hrv" ? lastSig.hrvA : k === "rhr" ? lastSig.rhrA : null) : null;
+  const nrmRef = (unit) => nrm ? [{v: Math.round(nrm), name: 'Your normal now: ' + Math.round(nrm) + unit + ' (the 14 days before)'}] : [];
+  const slTxt = i => fromWatch[i] ? hm(vals[i]) : vals[i] >= 9 ? '9+ h' : vals[i] < 5 ? 'Under 5 h' : vals[i] + ' h';
+  const C = {
+    ready: {kind: "bar", color: (v, i) => 'var(--' + ["good", "warn", "crit"][rd[i].level] + ')', ymax: 100, ticks: [0, 50, 70, 100], short: v => String(v),
+      read: i => ({v: String(vals[i]), n: rd[i].word}), fig: v => String(Math.round(v)), lo: "Lowest", hi: "Highest",
+      keys: [["good", "Ready (70+)"], ["warn", "Go easier (50–69)"], ["crit", "Recovery day"]].map(([c, l]) => '<span><i style="--c:var(--' + c + ')"></i>' + l + '</span>'),
+      aria: "Readiness score for each of the last " + N + " days"},
+    sleep: {kind: "bar", color: 'var(--swim)', dim: i => n1(vals[i]) < 7, refs: [{v: SLEEP_GOAL, name: 'Your ' + SLEEP_GOAL + ' h goal'}], short: v => String(n1(v)),
+      read: i => ({v: slTxt(i), n: vals[i] >= SLEEP_GOAL ? 'Met your goal' : hmShort(SLEEP_GOAL - vals[i]) + ' short of your goal'}), fig: v => hm(v), lo: "Shortest", hi: "Longest",
+      keys: got.some(v => n1(v) < 7) ? ['<span><i style="--c:var(--swim);opacity:.45"></i>Under 7 h</span>'] : [], aria: "Hours of sleep for each of the last " + N + " nights"},
+    hrv: {kind: "line", color: 'var(--easy)', whole: true, refs: nrmRef(' ms'), short: v => String(Math.round(v)),
+      read: i => ({v: String(Math.round(vals[i])), u: 'ms', n: vsNormal(vals[i], sigs[i] && sigs[i].hrvA, ' ms')}), fig: v => Math.round(v) + ' ms', lo: "Lowest", hi: "Highest",
+      fine: 'Higher is usually a sign you\'re recovered. A night 12% or more under your normal lowers readiness a little.', aria: "Heart rate variability for each of the last " + N + " days"},
+    rhr: {kind: "line", color: 'var(--hyrox)', whole: true, refs: nrmRef(' bpm'), short: v => String(Math.round(v)),
+      read: i => ({v: String(Math.round(vals[i])), u: 'bpm', n: vsNormal(vals[i], sigs[i] && sigs[i].rhrA, ' bpm')}), fig: v => Math.round(v) + ' bpm', lo: "Lowest", hi: "Highest",
+      fine: 'Lower is usually a sign you\'re recovered. A morning 5 bpm or more over your normal lowers readiness a little.', aria: "Resting heart rate for each of the last " + N + " days"}
+  }[k];
+  const read = i => vals[i] == null ? {v: '–', d: dn(days[i]), n: k === "ready" ? 'No check-in or watch data' : 'Nothing recorded'} : {...C.read(i), d: dn(days[i])};
+  const garminIn = k === "ready" && days.some((d, i) => rd[i] && dev[d] && dev[d].source === "garmin");
+  return '<section class="card rtrend" style="--tone:var(--long)"><div class="card-h">' + ic("bars") + '<span class="lbl">Last ' + N + ' days</span>' + (deep ? '<div class="wrng" role="group" aria-label="Range">' + [[14, "14 d"], [30, "30 d"]].map(([n, l]) => '<button type="button" data-act="recn" data-n="' + n + '" aria-pressed="' + (N === n) + '"' + (N === n ? ' class="on"' : '') + '>' + l + '</button>').join("") + '</div>' : '<span class="r">Tap any day</span>') + '</div>' + gAttr(garminIn) +
+    (M.length > 1 ? '<div class="mseg" role="group" aria-label="What the chart shows">' + M.map(m => '<button type="button" data-act="recm" data-k="' + m[0] + '" aria-pressed="' + (m[0] === k) + '">' + m[1] + '</button>').join('') + '</div>' : '') +
+    tChart({n: N, kind: C.kind, vals, color: C.color, dim: C.dim, refs: C.refs, ymax: C.ymax, ticks: C.ticks, whole: C.whole, short: C.short, labels: N > 14 ? "ends" : "all", xl, read, keys: C.keys, aria: C.aria}) +
+    '<div class="figs"><div><span>Average</span><b>' + C.fig(avg) + '</b><small>' + got.length + ' of ' + N + ' days</small></div><div><span>' + C.lo + '</span><b>' + C.fig(vals[iLo]) + '</b><small>' + sd(days[iLo]) + '</small></div><div><span>' + C.hi + '</span><b>' + C.fig(vals[iHi]) + '</b><small>' + sd(days[iHi]) + '</small></div></div>' +
+    (C.fine ? '<p class="fine">' + C.fine + '</p>' : '') + '</section>';
 }
 /* ---------- Training tab extras: weight and calories ---------- */
 let wRange = 42;
 function wAsk(){ try { return localStorage.getItem("hy-wask") !== "off"; } catch(e){ return true; } }
 function bodyCards(){
   const N = wRange, p = plan.profile, days = Array.from({length: N}, (_, i) => addDays(TODAY, i - N + 1));
-  const pts = [], avgPts = []; days.forEach((d, i) => { if (weights[d]) pts.push([i, weights[d]]); const a = avgWeight(d); if (a && Object.keys(weights).some(k => k <= d && k > addDays(d, -7))) avgPts.push([i, Math.round(a * 10) / 10]); });
+  const r1 = v => Math.round(v * 10) / 10, wv = days.map(d => weights[d] || null), av = days.map(d => { const a = avgWeight(d); return a && Object.keys(weights).some(k => k <= d && k > addDays(d, -7)) ? r1(a) : null; });
+  const nW = wv.filter(v => v != null).length, sg = v => (v <= 0 ? '−' : '+') + Math.abs(v).toFixed(1);
   let h = '<section class="card" style="--tone:var(--lift)"><div class="card-h">' + ic("scale") + '<span class="lbl">Body weight</span><div class="wrng" role="group" aria-label="Range">' + [[42, "6 wk"], [120, "4 mo"]].map(([n, l]) => '<button type="button" data-act="wrange" data-n="' + n + '" aria-pressed="' + (wRange === n) + '"' + (wRange === n ? ' class="on"' : '') + '>' + l + '</button>').join("") + '</div>';
-  if (pts.length >= 2){
-    const a = avgWeight(TODAY), b = avgWeight(addDays(TODAY, -7)), wk = a && b ? a - b : null;
-    const series = [{pts, color: "var(--muted)", w: 1.2, dots: true}, {pts: avgPts, color: "var(--lift)", w: 2.8}];
-    if (p.goalWeight) series.push({pts: [[0, p.goalWeight], [N - 1, p.goalWeight]], color: "var(--long)", dash: true, w: 1.6});
-    const first = pts[0][1], tot = a ? a - (avgPts.length ? avgPts[0][1] : first) : 0;
-    h += '</div><p class="wsum">' + (wk != null ? '<span><b>' + (wk <= 0 ? '−' : '+') + Math.abs(wk).toFixed(1) + '</b> lb this week</span>' : '') + (avgPts.length > 7 ? '<span><b>' + (tot <= 0 ? '−' : '+') + Math.abs(tot).toFixed(1) + '</b> lb since ' + fmtD(days[avgPts[0][0]]) + '</span>' : '') + '<span><b>' + pts.length + '</b> weigh-ins</span></p>' + lineChart(series, "Daily weigh-ins and 7-day average") +
-      '<div class="legend"><span><i style="--c:var(--lift)"></i>7-day average</span><span><i style="--c:var(--muted)"></i>Weigh-ins</span>' + (p.goalWeight ? '<span><i style="--c:var(--long)"></i>Goal ' + p.goalWeight + ' lb</span>' : '') + '</div>' +
+  if (nW >= 2){
+    const a = avgWeight(TODAY), b = avgWeight(addDays(TODAY, -7)), wk = a && b ? a - b : null, i0 = av.findIndex(v => v != null), nA = av.filter(v => v != null).length;
+    const tot = a ? a - (i0 >= 0 ? av[i0] : wv.find(v => v != null)) : 0, got = wv.concat(av).filter(v => v != null), lo = Math.min(...got), hi = Math.max(...got), g = p.goalWeight;
+    // the goal line is drawn only when it is close enough not to squash the trend flat; the Goal figure below always shows it
+    const goalNear = g && g > lo - Math.max(3, hi - lo) && g < hi + Math.max(3, hi - lo), every = N > 60 ? 30 : 7;
+    const dn = d => d === TODAY ? 'Today' : DAYS[dow(d)] + ', ' + fmtD(d);
+    h += '</div>' + tChart({n: N, kind: "line", H: 190, series: [{vals: av, color: "var(--lift)", name: "7-day average", w: 2.6}, {vals: wv, color: "#8D94A6", name: "Weigh-ins", line: false, r: N > 60 ? 2.2 : 2.8}],
+        refs: goalNear ? [{v: g, name: 'Goal ' + g + ' lb'}] : [], xl: days.map((d, i) => (N - 1 - i) % every ? '' : i === N - 1 ? 'Today' : shortD(d)),
+        read: i => ({v: av[i] != null ? av[i].toFixed(1) : wv[i] != null ? wv[i].toFixed(1) : '–', u: av[i] != null || wv[i] != null ? 'lb' : '', d: dn(days[i]),
+          n: av[i] != null ? '7-day average · ' + (wv[i] != null ? 'weighed in at ' + wv[i].toFixed(1) : 'no weigh-in') : wv[i] != null ? 'Weigh-in' : 'No weigh-in'}),
+        aria: "Daily weigh-ins and 7-day average, last " + N + " days"}) +
+      '<div class="figs"><div><span>This week</span><b>' + (wk != null ? sg(wk) + ' lb' : '–') + '</b><small>7-day average</small></div>' +
+      '<div><span>' + (nA > 7 ? 'Since ' + fmtD(days[i0]) : 'Weigh-ins') + '</span><b>' + (nA > 7 ? sg(tot) + ' lb' : nW) + '</b><small>' + (nA > 7 ? nW + ' weigh-ins' : 'so far') + '</small></div>' +
+      (g ? '<div><span>Goal</span><b>' + g + ' lb</b><small>' + (a ? (Math.abs(a - g) < .05 ? 'reached' : Math.abs(a - g).toFixed(1) + ' lb to go') : '') + '</small></div>' : '<div><span>7-day average</span><b>' + (a ? a.toFixed(1) + ' lb' : '–') + '</b><small>today</small></div>') + '</div>' +
       (wk != null && p.goalWeight && p.goalWeight < a ? '<p class="sub">' + (-wk > 1.5 ? 'Losing over 1.5 lb a week can cost muscle. Eating a bit more on training days helps.' : -wk >= .4 ? 'Losing at a muscle-safe pace. Keep going.' : 'Weight is holding steady. If that lasts two weeks, trim about 150 cal a day.') + '</p>' : '');
   } else h += '</div><p class="sub">Weigh in on a few mornings and your trend shows here. The 7-day average smooths out water-weight swings.</p>';
   h += '</section>';
@@ -1930,7 +2115,12 @@ function bodyCards(){
   const tg = d7.map(d => fuelFor(p, dayOf(d), d).cal), logged = eatenV.filter(v => v != null);
   const ae = logged.length ? logged.reduce((a, b) => a + b, 0) / logged.length : null, at = tg.reduce((a, b) => a + b, 0) / 7;
   h += '<section class="card" style="--tone:var(--accent-2)"><div class="card-h">' + ic("fork") + '<span class="lbl">Calories · last 7 days</span><span class="r">' + logged.length + ' of 7 days logged</span></div>' +
-    barChart(eatenV, d7.map(d => DAYS[dow(d)].slice(0, 1)), (v, i) => v > tg[i] + 150 ? "var(--crit)" : v < tg[i] - 400 ? "var(--work)" : "var(--accent-2)", Math.round(at), null, "Calories eaten each day for the last 7 days, dashed line is your average target") +
+    tChart({n: 7, kind: "bar", vals: eatenV, color: (v, i) => v > tg[i] + 150 ? "var(--crit)" : v < tg[i] - 400 ? "var(--warn)" : "var(--good)", refs: [{v: Math.round(at), name: 'Your average target: ' + comma(at) + ' cal'}],
+      short: v => comma(v), labels: "all", yfmt: v => v >= 1000 ? (Math.round(v / 100) / 10) + 'k' : String(v), xl: d7.map(d => d === TODAY ? 'Today' : DAYS[dow(d)]),
+      read: i => eatenV[i] == null ? {v: '–', d: d7[i] === TODAY ? 'Today' : DAYF[dow(d7[i])] + ', ' + fmtD(d7[i]), n: 'Nothing logged'}
+        : {v: comma(eatenV[i]), u: 'cal', d: d7[i] === TODAY ? 'Today' : DAYF[dow(d7[i])] + ', ' + fmtD(d7[i]), n: (Math.abs(eatenV[i] - tg[i]) < 50 ? 'Right on' : comma(Math.abs(eatenV[i] - tg[i])) + (eatenV[i] > tg[i] ? ' over' : ' under')) + ' that day\'s target of ' + comma(tg[i])},
+      keys: [["good", "On target"], ["warn", "Well under"], ["crit", "Over"]].map(([c, l]) => '<span><i style="--c:var(--' + c + ')"></i>' + l + '</span>'),
+      aria: "Calories eaten each day for the last 7 days, with a line at your average target"}) +
     (ae != null ? '<div class="wkstats"><div><span>Avg eaten</span><b>' + comma(ae) + '</b></div><div><span>Avg target</span><b>' + comma(at) + '</b></div><div><span>Difference</span><b style="color:var(--' + (Math.abs(ae - at) < 150 ? 'good' : ae > at ? 'crit' : 'warn') + ')">' + (ae - at >= 0 ? '+' : '−') + comma(Math.abs(ae - at)) + '</b></div></div>' +
       '<p class="sub">' + (Math.abs(ae - at) < 150 ? 'Right on target. This is the pace that gets you to your goal.' : ae > at ? 'A bit over on average. Logging every meal, snacks included, makes this easy to fix.' : 'Under target on average. Eating too little makes training harder and costs muscle.') + '</p>'
       : '<p class="sub">Log your food for a few days and your weekly average shows here.</p>') + '</section>';
@@ -3023,10 +3213,6 @@ function mvRender(){
     '<button class="btn block ghost" type="button" data-act="close">Cancel</button>';
 }
 
-function ring(val, max, color, label, txt, sub){
-  const r = 42, c = 2 * Math.PI * r, f = Math.max(.04, Math.min(1, val / max));
-  return '<div class="rg"><div class="rg-w"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="' + r + '" fill="none" stroke="var(--sunk)" stroke-width="9"/><circle cx="50" cy="50" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + (c * (1 - f)).toFixed(1) + '"/></svg><b>' + txt + '</b></div><span>' + label + '</span><small>' + sub + '</small></div>';
-}
 function renderTraining(part){
   const p = plan.profile, P = plan.P;
   const S = {};
@@ -3089,7 +3275,7 @@ function renderTraining(part){
 }
 
 /* ---------- Progress: the numbers people check (like Endorphins / Strava) ---------- */
-let progSel = null;
+let progSel = null, progM = null;
 const MONS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const shortD = d => MONS[+d.slice(5, 7) - 1] + ' ' + (+d.slice(8, 10));
 function runClass(a){
@@ -3115,22 +3301,14 @@ function fitnessSeries(days, list){
 }
 const hmin = m => { m = Math.round(m); return m >= 60 ? Math.floor(m / 60) + 'h ' + (m % 60) + 'm' : m + 'm'; };
 /* ---------- Progress, opened up: every card on the Progress tab taps into one of these ---------- */
-const TYPE_C = {run: "var(--easy)", lift: "var(--lift)", bike: "var(--work)", swim: "var(--accent-2)", other: "var(--long)"};
-function barsSvg(vals, labels, colorOf, W, H, ref, title){
-  const mx = Math.max(1, ref || 0, ...vals.map(v => Array.isArray(v) ? v.reduce((a, b) => a + b[0], 0) : v)), bw = (W - 8) / vals.length;
-  let o = '<svg class="pchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(title) + '">';
-  if (ref) o += '<line x1="0" x2="' + W + '" y1="' + (H - 18 - ref / mx * (H - 30)).toFixed(1) + '" y2="' + (H - 18 - ref / mx * (H - 30)).toFixed(1) + '" stroke="var(--muted)" stroke-dasharray="4 4" stroke-opacity=".6"/>';
-  vals.forEach((v, i) => { let y = H - 18; (Array.isArray(v) ? v : [[v, colorOf(i)]]).forEach(([x, c]) => { const hh = x / mx * (H - 30); y -= hh; o += '<rect x="' + (4 + i * bw + 1).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + Math.max(2, bw - 3).toFixed(1) + '" height="' + Math.max(0, hh).toFixed(1) + '" rx="2" fill="' + c + '"/>'; }); });
-  labels.forEach((l, i) => { if (l) o += '<text x="' + (i === labels.length - 1 ? W - 2 : 4 + i * bw + bw / 2).toFixed(1) + '" y="' + (H - 4) + '" text-anchor="' + (i === labels.length - 1 ? 'end' : 'middle') + '">' + l + '</text>'; });
-  return o + '</svg>';
-}
-function loadDetail(){
-  const all = feedActs(), byDay = {}; all.forEach(a => (byDay[a.date] = byDay[a.date] || []).push(a));
-  const fs_ = fitnessSeries(90, all), cur = fs_[fs_.length - 1], opt = Math.max(1, cur.ctl * 7);
-  const days = Array.from({length: 28}, (_, i) => addDays(TODAY, -27 + i));
-  const dv = days.map(d => (byDay[d] || []).map(a => [loadOf(a), TYPE_C[a.type] || "var(--long)"]));
-  const load7 = Math.round(days.slice(-7).reduce((t, d) => t + (byDay[d] || []).reduce((u, a) => u + loadOf(a), 0), 0));
-  const load28 = days.reduce((t, d) => t + (byDay[d] || []).reduce((u, a) => u + loadOf(a), 0), 0), ratio = load28 ? load7 / (load28 / 4) : 0;
+const TYPE_C = {run: "var(--easy)", lift: "var(--lift)", bike: "var(--work)", swim: "var(--swim)", other: "var(--long)"}, TYPE_N = {run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Other sports"};
+/* One reading of "how big was this week" for the Progress card and the Training load screen (Nov 21: the card compared the
+   week with your fitness and said "Very high" while the screen compared it with your last 4 weeks and said "In the sweet
+   spot"). Both now use the screen's measure: the last 7 days against your 4-week average. */
+function loadState(all){
+  const byDay = {}; all.forEach(a => (byDay[a.date] = byDay[a.date] || []).push(a));
+  const days = Array.from({length: 28}, (_, i) => addDays(TODAY, -27 + i)), sum = d => (byDay[d] || []).reduce((u, a) => u + loadOf(a), 0);
+  const load7 = Math.round(days.slice(-7).reduce((t, d) => t + sum(d), 0)), load28 = days.reduce((t, d) => t + sum(d), 0), ratio = load28 ? load7 / (load28 / 4) : 0;
   const first = all.reduce((m, a) => !m || a.date < m ? a.date : m, null), young = !first || first > addDays(TODAY, -21);
   const verdict = !load7 ? ["Nothing logged this week", "Log or sync a workout and your load shows up here."]
     : young ? ["Building your baseline", "Mileset needs about 3 weeks of workouts to know what's normal for you. Until then, add no more than about 10% a week."]
@@ -3138,106 +3316,119 @@ function loadDetail(){
     : ratio > 1.3 ? ["Building fast", "A bit above your usual. Fine for a week, then hold steady."]
     : ratio >= .8 ? ["In the sweet spot", "Right in line with what your body is used to (0.8 to 1.3× your 4-week average)."]
     : ["Lighter week", "Below your usual. Good for recovery or a taper; otherwise there's room to do more."];
-  const wks = Array.from({length: 12}, (_, i) => { const ws = addDays(mondayOf(TODAY), -7 * (11 - i)); return Array.from({length: 7}, (_, j) => (byDay[addDays(ws, j)] || []).reduce((t, a) => t + loadOf(a), 0)).reduce((a, b) => a + b, 0); });
-  let h = '<section class="card" style="--tone:var(--lift)"><div class="card-h"><span class="lbl">Last 7 days</span><span class="r">' + load7 + ' load</span></div>' +
-    '<p><b>' + verdict[0] + '.</b> ' + verdict[1] + '</p>' + (young ? '' : '<div class="gauge"><i style="left:' + Math.max(2, Math.min(97, ratio / 2 * 100)).toFixed(1) + '%"></i></div>') + '' +
-    '<div class="pf" style="display:flex;justify-content:space-between;gap:12px"><span>This week vs your last 4 weeks</span><b>' + (ratio && !young ? ratio.toFixed(2) + '×' : '–') + '</b></div></section>';
-  h += '<section class="card"><div class="card-h"><span class="lbl">Daily load · 4 weeks</span></div>' + barsSvg(dv, days.map((d, i) => i % 7 === 6 ? shortD(d) : ''), () => "var(--long)", 340, 150, opt / 7, "Training load each day for 4 weeks") +
-    '<div class="legend">' + Object.entries({run: "Run", lift: "Strength", bike: "Ride", swim: "Swim", other: "Other sports"}).map(([k, l]) => '<span><i style="--c:' + TYPE_C[k] + '"></i>' + l + '</span>').join("") + '</div><p class="fine">Dashed line: a typical day for your current fitness.</p></section>';
-  h += '<section class="card"><div class="card-h"><span class="lbl">Weekly load · 12 weeks</span></div>' + barsSvg(wks, wks.map((_, i) => i % 3 === 2 ? shortD(addDays(mondayOf(TODAY), -7 * (11 - i))) : ''), i => i === 11 ? "var(--accent-2)" : "var(--lift)", 340, 140, 0, "Training load per week, 12 weeks") + '</section>';
+  return {byDay, days, sum, load7, ratio, young, verdict, n7: days.slice(-7).reduce((t, d) => t + (byDay[d] || []).length, 0)};
+}
+// the scale runs 0 to 2× your 4-week average; the zones are the same cut-offs the verdict uses (0.8, 1.3, 1.5)
+function loadGauge(st){
+  if (st.young || !st.load7) return '';
+  const z = st.ratio > 1.5 ? 3 : st.ratio > 1.3 ? 2 : st.ratio >= .8 ? 1 : 0, on = i => i === z ? ' class="on"' : '';
+  return '<div class="lgauge" aria-hidden="true"><div class="lg-bar">' + [0, 1, 2, 3].map(i => '<i' + on(i) + '></i>').join('') + '<u style="left:' + Math.max(1, Math.min(99, st.ratio / 2 * 100)).toFixed(1) + '%"></u></div>' +
+    '<div class="lg-t">' + ["Low", "Sweet spot", "High", "Too much"].map((l, i) => '<span' + on(i) + '>' + l + '</span>').join('') + '</div></div>';
+}
+function fitState(fs_){
+  const cur = fs_[fs_.length - 1], form = cur.ctl - cur.atl, ago = fs_[fs_.length - 29] || fs_[0], trend = cur.ctl - ago.ctl;
+  const say = form >= 5 ? ["Fresh", "You're rested. A good time for a hard session or a race."] : form <= -20 ? ["Very tired", "Fatigue is well above fitness. Back off for a few days."] : form <= -10 ? ["Tired", "Normal in a big training block. Protect sleep and easy days."] : ["Steady", "Training and recovery are in balance."];
+  const sg = v => (v >= 0 ? '+' : '−') + Math.abs(Math.round(v));
+  return {cur, form, trend, say, sg, figs: '<div class="figs"><div><span>Fitness</span><b>' + Math.round(cur.ctl) + '</b><small>6-week load</small></div><div><span>Fatigue</span><b>' + Math.round(cur.atl) + '</b><small>1-week load</small></div><div><span>Form</span><b>' + sg(form) + '</b><small>the gap</small></div></div>'};
+}
+// a labelled bar: the name and the number on one line, the bar under them
+const mrow = (name, sub, val, note, frac, color) => '<div class="mrow"><div><span>' + name + (sub ? '<small>' + sub + '</small>' : '') + '</span><b>' + val + (note ? '<small>' + note + '</small>' : '') + '</b></div><i><u style="width:' + (Math.max(0, Math.min(1, frac)) * 100).toFixed(1) + '%;background:' + color + '"></u></i></div>';
+function focusState(all){
+  const fm = [0, 0, 0]; all.filter(a => a.date > addDays(TODAY, -30) && a.type === "run").forEach(a => fm[runClass(a)] += a.minutes || 0);
+  const ft = fm[0] + fm[1] + fm[2], easyPct = ft ? Math.round(fm[0] / ft * 100) : 0, FN = [["Aerobic", "easy"], ["Threshold", "comfortably hard"], ["Speed", "hard"]], FC = ["var(--long)", "var(--swim)", "var(--work)"];
+  return {ft, rows: FN.map((nm, i) => mrow(nm[0], nm[1], (ft ? Math.round(fm[i] / ft * 100) : 0) + '%', hmin(fm[i]), ft ? fm[i] / ft : 0, FC[i])).join(""),
+    say: !ft ? 'No runs in the last 30 days.' : easyPct >= 75 ? 'About ' + easyPct + '% easy: right where most coaches want it (around 80%).' : 'Only ' + easyPct + '% easy. Most runners improve faster with around 80% easy and the rest hard. Slow the easy days down.'};
+}
+// grey, blue, green, yellow, red: the order watches use, and blue next to green reads apart where cyan next to green did not
+const ZC = ["var(--rest)", "var(--swim)", "var(--long)", "var(--work)", "var(--race)"];
+function zoneState(all){
+  const z = hrZones(), zt = [0, 0, 0, 0, 0]; all.filter(a => a.date > addDays(TODAY, -30)).forEach(a => { const q = zoneOf(a.avg_hr); if (q) zt[q - 1] += a.minutes || 0; });
+  return {z, zt, zs: zt.reduce((a, b) => a + b, 0), range: i => z && z[i] ? (z[i][0] ? z[i][0] + (z[i][1] ? '–' + z[i][1] : '+') : 'under ' + (z[i][1] + 1)) : ''};
+}
+function loadDetail(){
+  const all = feedActs(), st = loadState(all), fs_ = fitnessSeries(90, all), typical = Math.max(1, fs_[fs_.length - 1].ctl), days = st.days;
+  const kind = a => TYPE_C[a.type] ? a.type : "other", used = Object.keys(TYPE_C).filter(k => days.some(d => (st.byDay[d] || []).some(a => kind(a) === k)));
+  const dv = days.map(d => (st.byDay[d] || []).length ? used.map(k => [(st.byDay[d] || []).filter(a => kind(a) === k).reduce((t, a) => t + loadOf(a), 0), TYPE_C[k]]) : null);
+  const dn = d => d === TODAY ? 'Today' : DAYS[dow(d)] + ', ' + fmtD(d);
+  const wk0 = mondayOf(TODAY), wks = Array.from({length: 12}, (_, i) => { const ws = addDays(wk0, -7 * (11 - i)), ds = Array.from({length: 7}, (_, j) => addDays(ws, j)); return {ws, load: Math.round(ds.reduce((t, d) => t + (st.byDay[d] || []).reduce((u, a) => u + loadOf(a), 0), 0)), n: ds.reduce((t, d) => t + (st.byDay[d] || []).length, 0)}; });
+  let h = '<section class="card" style="--tone:var(--lift)"><div class="card-h"><span class="lbl">Last 7 days</span><span class="r">' + st.load7 + ' load</span></div>' +
+    '<p><b>' + st.verdict[0] + '.</b> ' + st.verdict[1] + '</p>' + loadGauge(st) +
+    '<div class="pf" style="display:flex;justify-content:space-between;gap:12px"><span>This week vs your last 4 weeks</span><b>' + (st.ratio && !st.young ? st.ratio.toFixed(2) + '×' : '–') + '</b></div></section>';
+  h += '<section class="card"><div class="card-h"><span class="lbl">Daily load · 4 weeks</span><span class="r">Tap any day</span></div>' +
+    tChart({n: 28, kind: "bar", vals: dv, refs: [{v: Math.round(typical), name: 'A typical day at your current fitness'}], whole: true, xl: days.map((d, i) => i % 7 === 6 ? (i === 27 ? 'Today' : shortD(d)) : ''),
+      read: i => { const xs = st.byDay[days[i]] || []; return {v: String(Math.round(st.sum(days[i]))), u: 'load', d: dn(days[i]), n: xs.length ? xs.map(a => a.name).join(' + ') : 'Rest day'}; },
+      keys: used.map(k => '<span><i style="--c:' + TYPE_C[k] + '"></i>' + TYPE_N[k] + '</span>'), aria: "Training load each day for 4 weeks"}) + '</section>';
+  h += '<section class="card"><div class="card-h"><span class="lbl">Weekly load · 12 weeks</span><span class="r">Tap any week</span></div>' +
+    tChart({n: 12, kind: "bar", vals: wks.map(w => w.load), color: "var(--lift)", whole: true, short: v => String(v), labels: "all", xl: wks.map((w, i) => (11 - i) % 2 ? '' : shortD(w.ws)),
+      read: i => ({v: String(wks[i].load), u: 'load', d: 'Week of ' + shortD(wks[i].ws) + (i === 11 ? ' · this week' : ''), n: wks[i].n + (wks[i].n === 1 ? ' workout' : ' workouts')}), aria: "Training load per week, 12 weeks"}) + '</section>';
   const recent = all.filter(a => a.date >= addDays(TODAY, -6)).slice(0, 12);
   h += '<section class="card"><div class="card-h"><span class="lbl">What made up this week</span></div>' + (recent.length ? '<ul class="fl">' + recent.map(a => '<li class="act" data-act="actgo" data-id="' + esc(a.id) + '" role="button" tabindex="0"><div class="fi"><b>' + esc(a.name) + '</b><span>' + whenTxt(a) + ' · ' + durTxt(a.minutes) + (a.rpe ? ' · felt ' + a.rpe + '/10' : '') + '</span></div><span class="fc">' + Math.round(loadOf(a)) + '</span></li>').join("") + '</ul>' : '<p class="sub">No workouts in the last 7 days.</p>') +
     '<p class="fine">Load = time × how hard it was (heart rate zone, or the 1 to 10 you tap, or what the sport usually is). Every sport counts.</p></section>';
   return h;
 }
 function fitDetail(){
-  const all = feedActs(), fs_ = fitnessSeries(90, all), cur = fs_[fs_.length - 1], form = cur.ctl - cur.atl, W = 340, H = 170;
-  const mx = Math.max(1, ...fs_.map(x => Math.max(x.ctl, x.atl))), X = i => 6 + i * (W - 12) / (fs_.length - 1), Y = v => 10 + (1 - v / mx) * (H - 34);
-  const path = k => fs_.map((x, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(x[k]).toFixed(1)).join('');
-  let svg = '<svg class="pchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Fitness and fatigue, 90 days"><path d="' + path("atl") + '" fill="none" stroke="var(--race)" stroke-width="2" stroke-opacity=".8"/><path d="' + path("ctl") + '" fill="none" stroke="var(--long)" stroke-width="3"/>';
-  [0, 30, 60, 89].forEach(i => svg += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 4) + '" text-anchor="' + (i === 89 ? 'end' : i ? 'middle' : 'start') + '">' + shortD(fs_[i].d) + '</text>');
-  svg += '</svg>';
-  const fw = form >= 5 ? ["Fresh", "You're rested. A good time for a hard session or a race."] : form <= -20 ? ["Very tired", "Fatigue is well above fitness. Back off for a few days."] : form <= -10 ? ["Tired", "Normal in a big training block. Protect sleep and easy days."] : ["Steady", "Training and recovery are in balance."];
-  const wkAgo = fs_[fs_.length - 29] || fs_[0], trend = cur.ctl - wkAgo.ctl;
-  return '<section class="card" style="--tone:var(--long)"><div class="wsum"><div><span>Fitness</span><b>' + Math.round(cur.ctl) + '</b></div><div><span>Fatigue</span><b>' + Math.round(cur.atl) + '</b></div><div><span>Form</span><b>' + (form >= 0 ? '+' : '−') + Math.abs(Math.round(form)) + '</b></div></div>' +
-    '<p><b>' + fw[0] + '.</b> ' + fw[1] + '</p><p class="sub">Fitness ' + (trend >= 0 ? 'up ' : 'down ') + Math.abs(Math.round(trend)) + ' in the last 4 weeks.</p></section>' +
-    '<section class="card"><div class="card-h"><span class="lbl">90 days</span></div>' + svg + '<div class="legend"><span><i style="--c:var(--long)"></i>Fitness (6-week load)</span><span><i style="--c:var(--race)"></i>Fatigue (1-week load)</span></div>' +
+  const all = feedActs(), fs_ = fitnessSeries(90, all), F = fitState(fs_), n = fs_.length;
+  return '<section class="card" style="--tone:var(--long)">' + F.figs + '<p><b>' + F.say[0] + '.</b> ' + F.say[1] + '</p><p class="sub">Fitness ' + (F.trend >= 0 ? 'up ' : 'down ') + Math.abs(Math.round(F.trend)) + ' in the last 4 weeks.</p></section>' +
+    '<section class="card"><div class="card-h"><span class="lbl">90 days</span><span class="r">Slide to read a day</span></div>' +
+    tChart({n, kind: "line", H: 190, series: [{vals: fs_.map(x => x.ctl), color: "var(--long)", name: "Fitness (6-week load)", w: 2.6}, {vals: fs_.map(x => x.atl), color: "var(--race)", name: "Fatigue (1-week load)", w: 1.6}], whole: true,
+      xl: fs_.map((x, i) => i === 0 || i === 30 || i === 60 || i === n - 1 ? (i === n - 1 ? 'Today' : shortD(x.d)) : ''),
+      read: i => ({v: String(Math.round(fs_[i].ctl)), u: 'fitness', d: i === n - 1 ? 'Today' : DAYS[dow(fs_[i].d)] + ', ' + fmtD(fs_[i].d), n: 'Fatigue ' + Math.round(fs_[i].atl) + ' · Form ' + F.sg(fs_[i].ctl - fs_[i].atl)}), aria: "Fitness and fatigue, 90 days"}) +
     '<p class="fine">Form = fitness minus fatigue. It dips in hard weeks and rises when you rest. Before a race you want it positive.</p></section>';
 }
 function focusDetail(){
-  const all = feedActs(), r30 = all.filter(a => a.date > addDays(TODAY, -30) && a.type === "run"), fm = [0, 0, 0]; r30.forEach(a => fm[runClass(a)] += a.minutes || 0);
-  const ft = fm[0] + fm[1] + fm[2], FN = ["Aerobic (easy)", "Threshold (comfortably hard)", "Speed (hard)"], FC = ["var(--long)", "var(--easy)", "var(--work)"];
-  const easyPct = ft ? Math.round(fm[0] / ft * 100) : 0;
-  let h = '<section class="card"><div class="card-h"><span class="lbl">Running · last 30 days</span><span class="r">' + hmin(ft) + '</span></div>' +
-    FN.map((n, i) => '<div class="fbar"><span>' + n + '</span><div><i style="width:' + (ft ? fm[i] / ft * 100 : 0) + '%;background:' + FC[i] + '"></i></div><b>' + (ft ? Math.round(fm[i] / ft * 100) : 0) + '%</b></div>').join("") +
-    '<p class="sub">' + (!ft ? 'No runs in the last 30 days.' : easyPct >= 75 ? 'About ' + easyPct + '% easy: right where most coaches want it (around 80%).' : 'Only ' + easyPct + '% easy. Most runners improve faster with around 80% easy and the rest hard. Slow the easy days down.') + '</p></section>';
-  const z = hrZones(), zt = [0, 0, 0, 0, 0]; all.filter(a => a.date > addDays(TODAY, -30)).forEach(a => { const q = zoneOf(a.avg_hr); if (q) zt[q - 1] += a.minutes || 0; });
-  const zs = zt.reduce((a, b) => a + b, 0), ZC = ["#9CA3B4", "var(--easy)", "var(--long)", "var(--work)", "var(--race)"];
-  h += '<section class="card"><div class="card-h"><span class="lbl">Heart rate zones · 30 days</span><button class="linkbtn r" type="button" data-act="go" data-scr="set-hr">' + (z ? 'Edit' : 'Set up') + '</button></div>' +
-    (!z ? '<p class="sub">Set your max or threshold heart rate and your time in each zone shows up here.</p>' :
-      HR_NAMES.map((n, i) => '<div class="fbar"><span>Z' + (i + 1) + ' ' + n + (z[i] ? ' · ' + (z[i][0] || '<' + (z[i][1] + 1)) + (z[i][1] ? '–' + z[i][1] : '+') : '') + '</span><div><i style="width:' + (zs ? zt[i] / zs * 100 : 0) + '%;background:' + ZC[i] + '"></i></div><b>' + hmin(zt[i]) + '</b></div>').join("") +
-      (zs ? '' : '<p class="sub">No heart rate in your workouts from the last 30 days.</p>')) + '</section>';
-  return h;
+  const all = feedActs(), F = focusState(all), Z = zoneState(all);
+  return '<section class="card"><div class="card-h"><span class="lbl">Running · last 30 days</span><span class="r">' + hmin(F.ft) + '</span></div><div class="mrows">' + F.rows + '</div><p class="sub">' + F.say + '</p></section>' +
+    '<section class="card"><div class="card-h"><span class="lbl">Heart rate zones · 30 days</span><button class="linkbtn r" type="button" data-act="go" data-scr="set-hr">' + (Z.z ? 'Edit' : 'Set up') + '</button></div>' +
+    (!Z.z ? '<p class="sub">Set your max or threshold heart rate and your time in each zone shows up here.</p>' :
+      '<div class="mrows">' + HR_NAMES.map((nm, i) => mrow('Z' + (i + 1) + ' ' + nm, Z.range(i) + ' bpm', hmin(Z.zt[i]), Z.zs ? Math.round(Z.zt[i] / Z.zs * 100) + '%' : '', Z.zs ? Z.zt[i] / Z.zs : 0, ZC[i])).join("") + '</div>' +
+      (Z.zs ? '' : '<p class="sub">No heart rate in your workouts from the last 30 days.</p>')) + '</section>';
 }
+/* Progress tab (Nov 21, Matthew: "more detailed and easier to read ... the graphs don't really show all the numbers"). The
+   12-week chart is bars with the number on every week, in miles or in time; each card below it says its number in words
+   and draws it against a labelled scale, full width so nothing wraps or gets cut off. */
 function progressHtml(){
-  const acts = feedActs(), wk0 = mondayOf(TODAY), N = 12;
-  const weeks = Array.from({length: N}, (_, i) => { const ws = addDays(wk0, -7 * (N - 1 - i)), we = addDays(ws, 6), xs = acts.filter(a => a.date >= ws && a.date <= we);
-    const runs = xs.filter(a => a.type === "run"); return {ws, mi: runs.reduce((t, a) => t + (a.mi || 0), 0), min: runs.reduce((t, a) => t + (a.minutes || 0), 0), n: xs.length}; });
-  const sel = progSel == null ? N - 1 : progSel, w = weeks[sel];
-  // weekly miles chart
-  const W = 340, H = 170, top = Math.max(10, Math.ceil(Math.max(...weeks.map(x => x.mi)) / 10) * 10), X = i => 26 + i * (W - 36) / (N - 1), Y = v => 12 + (1 - v / top) * (H - 40);
-  const line = weeks.map((x, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(x.mi).toFixed(1)).join('');
-  let svg = '<svg class="pchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Run miles per week, last 12 weeks"><defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent-2)" stop-opacity=".45"/><stop offset="1" stop-color="var(--accent-2)" stop-opacity="0"/></linearGradient></defs>';
-  [0, top / 2, top].forEach(v => svg += '<text x="0" y="' + (Y(v) + 4).toFixed(1) + '">' + v + '</text>');
-  svg += '<path d="' + line + 'L' + X(N - 1).toFixed(1) + ' ' + Y(0).toFixed(1) + 'L' + X(0).toFixed(1) + ' ' + Y(0).toFixed(1) + 'Z" fill="url(#pg)"/>';
-  weeks.forEach((x, i) => svg += '<line x1="' + X(i).toFixed(1) + '" x2="' + X(i).toFixed(1) + '" y1="' + Y(x.mi).toFixed(1) + '" y2="' + Y(0).toFixed(1) + '" stroke="var(--accent-2)" stroke-opacity=".5" stroke-dasharray="3 4"/>');
-  svg += '<path d="' + line + '" fill="none" stroke="var(--accent-2)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>';
-  svg += '<line x1="' + X(sel).toFixed(1) + '" x2="' + X(sel).toFixed(1) + '" y1="8" y2="' + Y(0).toFixed(1) + '" stroke="#fff" stroke-opacity=".35" stroke-width="1.5"/>';
-  if (!weeks.some(x => x.mi)) svg += '<text x="' + (W / 2 + 10) + '" y="' + (Y(top / 2) + 4).toFixed(1) + '" text-anchor="middle" style="font-size:13px;fill:var(--muted)">Log or sync a run to see your weekly miles</text>';
-  weeks.forEach((x, i) => svg += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(x.mi).toFixed(1) + '" r="' + (i === sel ? 7 : 5) + '" fill="' + (i === sel ? '#fff' : 'var(--bg)') + '" stroke="' + (i === sel ? '#fff' : 'var(--accent-2)') + '" stroke-width="2.5"/>');
-  weeks.forEach((x, i) => { if (i % 2 === 1 || i === N - 1) svg += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 4) + '" text-anchor="' + (i === N - 1 ? 'end' : 'middle') + '">' + shortD(x.ws) + '</text>'; });
-  weeks.forEach((x, i) => svg += '<rect x="' + (X(i) - (W - 36) / (N - 1) / 2).toFixed(1) + '" y="0" width="' + ((W - 36) / (N - 1)).toFixed(1) + '" height="' + H + '" fill="transparent" data-act="pwk" data-i="' + i + '" style="cursor:pointer"/>');
-  svg += '</svg>';
+  const acts = feedActs(), wk0 = mondayOf(TODAY), N = 12, p = plan.profile, r1 = v => Math.round(v * 10) / 10;
+  const weeks = Array.from({length: N}, (_, i) => { const ws = addDays(wk0, -7 * (N - 1 - i)), we = addDays(ws, 6), xs = acts.filter(a => a.date >= ws && a.date <= we), runs = xs.filter(a => a.type === "run");
+    return {ws, mi: runs.reduce((t, a) => t + (a.mi || 0), 0), min: runs.reduce((t, a) => t + (a.minutes || 0), 0), all: xs.reduce((t, a) => t + (a.minutes || 0), 0), n: xs.length}; });
+  const isMi = (progM || (plan.multi || p.goal === "swim" || p.goal === "bike" ? "time" : "mi")) === "mi";
+  const vals = weeks.map(x => isMi ? r1(x.mi) : r1(x.all / 60)), sel = progSel == null || progSel >= N ? N - 1 : progSel;
+  const before = vals.slice(0, N - 1).filter(v => v > 0), avg = before.length >= 2 ? r1(before.reduce((a, b) => a + b, 0) / before.length) : null;
+  const cw = plan.weeks[weekOf(TODAY)], planTxt = !cw ? '' : isMi && !plan.multi && cw.miles ? ' · plan ' + cw.miles + ' mi' : !isMi && plan.multi && cw.hours ? ' · plan ' + cw.hours + ' h' : '';
+  const wkRead = i => { const x = weeks[i], last = i === N - 1, w = x.n + (x.n === 1 ? ' workout' : ' workouts');
+    return {v: isMi ? String(r1(x.mi)) : hmin(x.all), u: isMi ? 'mi' : '', d: 'Week of ' + shortD(x.ws) + (last ? ' · this week' : ''),
+      n: (isMi ? (x.min ? hmin(x.min) + ' running · ' : '') : (x.mi ? r1(x.mi) + ' mi run · ' : '')) + w + (last ? planTxt : '')}; };
   let h = '<div class="prog-h"><h2>Your progress</h2><button type="button" data-act="go" data-scr="t-miles">View plan</button></div>' +
-    '<div class="prog-top"><div><span>Runs</span><b>' + half(w.mi) + '<small>mi</small></b><em>Week of ' + shortD(w.ws) + (sel === N - 1 ? ' (this week)' : '') + '</em></div><div class="rt"><span>Run time</span><b>' + hmin(w.min) + '</b><em>' + w.n + ' activit' + (w.n === 1 ? 'y' : 'ies') + '</em></div></div>' + svg;
-  // last 30 days + fitness
-  const sumMin = (a, b) => acts.filter(x => x.date > addDays(TODAY, -a) && x.date <= addDays(TODAY, -b)).reduce((t, x) => t + (x.minutes || 0), 0);
-  const m30 = sumMin(30, 0), mPrev = sumMin(60, 30), diff = m30 - mPrev;
-  const cum = (from) => { let t = 0; return Array.from({length: 30}, (_, i) => { const d = addDays(TODAY, -from - 29 + i); t += acts.filter(x => x.date === d).reduce((s2, x) => s2 + (x.minutes || 0), 0); return t; }); };
-  const c1 = cum(0), c0 = cum(30), cmax = Math.max(1, c1[29], c0[29]), spark = (arr, mx, col, fill) => { const pts = arr.map((v, i) => (i * 150 / 29).toFixed(1) + ',' + (56 - v / mx * 50).toFixed(1)); return (fill ? '<polygon points="0,56 ' + pts.join(' ') + ' 150,56" fill="' + col + '" opacity=".25"/>' : '') + '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2.4" stroke-linejoin="round"/>'; };
-  const fs_ = fitnessSeries(90, acts), cur = fs_[fs_.length - 1], form = cur.ctl - cur.atl, fmx = Math.max(1, ...fs_.map(x => Math.max(x.ctl, x.atl)));
-  h += '<div class="pgrid">' +
-    '<div class="pc" data-act="go" data-scr="p-load" role="button" tabindex="0"><div class="ph">' + ic("bars") + '<span>Last 30 days</span><i>›</i></div><div class="pv">' + hmin(m30) + '</div><p class="pm">Time spent training</p><svg viewBox="0 0 150 58" aria-hidden="true">' + spark(c0, cmax, "var(--muted)") + spark(c1, cmax, "var(--accent-2)", true) + '</svg>' +
-      '<div class="pf"><span>vs the 30 days before</span><b class="' + (diff >= 0 ? 'up' : 'down') + '">' + (diff >= 0 ? '+' : '−') + hmin(Math.abs(diff)) + '</b></div></div>' +
-    '<div class="pc" data-act="go" data-scr="p-fit" role="button" tabindex="0"><div class="ph">' + ic("heart") + '<span>Your fitness</span><i>›</i></div><div class="pv">' + Math.round(cur.ctl) + '</div><p class="pm">' + (form >= 5 ? 'Fresh: a good day to push' : form <= -10 ? 'Tired: normal in a hard block' : 'Steady: building nicely') + '</p><svg viewBox="0 0 150 58" aria-hidden="true">' + spark(fs_.slice(-60).map(x => x.atl), fmx, "var(--muted)") + spark(fs_.slice(-60).map(x => x.ctl), fmx, "var(--long)", true) + '</svg>' +
-      '<div class="pf"><span>Form · ' + (form >= 5 ? 'fresh' : form <= -10 ? 'tired' : 'steady') + '</span><b class="' + (form >= 0 ? 'up' : 'down') + '">' + (form >= 0 ? '+' : '−') + Math.abs(Math.round(form)) + '</b></div></div></div>';
+    '<div class="pseg"><div class="mseg" role="group" aria-label="What the chart shows">' + [["mi", "Run miles"], ["time", "Training time"]].map(([k, l]) => '<button type="button" data-act="progm" data-k="' + k + '" aria-pressed="' + ((k === "mi") === isMi) + '">' + l + '</button>').join('') + '</div></div>' +
+    (weeks.some(x => x.n) ? '' : '<p class="sub">Log or sync a workout and your weeks build up here.</p>') +
+    tChart({n: N, kind: "bar", vals, color: "var(--accent-2)", sel, hero: true, rcls: "prog-top", act: "pwk", short: v => v ? String(v) : '', labels: "all", refs: avg ? [{v: avg, name: 'Average of the weeks before: ' + avg + (isMi ? ' mi' : ' h')}] : [],
+      yfmt: v => isMi ? String(v) : v + 'h', xl: weeks.map((x, i) => (N - 1 - i) % 2 ? '' : shortD(x.ws)), read: wkRead, aria: (isMi ? "Run miles" : "Training time") + " per week, last 12 weeks"});
   // race prediction
-  const p = plan.profile, runG = ["5k","10k","half","marathon"].includes(p.goal), gk = runG ? p.goal : "half", pred = plan.pred[gk];
+  const runG = ["5k","10k","half","marathon"].includes(p.goal), gk = runG ? p.goal : "half", pred = plan.pred[gk];
   if (!runG && plan.raceDate) h += '<div class="pc wide" data-act="go" data-scr="t-races" role="button" tabindex="0"><div class="ph">' + ic("flag") + '<span>Race day</span><i>›</i></div><div class="pv">' + Math.max(0, daysBetween(TODAY, plan.raceDate)) + '<small>days to go</small></div><div class="pf"><span>' + esc(HP.raceName(p)) + '</span><b>' + fmtD(plan.raceDate) + '</b></div></div>';
   else h += '<div class="pc wide" data-act="go" data-scr="t-races" role="button" tabindex="0"><div class="ph">' + ic("flag") + '<span>Race prediction</span><i>›</i></div><div class="pv">' + fmtTime(pred) + '<small>' + RACES[gk].name + '</small></div>' +
     (p.goalSec && runG ? '<div class="pf"><span>Goal ' + fmtTime(p.goalSec) + '</span><b class="' + (pred <= p.goalSec ? 'up' : 'down') + '">' + (pred <= p.goalSec ? 'On track' : fmtTime(pred - p.goalSec) + ' to go') + '</b></div>' : '<div class="pf"><span>From your recent race and training</span></div>') + '</div>';
-  // training load + focus
-  const wkActs = acts.filter(a => a.date >= addDays(TODAY, -6)), load7 = Math.round(wkActs.reduce((t, a) => t + loadOf(a), 0)), opt = Math.max(1, cur.ctl * 7);
-  const pos = Math.max(2, Math.min(97, load7 / opt / 1.6 * 100));
-  const r30 = acts.filter(a => a.date > addDays(TODAY, -30) && a.type === "run"), fm = [0, 0, 0]; r30.forEach(a => fm[runClass(a)] += a.minutes || 0);
-  const ft = fm[0] + fm[1] + fm[2], fi = ft ? fm.indexOf(Math.max(...fm)) : 0, FN = ["Aerobic", "Threshold", "Speed"], FC = ["var(--long)", "var(--easy)", "var(--work)"];
-  h += '<div class="pgrid">' +
-    '<div class="pc" data-act="go" data-scr="p-load" role="button" tabindex="0"><div class="ph">' + ic("dumbbell") + '<span>Training load</span><i>›</i></div><div class="pv">' + load7 + '<small>load</small></div><p class="pm">This week vs your usual</p><div class="gauge"><i style="left:' + pos.toFixed(1) + '%"></i></div>' +
-      '<div class="pf"><span>' + wkActs.length + (wkActs.length === 1 ? ' workout' : ' workouts') + ' in 7 days</span><b>' + (load7 < opt * .64 ? 'Low' : load7 <= opt * 1.15 ? 'Good' : load7 <= opt * 1.35 ? 'High' : 'Very high') + '</b></div></div>' +
-    '<div class="pc" data-act="go" data-scr="p-focus" role="button" tabindex="0"><div class="ph">' + ic("gauge") + '<span>Training focus</span><i>›</i></div><div class="pv" style="font-size:26px">' + (ft ? FN[fi] : '–') + '</div><p class="pm">Where most of your running went</p><div class="fbars">' +
-      fm.map((v, i) => '<div><i style="width:' + (ft ? v / ft * 100 : 0) + '%;background:' + FC[i] + '"></i></div>').join("") + '</div>' +
-      '<div class="pf"><span>' + (ft ? Math.round(fm[fi] / ft * 100) + '% of your running · 30 days' : 'No runs in 30 days') + '</span></div></div></div>';
-  // heart rate zones
-  const zt = [0, 0, 0, 0, 0]; acts.filter(a => a.date > addDays(TODAY, -30)).forEach(a => { const z = zoneOf(a.avg_hr); if (z) zt[z - 1] += a.minutes || 0; });
-  const zsum = zt.reduce((x, y) => x + y, 0), zmax = Math.max(1, ...zt), zi = zsum ? zt.indexOf(Math.max(...zt)) : 0, ZC = ["#9CA3B4", "var(--easy)", "var(--long)", "var(--work)", "var(--race)"];
-  h += '<div class="pc wide" data-act="go" data-scr="set-hr" role="button" tabindex="0"><div class="ph">' + ic("heart") + '<span>Heart rate zones</span><i>›</i></div>' +
-    (!hrZones() ? '<div class="pf"><span>Set your max or threshold heart rate to see time in each zone.</span><b>Set up</b></div>'
-      : '<div class="zbars"><b>' + (zsum ? 'Zone ' + (zi + 1) : '–') + '</b>' + zt.map((v, i) => '<div><i style="height:' + (8 + v / zmax * 46).toFixed(0) + 'px;background:' + ZC[i] + ';opacity:' + (i === zi && zsum ? 1 : .55) + '"></i><span>Z' + (i + 1) + '</span></div>').join("") + '</div>' +
-        '<div class="pf"><span>' + (zsum ? Math.round(zt[zi] / zsum * 100) + '% · last 30 days' : 'No heart rate data in 30 days') + '</span></div>') + '</div>';
+  const pc = (to, icon, title, body, isTab) => '<div class="pc wide" data-act="' + (isTab ? 'tab" data-tab2="' : 'go" data-scr="') + to + '" role="button" tabindex="0"><div class="ph">' + ic(icon) + '<span>' + title + '</span><i>›</i></div>' + body + '</div>';
+  // load and fitness
+  const st = loadState(acts), fs_ = fitnessSeries(90, acts), F = fitState(fs_);
+  h += '<h3 class="pgh">Load and fitness</h3>' +
+    pc("p-load", "dumbbell", "Training load", '<div class="pv">' + st.load7 + '<small>load in the last 7 days</small></div><p class="pk"><b>' + st.verdict[0] + '.</b> ' + st.verdict[1] + '</p>' + loadGauge(st) +
+      '<div class="pf"><span>' + st.n7 + (st.n7 === 1 ? ' workout' : ' workouts') + ' · this week vs your last 4</span><b>' + (st.ratio && !st.young ? st.ratio.toFixed(2) + '×' : '–') + '</b></div>') +
+    pc("p-fit", "heart", "Fitness and form", F.figs + '<p class="pk"><b>' + F.say[0] + '.</b> ' + F.say[1] + ' Fitness is ' + (F.trend >= 0 ? 'up ' : 'down ') + Math.abs(Math.round(F.trend)) + ' in 4 weeks.</p>');
   // recovery
-  const dk = Object.keys(dev).sort().slice(-1)[0], dv = dk ? dev[dk] : null;
-  if (dv) h += '<div class="pc wide" data-act="tab" data-tab2="recovery" role="button" tabindex="0"><div class="ph">' + ic("heart") + '<span>Recovery</span><i>›</i></div><div class="rings3">' +
-    ring(dv.rhr ? Math.max(0, 90 - dv.rhr) : 0, 50, "var(--long)", "Resting HR", dv.rhr || '–', '') + ring(dv.hrv || 0, 150, "var(--long)", "HRV", dv.hrv || '–', '') + ring(dv.sleep_h || 0, 8, "var(--work)", "Sleep", dv.sleep_h ? hm(dv.sleep_h) : '–', '') + '</div></div>';
+  const dk = Object.keys(dev).sort().slice(-1)[0], dv = dk ? dev[dk] : null, sig = dk ? sigOn(dk) : null;
+  if (dv){ const nrm = (v, a) => a && v ? 'normal ' + Math.round(a) : '';
+    h += pc("recovery", "heart", "Recovery", '<div class="figs"><div><span>Sleep</span><b>' + (dv.sleep_h ? hm(dv.sleep_h) : '–') + '</b><small>' + (dv.sleep_score != null ? 'score ' + dv.sleep_score : '') + '</small></div><div><span>HRV</span><b>' + (dv.hrv ? Math.round(dv.hrv) + ' ms' : '–') + '</b><small>' + nrm(dv.hrv, sig && sig.hrvA) + '</small></div><div><span>Resting HR</span><b>' + (dv.rhr ? Math.round(dv.rhr) : '–') + '</b><small>' + nrm(dv.rhr, sig && sig.rhrA) + '</small></div></div>' +
+      '<div class="pf"><span>From your watch</span><b>' + (dk === TODAY ? 'Today' : shortD(dk)) + '</b></div>', true); }
+  // where the time went
+  const sumMin = (a, b) => acts.filter(x => x.date > addDays(TODAY, -a) && x.date <= addDays(TODAY, -b)).reduce((t, x) => t + (x.minutes || 0), 0);
+  const m30 = sumMin(30, 0), mPrev = sumMin(60, 30), diff = m30 - mPrev, mx = Math.max(1, m30, mPrev), FO = focusState(acts), Z = zoneState(acts);
+  h += '<h3 class="pgh">Where your time went · 30 days</h3>' +
+    pc("p-load", "bars", "Training time", '<div class="pv">' + (diff >= 0 ? '+' : '−') + hmin(Math.abs(diff)) + '<small>vs the 30 days before</small></div><div class="mrows">' + mrow("Last 30 days", '', hmin(m30), '', m30 / mx, "var(--accent-2)") + mrow("The 30 days before", '', hmin(mPrev), '', mPrev / mx, "#5B6170") + '</div>') +
+    pc("p-focus", "gauge", "Running focus", '<div class="mrows">' + FO.rows + '</div><p class="pk">' + FO.say + '</p>') +
+    pc("set-hr", "heart", "Heart rate zones", !Z.z ? '<div class="pf"><span>Set your max or threshold heart rate to see time in each zone.</span><b>Set up</b></div>'
+      : !Z.zs ? '<div class="pf"><span>No heart rate in your workouts from the last 30 days.</span></div>'
+      : '<div class="zseg" aria-hidden="true">' + Z.zt.map((v, i) => v ? '<i style="flex-grow:' + v + ';background:' + ZC[i] + '"></i>' : '').join("") + '</div><div class="zcols">' + Z.zt.map((v, i) => '<div><span><i style="--c:' + ZC[i] + '"></i>Z' + (i + 1) + '</span><b>' + (v ? hmin(v) : '–') + '</b><small>' + Z.range(i) + '</small></div>').join("") + '</div>' +
+        '<div class="pf"><span>Most of your time: Zone ' + (Z.zt.indexOf(Math.max(...Z.zt)) + 1) + ' ' + HR_NAMES[Z.zt.indexOf(Math.max(...Z.zt))].toLowerCase() + '</span><b>' + Math.round(Math.max(...Z.zt) / Z.zs * 100) + '%</b></div>');
   // personal records (from what's synced: about the last 4 months)
   const runs = acts.filter(a => a.type === "run" && a.mi > 0 && a.minutes > 0), best = (arr, f) => arr.reduce((b, a) => !b || f(a) < f(b) ? a : b, null);
   const longest = runs.reduce((b, a) => !b || a.mi > b.mi ? a : b, null), fmile = best(runs.filter(a => a.mi >= 1), a => a.minutes / a.mi), f5 = best(runs.filter(a => a.mi >= 3.1), a => a.minutes / a.mi), f10 = best(runs.filter(a => a.mi >= 6.2), a => a.minutes / a.mi);
@@ -3246,7 +3437,7 @@ function progressHtml(){
   const prs = pr("Longest run", longest, longest && r2(longest.mi) + ' mi') + pr("Fastest average pace, 1 mi+", fmile, fmile && fmtPace(fmile.minutes * 60 / fmile.mi) + '/mi') +
     pr("Fastest 5K+ run", f5, f5 && fmtPace(f5.minutes * 60 / f5.mi) + '/mi') + pr("Fastest 10K+ run", f10, f10 && fmtPace(f10.minutes * 60 / f10.mi) + '/mi') +
     (bigW && bigW.mi ? '<div class="pr"><div><b>Biggest week</b><span>Week of ' + shortD(bigW.ws) + '</span></div><em>' + half(bigW.mi) + ' mi</em></div>' : '');
-  h += '<div class="pc wide prs"><div class="ph">' + ic("flag") + '<span>Personal records</span></div>' + (prs || '<div class="pf"><span>Log or sync runs and your bests show up here.</span></div>') + '</div>';
+  h += '<h3 class="pgh">Your bests</h3><div class="pc wide prs"><div class="ph">' + ic("flag") + '<span>Personal records</span></div>' + (prs || '<div class="pf"><span>Log or sync runs and your bests show up here.</span></div>') + '</div>';
   h += strengthHtml();
   return h;
 }
@@ -3742,7 +3933,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "122";
+const APP_VERSION = "123";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -3864,8 +4055,10 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-21";
+const NEW_ID = "2026-11-21.2";
 const NEWS = [
+  ["heart", "Recovery, all in one place", "Recovery opens with today's readiness and every number behind it, next to your own normal. One chart switches between readiness, sleep and, with a watch, HRV and resting heart rate, over 14 or 30 days.", "recovery", null, "2026-11-21.2"],
+  ["bars", "Charts that show their numbers", "Charts on Progress and Recovery now have their values on them. Tap or slide across one to read any day or week, and switch the weekly chart between run miles and training time.", "progress", null, "2026-11-21.2"],
   ["bolt", "Know when your first workout is", "New to Mileset? On a rest day, Today shows your first workout and when it is, with a button to link your watch so runs check off on their own.", null, null, "2026-11-21"],
   ["spark", "A cleaner, clearer Mileset", "The coach slides up from Message your coach, every Progress tile says what its number means, and plan and progress screens end with Go deeper with your coach.", null, null, "2026-11-19.3"],
   ["cal", "Plan and workouts, tidied up", "Plan opens on today and you can swipe the week card to change weeks. A workout's page now leads with distance, pace and time, with your fastest lap marked.", "plan", null, "2026-11-19.3"],
@@ -4231,7 +4424,7 @@ document.addEventListener("click", ev => {
     render(); window.scrollTo(0, 0); return;
   }
   if (act === "prev"){ setup.err = ""; setup.resumed = false; if (setup.step === 0 && plan){ setup = null; render(); return; } setup.step = Math.max(-1, setup.step - 1); render(); window.scrollTo(0, 0); return; }
-  if (act === "sample"){ if (API) mode = "sample"; plan = buildPlan({...SAMPLE}); setup = null; save(); setTab("today", true); toast("Showing a sample runner. Tap the gear to build your own plan."); return; }
+  if (act === "sample"){ if (API){ mode = "sample"; dev = sampleDev(); } plan = buildPlan({...SAMPLE}); setup = null; save(); setTab("today", true); toast("Showing a sample runner. Tap the gear to build your own plan."); return; }
   if (act === "done"){
     const k = a.dataset.key, on = !done[k], firstEver = on && !Object.keys(done).length && !acts.length;
     if (on) done[k] = 1; else delete done[k]; save(); render();
@@ -4410,7 +4603,10 @@ document.addEventListener("click", ev => {
     return;
   }
   if (act === "wxset"){ wxState = "pick"; wxErr = ""; go("weather"); return; }
-  if (act === "pwk"){ progSel = +a.dataset.i; render(); return; }
+  if (act === "pwk" || act === "tcp"){ tcPick(a); return; }
+  if (act === "recm"){ recM = a.dataset.k; render(); return; }
+  if (act === "recn"){ recN = +a.dataset.n === 30 ? 30 : 14; render(); return; }
+  if (act === "progm"){ progM = a.dataset.k; render(); return; }
   if (act === "tab"){ setTab(a.dataset.tab2, true); return; }
   if (act === "go"){ if (a.dataset.scr === "set-report" && reportView && reportView.sent) reportView = null; go(a.dataset.scr); return; }
   if (act === "back"){ if (scr === "set-hr") hrEdit = null; if (scr === "set-profile") pf = null; if (/^set-(email|password)$/.test(scr)) af = null; const up = SCR_UP[scr] || null; if (scr === "set-report") reportView = null; go(up); return; }
@@ -4573,7 +4769,7 @@ document.addEventListener("click", ev => {
   if (act === "nasknot"){ closeMenu(); return; }
   if (act === "naskapp"){ closeMenu(); openInstall(); return; }
   if (act === "wndone"){ wnSeen(); wnPill(false); return; }
-  if (act === "wngo"){ const to = a.dataset.to; wnSeen(); if (to === "progress" || to === "activities" || to === "plan"){ scr = null; actSel = null; tab = to === "progress" ? "training" : to; render(); window.scrollTo(0, 0); } else go(to); wnPill(true); return; }
+  if (act === "wngo"){ const to = a.dataset.to; wnSeen(); if (to === "progress" || to === "recovery" || to === "activities" || to === "plan"){ scr = null; actSel = null; tab = to === "progress" ? "training" : to; render(); window.scrollTo(0, 0); } else go(to); wnPill(true); return; }
   if (act === "wnback" || act === "wnopen"){ wnPill(false); whatsNew(true); return; }
   if (act === "naskyes"){ a.disabled = true; a.textContent = "One moment…"; pushOn().then(() => { closeMenu(); render(); toast("Notifications are on."); }).catch(e => { closeMenu(); toast(e.message || "Couldn't turn on notifications."); }); return; }
   if (act === "pushon"){ a.disabled = true; a.textContent = "One moment…"; pushOn().then(() => { render(); toast("Notifications are on."); }).catch(e => { a.disabled = false; a.textContent = "Turn on notifications"; toast(e.message || "Couldn't turn on notifications."); }); return; }
