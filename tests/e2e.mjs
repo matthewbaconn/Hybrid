@@ -842,24 +842,66 @@ await check("Mobile 5: the Mileset logo is whole, white and never covered", asyn
   if (r.length) throw new Error(r.join("; ")); return "bolt whole, white, clear of the pill and buttons";
 });
 await check("Mobile 6: Back stays on screen while you scroll, and the phone's own Back closes the screen", async () => {
+  /* Nov 22 (Matthew: "swiping back, its like glitching and showing different screens"): this check used to press the phone's
+     Back with page.goBack() on the iPhone profile. A real iPhone has no Back button: its Back is an edge swipe, on the same
+     finger as the app's own swipe-back, and it only exists once the app has put a step in the history. So the iPhone half now
+     checks that no step is added and that the app's swipe goes back exactly one screen, and the phone-Back half runs on an
+     Android profile, including a swipe and the phone's Back arriving together. */
   await tab("today"); await settleNav(); const out = [];
   const reach = async sel => page.evaluate(sel => { const b = document.querySelector(sel); if (!b) return "no back button"; const r = b.getBoundingClientRect(); if (r.top < 0 || r.bottom > innerHeight * .25) return "back button is at " + Math.round(r.top) + "px";
     const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return e && e.closest(sel) ? "" : "back button is covered"; }, sel);
+  const settle = p => p.waitForFunction(() => !document.documentElement.dataset.nav, null, {timeout: 3000}).catch(() => {});
+  const swipeBack = async (p, thenBack) => { const c = await p.context().newCDPSession(p);   // a finger from the left edge to past the middle
+    await c.send("Input.dispatchTouchEvent", {type: "touchStart", touchPoints: [{x: 6, y: 420}]});
+    for (let x = 20; x <= 240; x += 20){ await c.send("Input.dispatchTouchEvent", {type: "touchMove", touchPoints: [{x, y: 420}]}); await p.waitForTimeout(12); }
+    await c.send("Input.dispatchTouchEvent", {type: "touchEnd", touchPoints: []});
+    if (thenBack != null){ await p.waitForTimeout(thenBack); await p.goBack().catch(() => {}); }
+    await p.waitForTimeout(900); await settle(p); await c.detach().catch(() => {}); };
+  const title = p => p.evaluate(() => { const h = document.querySelector(".scrbar h1"); return h ? h.textContent : "(no screen open)"; });
+  // iPhone: the on-screen Back stays in reach, no history step, and the app's swipe goes back one screen at a time
+  const len0 = await page.evaluate(() => history.length);
   await tab("more"); await settleNav(); await page.click('[data-scr="faq"]'); await page.waitForSelector(".scrbar"); await settleNav(); await page.evaluate(() => window.scrollTo(0, 900)); await page.waitForTimeout(150);
   if (await page.evaluate(() => window.scrollY) < 100) out.push("FAQ too short to test scrolling");
   let e = await reach('.scrbar [data-act="back"]'); if (e) out.push("FAQ: " + e);
-  await page.goBack(); await page.waitForTimeout(600); await settleNav();
-  if (await page.$(".scrbar")) out.push("the phone's Back left the FAQ open"); if (!(await page.isVisible("#tabbar"))) out.push("the phone's Back left the app");
+  if (await page.evaluate(() => history.length) !== len0) out.push("iPhone: opening a screen added a history step (that switches on iOS's own swipe-Back on top of the app's)");
+  await swipeBack(page); if (await page.$(".scrbar")) out.push("iPhone: the swipe left the FAQ open"); if (!(await page.isVisible("#tabbar"))) out.push("iPhone: the swipe left the app");
+  await tab("more"); await settleNav(); await page.click('[data-scr="settings"]'); await page.waitForSelector(".scrbar"); await settleNav();
+  await page.click('[data-scr="set-acct"]'); await settleNav(); await page.waitForTimeout(300); await page.click('[data-scr="set-profile"]'); await settleNav(); await page.waitForTimeout(300);
+  if ((await title(page)) !== "Body and goals") out.push("could not open Settings > Account and profile > Body and goals (" + (await title(page)) + ")");
+  await swipeBack(page); if ((await title(page)) !== "Account and profile") out.push("iPhone: one swipe from Body and goals landed on \"" + (await title(page)) + "\", not Account and profile");
+  await swipeBack(page); if ((await title(page)) !== "Settings") out.push("iPhone: the second swipe landed on \"" + (await title(page)) + "\", not Settings");
+  await swipeBack(page); if (await page.$(".scrbar")) out.push("iPhone: the third swipe left Settings open");
+  if (await page.evaluate(() => history.length) !== len0) out.push("iPhone: a history step was left behind after the screens closed");
   await tab("activities"); await page.waitForSelector(".actc", {timeout: 5000}); await page.click(".actc >> nth=0"); await page.waitForSelector(".adet-h"); await settleNav();
   await page.evaluate(() => window.scrollTo(0, 700)); await page.waitForTimeout(150);
   if (await page.evaluate(() => window.scrollY) > 100){ e = await reach('[data-act="actback"]'); if (e) out.push("workout: " + e); }
-  await page.goBack(); await page.waitForTimeout(600); await settleNav();
-  if (await page.$(".adet-h")) out.push("the phone's Back left the workout open"); if (!(await page.isVisible("#tabbar"))) out.push("the phone's Back left the app");
-  // a fast tab switch right after closing and reopening screens must never walk the history out of the app
-  await tab("more"); await settleNav(); await page.click('[data-scr="faq"]'); await page.waitForSelector(".scrbar"); await tab("today"); await tab("more"); await tab("more"); await tab("today"); await page.waitForTimeout(500);
-  if (!(await page.isVisible("#tabbar"))) out.push("quick tab switches with a screen open walked out of the app (" + page.url() + ")");
+  await swipeBack(page); if (await page.$(".adet-h")) out.push("iPhone: the swipe left the workout open"); if (!(await page.isVisible("#tabbar"))) out.push("iPhone: the swipe on a workout left the app");
+  // Android: the phone's own Back closes the open screen, and a swipe with the phone's Back on the same gesture is one Back
+  const actx = await browser.newContext({viewport: {width: 390, height: 844}, userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 Playwright MilesetTest", deviceScaleFactor: 2, isMobile: true, hasTouch: true, storageState: await ctx.storageState()});
+  await actx.addInitScript(() => { try { localStorage.setItem("hy-nask", String(Date.now())); localStorage.setItem("hy-nonew", "1"); } catch(e){} });
+  try {
+    const ap = await actx.newPage(), atab = async t => { await ap.click('#tabbar [data-tab="' + t + '"]'); await ap.waitForTimeout(400); };
+    await ap.goto(SITE, {waitUntil: "domcontentloaded"}); await ap.waitForSelector("#tabbar", {state: "visible", timeout: 20000});
+    await atab("more"); await settle(ap); await ap.click('[data-scr="faq"]'); await ap.waitForSelector(".scrbar"); await settle(ap);
+    await ap.goBack(); await ap.waitForTimeout(600); await settle(ap);
+    if (await ap.$(".scrbar")) out.push("the phone's Back left the FAQ open"); if (!(await ap.isVisible("#tabbar"))) out.push("the phone's Back left the app");
+    await atab("activities"); await ap.waitForSelector(".actc", {timeout: 5000}); await ap.click(".actc >> nth=0"); await ap.waitForSelector(".adet-h"); await settle(ap);
+    await ap.goBack(); await ap.waitForTimeout(600); await settle(ap);
+    if (await ap.$(".adet-h")) out.push("the phone's Back left the workout open"); if (!(await ap.isVisible("#tabbar"))) out.push("the phone's Back left the app");
+    for (const gap of [350, 1]){   // the phone's Back landing after the app's swipe, then before it
+      await atab("more"); await settle(ap); if (!(await ap.$(".scrbar"))){ await ap.click('[data-scr="settings"]'); await ap.waitForSelector(".scrbar"); await settle(ap); }
+      while ((await title(ap)) !== "Settings" && await ap.$('.scrbar [data-act="back"]')){ await ap.click('.scrbar [data-act="back"]'); await ap.waitForTimeout(350); await settle(ap); }
+      await ap.click('[data-scr="set-acct"]'); await settle(ap); await ap.waitForTimeout(300); await ap.click('[data-scr="set-profile"]'); await settle(ap); await ap.waitForTimeout(300);
+      await swipeBack(ap, gap);
+      if ((await title(ap)) !== "Account and profile") out.push("a swipe with the phone's Back " + (gap > 1 ? "after" : "before") + " it landed on \"" + (await title(ap)) + "\", not Account and profile (two Backs for one gesture)");
+    }
+    // a fast tab switch right after closing and reopening screens must never walk the history out of the app
+    await atab("today"); await atab("more"); await settle(ap); if (await ap.$('.scrbar [data-act="back"]')){ while (await ap.$('.scrbar [data-act="back"]')){ await ap.click('.scrbar [data-act="back"]'); await ap.waitForTimeout(350); } }
+    await ap.click('[data-scr="faq"]'); await ap.waitForSelector(".scrbar"); await atab("today"); await atab("more"); await atab("more"); await atab("today"); await ap.waitForTimeout(500);
+    if (!(await ap.isVisible("#tabbar"))) out.push("quick tab switches with a screen open walked out of the app (" + ap.url() + ")");
+  } finally { await actx.close().catch(() => {}); }
   await page.goto(SITE, {waitUntil: "domcontentloaded"}).catch(() => {}); await page.waitForSelector("#tabbar", {state: "visible", timeout: 20000}).catch(() => {});
-  if (out.length) throw new Error(out.join("; ")); return "Back stuck to the top in the FAQ and a workout · phone Back closes them";
+  if (out.length) throw new Error(out.join("; ")); return "iPhone: no history step, one swipe = one screen back · Android: phone Back closes screens, a swipe plus Back is one Back";
 }, {needs: "Log a workout (with rep pace)"});
 await check("Mobile sweep: every button on every tab does something", async () => {
   const r = await page.evaluate(async () => { const src = await (await fetch(location.href.split("#")[0], {cache: "no-store"})).text(); return src; }).then(async src => {
