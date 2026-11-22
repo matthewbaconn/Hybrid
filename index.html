@@ -1138,7 +1138,7 @@ function loadAccount(j){
   // (it was never sent before: the old trigger was Next on the welcome screen, which account members never see)
   if (!plan) api("POST", "/api/account/setup-step", {step: 0}).catch(() => {});
 }
-function signedOut(){ scr = null; feat = {}; inv = null; revOpen = false; aiSt = {on: true, asked: true, needs: false, available: false}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
+function signedOut(){ scr = null; feat = {}; inv = null; revOpen = false; aiSt = {on: true, asked: true, needs: false, available: false}; ask.msgs = []; liftLog = []; mealplan = null; crews = []; liftOpen = {}; mpv = null; crv = null; crewSel = null; bc = null; fp = null; rsv = null; isOwner = false; mem = null; reports = []; reportView = null; token = null; tokenStore.set(null); me = null; mode = "none"; plan = null; setup = null; authv = null; clearObj(done); clearObj(food); clearObj(checkins); clearObj(weights); dev = {}; acts = []; reviews = {}; notes = []; strava = {available: false, connected: false, name: "", last_sync: null}; render(); }
 /* ============ tracking: check-ins, weigh-ins, workouts, Strava ============ */
 const checkins = S.checkins || {};          // date -> {sleep_h, sleep_q, soreness, energy, stress}
 const weights = S.weights || {};            // date -> lb
@@ -1725,6 +1725,16 @@ function mountMaps(){
 /* sample runner: a few made-up activities so the tab isn't empty */
 function loopPts(lat, lng, w, h, n){ const out = []; for (let i = 0; i <= n; i++){ const t = i / n * 4, side = Math.floor(t) % 4, f = t - Math.floor(t);
   const p = side === 0 ? [lat, lng + w * f] : side === 1 ? [lat - h * f, lng + w] : side === 2 ? [lat - h, lng + w * (1 - f)] : [lat - h * (1 - f), lng]; out.push([p[0] + Math.sin(i * 1.7) * 0.00002, p[1] + Math.cos(i * 1.3) * 0.00002]); } return out; }
+/* ...and a month of made-up watch numbers, so Recovery is a real screen for someone looking around and not a check-in
+   prompt (Nov 21). Marked source "sample" (never shown as Garmin's), the same all day (seeded by the date), and last night
+   is an ordinary good night. Kept in dev only while the sample runner is on screen: loadAccount and signedOut replace it. */
+function sampleDev(){
+  const out = {}, rnd = s => { let h = 2166136261; for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return ((h >>> 0) % 1000) / 1000; };
+  for (let i = 0; i < 30; i++){ const d = addDays(TODAY, -i), r = k => rnd(d + k);
+    out[d] = {date: d, source: "sample", sleep_h: i ? Math.round((6.5 + r("s") * 1.8) * 100) / 100 : 7.6, sleep_score: i ? Math.round(66 + r("q") * 24) : 84, rhr: i ? Math.round(49 + r("r") * 5) : 50, hrv: i ? Math.round(60 + r("h") * 20) : 72,
+      steps: Math.round(6500 + r("t") * 7000), active_cal: Math.round(450 + r("c") * 600)}; }
+  return out;
+}
 function sampleActs(){
   const loop = loopPts(27.6531, -80.4402, .0105, .0072, 120), out = loopPts(27.6448, -80.3972, .0032, .028, 160);
   return [
@@ -1979,9 +1989,9 @@ addEventListener("pointermove", e => {
 
 /* ---------- Recovery tab ---------- */
 /* Nov 21 (Matthew: "more detailed and easier to read"): one Today card (the score, where it sits between the plan's three
-   zones, and every number it comes from next to your own normal) and one 14-day chart you switch between readiness, sleep,
+   zones, and every number it comes from next to your own normal) and one chart (14 or 30 days) you switch between readiness, sleep,
    HRV and resting heart rate, in place of four charts stacked with no numbers on them. */
-let recM = null;
+let recM = null, recN = 14;
 const REC_SAY = ["Train as planned.", "Today's session is trimmed. See the note on the Today tab.", "Today is easy or rest. Your workout moves later in the week."];
 const hm = h => { const m = Math.round(h * 60); return Math.floor(m / 60) + 'h ' + pad(m % 60) + 'm'; };
 const hmShort = h => { const m = Math.round(h * 60); return m < 60 ? m + ' min' : hm(h); };
@@ -2027,7 +2037,7 @@ function renderRecovery(){
   if (rows) h += '<div class="rrows">' + rows + '</div>';
   if (r && sig && tDay === TODAY && sig.notes.length) h += '<p class="fbnote">' + ic("gauge") + '<span>' + esc(sig.notes.join(", ").replace(/^./, x => x.toUpperCase())) + '.' + (sig.pen ? ' Readiness is lowered a little to match.' : '') + '</span></p>';
   if (mode === "account" && !days.some(d => dev[d])) h += '<p class="sub">No watch data yet. Add sleep and heart rate from your iPhone and your readiness uses them.</p><button class="btn block" type="button" data-act="menu">Set up in Settings</button>';
-  h += (r && !c || (!r && watchLinked() && watchFeeding()) ? feelBtn() : '') + '</section>' + recTrends(days);
+  h += (r && !c || (!r && watchLinked() && watchFeeding()) ? feelBtn() : '') + '</section>' + recTrends();
   h += '<section class="card" style="--tone:var(--work)"><div class="card-h">' + ic("gauge") + '<span class="lbl">How the plan adapts</span></div><ul class="rules">' +
     '<li><i style="--c:var(--good)"></i><span><b>Green (70+):</b> train as planned.</span></li>' +
     '<li><i style="--c:var(--warn)"></i><span><b>Amber (50–69):</b> workouts lose a rep, long runs get 2 mi shorter, easy runs stay strictly easy.</span></li>' +
@@ -2035,8 +2045,10 @@ function renderRecovery(){
     '<p class="sub">Readiness comes from your sleep, soreness, energy and stress. If your watch sends HRV and resting heart rate, a clearly low HRV or high resting HR lowers it a little.</p></section>';
   return h;
 }
-function recTrends(days){
-  const N = days.length, rd = days.map(d => readiness(checkins[d], sigOn(d)));
+function recTrends(){
+  // 30 days is offered once there is anything older than two weeks to show
+  const old = addDays(TODAY, -13), deep = Object.keys(dev).concat(Object.keys(checkins)).some(k => k < old), N = deep && recN === 30 ? 30 : 14;
+  const days = Array.from({length: N}, (_, i) => addDays(TODAY, i - N + 1)), rd = days.map(d => readiness(checkins[d], sigOn(d)));
   const fromWatch = days.map(d => !!(dev[d] && dev[d].sleep_h));
   const S = {ready: rd.map(x => x ? x.score : null), sleep: days.map((d, i) => fromWatch[i] ? dev[d].sleep_h : checkins[d] ? checkins[d].sleep_h : null),
     hrv: days.map(d => dev[d] && dev[d].hrv || null), rhr: days.map(d => dev[d] && dev[d].rhr || null)};
@@ -2046,7 +2058,7 @@ function recTrends(days){
   const iLo = vals.indexOf(Math.min(...got)), iHi = vals.indexOf(Math.max(...got)), n1 = x => Math.round(x * 10) / 10;
   const yd = addDays(TODAY, -1), dn = d => d === TODAY ? 'Today' : d === yd ? 'Yesterday' : DAYS[dow(d)] + ', ' + fmtD(d), sd = d => d === TODAY ? 'Today' : fmtD(d);
   let lastMon = null;
-  const xl = days.map((d, i) => { if ((N - 1 - i) % 2) return ''; if (i === N - 1) return 'Today'; const mo = d.slice(5, 7), out = (mo !== lastMon ? MON[+mo - 1] + ' ' : '') + (+d.slice(8, 10)); lastMon = mo; return out; });
+  const xl = days.map((d, i) => { if ((N - 1 - i) % (N > 14 ? 7 : 2)) return ''; if (i === N - 1) return 'Today'; const mo = d.slice(5, 7), out = (mo !== lastMon ? MON[+mo - 1] + ' ' : '') + (+d.slice(8, 10)); lastMon = mo; return out; });
   const sigs = days.map(d => dev[d] ? sigOn(d) : null), lastSig = sigs.filter(Boolean).slice(-1)[0], nrm = lastSig ? (k === "hrv" ? lastSig.hrvA : k === "rhr" ? lastSig.rhrA : null) : null;
   const nrmRef = (unit) => nrm ? [{v: Math.round(nrm), name: 'Your normal now: ' + Math.round(nrm) + unit + ' (the 14 days before)'}] : [];
   const slTxt = i => fromWatch[i] ? hm(vals[i]) : vals[i] >= 9 ? '9+ h' : vals[i] < 5 ? 'Under 5 h' : vals[i] + ' h';
@@ -2054,22 +2066,22 @@ function recTrends(days){
     ready: {kind: "bar", color: (v, i) => 'var(--' + ["good", "warn", "crit"][rd[i].level] + ')', ymax: 100, ticks: [0, 50, 70, 100], short: v => String(v),
       read: i => ({v: String(vals[i]), n: rd[i].word}), fig: v => String(Math.round(v)), lo: "Lowest", hi: "Highest",
       keys: [["good", "Ready (70+)"], ["warn", "Go easier (50–69)"], ["crit", "Recovery day"]].map(([c, l]) => '<span><i style="--c:var(--' + c + ')"></i>' + l + '</span>'),
-      aria: "Readiness score for each of the last 14 days"},
+      aria: "Readiness score for each of the last " + N + " days"},
     sleep: {kind: "bar", color: 'var(--swim)', dim: i => n1(vals[i]) < 7, refs: [{v: SLEEP_GOAL, name: 'Your ' + SLEEP_GOAL + ' h goal'}], short: v => String(n1(v)),
       read: i => ({v: slTxt(i), n: vals[i] >= SLEEP_GOAL ? 'Met your goal' : hmShort(SLEEP_GOAL - vals[i]) + ' short of your goal'}), fig: v => hm(v), lo: "Shortest", hi: "Longest",
-      keys: got.some(v => n1(v) < 7) ? ['<span><i style="--c:var(--swim);opacity:.45"></i>Under 7 h</span>'] : [], aria: "Hours of sleep for each of the last 14 nights"},
+      keys: got.some(v => n1(v) < 7) ? ['<span><i style="--c:var(--swim);opacity:.45"></i>Under 7 h</span>'] : [], aria: "Hours of sleep for each of the last " + N + " nights"},
     hrv: {kind: "line", color: 'var(--easy)', whole: true, refs: nrmRef(' ms'), short: v => String(Math.round(v)),
       read: i => ({v: String(Math.round(vals[i])), u: 'ms', n: vsNormal(vals[i], sigs[i] && sigs[i].hrvA, ' ms')}), fig: v => Math.round(v) + ' ms', lo: "Lowest", hi: "Highest",
-      fine: 'Higher is usually a sign you\'re recovered. A night 12% or more under your normal lowers readiness a little.', aria: "Heart rate variability for each of the last 14 days"},
+      fine: 'Higher is usually a sign you\'re recovered. A night 12% or more under your normal lowers readiness a little.', aria: "Heart rate variability for each of the last " + N + " days"},
     rhr: {kind: "line", color: 'var(--hyrox)', whole: true, refs: nrmRef(' bpm'), short: v => String(Math.round(v)),
       read: i => ({v: String(Math.round(vals[i])), u: 'bpm', n: vsNormal(vals[i], sigs[i] && sigs[i].rhrA, ' bpm')}), fig: v => Math.round(v) + ' bpm', lo: "Lowest", hi: "Highest",
-      fine: 'Lower is usually a sign you\'re recovered. A morning 5 bpm or more over your normal lowers readiness a little.', aria: "Resting heart rate for each of the last 14 days"}
+      fine: 'Lower is usually a sign you\'re recovered. A morning 5 bpm or more over your normal lowers readiness a little.', aria: "Resting heart rate for each of the last " + N + " days"}
   }[k];
   const read = i => vals[i] == null ? {v: '–', d: dn(days[i]), n: k === "ready" ? 'No check-in or watch data' : 'Nothing recorded'} : {...C.read(i), d: dn(days[i])};
   const garminIn = k === "ready" && days.some((d, i) => rd[i] && dev[d] && dev[d].source === "garmin");
-  return '<section class="card rtrend" style="--tone:var(--long)"><div class="card-h">' + ic("bars") + '<span class="lbl">Last 14 days</span><span class="r">Tap any day</span></div>' + gAttr(garminIn) +
+  return '<section class="card rtrend" style="--tone:var(--long)"><div class="card-h">' + ic("bars") + '<span class="lbl">Last ' + N + ' days</span>' + (deep ? '<div class="wrng" role="group" aria-label="Range">' + [[14, "14 d"], [30, "30 d"]].map(([n, l]) => '<button type="button" data-act="recn" data-n="' + n + '" aria-pressed="' + (N === n) + '"' + (N === n ? ' class="on"' : '') + '>' + l + '</button>').join("") + '</div>' : '<span class="r">Tap any day</span>') + '</div>' + gAttr(garminIn) +
     (M.length > 1 ? '<div class="mseg" role="group" aria-label="What the chart shows">' + M.map(m => '<button type="button" data-act="recm" data-k="' + m[0] + '" aria-pressed="' + (m[0] === k) + '">' + m[1] + '</button>').join('') + '</div>' : '') +
-    tChart({n: N, kind: C.kind, vals, color: C.color, dim: C.dim, refs: C.refs, ymax: C.ymax, ticks: C.ticks, whole: C.whole, short: C.short, labels: "all", xl, read, keys: C.keys, aria: C.aria}) +
+    tChart({n: N, kind: C.kind, vals, color: C.color, dim: C.dim, refs: C.refs, ymax: C.ymax, ticks: C.ticks, whole: C.whole, short: C.short, labels: N > 14 ? "ends" : "all", xl, read, keys: C.keys, aria: C.aria}) +
     '<div class="figs"><div><span>Average</span><b>' + C.fig(avg) + '</b><small>' + got.length + ' of ' + N + ' days</small></div><div><span>' + C.lo + '</span><b>' + C.fig(vals[iLo]) + '</b><small>' + sd(days[iLo]) + '</small></div><div><span>' + C.hi + '</span><b>' + C.fig(vals[iHi]) + '</b><small>' + sd(days[iHi]) + '</small></div></div>' +
     (C.fine ? '<p class="fine">' + C.fine + '</p>' : '') + '</section>';
 }
@@ -4045,7 +4057,7 @@ async function pushOn(){
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
 const NEW_ID = "2026-11-21.2";
 const NEWS = [
-  ["heart", "Recovery, all in one place", "Recovery opens with today's readiness and every number behind it, next to your own normal. One 14-day chart switches between readiness, sleep and, with a watch, HRV and resting heart rate.", "recovery", null, "2026-11-21.2"],
+  ["heart", "Recovery, all in one place", "Recovery opens with today's readiness and every number behind it, next to your own normal. One chart switches between readiness, sleep and, with a watch, HRV and resting heart rate, over 14 or 30 days.", "recovery", null, "2026-11-21.2"],
   ["bars", "Charts that show their numbers", "Charts on Progress and Recovery now have their values on them. Tap or slide across one to read any day or week, and switch the weekly chart between run miles and training time.", "progress", null, "2026-11-21.2"],
   ["bolt", "Know when your first workout is", "New to Mileset? On a rest day, Today shows your first workout and when it is, with a button to link your watch so runs check off on their own.", null, null, "2026-11-21"],
   ["spark", "A cleaner, clearer Mileset", "The coach slides up from Message your coach, every Progress tile says what its number means, and plan and progress screens end with Go deeper with your coach.", null, null, "2026-11-19.3"],
@@ -4412,7 +4424,7 @@ document.addEventListener("click", ev => {
     render(); window.scrollTo(0, 0); return;
   }
   if (act === "prev"){ setup.err = ""; setup.resumed = false; if (setup.step === 0 && plan){ setup = null; render(); return; } setup.step = Math.max(-1, setup.step - 1); render(); window.scrollTo(0, 0); return; }
-  if (act === "sample"){ if (API) mode = "sample"; plan = buildPlan({...SAMPLE}); setup = null; save(); setTab("today", true); toast("Showing a sample runner. Tap the gear to build your own plan."); return; }
+  if (act === "sample"){ if (API){ mode = "sample"; dev = sampleDev(); } plan = buildPlan({...SAMPLE}); setup = null; save(); setTab("today", true); toast("Showing a sample runner. Tap the gear to build your own plan."); return; }
   if (act === "done"){
     const k = a.dataset.key, on = !done[k], firstEver = on && !Object.keys(done).length && !acts.length;
     if (on) done[k] = 1; else delete done[k]; save(); render();
@@ -4593,6 +4605,7 @@ document.addEventListener("click", ev => {
   if (act === "wxset"){ wxState = "pick"; wxErr = ""; go("weather"); return; }
   if (act === "pwk" || act === "tcp"){ tcPick(a); return; }
   if (act === "recm"){ recM = a.dataset.k; render(); return; }
+  if (act === "recn"){ recN = +a.dataset.n === 30 ? 30 : 14; render(); return; }
   if (act === "progm"){ progM = a.dataset.k; render(); return; }
   if (act === "tab"){ setTab(a.dataset.tab2, true); return; }
   if (act === "go"){ if (a.dataset.scr === "set-report" && reportView && reportView.sent) reportView = null; go(a.dataset.scr); return; }
