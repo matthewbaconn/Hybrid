@@ -282,19 +282,19 @@ await check("Watch connected: readiness and sleep replace the morning survey, an
     const t = (await page.textContent(".ci-done.wr")).replace(/\s+/g, " ");
     if (!/From your Garmin/.test(t) || !/Insights derived in part from Garmin device-sourced data\./.test(t) || !/7\.2 h sleep/.test(t) || !/sleep score 82/.test(t) || !/HRV 61 ms/.test(t) || !/resting HR 49/.test(t)) throw new Error("watch card wrong: " + t.slice(0, 200));
     await noSurvey("on Today"); await noOverflow();
-    await tab("recovery"); await page.waitForSelector(".rings"); await noSurvey("on Recovery");
+    await tab("recovery"); await page.waitForSelector(".rscale"); await noSurvey("on Recovery");
     // a check-in saved earlier today (before this change) must not bring the survey or its Edit link back
     saved = true; await load();
     const t2 = (await page.textContent(".ci-done.wr")).replace(/\s+/g, " ");
     if (!/From your Garmin/.test(t2) || !/HRV 61 ms/.test(t2)) throw new Error("with a check-in saved today the watch card is gone: " + t2.slice(0, 200));
     await noSurvey("on Today (check-in already saved)");
-    await tab("recovery"); await page.waitForSelector(".rings"); await noSurvey("on Recovery (check-in already saved)");
+    await tab("recovery"); await page.waitForSelector(".rscale"); await noSurvey("on Recovery (check-in already saved)");
     // with the coach on: how you feel is typed to the coach, from Today and from Recovery
     saved = false; coachOn = true; await load(); await noSurvey("on Today (coach on)");
     await page.click('.ci-done.wr [data-act="askfeel"]'); await page.waitForSelector(".sheet.asks #ask-q");
     const ph = await page.getAttribute("#ask-q", "placeholder"); if (!/how do you feel/i.test(ph || "")) throw new Error("the coach did not open asking how you feel: " + ph);
     await page.click('.sheet.asks [data-act="askclose"]'); await page.waitForSelector(".sheet.asks", {state: "detached"});
-    await tab("recovery"); await page.waitForSelector(".rings"); await noSurvey("on Recovery (coach on)");
+    await tab("recovery"); await page.waitForSelector(".rscale"); await noSurvey("on Recovery (coach on)");
     if (!(await page.locator('#app [data-act="askfeel"]').count())) throw new Error("Recovery has no 'Tell your coach how you feel' link with the coach on");
   } finally {
     await page.unroute("**/api/me", fake); await page.reload({waitUntil: "networkidle"}); await page.waitForSelector("#tabbar");
@@ -605,7 +605,7 @@ await check("Plan tab", async () => {
   await tab("plan"); await noOverflow(); const n = await page.locator(".day").count(); if (n !== 7) throw new Error(n + " day cards");
   await page.click('[data-act="wk"][data-dir="1"]'); await page.waitForTimeout(200); const tips = await page.locator(".fueltip").count(); await shot("04-plan"); return n + " days · " + tips + " fuel tips next week";
 });
-await check("Recovery tab", async () => { await tab("recovery"); await noOverflow(); await page.waitForSelector(".rings"); await shot("05-recovery"); return (await page.innerText(".verdict b")); });
+await check("Recovery tab", async () => { await tab("recovery"); await noOverflow(); await page.waitForSelector(".rscale"); await shot("05-recovery"); return (await page.innerText(".verdict b")); });
 await check("Progress tab", async () => { await tab("training"); await noOverflow(); await page.waitForSelector(".prog-top"); if ((await page.locator(".pc").count()) < 6) throw new Error("progress cards missing"); await page.click('[data-act="pwk"][data-i="10"]'); await page.waitForTimeout(150); await shot("06-progress"); const cards = [];
   for (const k of ["races", "paces", "miles", "body", "setup"]){ await open("t-" + k); await noOverflow(); cards.push(...await page.locator(".card-h .lbl").allInnerTexts()); await back(); } for (const need of ["Race predictions", "Your training paces", "Weekly miles", "Calories · last 7 days", "Calorie check · 14 days"]) if (!cards.some(c => c.toLowerCase() === need.toLowerCase())) throw new Error("missing " + need); return cards.length + " cards"; });
 await check("Activities tab (feed + detail)", async () => {
