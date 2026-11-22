@@ -486,15 +486,33 @@ views.addEventListener("input", e => { if (e.target.id === "b-warn" || e.target.
 const PL = {range: "today"}; let planRec = null;
 function loadPlan(fresh){ HQ.ask({t: "read", q: "planner", range: PL.range}, fresh).then(r => { if (r){ planRec = r; const iv = setInterval(() => { if (view === "me") drawView(true); if (FINAL_ST.includes(r.st)) clearInterval(iv); }, 400); } }); }
 const PKC = {shift: ["Work", "#93a4ba"], deadline: ["Exam / due", "var(--rd)"], appointment: ["Block", "var(--cy)"], todo: ["To-do", "var(--mut)"], calendar: ["Calendar", "#b48cff"], race: ["Race", "var(--em)"], gate: ["Ship gate", "var(--am)"]};
+// Nov 21 10:41pm (Matthew: "I should be able to delete what I put if it changes or adjust the time"): every item on
+// Vesper's agenda has Edit: new time (and day for a one-off), Save, or Delete (tap twice). His tap is the approval.
+const PE = {id: null, del: false};
+const editor = (x, day) => `<div class="pe" style="display:grid;gap:8px;margin-top:8px">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${x.rep ? "" : `<input type="date" id="pe-day" value="${esc(day)}" aria-label="Day" style="font-size:16px">`}
+    <input type="time" id="pe-start" value="${esc(x.t || "")}" aria-label="Start" style="font-size:16px"><span class="mut sm">to</span><input type="time" id="pe-end" value="${esc(x.e || "")}" aria-label="End" style="font-size:16px"></div>
+  ${x.rep ? `<p class="dim xs" style="margin:0">Repeats every ${esc(String(x.rep).split(",").map(w => w[0].toUpperCase() + w.slice(1)).join(", "))}: a new time applies every week.</p>` : ""}
+  <div class="acts"><button type="button" class="btn go" data-pesave="${esc(x.id)}" data-rep="${x.rep ? 1 : ""}">Save</button><button type="button" class="btn warn" data-pedel="${esc(x.id)}">${PE.del ? "Tap again to delete" : "Delete"}</button><button type="button" class="btn" data-pecancel="1">Cancel</button></div></div>`;
 const hm = t => { if (!t) return ""; const [h, m] = t.split(":").map(Number); return ((h % 12) || 12) + ":" + String(m).padStart(2, "0") + (h < 12 ? "am" : "pm"); };
 function vPlanner(){ const P = planRec && planRec.result && planRec.result.plan;
   let h = `<section class="card glass wide" id="c-plan"><h2>Planner</h2><p class="sub">Shifts, exams, races, your calendar and the ship-gate windows on one timeline, so clashes stand out. $0 to look at.</p>
     <div class="qb" style="margin:0 0 10px"><input id="qb" type="text" placeholder="Block 90 mins tomorrow at 7am for NCLEX review" autocomplete="off"><button class="btn go" data-qblock="1">Block</button></div>
-    <p class="dim xs" style="margin:-4px 0 10px">Vesper reads the day and time, then sends you an Approve / Reject card in Telegram showing exactly what it will add to your agenda.</p>
+    <p class="dim xs" style="margin:-4px 0 10px">Vesper reads the day and time and adds it to your agenda right away. Tap Edit on anything you added to move it or delete it.</p>
     <div class="pills">${[["today", "Today"], ["week", "Week"]].map(([v, l]) => `<button type="button" data-pl="${v}" aria-pressed="${PL.range === v}">${l}</button>`).join("")}</div>`;
   if (!P) return h + (planRec && /failed|rejected/.test(planRec.st) ? `<p class="mut">${esc(plain(planRec.say || "Couldn't load the planner."))}</p>` : empty("your timeline", HQ.keyStr() ? "Asking Vesper (a few seconds)." : "Unlock HQ first.")) + `</section>`;
-  h += P.days.map(d => `<h3 style="margin:12px 0 6px">${esc(dayName(d.d))}</h3>${d.items.length ? `<div class="tline">${d.items.map(x => { const [l, c] = PKC[x.kind] || PKC.todo; return `<div class="ti" style="--c:${c}"><time>${x.t ? esc(hm(x.t)) + (x.e ? "<br>" + esc(hm(x.e)) : "") : "all day"}</time><div><small>${esc(l)}</small><b>${esc(plain(x.title))}</b></div></div>`; }).join("")}</div>` : `<p class="mut sm" style="margin:0">Nothing on.</p>`}${d.clash.map(c => `<p class="clash">⚠ Clash: ${esc(c)}</p>`).join("")}`).join("");
+  h += P.days.map(d => `<h3 style="margin:12px 0 6px">${esc(dayName(d.d))}</h3>${d.items.length ? `<div class="tline">${d.items.map(x => { const [l, c] = PKC[x.kind] || PKC.todo; return `<div class="ti" style="--c:${c}"><time>${x.t ? esc(hm(x.t)) + (x.e ? "<br>" + esc(hm(x.e)) : "") : "all day"}</time><div><small>${esc(l)}</small><b>${esc(plain(x.title))}</b>${x.src === "agenda" && x.id ? (PE.id === x.id ? editor(x, d.d) : ` <button type="button" class="btn xs" data-aged="${esc(x.id)}" aria-label="Change or delete ${esc(plain(x.title))}">Edit</button>`) : ""}</div></div>`; }).join("")}</div>` : `<p class="mut sm" style="margin:0">Nothing on.</p>`}${d.clash.map(c => `<p class="clash">⚠ Clash: ${esc(c)}</p>`).join("")}`).join("");
   return h + (P.calendar ? "" : `<p class="dim xs" style="margin:10px 0 0">Your calendar feed isn't connected yet, so this shows Vesper's agenda, races and gate windows. Give Vesper a private calendar (ICS) link to add it.</p>`) + `</section>`; }
+views.addEventListener("click", e => { const b = e.target.closest("[data-aged],[data-pesave],[data-pedel],[data-pecancel]"); if (!b) return;
+  const refresh = () => setTimeout(() => { planRec = null; loadPlan(true); }, 2500);
+  if (b.dataset.aged){ PE.id = /^\d+$/.test(b.dataset.aged) ? +b.dataset.aged : b.dataset.aged; PE.del = false; drawView(true); return; }
+  if (b.dataset.pecancel){ PE.id = null; PE.del = false; drawView(true); return; }
+  if (b.dataset.pedel){ if (!PE.del){ PE.del = true; drawView(true); return; }
+    send({t: "agenda", op: "remove", id: +b.dataset.pedel}, "Delete agenda item"); PE.id = null; PE.del = false; refresh(); drawView(true); return; }
+  if (b.dataset.pesave){ const v = id => (($("#" + id) || {}).value || "").trim(), start = v("pe-start"), end = v("pe-end"), day = b.dataset.rep ? "" : v("pe-day");
+    if (start && end && end <= start) return HQ.toast("The end time has to be after the start.", "warn");
+    send({t: "agenda", op: "move", id: +b.dataset.pesave, start, end, ...(day ? {day} : {})}, "Move agenda item to " + (start ? hm(start) : "any time"));
+    PE.id = null; PE.del = false; refresh(); drawView(true); } });
 views.addEventListener("click", e => { const b = e.target.closest("[data-pl],[data-qblock],[data-gpost]"); if (!b || b.disabled) return;
   if (b.dataset.pl){ PL.range = b.dataset.pl; planRec = null; loadPlan(); drawView(true); return; }
   if (b.dataset.qblock){ const t = ($("#qb") || {}).value.trim(); if (!t) return $("#qb").focus(); send({t: "block", text: t}, "Block: " + cut(t, 50)); $("#qb").value = ""; return; }
