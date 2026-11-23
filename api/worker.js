@@ -926,6 +926,7 @@ async function saveFunnelDaily(env){
 async function cron(env, ctx){
   await logEvent(env, "cron", true);
   await outbox(env).catch(e => logEvent(env, "bulk_mail", false, "outbox " + errName(e)));
+  await weeklyAuto(env).catch(e => logEvent(env, "weekly_auto", false, "cron " + errName(e)));
   await day7Nudges(env).catch(e => logEvent(env, "nudge_mail", false, "cron " + errName(e)));
   await firstWorkoutNudges(env).catch(e => logEvent(env, "first_workout", false, "cron " + errName(e)));
   await saveFunnelDaily(env).catch(e => logEvent(env, "funnel_daily", false, "cron " + errName(e)));
@@ -1179,6 +1180,148 @@ async function outbox(env){
   await env.DB.prepare("UPDATE mail_sent SET sent = ? WHERE id = ?").bind(res.sent, id).run();
   const own = await ownerId(env);
   if (own) await pushTo(env, own, {title: "Member update sent", body: "\"" + subject + "\" went to " + res.sent + " member" + (res.sent === 1 ? "" : "s") + (res.failed ? " (" + res.failed + " failed)" : "") + ".", tag: "mail-" + id}).catch(() => {});
+}
+/* ---------- weekly member email, written and sent by the Worker (Matthew, Nov 23, 2026: "Can we start sending these
+   from the cloud? From one of the workers" -> option 1, AI-written with a 2-hour hold).
+   Mondays from 10:00 ET: build this week's email from the What's new list (NEWS in index.html: member-facing features
+   that actually shipped, last 7 days, no sex-filtered entries). One Haiku call writes it (no member data goes to the AI,
+   only that list and last week's email); a strict check rejects anything off-script, and the fixed template is used
+   if the AI is off or fails twice. Matthew gets a [Test] copy with a cancel link and a push; it goes to every member
+   2 hours later unless he cancels. Same id as mail/outbox.json ("<date>-weekly") and the same mail_sent claim, so a
+   week can never be sent twice. WEEKLY_AUTO="0" switches it off. WEEKLY_NOW and NEWS_URL are for tests only. */
+const IG_URL = "https://www.instagram.com/hybrdrunning/", WEEKLY_HOLD = 2 * 3600e3;
+const etParts = t => {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false, weekday: "short"})
+    .formatToParts(new Date(t)).map(x => [x.type, x.value]));
+  return {date: p.year + "-" + p.month + "-" + p.day, hm: (p.hour === "24" ? "00" : p.hour) + ":" + p.minute, weekday: p.weekday};
+};
+const etClock = t => new Intl.DateTimeFormat("en-US", {timeZone: "America/New_York", hour: "numeric", minute: "2-digit"}).format(new Date(t)).replace(/\s/g, "").toLowerCase();
+const weeklyNow = env => { const t = env.WEEKLY_NOW ? Date.parse(env.WEEKLY_NOW) : NaN; return isNaN(t) ? Date.now() : t; };
+const wordCount = s => s.split(/\s+/).filter(Boolean).length;
+// What's new entries from the last 7 days: [icon, title, how to use it, screen, sex filter, release id]
+async function weeklyNews(env, today){
+  const r = await fetch((env.NEWS_URL || PAGES + "/index.html") + "?t=" + Date.now(), {cf: {cacheTtl: 0}}).catch(() => null);
+  if (!r || !r.ok) return [];
+  const src = await r.text(), a = src.indexOf("const NEWS = ["), b = a < 0 ? -1 : src.indexOf("\n];", a);
+  if (b < 0) return [];
+  const from = new Date(Date.parse(today + "T12:00:00Z") - 7 * 864e5).toISOString().slice(0, 10), out = [];
+  for (const line of src.slice(a, b).split("\n").slice(1)){
+    let e; try { e = JSON.parse(line.trim().replace(/,$/, "")); } catch(x){ continue; }
+    if (!Array.isArray(e) || typeof e[1] !== "string" || typeof e[2] !== "string" || e[4] || typeof e[5] !== "string") continue;
+    const d = e[5].slice(0, 10);
+    if (d > from && d <= today) out.push({title: e[1].slice(0, 80), how: e[2].slice(0, 400)});
+  }
+  return out.slice(0, 6);
+}
+function weeklyTemplate(news, founding){
+  for (let n = Math.min(3, news.length); n >= 0; n--){
+    const pick = news.slice(0, n), parts = ["Hey {name},", "Thanks for being part of Mileset and for your support. Big things are coming soon."];
+    if (pick.length) parts.push("New in the app this week:\n\n" + pick.map(x => x.title + ": " + x.how).join("\n\n"));
+    if (founding) parts.push("As a founding member, Mileset is free for you for life. If a friend runs, lifts or races, share Mileset with them before the Founding 100 spots run out.");
+    parts.push("We're on Instagram at " + IG_URL + " for training tips and updates.", "Got an idea or something you'd change? Just reply. I read every one.", "Matthew\nMileset");
+    const message = parts.join("\n\n");
+    if (wordCount(message) <= 170 || n === 0) return {subject: pick.length ? "New this week: " + pick[0].title : "A quick hello from Mileset", message};
+  }
+}
+// The AI's draft must follow every rule, or it isn't used.
+function weeklyCheck(d, news, founding){
+  if (!d || typeof d.subject !== "string" || typeof d.message !== "string") return "shape";
+  const s = d.subject.trim(), m = d.message.trim().replace(/\r/g, "");
+  if (s.length < 3 || s.length > 90 || /[\n*#]/.test(s)) return "subject";
+  if (!m.startsWith("Hey {name},") || !m.endsWith("\nMatthew\nMileset")) return "frame";
+  if (wordCount(m) > 170 || wordCount(m) < 50) return "length";
+  if (!m.includes(IG_URL)) return "instagram";
+  const bare = (s + "\n" + m).split(IG_URL).join(" ");
+  if (/\bMatt\b|hybrd|\*\*|^\s*#|```|\{(?!name\})|https?:\/\//im.test(bare)) return "words";
+  if ((m.match(/\{name\}/g) || []).length !== 1) return "name";
+  if (founding ? !/Founding 100/.test(m) : /founding|free/i.test(bare)) return "founding";
+  const known = news.map(x => x.title + " " + x.how).join(" ") + (founding ? " 100" : "");
+  for (const n of bare.match(/\d+/g) || []) if (!new RegExp("(^|\\D)" + n + "(\\D|$)").test(known)) return "number";
+  return null;
+}
+async function weeklyWrite(env, news, last, founding){
+  if (!env.ANTHROPIC_API_KEY || env.WEEKLY_AI === "0") return null;
+  const system = "You write Mileset's weekly email to its members, from Matthew, the founder. Mileset is a training app for runners, triathletes, HYROX and hybrid athletes. " +
+    "Voice: an experienced endurance coach, warm, practical, direct. Short sentences. No hype words, no fake urgency, no health or medical claims. Plain text only, no markdown, no bullet symbols, no emojis. " +
+    "Rules: start exactly with \"Hey {name},\" (keep {name} as written, once). Thank members for being part of Mileset and for the support. Say big things are coming soon, with no specific promises or dates. " +
+    "Mention 1 to 3 of the new features listed, in plain words, saying where to find them, using ONLY what the list says (no other features, numbers or claims). If the list is empty, mention no features. " +
+    (founding ? "Mention briefly that founding members get Mileset free for life (the Founding 100) and ask them to share Mileset with a friend before spots run out; never say how many spots are left. "
+              : "Do not mention the Founding 100, founding members or anything being free. ") +
+    "Include this Instagram link exactly once, as is: " + IG_URL + " . Ask them to reply with any recommendations or ideas. Never write any other link. Never write HYBRD or Matt. " +
+    "End with exactly \"Matthew\" then a line \"Mileset\". 90 to 160 words. Use a different subject, opening and angle from last week's email. " +
+    "Reply with only a JSON object: {\"subject\": \"...\", \"message\": \"...\"} using \\n for line breaks and a blank line between paragraphs.";
+  const user = JSON.stringify({new_features: news, last_week: last || null});
+  for (let i = 0; i < 2; i++){
+    const r = await fetch(env.ANTHROPIC_URL || "https://api.anthropic.com/v1/messages", {method: "POST",
+      headers: {"x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+      body: JSON.stringify({model: env.WEEKLY_MODEL || "claude-haiku-5-5", max_tokens: 1200, system, messages: [{role: "user", content: user}]}), signal: AbortSignal.timeout(30000)}).catch(() => null);
+    if (!r || !r.ok){ await logEvent(env, "weekly_auto", false, r ? "HTTP " + r.status : "net"); continue; }
+    const raw = ((await r.json().catch(() => ({}))).content || []).filter(c => c.type === "text").map(c => c.text).join("");
+    let d = null; try { d = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch(e){}
+    const why = weeklyCheck(d, news, founding);
+    if (!why) return {subject: d.subject.trim(), message: d.message.trim().replace(/\r/g, "")};
+    await logEvent(env, "weekly_auto", false, "bad " + why);
+  }
+  return null;
+}
+async function weeklyAuto(env){
+  if (env.WEEKLY_AUTO === "0" || !env.RESEND_API_KEY) return;
+  const t = weeklyNow(env), et = etParts(t), iso = new Date(t).toISOString();
+  // 1. Monday from 10:00 ET: write this week's draft, once
+  if (et.weekday === "Mon" && et.hm >= "10:00"){
+    const id = et.date + "-weekly";
+    const have = await env.DB.prepare("SELECT (SELECT COUNT(*) FROM weekly_drafts WHERE id = ?1) + (SELECT COUNT(*) FROM mail_sent WHERE id = ?1) AS n").bind(id).first();
+    if (!have.n){
+      const founding = t < Date.parse("2027-01-01T05:00:00Z");
+      const news = await weeklyNews(env, et.date);
+      const lastRow = await env.DB.prepare("SELECT subject, message FROM weekly_drafts ORDER BY created DESC LIMIT 1").first();
+      const ai = await weeklyWrite(env, news, lastRow, founding), d = ai || weeklyTemplate(news, founding);
+      const token = rand(16), after = new Date(t + WEEKLY_HOLD).toISOString();
+      const ins = await env.DB.prepare("INSERT OR IGNORE INTO weekly_drafts (id, subject, message, source, created, send_after, status, token) VALUES (?, ?, ?, ?, ?, ?, 'ready', ?)")
+        .bind(id, d.subject, d.message, ai ? "ai" : "template", iso, after, token).run();
+      if (ins.meta.changes){
+        await logEvent(env, "weekly_auto", true, ai ? "draft ai" : "draft template");
+        const own = await ownerId(env), link = API_BASE(env) + "/api/weekly/" + token, when = etClock(t + WEEKLY_HOLD) + " ET";
+        const owner = own ? await env.DB.prepare("SELECT id, email, name FROM users WHERE id = ?").bind(own).first() : null;
+        if (owner){
+          await sendUpdate(env, owner, d.subject, "This is this week's member email. It goes to every member at " + when + ".\nRead it, or cancel it, here: " + link + "\n\n" + d.message, true);
+          await pushTo(env, own, {title: "Weekly email goes out at " + when, body: "\"" + d.subject + "\". Check your email to read it or cancel.", tag: "weekly-" + et.date});
+        }
+      }
+    }
+  }
+  // 2. Send any draft whose hold is over (and that is at most a day late)
+  const due = await env.DB.prepare("SELECT * FROM weekly_drafts WHERE status = 'ready' AND send_after <= ? AND send_after > ?").bind(iso, new Date(t - 864e5).toISOString()).all();
+  for (const d of due.results){
+    const claim = await env.DB.prepare("INSERT OR IGNORE INTO mail_sent (id, sent_at) VALUES (?, ?)").bind(d.id, now()).run();
+    if (!claim.meta.changes){ await env.DB.prepare("UPDATE weekly_drafts SET status = 'skipped' WHERE id = ?").bind(d.id).run(); continue; }
+    await env.DB.prepare("UPDATE weekly_drafts SET status = 'sent' WHERE id = ?").bind(d.id).run();
+    const res = await sendUpdate(env, null, d.subject, d.message, false);
+    await env.DB.prepare("UPDATE mail_sent SET sent = ? WHERE id = ?").bind(res.sent, d.id).run();
+    const own = await ownerId(env);
+    if (own) await pushTo(env, own, {title: "Weekly email sent", body: "\"" + d.subject + "\" went to " + res.sent + " member" + (res.sent === 1 ? "" : "s") + (res.failed ? " (" + res.failed + " failed)" : "") + ".", tag: "weekly-sent-" + d.id.slice(0, 10)});
+  }
+}
+// The page behind the link in Matthew's [Test] copy: read this week's draft, or cancel it before it goes out.
+async function weeklyPage(req, env, token){
+  const H = {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex"};
+  const d = /^[a-f0-9]{32}$/.test(token) ? await env.DB.prepare("SELECT * FROM weekly_drafts WHERE token = ?").bind(token).first() : null;
+  const e = x => String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  let note = "";
+  if (d && req.method === "POST"){
+    const r = await env.DB.prepare("UPDATE weekly_drafts SET status = 'cancelled' WHERE id = ? AND status = 'ready'").bind(d.id).run();
+    if (r.meta.changes){ d.status = "cancelled"; await logEvent(env, "weekly_auto", true, "cancelled"); note = "Cancelled. No member gets this email."; }
+  }
+  const state = !d ? "That link didn't work." : d.status === "ready" ? "Goes to every member at " + etClock(Date.parse(d.send_after)) + " ET."
+    : d.status === "sent" ? "Already sent." : d.status === "cancelled" ? (note || "Cancelled. No member gets this email.") : "Not sent: an email with this week's id already went out.";
+  return new Response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Weekly email</title>' +
+    '<body style="font-family:-apple-system,sans-serif;background:#0A0B0F;color:#fff;margin:0;padding:20px 16px;line-height:1.5"><div style="max-width:560px;margin:0 auto">' +
+    '<div style="background:#BE383E;display:inline-block;font-weight:800;padding:8px 14px;border-radius:6px">Mileset</div><h1 style="font-size:20px;margin:18px 0 6px">Weekly member email</h1>' +
+    '<p style="color:#9aa;margin:0 0 16px">' + e(state) + '</p>' +
+    (d ? '<div style="background:#16181f;border-radius:8px;padding:16px"><p style="margin:0 0 12px;font-weight:700">' + e(d.subject) + '</p>' + d.message.split(/\n{2,}/).map(p => '<p style="margin:0 0 12px">' + e(p).replace(/\n/g, "<br>") + '</p>').join("") + '</div>' +
+      '<p style="color:#9aa;font-size:13px">Written by ' + (d.source === "ai" ? "the AI from this week's What's new list" : "the fixed template") + '. {name} becomes each member\'s first name.</p>' +
+      (d.status === "ready" ? '<form method="post"><button style="background:#800000;color:#fff;border:0;border-radius:6px;padding:14px 20px;font-size:16px;font-weight:600;width:100%">Cancel this email</button></form>' : "") : "") +
+    '</div>', {status: d ? 200 : 404, headers: H});
 }
 /* ---------- Strong at 180 food estimates (Matthew's own plan page) ----------
    A tiny MCP server the plan page calls through a claude.ai custom connector named "HYBRD Food",
@@ -1435,6 +1578,7 @@ async function route(req, env, path, ctx){
     try { const r = await env.DB.prepare("INSERT INTO hq_box (box, d, iv, ct, created, cid) VALUES (?, ?, ?, ?, ?, ?)").bind(hb[1], d, iv, ct, new Date().toISOString(), cid).run();
       return {id: r.meta.last_row_id}; }
     catch(e){ if (cid !== null && /UNIQUE/i.test(String(e && e.message))){ const old = await env.DB.prepare("SELECT id FROM hq_box WHERE box = ? AND d = ? AND cid = ?").bind(hb[1], d, cid).first(); if (old) return {id: old.id, dup: true}; } throw e; } }
+  if ((M === "GET" || M === "POST") && path.startsWith("/api/weekly/")) return await weeklyPage(req, env, path.slice(12));
   if (path === "/api/unsubscribe"){
     const q = new URL(req.url).searchParams, uid = String(q.get("u") || ""), sig = String(q.get("s") || "");
     const ok = /^[a-f0-9]{8,64}$/.test(uid) && env.RESEND_API_KEY && safeEqual(sig, await mailSig(env, uid));
