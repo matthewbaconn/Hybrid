@@ -2,6 +2,7 @@
 // The Worker stores opaque envelopes it cannot read: it has no key. Checks: a round trip both ways with a throwaway key,
 // "state" keeps one row, bad input is refused, another mailbox sees nothing, and no route leaks rows without the box id.
 import crypto from "node:crypto";
+import fs from "node:fs";
 const API = process.env.API || "http://localhost:8787", errs = []; let n = 0;
 const check = (c, what) => { n++; if (!c){ errs.push(what); console.log("FAIL " + what); } };
 const KEY = crypto.randomBytes(32), box = k => crypto.createHash("sha256").update("mileset-hq-box-v1:" + k.toString("base64url")).digest("hex"), BOX = box(KEY), OTHER = box(crypto.randomBytes(32));
@@ -43,4 +44,12 @@ await post(BOX, {d: "tel", ...seal({at: 1}, "mileset-hq-tel-v1")}); await post(B
 const t1 = (await (await fetch(`${API}/api/hq/tel/${BOX}`)).json()).tel;
 check(t1 && open(t1, "mileset-hq-tel-v1").at === 2, "telemetry endpoint returns only the newest sealed heartbeat");
 check((await (await fetch(`${API}/api/hq/tel/${OTHER}`)).json()).tel === null, "another key's telemetry is empty");
+// Nov 23: the nightly backup restores every row as one SQL statement, and D1 refuses statements over 100 KB
+// (SQLITE_TOOBIG). A 104 KB state row made the backup fail. No stored row may come near that limit.
+const SB = box(crypto.randomBytes(32)), big = n => ({d: "state", iv: "A".repeat(16), ct: "A".repeat(n)});
+check((await post(SB, big(89000))).ok && (await get(SB)).rows.filter(x => x.d === "state").length === 1, "a state just under the cap is stored");
+const rBig = await post(SB, big(95000));
+check(rBig.status === 413, "a state too big to restore from the backup is refused (413)");
+check((await get(SB)).rows.filter(x => x.d === "state").length === 0, "and the older state goes too, so HQ reads the published copy instead of a stale one");
+check(/const HQ_STATE_MAX = (\d+)/.test(fs.readFileSync(new URL("../api/worker.js", import.meta.url), "utf8")) && +RegExp.$1 + 400 < 100000, "cap + row overhead stays under D1's 100,000-byte statement limit");
 console.log(`hq mailbox: ${n - errs.length} of ${n} checks pass`); if (errs.length) process.exit(1);

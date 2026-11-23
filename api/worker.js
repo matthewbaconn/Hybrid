@@ -27,6 +27,7 @@ const now = () => new Date().toISOString();
 const n0 = x => { x = Math.round(Number(x)); return Number.isFinite(x) && x >= 0 && x < 20000 ? x : 0; };
 const isDate = s => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
 const MEALS = ["Breakfast", "Lunch", "Dinner", "Snack"];
+const HQ_STATE_MAX = 90000;   // HQ mailbox state ciphertext cap: one row must restore under D1's 100 KB statement limit
 class HttpError extends Error { constructor(status, msg){ super(msg); this.status = status; } }
 
 async function sha256(s){ return hex(await crypto.subtle.digest("SHA-256", enc.encode(s))); }
@@ -1420,6 +1421,12 @@ async function route(req, env, path, ctx){
     await limit(env, "hqbox:" + (req.headers.get("CF-Connecting-IP") || "x") + ":" + d.slice(0, 6));   // per kind: Vesper's minute heartbeat never crowds out its confirmations
     const iv = String(b.iv || ""), ct = String(b.ct || ""), cid = b.cid == null ? null : String(b.cid);
     if (!["in", "out", "state", "tel"].includes(d) || !/^[A-Za-z0-9_-]{16}$/.test(iv) || !/^[A-Za-z0-9_-]{24,}$/.test(ct) || ct.length > (d === "state" ? 400000 : d === "in" ? 8000 : 48000)) throw new HttpError(400, "Bad request.");
+    // Nov 23: every stored row must fit D1's 100 KB SQL statement limit, or the nightly backup's restore check fails
+    // (SQLITE_TOOBIG) and no backup is kept. A state over HQ_STATE_MAX is not stored and the old one goes too (state is
+    // replace-only); HQ then reads the same office from its published copy (hq-full.json), just a little later.
+    if (d === "state" && ct.length > HQ_STATE_MAX){
+      await env.DB.prepare("DELETE FROM hq_box WHERE box = ? AND d = 'state'").bind(hb[1]).run();
+      throw new HttpError(413, "Too large for the mailbox."); }
     if (cid !== null && (!["in", "out"].includes(d) || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(:\d{1,2})?$/.test(cid))) throw new HttpError(400, "Bad request.");
     if (cid !== null){ const old = await env.DB.prepare("SELECT id FROM hq_box WHERE box = ? AND d = ? AND cid = ?").bind(hb[1], d, cid).first();
       if (old) return {id: old.id, dup: true}; }                        // the same command (or status) again: already stored
