@@ -16,6 +16,7 @@ const WORDS = new Set(`
   dailies sleeps hrv activities activityDetails deregistrations userPermissionsChange epochs stressDetails bodyComps
   userMetrics pulseox respiration skinTemp healthSnapshot moveiq allDayRespiration manuallyUpdatedActivities activityFiles
   move open change photo text
+  draft ai template cancelled bad shape subject frame length instagram words name founding number
   end_turn max_tokens stop_sequence tool_use refusal pause_turn undefined null missing parts bad json
   GET POST PUT PATCH DELETE OPTIONS HEAD
   Error TypeError RangeError SyntaxError ReferenceError AbortError TimeoutError
