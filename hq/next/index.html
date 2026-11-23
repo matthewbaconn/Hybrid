@@ -35,6 +35,7 @@ html{background:var(--bg)}
 .answer .dot{width:9px;height:9px;border-radius:50%;flex:none;margin-top:6px;background:var(--green);box-shadow:0 0 10px var(--green)}
 .answer.warn .dot{background:var(--amber);box-shadow:0 0 10px var(--amber)}.answer.bad .dot{background:var(--red);box-shadow:0 0 10px var(--red)}
 .stage{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#0b0d13;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.wnow{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}.wnow .wn{border:1px solid var(--line);border-radius:12px;padding:8px 11px;font-size:13px;background:rgba(255,255,255,.03)}.wnow .wn.late{border-color:#BE383E;color:#ff9aa0}.wnow .wn small{display:block;color:var(--mut);font-size:11px}.wnow .none{color:var(--mut);font-size:13px}
 canvas{display:block;width:100%;touch-action:manipulation}
 .streak{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 4px 0;font-size:12.5px;color:var(--mut)}
 .pips{display:flex;gap:4px}.pip{width:18px;height:6px;border-radius:3px;background:var(--line)}.pip.on{background:var(--red);box-shadow:0 0 6px var(--red)}
@@ -348,6 +349,7 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 <span class="ng">Company</span>
 <button data-v="team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.700 6 6M16 5.200a3.200 3.200 0 010 5.600M18 14.300c1.800.800 3 2.600 3 4.700"/></svg><span>Employees</span></button>
 <button data-v="depts"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg><span>Departments</span></button>
+<button data-v="office"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M7 9h4M7 12h7"/></svg><span>Office</span></button>
 <button data-v="members"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 11h6M15 15h6M17 7h4"/></svg><span>Members</span></button>
 <button data-v="growth"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Growth</span></button>
 <button data-v="money"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.800 9.200c-.500-.900-1.500-1.400-2.800-1.400-1.700 0-3 .900-3 2.200 0 3 6 1.300 6 4.200 0 1.300-1.300 2.200-3 2.200-1.400 0-2.500-.600-3-1.500M12 6v1.800M12 16.400V18"/></svg><span>Finance</span></button>
@@ -401,6 +403,10 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 <section class="view" id="v-ops"><div id="ops"></div></section>
 <section class="view" id="v-team"><div class="vh"><div><h1>Employees</h1><p>Every AI employee, what they're assigned, what they reported and what was independently verified. Minutes are cost on your Claude plan, never a score.</p></div></div>
 <div id="roster" class="emps"></div></section>
+<section class="view" id="v-office"><div class="vh"><div><h1>Office</h1><p>Each employee at their desk while a real run is going, in the break area between runs, flagged when stuck. It reads the run log only and never sends anything.</p></div></div>
+<div class="wnow" id="wnow"></div>
+<div class="stage"><canvas id="cv2" aria-label="Office with one character per employee, placed by real run status"></canvas></div>
+<div class="list" id="ofscores"></div></section>
 <section class="view" id="v-depts"><div id="depts"></div><h2>Rooms being built</h2><div class="rooms" id="rooms"></div></section>
 <section class="view" id="v-members"><div class="vh"><div><h1>Members</h1><p>Every real member: when they joined, when they were last active, their goal, where they came from and whether they've trained. Your own accounts and test accounts are left out.</p></div></div><div id="members"></div></section>
 <section class="view" id="v-growth"><div class="vh"><div><h1>Growth</h1><p>Real members, where they came from, where they stall, and every experiment, partner and ambassador draft.</p></div></div><div id="growth"></div><div id="growth2"></div></section>
@@ -415,7 +421,7 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 <div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
 <script>
 "use strict";
-const HQ_BUILD = "2026-11-20.r1";   // the self-update check compares this with the published page
+const HQ_BUILD = "2026-11-23.r1";   // the self-update check compares this with the published page
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const DEMO = /demo/.test(location.search + location.hash);
 let DEMO_HOLD = true;   // the first load sets everyone's state; only later changes are real events
@@ -559,10 +565,12 @@ function step(dt){
 }
 
 // ---------- drawing ----------
-const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
-let scale = 1;
-function resize(){ const cw = cv.parentElement.clientWidth, dpr = Math.min(window.devicePixelRatio || 1, 3);
-  cv.style.height = Math.round(cw * H / W) + "px"; cv.width = Math.round(cw * dpr); cv.height = Math.round(cw * H / W * dpr); scale = cv.width / W; }
+// two surfaces share one scene: the Executive floor (#cv, people walk) and the Office tab (#cv2, people are placed by real status)
+const S1 = {cv: document.getElementById("cv"), office: false, scale: 1}, S2 = {cv: document.getElementById("cv2"), office: true, scale: 1};
+for (const S of [S1, S2]) S.ctx = S.cv.getContext("2d");
+let cv = S1.cv, ctx = S1.ctx, scale = 1, officeMode = false;
+function resize(){ for (const S of [S1, S2]){ const cw = S.cv.parentElement.clientWidth; if (!cw) continue; const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  S.cv.style.height = Math.round(cw * H / W) + "px"; S.cv.width = Math.round(cw * dpr); S.cv.height = Math.round(cw * H / W * dpr); S.scale = S.cv.width / W; } }
 addEventListener("resize", resize);
 const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); };
 const fillR = (x, y, w, h, r, c) => { ctx.fillStyle = c; rr(x, y, w, h, r); ctx.fill(); };
@@ -667,12 +675,31 @@ function scene(){
   for (const k in ROOMS){ const r = ROOMS[k], lx = r.x + 6, ly = k === "brk" ? r.y + 6 : r.y + r.h - 15, tw = ctx.measureText(r.name).width;
     fillR(lx, ly, tw + 8, 10, 3, "rgba(7,8,11,.55)"); ctx.fillStyle = "rgba(200,205,220,.85)"; ctx.fillText(r.name, lx + 4, ly + 7.3); }
   // desks, then people (back to front)
-  agents.forEach(deskAt);
-  agents.slice().sort((a, b) => a.y - b.y).forEach(person);
+  const crowd = officeMode ? officeCrowd() : agents;
+  crowd.forEach(deskAt);
+  crowd.slice().sort((a, b) => a.y - b.y).forEach(person);
   if (night){ ctx.fillStyle = "rgba(6,9,26,.13)"; ctx.fillRect(0, 0, W, H); }
 }
 let last = performance.now();
-function frame(now){ const dt = Math.min(.1, (now - last) / 1000); last = now; step(dt); scene(); requestAnimationFrame(frame); }
+function frame(now){ const dt = Math.min(.1, (now - last) / 1000); last = now; step(dt);
+  for (const S of [S1, S2]){ if (!S.cv.offsetParent || !S.scale) continue; cv = S.cv; ctx = S.ctx; scale = S.scale; officeMode = S.office; scene(); }
+  requestAnimationFrame(frame); }
+// Office tab: where each person stands comes only from the run status. Working = at the desk, stuck/failed = at the desk and flagged,
+// idle/done/not run yet = break area. Copies are drawn, so the Executive floor's walking is untouched.
+const LATE_MIN = 120;
+function officeCrowd(){ let b = 0; const brk = SPOTS.filter(s => s.room === "brk");
+  return agents.map(a => { const at = a.id === "vesper" || a.code === "w" || a.code === "f" || a.code === "x" || a.code === "vb";
+    if (at) return Object.assign({}, a, {x: a.t.desk[0], y: a.t.desk[1] + 17, atDesk: true, path: [], moving: false, handing: 0, spot: null});
+    const s = brk[b++ % brk.length]; return Object.assign({}, a, {x: s.x, y: s.y, atDesk: false, path: [], moving: false, handing: 0, spot: s}); }); }
+function runMin(a){ const r = rows[a.id]; if (!r || a.code !== "w" || !r[2]) return null; const m = (Date.now() - new Date(r[2])) / 60000; return isNaN(m) ? null : Math.max(0, Math.round(m)); }
+function renderOffice(){ const el = document.getElementById("wnow"); if (!el) return;
+  const now = agents.filter(a => a.code === "w" || a.code === "x"), dur = m => m == null ? "" : m < 60 ? m + " min" : Math.floor(m / 60) + " h " + (m % 60) + " min";
+  el.innerHTML = now.length ? now.map(a => { const m = runMin(a), late = a.code === "x" || (m != null && m > LATE_MIN);
+    return `<div class="wn${late ? " late" : ""}"><b>${esc(a.t.n)}</b> ${late ? "· looks stuck" : "· working"}<small>${m != null ? "running " + dur(m) : esc(STATE[a.code][0])}${late && a.code !== "x" ? " (over 2 h)" : ""}</small></div>`; }).join("")
+    : `<div class="none">Nobody is running right now.</div>`;
+  const sc = document.getElementById("ofscores"); if (!sc) return;
+  sc.innerHTML = agents.filter(a => a.id !== "vesper").map(a => { const d = desk(a.id), v = d && d.score != null && d.score !== "" ? d.score : null;
+    return `<div class="row"><span><b>${esc(a.t.n)}</b> · ${esc(STATE[a.code] ? STATE[a.code][0] : "")}</span><small>${v != null ? "last self-score " + esc(String(v)) + "/10" : PRIV ? "no score reported yet" : "score is in the private office"}</small></div>`; }).join(""); }
 
 // ---------- live data ----------
 let feed = null, feedErr = false;
@@ -727,8 +754,8 @@ function openSheet(id){ const a = byId[id]; if (!a) return; selected = id;
   sheet.classList.add("on"); const c = document.getElementById("close"); if (c) c.onclick = closeSheet; }
 function closeSheet(){ sheet.classList.remove("on"); selected = null; }
 sheet.onclick = e => { if (e.target === sheet) closeSheet(); };
-cv.addEventListener("click", e => { const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) / b.width * W, y = (e.clientY - b.top) / b.height * H;
-  let best = null, bd = 26; for (const a of agents){ const d = Math.hypot(a.x - x, a.y - 6 - y); if (d < bd){ bd = d; best = a; } }
+for (const S of [S1, S2]) S.cv.addEventListener("click", e => { const b = S.cv.getBoundingClientRect(), x = (e.clientX - b.left) / b.width * W, y = (e.clientY - b.top) / b.height * H;
+  let best = null, bd = 26; for (const a of (S.office ? officeCrowd() : agents)){ const d = Math.hypot(a.x - x, a.y - 6 - y); if (d < bd){ bd = d; best = a; } }
   if (best) openSheet(best.id); });
 function tick(){ document.getElementById("clock").textContent = new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}) + (feed && feed.t && !DEMO ? " · updated " + ago(feed.t) : ""); }
 const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
@@ -1417,6 +1444,7 @@ function renderSideFoot(){ const el = document.getElementById("sidefoot"); if (!
 
 // one place that redraws everything that depends on the feeds
 function renderAll(){
+  renderOffice();
   for (const f of [renderHero, renderKpis, renderObjectives, renderPrioDecisions, renderApprovals, renderOps, renderEmployees, renderDeptsView, renderGrowth2, renderMoney2, renderSideFoot, renderAlerts]){
     try { f(); } catch(e){ console.warn("HQ render", f.name, e); } }
   const ap = PRIV ? asks(PRIV.a).length : 0, ab = document.querySelector('#nav [data-v="approvals"]');
@@ -1442,7 +1470,7 @@ const dstr = iso => { const d = new Date(iso + "T12:00:00"); return isNaN(d) ? i
 let view = "hq";
 function go(v){ if (!document.getElementById("v-" + v)) v = "hq"; view = v; try { localStorage.setItem("hq-view", v); } catch(e){} document.querySelectorAll(".view").forEach(el => el.classList.toggle("on", el.id === "v-" + v));
   document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
-  if (v === "hq") resize(); try { scrollTo(0, 0); } catch(e){} }
+  if (v === "hq" || v === "office") { resize(); renderOffice(); } try { scrollTo(0, 0); } catch(e){} }
 document.getElementById("nav").addEventListener("click", e => { const b = e.target.closest("button"); if (b) go(b.dataset.v); });
 // The site's visit counter went live on this day (Hybrid #19). Until it has run a full week, the card says "since" and
 // does not set a few days of visits against 7 days of sign-ups.
