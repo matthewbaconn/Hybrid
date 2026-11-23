@@ -1,6 +1,6 @@
 name: Member database backup (encrypted, off-server, restore-tested)
 # Nov 16 security directive: an off-server copy of the live D1 database that is proven restorable.
-# 1. Exports the live database (read-only). 2. Restores it into a throwaway local D1 on this runner and checks every
+# 1. Exports the live database (read-only). 2. Restores it into a throwaway local SQLite database on this runner and checks every
 # table's row count matches the live database. 3. Encrypts the dump to Matthew's backup key (age; only the private key
 # he holds can open it) and keeps it as a 30-day artifact. Nothing readable is printed or uploaded: the repo is public.
 on:
@@ -42,23 +42,52 @@ jobs:
         run: |
           # wrangler's own tables (_cf_*) are recreated by D1 itself; leave them out of the restore
           grep -v -E "^(CREATE TABLE|INSERT INTO) [\"']?_cf_" "$RUNNER_TEMP/d1.sql" > "$RUNNER_TEMP/restore.sql"
-          if ! npx wrangler d1 execute hybrid --local --persist-to "$RUNNER_TEMP/restore-db" --file "$RUNNER_TEMP/restore.sql" > "$RUNNER_TEMP/restore.log" 2>&1; then
-            # show only the error lines, with anything that looks like an email or long value masked (public repo)
-            tail -n 6 "$RUNNER_TEMP/restore.log" | sed -E 's/[^ ,()]+@[^ ,()]+/<email>/g; s/'"'"'[^'"'"']{12,}'"'"'/<value>/g' | cut -c1-200 | head -8
-            exit 1
-          fi
-          tables=$(npx wrangler d1 execute hybrid --local --persist-to "$RUNNER_TEMP/restore-db" --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '\_cf%' ESCAPE '\' AND name NOT LIKE 'sqlite%' ORDER BY name" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s)[0].results.map(r=>r.name).join(" ")))')
+          # Restore with plain SQLite (what D1 is built on). Wrangler's local D1 refuses any single statement over
+          # 100 KB (SQLITE_TOOBIG), and since Nov 23 the live database has rows whose INSERT is bigger than that, so
+          # the old wrangler restore failed even though the dump was complete. Nothing readable is printed: only table
+          # names, counts and sizes (public repo).
+          python3 - "$RUNNER_TEMP/restore.sql" "$RUNNER_TEMP/restore.sqlite" "$RUNNER_TEMP/local.json" <<'PY'
+          import json, re, sqlite3, sys
+          sql = open(sys.argv[1], encoding="utf-8").read()
+          db = sqlite3.connect(sys.argv[2])
+          try:
+              db.executescript(sql)
+          except Exception as e:
+              msg = re.sub(r"[^ ,()]+@[^ ,()]+", "<email>", str(e))
+              msg = re.sub(r"'[^']{12,}'", "<value>", msg)[:200]
+              print("::error::restore failed: " + type(e).__name__ + ": " + msg)
+              sys.exit(1)
+          # statements a restore straight back into D1 would refuse (D1's limit is 100,000 bytes per statement)
+          big, buf = {}, ""
+          for line in sql.splitlines(keepends=True):
+              buf += line
+              if sqlite3.complete_statement(buf):
+                  if len(buf.encode("utf-8")) > 100000:
+                      m = re.match(r'\s*INSERT INTO "?([A-Za-z0-9_]+)', buf)
+                      t = m.group(1) if m else "?"
+                      big[t] = max(big.get(t, 0), len(buf.encode("utf-8")))
+                  buf = ""
+          for t, n in sorted(big.items()):
+              print(f"::warning::{t}: largest row is {n} bytes, over D1's 100 KB statement limit; to restore into D1, insert those rows with bound parameters")
+          tables = [r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '\\_cf%' ESCAPE '\\' AND name NOT LIKE 'sqlite%' ORDER BY name")]
+          assert tables, "no tables restored"
+          counts = {t: db.execute(f'SELECT COUNT(*) FROM "{t}"').fetchone()[0] for t in tables}
+          json.dump(counts, open(sys.argv[3], "w"))
+          print(f"restored {len(tables)} tables into plain SQLite")
+          PY
+          tables=$(node -e 'console.log(Object.keys(JSON.parse(require("fs").readFileSync(process.env.RUNNER_TEMP + "/local.json"))).join(" "))')
           test -n "$tables"
           q="SELECT "$(for t in $tables; do printf '(SELECT COUNT(*) FROM "%s") AS "%s", ' "$t" "$t"; done | sed 's/, $//')
-          npx wrangler d1 execute hybrid --local --persist-to "$RUNNER_TEMP/restore-db" --json --command "$q" > "$RUNNER_TEMP/local.json"
           npx wrangler d1 execute hybrid --remote --json --command "$q" > "$RUNNER_TEMP/remote.json"
           node -e '
-            const rd = f => JSON.parse(require("fs").readFileSync(f))[0].results[0];
-            const L = rd(process.env.RUNNER_TEMP + "/local.json"), R = rd(process.env.RUNNER_TEMP + "/remote.json");
+            const fs = require("fs");
+            const L = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + "/local.json"));
+            const R = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + "/remote.json"))[0].results[0];
             let bad = 0;
             for (const t of Object.keys(R)) { const ok = L[t] === R[t]; if (!ok) bad++; console.log((ok ? "ok  " : "DIFF") + " " + t + ": live " + R[t] + ", restored " + L[t]); }
             console.log(bad ? "::error::restore check: " + bad + " table(s) differ" : "restore check: all " + Object.keys(R).length + " tables match");
             process.exit(bad ? 1 : 0);'
+          shred -u "$RUNNER_TEMP/restore.sqlite"
       - name: Encrypt to Matthew's backup key and remove the plain copy
         run: |
           stamp=$(date -u +%Y%m%dT%H%MZ)
