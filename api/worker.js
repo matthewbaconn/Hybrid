@@ -511,6 +511,24 @@ async function garminPerms(env, link, tok){
   if (Array.isArray(perms)) await env.DB.prepare("UPDATE garmin_links SET permissions = ? WHERE user_id = ?").bind(JSON.stringify(perms).slice(0, 500), link.user_id).run();
   return perms;
 }
+/* History backfill right after a Garmin connect (last 14 days). What a member chose not to share on Garmin's consent
+   screen is their choice, not a failure (incident fail-other, Nov 23, 2026: every refused backfill was logged as a
+   failure, and a 412 twice): a summary type whose export permission is off is skipped without asking Garmin, and
+   Garmin's 412 (the member didn't share their history) stops the backfill as an ok outcome. Any other refusal, a
+   network error or a crash is still a failure, with Garmin's status code so the cause shows. tests/garmin_backfill.mjs */
+const GARMIN_BACKFILL = {sleeps: "HEALTH_EXPORT", dailies: "HEALTH_EXPORT", hrv: "HEALTH_EXPORT", activities: "ACTIVITY_EXPORT", activityDetails: "ACTIVITY_EXPORT"};
+async function garminBackfill(env, userId, tok){
+  const perms = await garminPerms(env, {user_id: userId}, tok);
+  // only trust a permission list that looks like Garmin's; otherwise ask for everything and let Garmin decide
+  const known = Array.isArray(perms) && perms.some(p => p === "HEALTH_EXPORT" || p === "ACTIVITY_EXPORT");
+  const end = Math.floor(Date.now() / 1000), start = end - 14 * 86400;
+  for (const [k, need] of Object.entries(GARMIN_BACKFILL)){
+    if (known && !perms.includes(need)){ await logEvent(env, "garmin_backfill", true, k + " not shared, skipped"); continue; }
+    const br = await fetch((env.GARMIN_API || GARMIN_API) + "/wellness-api/rest/backfill/" + k + "?summaryStartTimeInSeconds=" + start + "&summaryEndTimeInSeconds=" + end, {headers: {Authorization: "Bearer " + tok}}).catch(() => null);
+    if (br && br.status === 412){ await logEvent(env, "garmin_backfill", true, k + " 412 history not shared, stopped"); return; }
+    await logEvent(env, "garmin_backfill", !!(br && (br.ok || br.status === 409)), k + " " + (br ? br.status : "net"));
+  }
+}
 async function garminWorkouts(env, userId, opts){
   const link = await env.DB.prepare("SELECT * FROM garmin_links WHERE user_id = ?").bind(userId).first();
   if (!link) return {ok: false, why: "not_connected"};
@@ -1414,20 +1432,7 @@ async function route(req, env, path, ctx){
         .bind(row.user_id, gid, j.access_token, j.refresh_token || "", Math.floor(Date.now() / 1000) + (j.expires_in || 86400), now())]);
     await logEvent(env, "garmin_connect", true, "");
     ctx.waitUntil(garminWorkouts(env, row.user_id, {recheck: true}).catch(e => logEvent(env, "garmin_workout", false, "connect " + errName(e))));
-    ctx.waitUntil((async () => {
-      const end = Math.floor(Date.now() / 1000), start = end - 14 * 86400;
-      for (const k of ["sleeps", "dailies", "hrv", "activities", "activityDetails"]){
-        const br = await fetch((env.GARMIN_API || GARMIN_API) + "/wellness-api/rest/backfill/" + k + "?summaryStartTimeInSeconds=" + start + "&summaryEndTimeInSeconds=" + end, {headers: {Authorization: "Bearer " + j.access_token}}).catch(() => null);
-        const good = !!(br && (br.ok || br.status === 409));
-        // on failure keep Garmin's own reason (no personal data) so the cause shows in the event log
-        await logEvent(env, "garmin_backfill", good, k + " " + (br ? br.status : "net") + "");
-        if (br && br.status === 412){   // precondition failed applies to the whole account: note what Garmin allows and stop
-          const lk = await env.DB.prepare("SELECT permissions FROM garmin_links WHERE user_id = ?").bind(row.user_id).first();
-          await logEvent(env, "garmin_backfill", false, "stopped after 412, permissions " + String(lk && lk.permissions || "").split(",").filter(Boolean).length);
-          break;
-        }
-      }
-    })());
+    ctx.waitUntil(garminBackfill(env, row.user_id, j.access_token).catch(e => logEvent(env, "garmin_backfill", false, errName(e))));
     return go("connected");
   }
   if (path === "/api/garmin/push"){
