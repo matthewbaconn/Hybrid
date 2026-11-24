@@ -514,8 +514,8 @@ async function garminPerms(env, link, tok){
 /* History backfill right after a Garmin connect (last 14 days). What a member chose not to share on Garmin's consent
    screen is their choice, not a failure (incident fail-other, Nov 23, 2026: every refused backfill was logged as a
    failure, and a 412 twice): a summary type whose export permission is off is skipped without asking Garmin, and
-   Garmin's 412 (the member didn't share their history) stops the backfill as an ok outcome. Any other refusal, a
-   network error or a crash is still a failure, with Garmin's status code so the cause shows. tests/garmin_backfill.mjs */
+   Garmin's 412 (the member didn't share their history) stops the backfill as an ok outcome. A 403 (Garmin refusing history) logs as garmin_backfill_refused. Any other
+   refusal, a network error or a crash is still a failure, with Garmin's status code so the cause shows. tests/garmin_backfill.mjs */
 const GARMIN_BACKFILL = {sleeps: "HEALTH_EXPORT", dailies: "HEALTH_EXPORT", hrv: "HEALTH_EXPORT", activities: "ACTIVITY_EXPORT", activityDetails: "ACTIVITY_EXPORT"};
 async function garminBackfill(env, userId, tok){
   const perms = await garminPerms(env, {user_id: userId}, tok);
@@ -526,6 +526,10 @@ async function garminBackfill(env, userId, tok){
     if (known && !perms.includes(need)){ await logEvent(env, "garmin_backfill", true, k + " not shared, skipped"); continue; }
     const br = await fetch((env.GARMIN_API || GARMIN_API) + "/wellness-api/rest/backfill/" + k + "?summaryStartTimeInSeconds=" + start + "&summaryEndTimeInSeconds=" + end, {headers: {Authorization: "Bearer " + tok}}).catch(() => null);
     if (br && br.status === 412){ await logEvent(env, "garmin_backfill", true, k + " 412 history not shared, stopped"); return; }
+    // a 403 is Garmin saying no (this app isn't approved for history, or the member didn't allow it): its own kind, so it
+    // isn't counted as the app failing (Nov 23: five of these were texted as "something is failing"). Vesper watches
+    // garmin_backfill_refused on its own quieter rule (vesper-relay incidents.py). Only Garmin's code goes in.
+    if (br && br.status === 403){ await logEvent(env, "garmin_backfill_refused", false, k + " 403"); continue; }
     await logEvent(env, "garmin_backfill", !!(br && (br.ok || br.status === 409)), k + " " + (br ? br.status : "net"));
   }
 }

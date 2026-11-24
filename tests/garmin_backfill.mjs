@@ -1,7 +1,7 @@
 // Garmin history backfill after a connect (incident fail-other, Nov 23, 2026). Runs its own local API against a fake
 // Garmin and a throwaway local database, so it never touches live data. Checks that what a member chose not to share
 // (a summary type whose export permission is off, or Garmin's 412 for history) is logged as an ok outcome, never as a
-// failure, while a real refusal (a 500) still counts as one.
+// failure, while a real refusal (a 500) still counts as one, and Garmin refusing history (403) logs as garmin_backfill_refused.
 //   cd api && node ../tests/garmin_backfill.mjs
 import http from "node:http";
 import {spawn, execFileSync} from "node:child_process";
@@ -75,6 +75,14 @@ try {
   ev = await connect(uid, 4);
   const bad = ev.filter(e => e.ok === 0);
   ok(bad.length === 1 && bad[0].detail === "hrv 500", "real refusal: still logged as a failure with its status (" + JSON.stringify(bad) + ")");
+
+  // 4b. Garmin refusing history (403): its own kind, never a garmin_backfill failure
+  state.perms = ["ACTIVITY_EXPORT", "HEALTH_EXPORT"]; state.backfill = {sleeps: 403, dailies: 403, hrv: 403, activities: 403, activityDetails: 403};
+  sql("DELETE FROM events WHERE kind = 'garmin_backfill_refused'");
+  ev = await connect(uid, 6);
+  const ref = sql("SELECT ok, detail FROM events WHERE kind = 'garmin_backfill_refused' ORDER BY rowid");
+  ok(ev.length === 0, "403: no garmin_backfill failures (" + JSON.stringify(ev) + ")");
+  ok(ref.length === 5 && ref[0].detail === "sleeps 403", "403: 5 garmin_backfill_refused events with Garmin's code (" + JSON.stringify(ref) + ")");
 
   // 5. Garmin's permission list unreadable: ask for everything, as before
   state.perms = {nope: 1}; state.backfill = {};
