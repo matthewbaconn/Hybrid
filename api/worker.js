@@ -1419,11 +1419,14 @@ async function route(req, env, path, ctx){
       for (const k of ["sleeps", "dailies", "hrv", "activities", "activityDetails"]){
         const br = await fetch((env.GARMIN_API || GARMIN_API) + "/wellness-api/rest/backfill/" + k + "?summaryStartTimeInSeconds=" + start + "&summaryEndTimeInSeconds=" + end, {headers: {Authorization: "Bearer " + j.access_token}}).catch(() => null);
         const good = !!(br && (br.ok || br.status === 409));
-        // on failure keep Garmin's own reason (no personal data) so the cause shows in the event log
-        await logEvent(env, "garmin_backfill", good, k + " " + (br ? br.status : "net") + "");
+        // 403/412 is Garmin saying no (the app isn't approved for history, or the member didn't share that data): its own
+        // kind, so Vesper doesn't count it as the app failing (Nov 23: six of these were texted as "something is failing").
+        // A network or server error stays garmin_backfill. Either way only Garmin's code goes in (no personal data).
+        const refused = !!(br && (br.status === 403 || br.status === 412));
+        await logEvent(env, refused ? "garmin_backfill_refused" : "garmin_backfill", good, k + " " + (br ? br.status : "net") + "");
         if (br && br.status === 412){   // precondition failed applies to the whole account: note what Garmin allows and stop
           const lk = await env.DB.prepare("SELECT permissions FROM garmin_links WHERE user_id = ?").bind(row.user_id).first();
-          await logEvent(env, "garmin_backfill", false, "stopped after 412, permissions " + String(lk && lk.permissions || "").split(",").filter(Boolean).length);
+          await logEvent(env, "garmin_backfill_refused", false, "stopped after 412, permissions " + String(lk && lk.permissions || "").split(",").filter(Boolean).length);
           break;
         }
       }
