@@ -56,7 +56,7 @@ try {
   // trained already: no card
   await open(base(restProf, {done: [add(today, -1) + "-0"]}));
   t(!(await p.$(".fwc")), "checked off a workout before: no card");
-  await open(base(restProf, {activities: [{id: "a1", source: "strava", date: add(today, -1), type: "Run", name: "Morning Run", mi: 3, minutes: 30}]}));
+  await open(base(restProf, {activities: [{id: "a1", source: "strava", date: add(today, -1), type: "run", name: "Morning Run", mi: 3, minutes: 30}]}));
   t(!(await p.$(".fwc")), "synced a workout before: no card");
   // a session day: the hint (growth move 11 copy: "Day 1 is today" on the day the plan is built), with the watch link
   await open(base({...restProf, days: [dw(today), dw(add(today, 3))], longDay: dw(add(today, 3))}));
