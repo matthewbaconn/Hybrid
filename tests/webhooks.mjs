@@ -84,4 +84,7 @@ try { execFileSync("node", [new URL("./domains.mjs", import.meta.url).pathname],
 catch(e){ failed++; console.log("::error::domain move test failed"); }
 try { execFileSync("node", [new URL("./domain_mail.mjs", import.meta.url).pathname], {stdio: "inherit", cwd: new URL("../api/", import.meta.url).pathname}); }
 catch(e){ failed++; console.log("::error::domain mail test failed"); }
+// The Garmin backfill test (Nov 23, incident fail-other) rides along for the same reason, on its own local API.
+try { execFileSync("node", [new URL("./garmin_backfill.mjs", import.meta.url).pathname], {stdio: "inherit", cwd: new URL("../api/", import.meta.url).pathname}); }
+catch(e){ failed++; console.log("::error::garmin backfill test failed"); }
 process.exit(failed ? 1 : 0);
