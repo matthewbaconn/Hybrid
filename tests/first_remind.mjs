@@ -51,6 +51,9 @@ async function buildFirstPlan(p){
   await p.click('[data-act="next"]'); await p.waitForSelector("#s-ft", {timeout: 5000});
   await p.fill("#s-ft", "5"); await p.fill("#s-in", "9"); await p.fill("#s-age", "27"); await p.fill("#s-w", "160");
   await p.click('[data-act="next"]'); await p.waitForSelector("#s-long");
+  // no session today, so the plain reminder ask shows (a run today leads with "Day 1 is today": tests/day1_start.mjs)
+  const td = (new Date().getDay() + 6) % 7;
+  await p.evaluate(pick => document.querySelectorAll('input[name="days"]').forEach(x => { x.checked = pick.includes(+x.value); }), [(td + 1) % 7, (td + 3) % 7, (td + 5) % 7]);
   await p.click('[data-act="next"]');
   await p.waitForSelector("#tabbar", {timeout: 15000});
   await p.waitForTimeout(2600);   // 900 ms build wait + 1200 ms before the ask + the service worker check
