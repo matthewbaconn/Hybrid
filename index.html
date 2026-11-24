@@ -764,6 +764,9 @@ button:active,.opt input:active + span{transform:scale(.96)}
 .mywp{display:grid;gap:8px;padding:12px 0;border-top:1px solid #22252E} .mywp:first-of-type{border-top:0;padding-top:0}
 .mywp-h{display:flex;align-items:center;gap:10px} .mywp-h b{flex:1;font-size:15.5px;font-weight:600;min-width:0} .mywp-h .spk{width:80px;height:24px;flex:none}
 .mywp-h em{font-style:normal;font-size:13px;font-weight:700;padding:3px 9px;border-radius:999px;background:#20232C;color:var(--muted);flex:none} .mywp-h em.up{background:color-mix(in srgb,var(--long) 18%,#14161C);color:var(--long)} .mywp-h em.dn{color:var(--accent-2)}
+.mywm{border-radius:12px;background:#171920} .mywm-b{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;font-size:14.5px;font-weight:600}
+.mywm-b small{color:var(--muted);font-size:13px;font-weight:500;flex:1} .mywm-b i{font-style:normal;color:var(--muted);transition:transform .15s} .mywm.open .mywm-b i{transform:rotate(90deg)}
+.mywm .mywh{padding:0 12px 10px} .mywm-b:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px} .mywnone{margin:0}
 .mywh{list-style:none;margin:0;padding:0;display:grid;gap:4px} .mywh li{display:grid;grid-template-columns:60px 1fr 18px;gap:8px;font-size:14px;align-items:center} .mywh li span{color:var(--muted);font-size:13px} .mywh li b{font-weight:600} .mywh li i{font-style:normal;color:var(--long)}
 .sheet.myws{max-width:560px;gap:14px;border-radius:22px 22px 0 0;background:#121419;padding:16px 18px calc(14px + env(safe-area-inset-bottom,0px));margin-bottom:0}
 .fl{display:grid;gap:6px} .fl span{font-size:13px;color:var(--muted)} .fl input{min-height:46px}
@@ -2424,9 +2427,34 @@ function mywLast(w){ let d = ""; w.ex.forEach(e => { const h = mywHist(e.n); if 
 function mywChange(e){
   const h = mywHist(e.n); if (h.length < 2) return null;
   const f = h[0], l = h[h.length - 1];
-  if (f.weight && l.weight && l.weight !== f.weight) return {txt: (l.weight > f.weight ? '+' : '−') + Math.abs(Math.round(l.weight - f.weight)) + ' lb', up: l.weight > f.weight};
+  if (f.weight && l.weight && l.weight !== f.weight){
+    const txt = (l.weight > f.weight ? '+' : '−') + Math.abs(Math.round(l.weight - f.weight)) + ' lb';
+    if (l.weight > f.weight) return {txt, up: true};
+    // lighter: only "down" when the reps say so too. 5 lb × 20 after 10 lb with no reps logged isn't going backwards
+    // (Nov 23: a red "−5 lb" for a lighter, higher-rep set read as losing strength)
+    if (f.reps && l.reps){ const a = mywE1(f), b = mywE1(l); return {txt: b > a ? '+' + (l.reps - f.reps) + ' reps' : txt, up: b > a ? true : b < a ? false : null}; }
+    return {txt: txt + (l.reps ? ', more reps' : ''), up: null};
+  }
   if ((l.reps || 0) !== (f.reps || 0)) return {txt: (l.reps > f.reps ? '+' : '−') + Math.abs((l.reps || 0) - (f.reps || 0)) + ' reps', up: l.reps > f.reps};
   return {txt: 'Same', up: null};
+}
+// History by month (a member, Nov 23: "a drop down menu for each month so you can look at your history and then each
+// month it should clear so the list of reps, sets and weight doesn't get too long"): this month is listed, earlier
+// months fold into one tap-to-open row each, newest first.
+const mywMonth = d => String(d).slice(0, 7);
+const mywMonthName = m => { const [y, mo] = m.split("-").map(Number); const t = new Date(y, mo - 1, 1); return t.toLocaleString("en-US", {month: "long"}) + (y !== Number(String(TODAY).slice(0, 4)) ? ' ' + y : ''); };
+const mywRow = x => '<li><span>' + shortD(x.date) + '</span><b>' + (x.weight ? x.weight + ' lb' : 'Bodyweight') + (x.reps ? ' × ' + x.reps : (x.weight ? ' · no reps logged' : '')) + (x.sets ? ' · ' + x.sets + ' sets' : '') + '</b>' + (x.hit ? '<i aria-label="all reps">✓</i>' : '<i></i>') + '</li>';
+function mywMonthsHtml(e, hs){
+  const now = mywMonth(TODAY), by = {};
+  hs.slice().reverse().forEach(x => { (by[mywMonth(x.date)] = by[mywMonth(x.date)] || []).push(x); });
+  const cur = by[now] || [];
+  let h = cur.length ? '<ul class="mywh">' + cur.map(mywRow).join("") + '</ul>' : '<p class="fine mywnone">Nothing logged in ' + mywMonthName(now) + ' yet.</p>';
+  Object.keys(by).filter(m => m !== now).sort().reverse().forEach(m => {
+    const k = e.n.toLowerCase() + '|' + m, open = !!mywOpen[k], n = by[m].length;
+    h += '<div class="mywm' + (open ? ' open' : '') + '"><button class="mywm-b" type="button" data-act="mywmonth" data-k="' + esc(k) + '" aria-expanded="' + open + '"><span>' + mywMonthName(m) + '</span><small>' + n + (n === 1 ? ' time' : ' times') + '</small><i aria-hidden="true">›</i></button>' +
+      (open ? '<ul class="mywh">' + by[m].map(mywRow).join("") + '</ul>' : '') + '</div>';
+  });
+  return h;
 }
 function mywSave(list, msg){
   const prof = {...plan.profile}; if (list.length) prof.myWorkouts = list; else delete prof.myWorkouts;
@@ -2461,12 +2489,10 @@ function mywDoHtml(){
     const hs = mywHist(e.n); if (!hs.length) return '<div class="mywp"><div class="mywp-h"><b>' + esc(e.n) + '</b><em class="sx">Not logged yet</em></div></div>';
     const c = mywChange(e), vals = hs.slice(-10).map(mywE1), mx = Math.max(...vals), mn = Math.min(...vals);
     const spark = vals.length > 1 ? '<svg class="spk" viewBox="0 0 80 24" aria-hidden="true"><polyline fill="none" stroke="var(--lift)" stroke-width="2" stroke-linejoin="round" points="' + vals.map((v, i) => (i * 80 / (vals.length - 1)).toFixed(1) + ',' + (21 - (mx === mn ? 9 : (v - mn) / (mx - mn) * 18)).toFixed(1)).join(" ") + '"/></svg>' : '';
-    const open = mywOpen[e.n.toLowerCase()], list = hs.slice().reverse().slice(0, open ? 20 : 3);
     return '<div class="mywp"><div class="mywp-h"><b>' + esc(e.n) + '</b>' + spark + (c ? '<em class="' + (c.up ? 'up' : c.up === false ? 'dn' : 'sx') + '">' + c.txt + '</em>' : '<em class="sx">1st log</em>') + '</div>' +
-      '<ul class="mywh">' + list.map(x => '<li><span>' + shortD(x.date) + '</span><b>' + (x.weight ? x.weight + ' lb' : 'Bodyweight') + (x.reps ? ' × ' + x.reps : (x.weight ? ' · no reps logged' : '')) + (x.sets ? ' · ' + x.sets + ' sets' : '') + '</b>' + (x.hit ? '<i aria-label="all reps">✓</i>' : '<i></i>') + '</li>').join("") + '</ul>' +
-      (hs.length > 3 ? '<button class="linkbtn" type="button" data-act="mywmore" data-ex="' + esc(e.n) + '">' + (open ? 'Show less' : 'Show all ' + hs.length) + '</button>' : '') + '</div>';
+      mywMonthsHtml(e, hs) + '</div>';
   });
-  h += rows.join("") + '<p class="fine" style="margin:4px 0 0">The change is from your first time to your latest. ✓ means you hit all your reps, so Mileset suggests adding weight next time.</p></section>';
+  h += rows.join("") + '<p class="fine" style="margin:4px 0 0">The change is from your first time to your latest; a lighter weight for more reps doesn\'t count as going down. Earlier months are folded up: tap one to see it. ✓ means you hit all your reps, so Mileset suggests adding weight next time.</p></section>';
   return h;
 }
 function mywEditOpen(id){
@@ -2505,7 +2531,7 @@ function mywAct(act, a){
   if (act === "mywcancel"){ mywEd = null; closeMenu(); return true; }
   if (act === "mywadd"){ mywEdRead(); if (mywEd.ex.length < MYW_EX_MAX) mywEd.ex.push({n: "", s: 3, r: 10}); mywEdRender(); const i = $("#myw-n-" + (mywEd.ex.length - 1)); if (i) i.focus(); return true; }
   if (act === "mywrm"){ mywEdRead(); mywEd.ex.splice(+a.dataset.i, 1); if (!mywEd.ex.length) mywEd.ex.push({n: "", s: 3, r: 10}); mywEdRender(); return true; }
-  if (act === "mywmore"){ const k = String(a.dataset.ex || "").toLowerCase(); mywOpen[k] = !mywOpen[k]; render(); return true; }
+  if (act === "mywmonth"){ const k = String(a.dataset.k || ""); mywOpen[k] = !mywOpen[k]; render(); return true; }
   if (act === "mywsave"){
     mywEdRead(); const name = mywEd.name.replace(/\s+/g, " ").trim().slice(0, 40);
     const seen = {}, ex = mywEd.ex.map(e => ({n: String(e.n || "").replace(/\s+/g, " ").trim().slice(0, 60), s: e.s >= 1 && e.s <= 20 ? e.s : null, r: e.r >= 1 && e.r <= 100 ? e.r : null}))
@@ -3937,7 +3963,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "128";
+const APP_VERSION = "130";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -4059,8 +4085,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-23";
+const NEW_ID = "2026-11-23.2";
 const NEWS = [
+  ["dumbbell", "Lift history by month", "In My workouts, each lift shows this month's sets; tap an earlier month to open it. A lighter weight for more reps no longer shows as going down.", "myw", null, "2026-11-23.2"],
   ["share", "Train with a partner", "After your 3rd workout, Today offers your invite link to send one training partner. Founding 100 spots are free for life until Jan 1.", null, null, "2026-11-23"],
   ["check", "Forgot to check off a workout?", "If a past workout isn't checked off, Today asks if you did it. Tap I did it and it counts, or move it or skip it.", null, null, "2026-11-22"],
   ["heart", "Recovery, all in one place", "Recovery opens with today's readiness and every number behind it, next to your own normal. One chart switches between readiness, sleep and, with a watch, HRV and resting heart rate, over 14 or 30 days.", "recovery", null, "2026-11-21.2"],
