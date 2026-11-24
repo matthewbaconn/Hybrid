@@ -424,6 +424,7 @@ button{cursor:pointer}
 .hub-hero .hsee{border:0;background:none;padding:0;min-height:44px;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .hub-hero .hcheck{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border:0;border-radius:999px;background:#fff;color:#800000;font-family:inherit;font-weight:700;font-size:15px;cursor:pointer}
 .hub-hero .hcheck svg{width:16px;height:16px}
+.hub-hero .hfirst .hsee{display:inline;min-height:0;font-size:14px;text-decoration:underline} .hub-hero .hstart{display:inline-flex;align-items:center;gap:7px;min-height:48px;padding:0 20px;border:0;border-radius:999px;background:#BE383E;color:#fff;font-family:inherit;font-weight:700;font-size:16px;cursor:pointer} .hub-hero .hstart svg{width:17px;height:17px}
 .fwc .fw-t{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:4px 0 6px} .fwc .fw-t b{font-size:18px} .fwc .fw-t span{color:var(--accent-2);font-weight:600;white-space:nowrap}
 .fwc .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px} .hub-hero .hwatch{display:inline;padding:0;font-size:14px;text-decoration:underline}
 .hub-hero .hfirst{margin:0;font-size:14px;line-height:1.45;color:rgba(255,255,255,.9);background:rgba(10,11,15,.3);border-radius:10px;padding:10px 12px}
@@ -2920,14 +2921,30 @@ function heroSummary(day){
       : minOnly(s) ? [].concat(s.yd ? [["Distance", comma(s.yd) + ' yd']] : s.bmi ? [["About", s.bmi + ' mi']] : []).concat(tt ? [["Time", fmtTime(tt).replace(/:\d\d$/, "") + (tt >= 3600 ? '' : ' min')]] : [])
       : [["Distance", s.mi + ' mi']].concat(tt ? [["Time", fmtTime(tt).replace(/:\d\d$/, "") + (tt >= 3600 ? '' : ' min')]] : []).concat([[s.type === "race" ? "Goal pace" : "Pace", kp + '/mi']]);
     const inner = !isDone && s.type !== "race";   // the card holds its own "I did it" button: then the card isn't a button itself, "See the workout" is
+    const d1 = inner && !i ? dayOne() : null;   // never trained: one tap starts Day 1 (Day-1 nudge, Nov 24)
     return '<article class="hub-hero t-' + s.type + '" data-act="go" data-scr="session"' + (inner ? '' : ' role="button" tabindex="0" aria-label="Open today\'s session"') + '>' +
       '<div class="hh"><span>' + (i ? 'Also today' : 'Today · ' + fmtD(TODAY)) + '</span><span class="chip">' + TYPE[s.type] + '</span></div><h3>' + esc(s.title) + '</h3>' +
       '<div class="hs">' + stats.map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
       (adj ? '<p class="hadj">' + (r.level === 1 ? 'Go easier today: trimmed for how you feel.' : 'Recovery day: keep it easy or rest.') + '</p>' : '') +
-      (!isDone && first1 && !i ? '<p class="hfirst"><b>' + (plan.profile.built === TODAY ? 'Your plan is ready. Day 1 is today.' : 'Your first workout is today.') + '</b> Do it, then tap I did it.' + (s.type !== "lift" && s.steps && s.steps.length ? ' No watch needed: open the workout and Start with my phone talks you through it.' : '') + ' Runs from Strava or Garmin check off on their own.' + (inner && watchAsk() ? ' <button class="linkbtn hwatch" type="button" data-act="go" data-scr="set-watch">Link your watch</button>' : '') + '</p>' : '') +
-      '<div class="hgo">' + (isDone ? '<span class="hdone">✓ Done' + (m[i] ? ' · ' + esc(m[i].name) : '') + '</span>' : inner ? '<button class="hsee" type="button" data-act="go" data-scr="session">See the workout</button>' : '<span>See the workout</span>') +
+      (d1 ? '<p class="hfirst"><b>' + esc(d1.line) + '</b> ' + (d1.play ? 'Start with my phone talks you through it, no watch needed. ' : '') + 'Already did it? Tap I did it. Runs from Strava or Garmin check off on their own.' + ' <button class="hsee" type="button" data-act="go" data-scr="session">See the workout</button>' + (watchAsk() ? ' · <button class="linkbtn hwatch" type="button" data-act="go" data-scr="set-watch">Link your watch</button>' : '') + '</p>' : '') +
+      '<div class="hgo">' + (isDone ? '<span class="hdone">✓ Done' + (m[i] ? ' · ' + esc(m[i].name) : '') + '</span>' : d1 ? '<button class="hstart" type="button" data-act="d1start" data-key="' + key + '">' + ic(d1.play ? "run" : "bolt") + esc(d1.btn) + '</button>' : inner ? '<button class="hsee" type="button" data-act="go" data-scr="session">See the workout</button>' : '<span>See the workout</span>') +
       (inner ? '<button class="hcheck" type="button" data-act="done" data-key="' + key + '" aria-label="I did it: check off ' + esc(s.title) + '">' + ic("check") + 'I did it</button>' : '<span>›</span>') + '</div></article>';
   }).join("");
+}
+/* Day-1 nudge (incident activation-none-trained, Nov 24, 2026: 4 of 15 plan holders have trained; 7 of 14 logged nothing
+   in their first 48 h). Day 1 used to be a line of text, then the reminder sheet covered it, and starting the run took two
+   taps. While a member has never checked off or synced a workout and today's first session isn't done, the Today card and
+   the first-plan sheet carry one button that starts it: runs, rides and swims with steps open Start with my phone, lift
+   days open the session. Gone after the first check-off or synced workout. */
+function dayOne(){
+  if (!plan || Object.keys(done).length || acts.length) return null;
+  const day = dayOf(TODAY), s = day && day.sessions[0], key = TODAY + "-0";
+  if (!s || s.type === "race" || dayMatches(TODAY)[0] || done[key]) return null;
+  const tt = estTime(s), min = s.type === "lift" ? s.min || 50 : tt ? Math.max(5, Math.round(tt / 300) * 5) : null;
+  const what = s.title.split(" ·")[0] + (min ? ', about ' + min + ' min' : ''), built = plan.profile.built === TODAY;
+  return {key, s, what, play: s.type !== "lift" && !!(s.steps && s.steps.length), built,
+    line: built ? 'Your plan is ready. Day 1: ' + what + '.' : 'Your first workout is today: ' + what + '.',
+    btn: built ? 'Start Day 1 now' : 'Start it now'};
 }
 /* First workout, on a rest day (incident activation-none-trained, Nov 21): a member who has never checked off or synced a
    workout and opens Today on a rest day saw only "Rest day" and nothing about when to start. Show the next session, how it
@@ -3963,7 +3980,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "130";
+const APP_VERSION = "131";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -4085,8 +4102,9 @@ async function pushOn(){
 /* ask once on open when notifications are off (again after 3 days if they said "Not now") */
 /* ---------- What's new: once per release, for anyone with a plan ---------- */
 // each entry: [icon, title, how to use it, Show me screen or null, sex filter or null, release id]. NEW_ID = newest release id.
-const NEW_ID = "2026-11-23.2";
+const NEW_ID = "2026-11-24";
 const NEWS = [
+  ["run", "Start your first workout in one tap", "Haven't logged a workout yet? Today's card has a Start button: runs open Start with my phone, lift days open the session.", null, null, "2026-11-24"],
   ["dumbbell", "Lift history by month", "In My workouts, each lift shows this month's sets; tap an earlier month to open it. A lighter weight for more reps no longer shows as going down.", "myw", null, "2026-11-23.2"],
   ["share", "Train with a partner", "After your 3rd workout, Today offers your invite link to send one training partner. Founding 100 spots are free for life until Jan 1.", null, null, "2026-11-23"],
   ["check", "Forgot to check off a workout?", "If a past workout isn't checked off, Today asks if you did it. Tap I did it and it counts, or move it or skip it.", null, null, "2026-11-22"],
@@ -4164,13 +4182,16 @@ function askNotif(first){
   if (first && denied) return;   // just built a plan: don't open with a Settings lecture
   try { localStorage.setItem("hy-nask", Date.now()); } catch(e){}
   const b = document.createElement("div"); b.className = "back"; b.dataset.close = "1";
-  const h = ios ? 'Get reminders for your workouts' : denied ? 'Notifications are off' : first ? 'Want a reminder for your workouts?' : 'Turn on notifications?';
-  const p = ios ? 'Your plan is ready. On iPhone, Mileset can send reminders once it\'s on your Home Screen: today\'s workout each morning and a summary after each run. It takes 3 taps.'
+  const d1 = first ? dayOne() : null;   // Day 1 has a session: the sheet leads with starting it (Day-1 nudge, Nov 24)
+  const h = d1 && !denied ? 'Day 1 is today' : ios ? 'Get reminders for your workouts' : denied ? 'Notifications are off' : first ? 'Want a reminder for your workouts?' : 'Turn on notifications?';
+  const p = d1 && !denied ? esc(d1.what) + '. Start it now, or ' + (ios ? 'add Mileset to your Home Screen (3 taps) and it sends today\'s workout each morning.' : 'turn on reminders and Mileset sends it each morning.')
+    : ios ? 'Your plan is ready. On iPhone, Mileset can send reminders once it\'s on your Home Screen: today\'s workout each morning and a summary after each run. It takes 3 taps.'
     : denied ? 'Mileset can\'t reach you. To get your morning readiness and workout summaries, open your phone\'s Settings → Notifications → Mileset and allow them.'
     : first ? 'Your plan is ready. Turn on notifications and Mileset sends today\'s workout each morning and a summary after each run. You can change this any time in Settings.'
     : 'Get your readiness score when you wake up, a summary after each workout and a short Monday recap. You can change this any time in Settings.';
   b.innerHTML = '<div class="sheet nask" role="dialog" aria-modal="true" aria-labelledby="nask-h"><div class="nask-i">' + ic("bell") + '</div><h2 id="nask-h">' + h + '</h2><p>' + p + '</p>' +
-    (denied ? '<button class="btn primary block" type="button" data-act="nasknot">OK</button>' : '<button class="btn primary block" type="button" data-act="' + (ios ? 'naskapp">Show me how' : 'naskyes">Allow') + '</button><button class="btn block" type="button" data-act="nasknot">Not now</button>') + '</div>';
+    (denied ? '<button class="btn primary block" type="button" data-act="nasknot">OK</button>' : d1 ? '<button class="btn primary block" type="button" data-act="d1start" data-key="' + d1.key + '">Start Day 1 now</button><button class="btn block" type="button" data-act="' + (ios ? 'naskapp">Show me how' : 'naskyes">Turn on reminders') + '</button><button class="btn block" type="button" data-act="nasknot">Not now</button>'
+      : '<button class="btn primary block" type="button" data-act="' + (ios ? 'naskapp">Show me how' : 'naskyes">Allow') + '</button><button class="btn block" type="button" data-act="nasknot">Not now</button>') + '</div>';
   document.body.appendChild(b);
 }
 /* Activation (incident activation-none-trained, Nov 20, 2026: 3 of 13 members with a plan have trained, and only 2 of
@@ -4781,6 +4802,7 @@ document.addEventListener("click", ev => {
     return;
   }
   if (/^cyc/.test(act) && cycAct(act, a)) return;
+  if (act === "d1start"){ if ($(".back")) closeMenu(); const x = dayOne(); if (x && x.key === a.dataset.key && x.play) playerOpen(x.s, x.key); else go("session"); return; }
   if (act === "play"){ const [d, i] = [a.dataset.key.slice(0, 10), +a.dataset.key.slice(11)], day = dayOf(d), sx = day && day.sessions[i]; if (sx) playerOpen(sx, a.dataset.key); return; }
   if (act === "runby"){
     const v = a.dataset.v, prof = {...plan.profile};
