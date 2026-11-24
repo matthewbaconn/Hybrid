@@ -64,7 +64,7 @@ try {
   { const {p, ctx} = await open(me(runToday, {done: [add(today, -1) + "-0"]}));
     t(!(await p.$(".hub-hero .hstart")) && !!(await p.$(".hub-hero .hgo .hsee")), "checked off a workout before: no Start button, 'See the workout' is back in its place");
     await ctx.close(); }
-  { const {p, ctx} = await open(me(runToday, {activities: [{id: "a1", source: "strava", date: add(today, -1), type: "Run", name: "Morning Run", mi: 3, minutes: 30}]}));
+  { const {p, ctx} = await open(me(runToday, {activities: [{id: "a1", source: "strava", date: add(today, -1), type: "run", name: "Morning Run", mi: 3, minutes: 30}]}));
     t(!(await p.$(".hub-hero .hstart")), "synced a workout before: no Start button");
     await ctx.close(); }
   // 4. a lift-only day

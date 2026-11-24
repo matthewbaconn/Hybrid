@@ -22,6 +22,7 @@ await p.route(/hybrid-api\.hybridapp\.workers\.dev/, async r => {
 await ctx.addInitScript(() => { try { localStorage.setItem("hp-token", "test"); localStorage.setItem("hy-new", "9999"); localStorage.setItem("hy-nask", String(Date.now())); } catch(e){} });
 const iso = x => x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
 const today = iso(new Date()), add = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return iso(x); };
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const dw = d => (new Date(d + "T12:00:00").getDay() + 6) % 7, monday = add(today, -dw(today));
 // runs only on the day after tomorrow and the day after that: today and tomorrow are rest days
 const runProf = {name: "Casey", goal: "fitness", weekly: 20, longest: 6, prDist: "none", days: [0,1,2,3,4,5,6], longDay: 6, lifts: 0, liftExp: "Some", weight: 170, start: add(monday, -7), built: add(today, -3), pv: 2};
@@ -53,8 +54,18 @@ try {
   await open(base(runProf, {done: [add(today, -1) + "-0", add(today, -2) + "-0", add(today, -3) + "-0"]}));
   t(!(await p.$(".mcard")), "every past day checked off: no card");
   // a synced run on yesterday also counts: no card for yesterday
-  await open(base(runProf, {done: [add(today, -2) + "-0", add(today, -3) + "-0"], activities: [{id: "a1", source: "strava", date: add(today, -1), type: "Run", name: "Morning Run", mi: 3, minutes: 30}]}));
+  await open(base(runProf, {done: [add(today, -2) + "-0", add(today, -3) + "-0"], activities: [{id: "a1", source: "strava", date: add(today, -1), type: "run", name: "Morning Run", mi: 3, minutes: 30}]}));
   t(!(await p.$(".mcard")), "synced run yesterday: no card");
+  // ...on every weekday, not just easy-run days (Nov 24: the fixture used type "Run", but the API stores "run", so a synced
+  // run only counted when yesterday was an easy day that a cross-training swap could cover; red on Mondays and Thursdays)
+  for (let k = 1; k <= 7; k++){
+    const fake = add(today, k), at = new Date(fake + "T09:00:00"), fd = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return iso(x); };
+    const fmon = fd(fake, -dw(fake)), prof = {...runProf, start: fd(fmon, -7), built: fd(fake, -3)};
+    await p.clock.setFixedTime(at);
+    await open(base(prof, {done: [fd(fake, -2) + "-0", fd(fake, -3) + "-0"], activities: [{id: "a1", source: "strava", date: fd(fake, -1), type: "run", name: "Morning Run", mi: 6, minutes: 60}]}));
+    const l = await p.$eval(".mcard .lbl", e => e.textContent).catch(() => "");
+    t(!l, "synced run yesterday, " + DAYS[at.getDay()] + ": no card (" + (l || "none") + ")");
+  }
 } catch(e){ console.log("FAIL error: " + e.message); bad++; }
 await b.close(); srv.close();
 console.log(bad ? bad + " FAILED" : "ALL PASS"); process.exit(bad ? 1 : 0);
