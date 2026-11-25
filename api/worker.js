@@ -904,12 +904,26 @@ function weeklySummary(U, today){
 async function funnelCounts(env){
   const d7 = "date(u.created, '+7 days')", cut = new Date(Date.now() - 7 * 864e5).toISOString(), wk = cut.slice(0, 10);
   const P = "EXISTS(SELECT 1 FROM profiles p WHERE p.user_id = u.id)", D0 = "substr(u.created, 1, 10)";
+  // came back: any activity (check-off, food, check-in, workout, login) on a later day than sign-up
+  const BACK = "(EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id AND substr(d.key, 1, 10) > " + D0 + ") OR " +
+    "EXISTS(SELECT 1 FROM food x WHERE x.user_id = u.id AND x.date > " + D0 + ") OR " +
+    "EXISTS(SELECT 1 FROM checkins c WHERE c.user_id = u.id AND c.date > " + D0 + ") OR " +
+    "EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.date > " + D0 + ") OR " +
+    "EXISTS(SELECT 1 FROM sessions s WHERE s.user_id = u.id AND substr(s.created, 1, 10) > " + D0 + "))";
+  const S = "(" + P + " AND NOT EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id) AND NOT EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.date >= " + D0 + "))";
   const f = await env.DB.prepare(
     "SELECT COUNT(*) AS signed_up, SUM(" + P + ") AS plan, " +
     "SUM(" + P + " AND EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id)) AS checked_off, " +
     // A synced workout counts only if it happened on or after the sign-up day (a Strava/Garmin history import of
     // older runs is not training WITH Mileset; Matthew, Nov 18: "accurate measurements of actual member behavior").
     "SUM(" + P + " AND (EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id) OR EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.date >= " + D0 + "))) AS trained, " +
+    // Stuck between plan and first workout (Nov 25): plan holders who never trained, split by what could reach them.
+    // stuck_back also counts last_seen (any app open), since a member who stays logged in never makes a new session.
+    "SUM(" + S + ") AS stuck, " +
+    "SUM(" + S + " AND ((u.last_seen IS NOT NULL AND substr(u.last_seen, 1, 10) > " + D0 + ") OR " + BACK + ")) AS stuck_back, " +
+    "SUM(" + S + " AND EXISTS(SELECT 1 FROM push_subs ps WHERE ps.user_id = u.id)) AS stuck_push, " +
+    "SUM(" + S + " AND (EXISTS(SELECT 1 FROM strava_links sl WHERE sl.user_id = u.id) OR EXISTS(SELECT 1 FROM garmin_links gl WHERE gl.user_id = u.id))) AS stuck_linked, " +
+    "SUM(" + S + " AND EXISTS(SELECT 1 FROM lifecycle_mail lm WHERE lm.user_id = u.id AND lm.kind = 'first_workout' AND lm.ok = 1)) AS stuck_nudged, " +
     // Activation (docs/STRATEGY.md #4): plan holders who joined 3+ days ago, and how many of them trained (check-off
     // OR synced/logged workout) within their first 3 days.
     "SUM(" + P + " AND u.created <= ?3) AS act72_eligible, " +
@@ -922,11 +936,7 @@ async function funnelCounts(env){
     "EXISTS(SELECT 1 FROM food x WHERE x.user_id = u.id AND x.date >= " + d7 + ") OR " +
     "EXISTS(SELECT 1 FROM checkins c WHERE c.user_id = u.id AND c.date >= " + d7 + ") OR " +
     "EXISTS(SELECT 1 FROM sessions s WHERE s.user_id = u.id AND substr(s.created, 1, 10) >= " + d7 + "))) AS active_d7, " +
-    "SUM(EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id AND substr(d.key, 1, 10) > " + D0 + ") OR " +
-    "EXISTS(SELECT 1 FROM food x WHERE x.user_id = u.id AND x.date > " + D0 + ") OR " +
-    "EXISTS(SELECT 1 FROM checkins c WHERE c.user_id = u.id AND c.date > " + D0 + ") OR " +
-    "EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.date > " + D0 + ") OR " +
-    "EXISTS(SELECT 1 FROM sessions s WHERE s.user_id = u.id AND substr(s.created, 1, 10) > " + D0 + ")) AS returned, " +
+    "SUM(" + BACK + ") AS returned, " +
     "SUM(u.ref IS NOT NULL AND u.ref != u.id) AS via_invite, " +
     "SUM(EXISTS(SELECT 1 FROM users r WHERE r.ref = u.id AND r.id != u.id AND " + REAL("r.") + ")) AS referrers " +
     "FROM users u WHERE " + REAL("u.")).bind(cut, wk, new Date(Date.now() - 3 * 864e5).toISOString()).first();
@@ -934,15 +944,22 @@ async function funnelCounts(env){
   return {signed_up: n("signed_up"), plan: n("plan"), workout: n("trained"), checked_off: n("checked_off"), trained: n("trained"),
           trained_7d: n("trained_7d"), d7_eligible: n("d7_eligible"), active_d7: n("active_d7"),
           returned: n("returned"), via_invite: n("via_invite"), referrers: n("referrers"),
-          act72_eligible: n("act72_eligible"), act72: n("act72")};
+          act72_eligible: n("act72_eligible"), act72: n("act72"),
+          stuck: n("stuck"), stuck_back: n("stuck_back"), stuck_push: n("stuck_push"), stuck_linked: n("stuck_linked"), stuck_nudged: n("stuck_nudged")};
 }
 
 // Today's counts into funnel_daily (one row per UTC day, totals only) so Vesper's reports can read them without
 // ever touching activities or Strava/Garmin tables.
 async function saveFunnelDaily(env){
   const f = await funnelCounts(env), now = new Date().toISOString();
-  await env.DB.prepare("INSERT OR REPLACE INTO funnel_daily (day, signed_up, plan, checked_off, trained, trained_7d, d7_eligible, active_d7, returned, via_invite, referrers, act72_eligible, act72, updated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
-    .bind(now.slice(0, 10), f.signed_up, f.plan, f.checked_off, f.trained, f.trained_7d, f.d7_eligible, f.active_d7, f.returned, f.via_invite, f.referrers, f.act72_eligible, f.act72, now).run();
+  const base = [now.slice(0, 10), f.signed_up, f.plan, f.checked_off, f.trained, f.trained_7d, f.d7_eligible, f.active_d7, f.returned, f.via_invite, f.referrers, f.act72_eligible, f.act72];
+  const cols = "day, signed_up, plan, checked_off, trained, trained_7d, d7_eligible, active_d7, returned, via_invite, referrers, act72_eligible, act72";
+  try {
+    await env.DB.prepare("INSERT OR REPLACE INTO funnel_daily (" + cols + ", stuck, stuck_back, stuck_push, stuck_linked, stuck_nudged, updated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+      .bind(...base, f.stuck, f.stuck_back, f.stuck_push, f.stuck_linked, f.stuck_nudged, now).run();
+  } catch(e){   // before migration 0036 runs: the older columns still get today's row
+    await env.DB.prepare("INSERT OR REPLACE INTO funnel_daily (" + cols + ", updated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(...base, now).run();
+  }
 }
 
 async function cron(env, ctx){
