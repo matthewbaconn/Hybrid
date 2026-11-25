@@ -1403,8 +1403,9 @@ async function route(req, env, path, ctx){
     if (/^[a-f0-9]{8}$/.test(ref)){   // invited by a member: remember who (never blocks the sign-up)
       try { await env.DB.prepare("UPDATE users SET ref = (SELECT id FROM users WHERE substr(id, 1, 8) = ? AND id != ? LIMIT 1) WHERE id = ?").bind(ref, id, id).run(); } catch(e){ console.log("ref", e && e.message); }
     }
-    const src = String(b.src || "").toLowerCase().slice(0, 24) || (/^[a-f0-9]{8}$/.test(ref) ? "invite" : "");
-    if (/^[a-z0-9_-]{1,24}$/.test(src)){   // first link source (?src=), for sign-ups by channel; never blocks the sign-up
+    // ?src=ambassador-<instagram handle> (Founding Ambassador links): same clean-up as the app ("." -> "-", no "@"), up to 48 chars
+    const src = String(b.src || "").trim().toLowerCase().replace(/@/g, "").replace(/\./g, "-").slice(0, 48) || (/^[a-f0-9]{8}$/.test(ref) ? "invite" : "");
+    if (/^[a-z0-9_-]{1,48}$/.test(src)){   // first link source (?src=), for sign-ups by channel; never blocks the sign-up
       try { await env.DB.prepare("UPDATE users SET src = ? WHERE id = ?").bind(src, id).run(); } catch(e){ console.log("src", e && e.message); }
     }
     if (ctx && !/@example\.com$/.test(email)){
