@@ -9,6 +9,9 @@
 //   - a lift-only day: the button opens today's session screen
 //   - the first-plan sheet (plan built through setup) on a session day: "Day 1 is today", Start Day 1 now (closes the sheet, opens the coach),
 //     Turn on reminders, Not now; on a rest day the sheet is unchanged ("Want a reminder for your workouts?")
+//   - at 8am (morning check-in showing), never trained: today's card comes BEFORE the check-in and "Start Day 1 now" is on
+//     the first phone screen, above the tab bar (it was at y 1031 of 844 on Nov 24); on a rest day the first-workout card
+//     leads; once the member has trained, the check-in is back above today's card
 // Run: node tests/day1_start.mjs  (serves this folder itself). SHOTS=<dir> saves phone screenshots.
 import {chromium} from "playwright";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
@@ -28,8 +31,9 @@ const me = (profile, extra) => ({user: {id: "u1", name: "Casey Runner", email: "
   strava: {available: true, connected: false}, garmin: {available: true, connected: false},
   push: {key: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U", devices: 0}, ...extra});
 const b = await chromium.launch();
-async function open(j, {asked = true, wait = true} = {}){
+async function open(j, {asked = true, wait = true, morning = false} = {}){
   const ctx = await b.newContext({viewport: {width: 390, height: 844}}), p = await ctx.newPage();
+  if (morning){ const m = new Date(); m.setHours(8, 5, 0, 0); await p.clock.setFixedTime(m); }   // 8am: the morning check-in survey shows
   p.on("pageerror", e => { console.log("FAIL page error: " + e.message); bad++; });
   await ctx.addInitScript(asked => { try { localStorage.setItem("hp-token", "test"); localStorage.setItem("hy-new", "9999"); if (asked) localStorage.setItem("hy-nask", String(Date.now())); } catch(e){}
     try { Object.defineProperty(Notification, "permission", {get: () => "default"}); } catch(e){} }, asked);
@@ -74,6 +78,20 @@ try {
       await p.click(".hub-hero .hstart"); await p.waitForTimeout(600);
       t(!(await p.$("#player")) && /Today's session/.test(await p.evaluate(() => document.body.innerText)), "lift day: the button opens today's session screen, not the phone coach");
     } else t(false, "lift-day profile did not put a lift on Today");
+    await ctx.close(); }
+  // 4b. morning check-in showing (8am): the Day-1 card leads Today, Start is above the fold (Nov 25)
+  const order = p => p.evaluate(() => { const q = s => document.querySelector(s), y = e => e ? Math.round(e.getBoundingClientRect().top) : null;
+    return {hero: y(q(".hub-hero")), fw: y(q(".card.fwc")), ci: y(q(".card.ci")), start: y(q(".hub-hero .hstart")), tab: y(q("#tabbar"))}; });
+  { const {p, ctx} = await open(me(runToday), {morning: true}); const o = await order(p);
+    t(o.ci != null && o.hero < o.ci, "8am, never trained: today's card is above the morning check-in (" + JSON.stringify(o) + ")");
+    t(o.start != null && o.start > 0 && o.start + 40 <= o.tab, "8am, never trained: 'Start Day 1 now' is on the first screen, above the tab bar");
+    if (process.env.SHOTS) await p.screenshot({path: process.env.SHOTS + "/day1-morning.png"});
+    await ctx.close(); }
+  { const {p, ctx} = await open(me(restToday), {morning: true}); const o = await order(p);
+    t(o.fw != null && o.ci != null && o.fw < o.ci, "8am rest day, never trained: 'Your first workout' card is above the check-in (" + JSON.stringify(o) + ")");
+    await ctx.close(); }
+  { const {p, ctx} = await open(me(runToday, {done: [add(today, -1) + "-0"]}), {morning: true}); const o = await order(p);
+    t(o.ci != null && o.ci < o.hero, "8am, trained before: the check-in stays above today's card, as before (" + JSON.stringify(o) + ")");
     await ctx.close(); }
   // 5. the first-plan sheet, driven through plan setup like a new member (same steps as tests/first_remind.mjs)
   async function buildFirstPlan(p, withToday){
