@@ -71,6 +71,16 @@ try {
   { const {p, ctx} = await open(me(runToday, {activities: [{id: "a1", source: "strava", date: add(today, -1), type: "run", name: "Morning Run", mi: 3, minutes: 30}]}));
     t(!(await p.$(".hub-hero .hstart")), "synced a workout before: no Start button");
     await ctx.close(); }
+  // Nov 26 (incident activation-none-trained): linking a watch imports up to 2 weeks of OLDER runs. Those are not a first
+  // workout with Mileset (same rule as the funnel count), so Day 1 stays; a run on or after the sign-up day still ends it.
+  { const u = {id: "u1", name: "Casey Runner", email: "u1@t.test", terms_at: "2026-11-01T10:00:00Z", created: add(today, -3) + "T15:00:00.000Z"};
+    const old = {id: "a2", source: "garmin", date: add(today, -8), type: "run", name: "Old Run", mi: 4, minutes: 40};
+    let {p, ctx} = await open(me(runToday, {user: u, activities: [old], garmin: {available: true, connected: true}}));
+    t(!!(await p.$(".hub-hero .hstart")), "only runs from before sign-up (watch history import): Start button still there");
+    await ctx.close();
+    ({p, ctx} = await open(me(runToday, {user: u, activities: [old, {...old, id: "a3", date: add(today, -2), name: "New Run"}], garmin: {available: true, connected: true}})));
+    t(!(await p.$(".hub-hero .hstart")), "a synced run after sign-up: no Start button");
+    await ctx.close(); }
   // 4. a lift-only day
   { const {p, ctx} = await open(me(liftToday));
     if (await p.$(".hub-hero.t-lift")){
