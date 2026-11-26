@@ -9,7 +9,7 @@ const types = {".html": "text/html", ".js": "text/javascript", ".css": "text/css
 const srv = http.createServer((q, r) => { let p = decodeURIComponent(q.url.split("?")[0]); if (p.endsWith("/")) p += "index.html";
   fs.readFile(path.join(root, p), (e, b) => { if (e){ r.writeHead(404); r.end(); return; } r.writeHead(200, {"content-type": types[path.extname(p)] || "application/octet-stream"}); r.end(b); }); }).listen(8098);
 let bad = 0; const t = (ok, name) => { console.log((ok ? "ok   " : "FAIL ") + name); if (!ok) bad++; };
-let me = null, left = 83, have = 0;
+let me = null, left = 83, have = 0; const pmPut = [];
 const b = await chromium.launch();
 const iso = x => x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
 const today = iso(new Date()), add = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return iso(x); };
@@ -26,6 +26,7 @@ async function page(share){
     const u = new URL(r.request().url());
     if (u.pathname === "/api/me") return r.fulfill({json: me});
     if (u.pathname === "/api/founding") return r.fulfill({json: {left}});
+    if (u.pathname === "/api/settings" && r.request().method() === "PUT"){ const j = JSON.parse(r.request().postData() || "{}"); if (j.pm) pmPut.push(j.pm); return r.fulfill({json: {settings: {pm: j.pm}}}); }
     if (u.pathname === "/api/invites") return r.fulfill({json: {joined: have, plan: have, reward: {have, need: 2, earned: have >= 2, requested: null}}});
     return r.fulfill({json: {ok: true}});
   });
@@ -54,6 +55,7 @@ try {
   t(!(await p.$(".pmc")), "after sending: the ask is gone");
   t(!!(await p.$(".invc")), "after sending: the general invite card is back");
   t(/^sent /.test(await p.evaluate(() => localStorage.getItem("hy-pm"))), "sent is remembered");
+  t(pmPut.join(",") === "shown,sent", "the server is told: shown once, then sent (" + pmPut.join(",") + ")");
   await shot(p, "partner-after-send.png");
   await open(p, base({done: days(5)}));
   t(!(await p.$(".pmc")), "reopened with more workouts: never asked twice");
@@ -65,6 +67,15 @@ try {
   await p.click(".pmc [data-act=pmskip]"); await p.waitForTimeout(400);
   t(!(await p.$(".pmc")) && !(await p.$(".invc")), "Not now: the ask is gone, and the invite card rests for a week");
   t(/^skip /.test(await p.evaluate(() => localStorage.getItem("hy-pm"))), "Not now is remembered");
+  t(pmPut.slice(-2).join(",") === "shown,skip", "the server is told: shown, then skip (" + pmPut.slice(-2).join(",") + ")");
+  await ctx.close();
+
+  ({ctx, p} = await page(false));
+  await open(p, base({done: days(4), settings: {pm: "sent"}}));
+  t(!(await p.$(".pmc")), "answered on another device (settings.pm = sent): not asked again here");
+  await ctx.addInitScript(() => { try { localStorage.setItem("hy-pm", "skip 2026-11-24"); } catch(e){} });
+  const n0 = pmPut.length; await open(p, base({done: days(4)}));
+  t(!(await p.$(".pmc")) && pmPut.slice(n0).join(",") === "skip", "answered on this phone before the server knew: the old answer is sent once (" + pmPut.slice(n0).join(",") + ")");
   await ctx.close();
 
   ({ctx, p} = await page(false));
