@@ -29,6 +29,16 @@ try {
   const t0 = Date.now(), tok = {};
   tok.Owner = await signup("owner-" + t0 + "@fd.test", "Owner");   // oldest real account = the owner, never counted
   for (const k of ["Checked", "Synced", "Old", "Planonly", "Noplan", "Robot", "Quick"]) { tok[k] = await signup((k === "Robot" ? "robot-" + t0 + "@example.com" : k.toLowerCase() + "-" + t0 + "@fd.test"), k); ok(!!tok[k], "signed up " + k); }
+  // Partner ask (#146, migration 0037): each member's answer lives in their own settings; shown -> sent|skip, first answer stands (before the
+  // fixtures below, since any signed-in request moves last_seen)
+  const pm = async (k, v) => { for (let i = 0; ; i++){ try {   // retry: the first request after `d1 execute` can hit a closed socket
+    return (await (await fetch(API + "/api/settings", {method: "PUT", headers: {"Content-Type": "application/json", Authorization: "Bearer " + tok[k]}, body: JSON.stringify({pm: v})})).json()).settings || {};
+  } catch(e){ if (i >= 3) throw e; await sleep(1000); } } };
+  await pm("Checked", "shown"); ok((await pm("Checked", "sent")).pm === "sent", "shown then Send: settings.pm = sent");
+  ok((await pm("Checked", "skip")).pm === "sent" && (await pm("Checked", "shown")).pm === "sent", "the first answer stands (a later skip or shown doesn't overwrite sent)");
+  ok((await pm("Synced", "skip")).pm === "skip", "Not now without a shown first still counts as an answer");
+  await pm("Old", "shown"); ok((await pm("Old", "bogus")).pm === "shown", "unknown values are ignored");
+  await pm("Robot", "sent");   // test account: never counted
   const id = {}; for (const r of sql("SELECT id, name FROM users")) id[r.name] = r.id;
   sql(`INSERT OR IGNORE INTO not_members (user_id, why, created) VALUES ('${id.Owner}', 'owner', '${day(0)}');`);
   for (const n of ["Owner", "Checked", "Synced", "Old", "Planonly", "Robot", "Quick"]) sql(`INSERT INTO profiles (user_id, data, updated) VALUES ('${id[n]}', '{"name":"T"}', '${day(-3)}T12:00:00.000Z');`);
@@ -70,16 +80,18 @@ try {
   ok(st.stuck_linked === 1, "stuck_linked: Strava or Garmin linked (" + st.stuck_linked + ")");
   ok(st.stuck_nudged === 1, "stuck_nudged: only a delivered first_workout nudge counts, not other lifecycle mail (" + st.stuck_nudged + ")");
   ok(r.returned === 3, "returned unchanged by the stuck split (" + r.returned + ")");
+  const pmr = sql("SELECT pm_shown, pm_sent, pm_skip FROM funnel_daily")[0] || {};
+  ok(pmr.pm_shown === 3 && pmr.pm_sent === 1 && pmr.pm_skip === 1, "partner ask: 3 real members shown it, 1 sent, 1 Not now; test account left out (" + JSON.stringify(pmr) + ")");
   const cols = sql("SELECT name FROM pragma_table_info('funnel_daily')").map(c => c.name);
   ok(!cols.some(c => /user|name|email|mi|pace|hr|src/i.test(c)), "funnel_daily holds totals only: " + cols.join(","));
   await tick();
   ok(sql("SELECT COUNT(*) AS n FROM funnel_daily")[0].n === 1, "second cron run the same day refreshes the row, no duplicate");
   ok(sql("SELECT COUNT(*) AS n FROM done")[0].n === before.done && sql("SELECT COUNT(*) AS n FROM activities")[0].n === before.acts && sql("SELECT COUNT(*) AS n FROM profiles")[0].n === before.profiles, "member data unchanged");
   const owner = await (await fetch(API + "/api/admin/funnel", {headers: {Authorization: "Bearer " + tok.Owner}})).json();
-  ok(owner.funnel && owner.funnel.workout === 3 && owner.funnel.trained === 3 && owner.funnel.checked_off === 1 && owner.funnel.returned === 3 && owner.funnel.stuck === 2 && owner.funnel.stuck_back === 1, "owner's Members funnel: workout = trained (" + JSON.stringify(owner.funnel) + ")");
+  ok(owner.funnel && owner.funnel.workout === 3 && owner.funnel.trained === 3 && owner.funnel.checked_off === 1 && owner.funnel.returned === 3 && owner.funnel.stuck === 2 && owner.funnel.stuck_back === 1 && owner.funnel.pm_shown === 3 && owner.funnel.pm_sent === 1, "owner's Members funnel: workout = trained (" + JSON.stringify(owner.funnel) + ")");
   const other = await fetch(API + "/api/admin/funnel", {headers: {Authorization: "Bearer " + tok.Checked}});
   ok(other.status === 403, "a member can't read the funnel (" + other.status + ")");
-} catch(e){ ok(false, "test crashed: " + (e && e.message)); }
+} catch(e){ ok(false, "test crashed: " + (e && e.message) + " " + (e && e.cause && e.cause.message) + " " + (e && e.stack || "").split("\n").slice(1,3).join(" ")); }
 stop();
 console.log(failed ? failed + " check(s) failed" : "ALL PASS");
 process.exit(failed ? 1 : 0);

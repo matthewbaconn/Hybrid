@@ -924,6 +924,10 @@ async function funnelCounts(env){
     "SUM(" + S + " AND EXISTS(SELECT 1 FROM push_subs ps WHERE ps.user_id = u.id)) AS stuck_push, " +
     "SUM(" + S + " AND (EXISTS(SELECT 1 FROM strava_links sl WHERE sl.user_id = u.id) OR EXISTS(SELECT 1 FROM garmin_links gl WHERE gl.user_id = u.id))) AS stuck_linked, " +
     "SUM(" + S + " AND EXISTS(SELECT 1 FROM lifecycle_mail lm WHERE lm.user_id = u.id AND lm.kind = 'first_workout' AND lm.ok = 1)) AS stuck_nudged, " +
+    // Partner ask (#146): members shown "Training with someone?", and how they answered (settings.pm, their own choice).
+    "SUM(EXISTS(SELECT 1 FROM settings st WHERE st.user_id = u.id AND json_extract(st.data, '$.pm') IN ('shown', 'sent', 'skip'))) AS pm_shown, " +
+    "SUM(EXISTS(SELECT 1 FROM settings st WHERE st.user_id = u.id AND json_extract(st.data, '$.pm') = 'sent')) AS pm_sent, " +
+    "SUM(EXISTS(SELECT 1 FROM settings st WHERE st.user_id = u.id AND json_extract(st.data, '$.pm') = 'skip')) AS pm_skip, " +
     // Activation (docs/STRATEGY.md #4): plan holders who joined 3+ days ago, and how many of them trained (check-off
     // OR synced/logged workout) within their first 3 days.
     "SUM(" + P + " AND u.created <= ?3) AS act72_eligible, " +
@@ -945,7 +949,8 @@ async function funnelCounts(env){
           trained_7d: n("trained_7d"), d7_eligible: n("d7_eligible"), active_d7: n("active_d7"),
           returned: n("returned"), via_invite: n("via_invite"), referrers: n("referrers"),
           act72_eligible: n("act72_eligible"), act72: n("act72"),
-          stuck: n("stuck"), stuck_back: n("stuck_back"), stuck_push: n("stuck_push"), stuck_linked: n("stuck_linked"), stuck_nudged: n("stuck_nudged")};
+          stuck: n("stuck"), stuck_back: n("stuck_back"), stuck_push: n("stuck_push"), stuck_linked: n("stuck_linked"), stuck_nudged: n("stuck_nudged"),
+          pm_shown: n("pm_shown"), pm_sent: n("pm_sent"), pm_skip: n("pm_skip")};
 }
 
 // Today's counts into funnel_daily (one row per UTC day, totals only) so Vesper's reports can read them without
@@ -954,12 +959,11 @@ async function saveFunnelDaily(env){
   const f = await funnelCounts(env), now = new Date().toISOString();
   const base = [now.slice(0, 10), f.signed_up, f.plan, f.checked_off, f.trained, f.trained_7d, f.d7_eligible, f.active_d7, f.returned, f.via_invite, f.referrers, f.act72_eligible, f.act72];
   const cols = "day, signed_up, plan, checked_off, trained, trained_7d, d7_eligible, active_d7, returned, via_invite, referrers, act72_eligible, act72";
-  try {
-    await env.DB.prepare("INSERT OR REPLACE INTO funnel_daily (" + cols + ", stuck, stuck_back, stuck_push, stuck_linked, stuck_nudged, updated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
-      .bind(...base, f.stuck, f.stuck_back, f.stuck_push, f.stuck_linked, f.stuck_nudged, now).run();
-  } catch(e){   // before migration 0036 runs: the older columns still get today's row
-    await env.DB.prepare("INSERT OR REPLACE INTO funnel_daily (" + cols + ", updated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(...base, now).run();
-  }
+  const stuck = [f.stuck, f.stuck_back, f.stuck_push, f.stuck_linked, f.stuck_nudged], sc = ", stuck, stuck_back, stuck_push, stuck_linked, stuck_nudged";
+  const put = (extra, vals) => env.DB.prepare("INSERT OR REPLACE INTO funnel_daily (" + cols + extra + ", updated) VALUES (" + Array(base.length + vals.length + 1).fill("?").join(",") + ")").bind(...base, ...vals, now).run();
+  // before migration 0037 (partner ask) or 0036 (stuck split) runs, the older columns still get today's row
+  try { await put(sc + ", pm_shown, pm_sent, pm_skip", [...stuck, f.pm_shown, f.pm_sent, f.pm_skip]); }
+  catch(e){ try { await put(sc, stuck); } catch(e2){ await put("", []); } }
 }
 
 async function cron(env, ctx){
@@ -1948,6 +1952,8 @@ async function route(req, env, path, ctx){
     if (b.hr_max === null) delete next.hr_max; else if (b.hr_max >= 120 && b.hr_max <= 230) next.hr_max = Math.round(b.hr_max);
     if (b.hr_lthr === null) delete next.hr_lthr; else if (b.hr_lthr >= 100 && b.hr_lthr <= 220) next.hr_lthr = Math.round(b.hr_lthr);
     for (const k of ["hr_pct_max", "hr_pct_lthr"]) if (Array.isArray(b[k]) && b[k].length === 4 && b[k].every((x, i) => Number.isFinite(x) && x >= 30 && x <= 120 && (!i || x > b[k][i - 1]))) next[k] = b[k].map(x => Math.round(x));
+    // the partner ask (#146): shown, then sent or skip; the first answer stands (counts only, see funnelCounts)
+    if (["shown", "sent", "skip"].includes(b.pm) && cur.pm !== "sent" && cur.pm !== "skip" && !(b.pm === "shown" && cur.pm)){ next.pm = b.pm; next.pm_at = now().slice(0, 10); }
     // the member's own yes or no to the AI coach, with when they gave it (see aiState)
     if (typeof b.ai === "boolean" && b.ai !== cur.ai){ next.ai = b.ai; next.ai_at = now(); await logEvent(env, "ai_consent", true, b.ai ? "on" : "off"); }
     await env.DB.prepare("INSERT INTO settings (user_id, data) VALUES (?, ?) ON CONFLICT (user_id) DO UPDATE SET data = excluded.data").bind(user.id, JSON.stringify(next)).run();
