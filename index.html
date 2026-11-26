@@ -2911,7 +2911,7 @@ function greeting(p, w){
 }
 function heroSummary(day){
   const t = dayType(day), m = dayMatches(TODAY), F = fb(), r = readiness(checkins[TODAY], sigOn(TODAY));
-  const first1 = !Object.keys(done).length && !acts.length;   // never checked off or synced a workout: coach the first one (B7)
+  const first1 = !trainedYet();   // never checked off or synced a workout: coach the first one (B7)
   // Growth move 11 (Nov 21, 2026: 2 of 12 plan holders trained within 72 h): the hint opens with "Day 1 is today" on the day the plan is built
   if (!day.sessions.length) return '<section class="hub-hero t-rest" style="cursor:default"><div class="hh"><span>Today</span><span class="chip">Rest</span></div><h3>Rest day</h3><p style="color:var(--muted)">An easy walk or mobility is plenty. Sleep and food do the work today.</p></section>';
   return day.sessions.map((s, i) => {
@@ -2936,8 +2936,16 @@ function heroSummary(day){
    taps. While a member has never checked off or synced a workout and today's first session isn't done, the Today card and
    the first-plan sheet carry one button that starts it: runs, rides and swims with steps open Start with my phone, lift
    days open the session. Gone after the first check-off or synced workout. */
+/* Trained with Mileset yet? A check-off, or a synced/logged workout on or after the sign-up day. Linking Strava or Garmin
+   imports up to two weeks of older runs, and those used to count as "trained": Day 1, the rest-day first-workout card and
+   the first-workout reminder all vanished the moment a member linked a watch (Nov 26, incident activation-none-trained).
+   Same rule as the server's funnel count. Without a sign-up date (an older cached session) any workout counts, as before. */
+function trainedYet(){
+  const j0 = me && me.created ? String(me.created).slice(0, 10) : "";
+  return !!Object.keys(done).length || acts.some(a => String(a.date || "") >= j0);
+}
 function dayOne(){
-  if (!plan || Object.keys(done).length || acts.length) return null;
+  if (!plan || trainedYet()) return null;
   const day = dayOf(TODAY), s = day && day.sessions[0], key = TODAY + "-0";
   if (!s || s.type === "race" || dayMatches(TODAY)[0] || done[key]) return null;
   const tt = estTime(s), min = s.type === "lift" ? s.min || 50 : tt ? Math.max(5, Math.round(tt / 300) * 5) : null;
@@ -2950,7 +2958,7 @@ function dayOne(){
    workout and opens Today on a rest day saw only "Rest day" and nothing about when to start. Show the next session, how it
    counts, and a way to link a watch so runs check off on their own. Gone after the first check-off or synced workout. */
 function firstWorkout(){
-  if (mode !== "account" || Object.keys(done).length || acts.length) return null;
+  if (mode !== "account" || trainedYet()) return null;
   for (let k = 1; k <= 14; k++){ const d = addDays(TODAY, k), x = dayOf(d); if (x && x.sessions.length) return {date: d, day: x}; }
   return null;
 }
@@ -3984,7 +3992,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "134";
+const APP_VERSION = "135";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -4530,7 +4538,7 @@ document.addEventListener("click", ev => {
   if (act === "prev"){ setup.err = ""; setup.resumed = false; if (setup.step === 0 && plan){ setup = null; render(); return; } setup.step = Math.max(-1, setup.step - 1); render(); window.scrollTo(0, 0); return; }
   if (act === "sample"){ if (API){ mode = "sample"; dev = sampleDev(); } plan = buildPlan({...SAMPLE}); setup = null; save(); setTab("today", true); toast("Showing a sample runner. Tap the gear to build your own plan."); return; }
   if (act === "done"){
-    const k = a.dataset.key, on = !done[k], firstEver = on && !Object.keys(done).length && !acts.length;
+    const k = a.dataset.key, on = !done[k], firstEver = on && !trainedYet();
     if (on) done[k] = 1; else delete done[k]; save(); render();
     if (firstEver) toast("First workout checked off. The first one is the hardest. Nice work.");
     if (mode === "account") api("PUT", "/api/done", {key: k, done: on}).catch(e => { if (on) delete done[k]; else done[k] = 1; render(); toast(e.message); });
@@ -4960,7 +4968,7 @@ document.addEventListener("click", ev => {
   if (act === "mvsel"){ if (mv){ mv.pick = mv.pick === a.dataset.d ? null : a.dataset.d; mvRender(); const c = $(".sheet.mvs .mvpv"); if (c) c.scrollIntoView({block: "nearest", behavior: "smooth"}); } return; }
   if (act === "mdid"){
     const date = a.dataset.date, d = dayOf(date); if (!d) return;
-    const keys = d.sessions.map((x, i) => date + "-" + i).filter(k => !done[k]), firstEver = keys.length && !Object.keys(done).length && !acts.length;
+    const keys = d.sessions.map((x, i) => date + "-" + i).filter(k => !done[k]), firstEver = keys.length && !trainedYet();
     keys.forEach(k => { done[k] = 1; }); save(); render();
     toast(firstEver ? "First workout checked off. The first one is the hardest. Nice work." : "Checked off. Nice work.");
     if (mode === "account") keys.forEach(k => api("PUT", "/api/done", {key: k, done: true}).catch(e => { delete done[k]; render(); toast(e.message); }));

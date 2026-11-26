@@ -61,7 +61,7 @@ async function newSession(env, userId){
 async function auth(req, env){
   const m = (req.headers.get("Authorization") || "").match(/^Bearer ([a-f0-9]{64})$/);
   if (!m) throw new HttpError(401, "Please log in.");
-  const row = await env.DB.prepare("SELECT u.id, u.email, u.name, u.terms_at, s.expires FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?").bind(await sha256(m[1])).first();
+  const row = await env.DB.prepare("SELECT u.id, u.email, u.name, u.terms_at, u.created, s.expires FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?").bind(await sha256(m[1])).first();
   if (!row || row.expires < now()) throw new HttpError(401, "Your session ended. Please log in again.");
   await touchSeen(env, row.id);
   return row;
@@ -1118,7 +1118,9 @@ async function firstWorkoutNudges(env){
   const t = Date.now(), iso = d => new Date(t - d * 864e5).toISOString();
   const rows = (await env.DB.prepare(
     "SELECT u.id, u.name, u.email, u.no_mail FROM users u JOIN profiles p ON p.user_id = u.id WHERE " + REAL("u.") + " AND u.created <= ? AND p.updated <= ? " +
-    "AND NOT EXISTS (SELECT 1 FROM done d WHERE d.user_id = u.id) AND NOT EXISTS (SELECT 1 FROM activities a WHERE a.user_id = u.id) " +
+    // a Strava/Garmin history import of runs from BEFORE sign-up is not a first workout (same rule as funnelCounts):
+    // linking a watch used to switch the reminder off for good (Nov 26, incident activation-none-trained)
+    "AND NOT EXISTS (SELECT 1 FROM done d WHERE d.user_id = u.id) AND NOT EXISTS (SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.date >= substr(u.created, 1, 10)) " +
     "AND NOT EXISTS (SELECT 1 FROM lifecycle_mail l WHERE l.user_id = u.id AND l.kind = 'first_workout') LIMIT 20"
   ).bind(iso(3), iso(1)).all()).results;   // 3+ days a member, plan unchanged for a day: tweaking the plan no longer pushes it back 3 days
   if (!rows.length) return;
@@ -1750,7 +1752,7 @@ async function route(req, env, path, ctx){
     const owner = await ownerId(env) === user.id, founding = await foundingNo(env, user.id);
     const reports = owner ? (await env.DB.prepare("SELECT id, email, text, info, created FROM reports ORDER BY created DESC LIMIT 50").all()).results : undefined;
     const meSet = await settingsOf(env, user.id), meAi = await aiState(env, user.id, meSet), gear = await gearOf(env, user.id);
-    return {user: {...userOut(user), terms_at: user.terms_at || null}, profile: prof, done: d.results.map(r => r.key), food: f.results, checkins: c.results, weights: w.results, activities: a.results, gear,
+    return {user: {...userOut(user), terms_at: user.terms_at || null, created: user.created || null}, profile: prof, done: d.results.map(r => r.key), food: f.results, checkins: c.results, weights: w.results, activities: a.results, gear,
       strava: {available: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!s.results[0], name: s.results[0] ? s.results[0].athlete_name : "", last_sync: s.results[0] ? s.results[0].last_sync : null},
       garmin: {available: !!(env.GARMIN_CLIENT_ID && env.GARMIN_CLIENT_SECRET), connected: !!gl.results[0], last_push: gl.results[0] ? gl.results[0].last_push : null,
         workouts: gl.results[0] ? (/WORKOUT_IMPORT/.test(gl.results[0].permissions || "") ? gl.results[0].wk : (gl.results[0].permissions ? -1 : null)) : null},
