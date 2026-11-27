@@ -1219,6 +1219,9 @@ async function outbox(env){
   let m; try { m = await r.json(); } catch(e){ return; }
   const id = String(m.id || ""), subject = String(m.subject || "").trim().slice(0, 120), message = String(m.message || "").trim().slice(0, 8000), after = Date.parse(m.send_after || "");
   if (!/^[a-z0-9-]{4,60}$/.test(id) || !subject || message.length < 20 || !(after <= Date.now()) || after < Date.now() - 7 * 864e5) return;
+  // The weekly email belongs to weeklyAuto (below) unless WEEKLY_AUTO="0": a "<date>-weekly" outbox file would go out
+  // first under the same id, a version Matthew never saw, and his cancel link couldn't stop it. One-off ids still send.
+  if (/-weekly$/.test(id) && env.WEEKLY_AUTO !== "0") return;
   const claim = await env.DB.prepare("INSERT OR IGNORE INTO mail_sent (id, sent_at) VALUES (?, ?)").bind(id, now()).run();
   if (!claim.meta.changes) return;   // already sent
   const res = await sendUpdate(env, null, subject, message, false);
