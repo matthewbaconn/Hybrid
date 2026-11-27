@@ -46,6 +46,11 @@ input,select{width:100%;min-height:46px;border-radius:8px;border:1px solid var(-
 .plan{margin:0;padding-left:20px;color:var(--ink)}.plan li{margin:4px 0}
 .note{color:var(--muted);font-size:15px}
 h2{font:800 24px/1.2 var(--f-display);margin:30px 0 10px}
+/* Nov 27: one tagged sign-up button above the fold (site visit -> sign-up was the biggest leak) */
+.go{margin:-8px 0 26px}
+.btn.go-btn{min-height:54px;padding:0 28px;font-size:17px;background:#BE383E;box-shadow:0 8px 22px rgba(190,56,62,.35)}
+.btn.go-btn:hover{background:#cf434a}
+@media(max-width:560px){.btn.go-btn{width:100%}}
 .cta{background:linear-gradient(135deg,#800000,#BE383E);border:0}
 .cta p{margin:6px 0 16px;color:#ffe3e4}
 .cta .btn{background:#fff;color:#800000}
@@ -67,6 +72,7 @@ th,td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line)}th{col
 <span class="tag">Free tool</span>
 <h1>What <em>pace</em> do you need for your goal?</h1>
 <p class="lead">Enter a goal time and get your pace per mile and km, even splits, and what that time is worth at other distances. Or enter a pace and get your finish time.</p>
+<p class="go"><a class="btn go-btn" href="https://app.milesetapp.com/?src=web_pace">Build my free plan</a></p>
 
 <section class="card">
   <div class="seg" id="mode" role="group" aria-label="Calculate from">
