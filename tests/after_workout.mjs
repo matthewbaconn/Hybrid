@@ -21,7 +21,9 @@ const hand = {id: "a-hand", source: "manual", date: day(0), type: "lift", name: 
 const profile = {name: "T", goal: "half", start: mon, raceDate: day(70), goalSec: 6240, weekly: 20, longest: 8, prDist: "10k", prSec: 2910, weight: 178, goalWeight: 172, lifts: 3, liftExp: "Some", days: [0, 1, 2, 3, 4, 5, 6], longDay: 6};
 let renamed = null, details = null, shoe = null;
 const b = await chromium.launch(), ctx = await b.newContext({viewport: {width: 390, height: 844}}), p = await ctx.newPage();
-await p.route(/fonts\.googleapis|fonts\.gstatic|tile\.openstreetmap/, r => r.abort());
+await p.route(/fonts\.googleapis|fonts\.gstatic/, r => r.abort());
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+await p.route(/tile\.openstreetmap/, r => r.fulfill({body: PNG, contentType: "image/png"}));   // stand-in street tiles
 await p.route(/hybrid-api\.hybridapp\.workers\.dev/, async r => {
   const u = new URL(r.request().url()), m = r.request().method();
   if (u.pathname === "/api/me") return r.fulfill({json: {user: {id: "u1", name: "Tess", email: "t@t.test", terms_at: "2026-11-01T00:00:00Z"}, profile, activities: [run, old, hand], features: {rename: true}, strava: {available: true, connected: false}}});
@@ -39,12 +41,16 @@ t(await p.inputValue("#apl-q").catch(() => "") === "Morning Run", "it opens on t
 t(await p.$$eval(".back", x => x.length) === 1, "only one sheet: older and hand-logged workouts don't stack up");
 const box = await p.$eval(".apls", e => { const r = e.getBoundingClientRect(); return {bottom: r.bottom, h: innerHeight}; });
 t(box.h - box.bottom < 40, "it sits at the bottom of the screen");
+await p.waitForSelector(".apls .apl-map .leaflet-tile-loaded", {timeout: 10000}).catch(() => null);
+t(await p.$$eval(".apls .apl-map .leaflet-tile-loaded", x => x.length) > 0 && await p.$$eval(".apls .apl-map .leaflet-overlay-pane path", x => x.length) >= 2, "the route sits on a street map, like the workout cards (Matthew, Nov 27)");
+await p.evaluate(() => { window.__aplMap = document.querySelector(".apls .apl-map"); });
 await p.fill("#apl-q", "Tempo by the river");
 await p.fill("#apl-d", "Felt smooth, negative split the last 3.");
 await p.click('[data-act="apltag"][data-k="workout"]');
 await p.click('[data-act="aplrpe"][data-n="7"]');
 t(await p.inputValue("#apl-q") === "Tempo by the river" && /smooth/.test(await p.inputValue("#apl-d")), "tapping a tag or effort keeps what was typed");
 t(/7\/10 · Hard/.test(await p.textContent(".apl-feel")), "how it felt shows 7/10 · Hard");
+t(await p.evaluate(() => document.querySelector(".apls .apl-map") === window.__aplMap), "tapping a tag or effort keeps the same map (no flash, no re-download)");
 await p.fill("#apl-n", "Left calf tight at mile 5.");
 await p.click('[data-act="aplshoe"]'); await p.fill("#apl-sn", "Pegasus 41"); await p.fill("#apl-sm", "120"); await p.click('[data-act="aplshoeadd"]');
 await p.waitForFunction(() => document.querySelector("#apl-g") && document.querySelector("#apl-g").value === "g1", null, {timeout: 5000}).catch(() => {});
