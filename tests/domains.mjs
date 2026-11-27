@@ -72,7 +72,7 @@ ok(siteKind("milesetapp.com") === "site" && siteKind("app.milesetapp.com") === "
 const app = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 ok(/location\.hostname === "app\.hybrdrunning\.com" && !isStandalone && API/.test(app) && /j && j\.live \?/.test(app) && /!resetCode\) moveApp/.test(app),
    "app: an old-address tab moves only when /api/home says live, never from the Home Screen or mid reset");
-ok(/if \(mv\[1\] && !tokenStore\.get\(\)\) tokenStore\.set\(mv\[1\]\)/.test(app), "app: a carried login never replaces one already on the new address");
+ok(/if \(mv\[1\] && !tokenStore\.get\(\)\)\s*\{?\s*tokenStore\.set\(mv\[1\]\)/.test(app), "app: a carried login never replaces one already on the new address");
 ok(/\^#\(move=\|moved\|reset=\)/.test(app) && /\^#\?move=\|\^#\?moved/.test(app), "app: the carried #part can't smuggle another login or loop");
 
 console.log(failed ? failed + " failed" : "all domain checks pass");
