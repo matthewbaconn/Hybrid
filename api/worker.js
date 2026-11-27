@@ -1079,10 +1079,10 @@ async function welcomeMail(env, id, name, email){
   const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;font-size:16px;line-height:1.55">' + MAIL_HEAD +
     paras.map(t => '<p style="margin:0 0 14px">' + esc2(t) + '</p>').join("") + '<ul style="margin:0 0 16px;padding-left:20px">' + steps.map(t => '<li style="margin:0 0 6px">' + esc2(t) + '</li>').join("") + '</ul>' +
     '<p style="margin:0 0 14px">Follow along on Instagram <a href="https://www.instagram.com/hybrdrunning/" style="color:#800000">@hybrdrunning</a> for tips and early looks at what\'s coming.</p><p style="margin:0 0 14px">' + esc2(end[1]) + '</p>' +
-    '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Open Mileset</a></p>' +
+    '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/?m=1" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Open Mileset</a></p>' +
     '<p style="margin:0">Matthew<br><span style="color:#666">Mileset</span></p>' +
     '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this because you just made a Mileset account.' + (env.MAIL_ADDRESS ? ' ' + esc2(env.MAIL_ADDRESS) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe from updates</a></p></div>';
-  const text = paras.join("\n\n") + "\n\n" + steps.map(t => "- " + t).join("\n") + "\n\n" + end.join("\n\n") + "\n\nOpen Mileset: https://app.hybrdrunning.com/\n\nMatthew\nMileset\n\nUnsubscribe from updates: " + unsub;
+  const text = paras.join("\n\n") + "\n\n" + steps.map(t => "- " + t).join("\n") + "\n\n" + end.join("\n\n") + "\n\nOpen Mileset: https://app.hybrdrunning.com/?m=1\n\nMatthew\nMileset\n\nUnsubscribe from updates: " + unsub;
   const r = await sendMail(env, {to: [email], reply_to: "milesetapp@gmail.com", subject: "Welcome to Mileset, " + first, html, text, headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}}).catch(() => null);
   await logEvent(env, "welcome_mail", !!(r && r.ok), r ? "HTTP " + r.status : "net");
 }
@@ -1158,10 +1158,10 @@ async function firstWorkoutMail(env, id, name, email, when, title){
     "Is something getting in the way? Reply and tell me. I read every reply."];
   const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;font-size:16px;line-height:1.55">' + MAIL_HEAD +
     paras.map(t => '<p style="margin:0 0 14px">' + esc2(t) + '</p>').join("") +
-    '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/#today" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Open today\'s workout</a></p>' +
+    '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/?m=1#today" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Open today\'s workout</a></p>' +
     '<p style="margin:0">Matthew<br><span style="color:#666">Mileset</span></p>' +
     '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this once, because you built a Mileset plan.' + (env.MAIL_ADDRESS ? ' ' + esc2(env.MAIL_ADDRESS) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe from updates</a></p></div>';
-  const text = paras.join("\n\n") + "\n\nOpen today's workout: https://app.hybrdrunning.com/#today\n\nMatthew\nMileset\n\nUnsubscribe from updates: " + unsub;
+  const text = paras.join("\n\n") + "\n\nOpen today's workout: https://app.hybrdrunning.com/?m=1#today\n\nMatthew\nMileset\n\nUnsubscribe from updates: " + unsub;
   const r = await sendMail(env, {to: [email], reply_to: "milesetapp@gmail.com", subject: "Your first workout, " + first, html, text, headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}}).catch(() => null);
   return !!(r && r.ok);
 }
@@ -1174,10 +1174,10 @@ async function nudgeMail(env, id, name, email){
     "What are you training for right now? If something was confusing or didn't work, reply and tell me. I read every reply."];
   const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;font-size:16px;line-height:1.55">' + MAIL_HEAD +
     paras.map(t => '<p style="margin:0 0 14px">' + esc2(t) + '</p>').join("") +
-    '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Build my plan</a></p>' +
+    '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/?m=1" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Build my plan</a></p>' +
     '<p style="margin:0">Matthew<br><span style="color:#666">Mileset</span></p>' +
     '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this once, because you made a Mileset account a week ago.' + (env.MAIL_ADDRESS ? ' ' + esc2(env.MAIL_ADDRESS) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe from updates</a></p></div>';
-  const text = paras.join("\n\n") + "\n\nBuild my plan: https://app.hybrdrunning.com/\n\nMatthew\nMileset\n\nUnsubscribe from updates: " + unsub;
+  const text = paras.join("\n\n") + "\n\nBuild my plan: https://app.hybrdrunning.com/?m=1\n\nMatthew\nMileset\n\nUnsubscribe from updates: " + unsub;
   const r = await sendMail(env, {to: [email], reply_to: "milesetapp@gmail.com", subject: "Quick question, " + first, html, text, headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}}).catch(() => null);
   await logEvent(env, "nudge_mail", !!(r && r.ok), r ? "HTTP " + r.status : "net");
   return !!(r && r.ok);
@@ -1199,10 +1199,10 @@ async function sendUpdate(env, owner, subject, message, test){
       const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;font-size:16px;line-height:1.55">' +
         MAIL_HEAD +
         body.split(/\n{2,}/).map(par => '<p style="margin:0 0 14px">' + linkify(esc2(par)).replace(/\n/g, "<br>") + '</p>').join("") +
-        '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Open Mileset</a></p>' +
+        '<p style="margin:22px 0"><a href="https://app.hybrdrunning.com/?m=1" style="display:inline-block;background:#800000;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px">Open Mileset</a></p>' +
         '<p style="font-size:12px;color:#888;margin-top:28px">You\'re getting this because you have a Mileset account.' + (addr ? ' ' + esc2(addr) + '.' : '') + ' <a href="' + unsub + '" style="color:#888">Unsubscribe</a></p></div>';
       batch.push({to: [u.email], reply_to: "milesetapp@gmail.com", subject: (test ? "[Test] " : "") + subject,
-        html, text: body + "\n\nOpen Mileset: https://app.hybrdrunning.com/\n\n" + (addr ? addr + "\n" : "") + "Unsubscribe: " + unsub,
+        html, text: body + "\n\nOpen Mileset: https://app.hybrdrunning.com/?m=1\n\n" + (addr ? addr + "\n" : "") + "Unsubscribe: " + unsub,
         headers: {"List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}});
     }
     const r = await sendMail(env, batch, true);
