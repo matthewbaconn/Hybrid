@@ -302,7 +302,7 @@ button{cursor:pointer}
 .shs-t{display:grid;gap:6px;padding:0;border:0;background:none;color:var(--ink);font:700 14px/1.2 var(--f-body);text-align:center;cursor:pointer}
 .shs-i{display:block;aspect-ratio:4/5;border-radius:12px;border:1px solid var(--line);background-image:var(--chk);background-size:22px 22px;background-repeat:no-repeat,repeat;background-position:center,0 0}
 .shs-i[style]{background-size:contain,22px 22px} .shs-i.solid[style]{background-size:cover} .shs-t:focus-visible .shs-i{outline:2px solid var(--accent-2);outline-offset:2px}
-.apls .kick{margin:0} .apls .lbl{font:700 13px/1.2 var(--f-body);color:var(--sub)} .apl-map{height:150px} .apl-map svg{width:100%;height:100%}
+.apls .kick{margin:0} .apls .lbl{font:700 13px/1.2 var(--f-body);color:var(--sub)} .apl-map{height:150px} .apl-map > svg{width:100%;height:100%}
 .apl-b{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between} .apl-b .btn{flex:1;min-height:46px}
 .agrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 10px}
 .agrid span{display:block;font-size:12.5px;color:var(--muted)} .agrid b{font:700 20px/1.25 var(--f-display)}
@@ -1640,12 +1640,13 @@ function aplDraw(a){
   let b = $(".back.apl"); if (!b){ b = document.createElement("div"); b.className = "back apl"; b.dataset.close = "1"; document.body.appendChild(b); }
   const pts = ptsOf(a), can = canRename(a), f = apl.f, st = b.querySelector(".apls") ? b.querySelector(".apls").scrollTop : 0;
   const shoes = gear.filter(g => !g.retired || g.id === f.gear_id);
+  const oldMap = b.querySelector(".apl-map[data-map]"), keep = oldMap && oldMap._map && oldMap.dataset.map === a.id ? oldMap : null;   // redraws (tags, effort) keep the live map
   b.innerHTML = '<div class="sheet apls" role="dialog" aria-modal="true" aria-labelledby="apl-h"><p class="kick">' + (apl.fresh ? (a.type === "run" ? 'Nice run' : 'Nice work') + ' · ' : 'Edit workout · ') + whenTxt(a) + '</p>' +
     '<form id="apl-form" class="apl-f">' +
     (can ? '<input id="apl-q" class="apl-in apl-name" type="text" maxlength="60" autocomplete="off" enterkeyhint="done" aria-label="Workout name" value="' + esc(f.name) + '">' : '<h2 id="apl-h">' + esc(a.name) + '</h2>') +
     (can ? '<span id="apl-h" hidden>Edit workout</span>' : '') +
     '<textarea id="apl-d" class="apl-in" rows="3" maxlength="600" placeholder="How\'d it go? Share more about your workout." aria-label="Description">' + esc(f.descr) + '</textarea>' +
-    (pts && pts.length > 1 ? '<div class="amap apl-map">' + routeSvg(pts) + '</div>' : '') +
+    (pts && pts.length > 1 ? '<div class="amap apl-map" data-map="' + esc(a.id) + '">' + routeSvg(pts) + '</div>' : '') +
     '<div class="ast">' + actStats(a).map(([k, v]) => '<div><span>' + k + '</span><b>' + v + '</b></div>').join("") + '</div>' +
     '<h3 class="apl-s">Details</h3>' +
     '<label class="apl-row">' + ic(ACT_IC[f.type] || "watch") + '<select id="apl-t" aria-label="Workout type">' + TYPES.map(([k, l]) => '<option value="' + k + '"' + (f.type === k ? ' selected' : '') + '>' + l + '</option>').join("") + '</select></label>' +
@@ -1661,6 +1662,8 @@ function aplDraw(a){
     '<div class="apl-b"><button class="btn primary" type="button" data-act="aplsave"' + (apl.busy ? ' disabled aria-busy="true"' : '') + '>' + (apl.busy ? 'Saving…' : 'Save') + '</button>' +
     '<button class="btn" type="button" data-act="aplshare">' + ic("share") + ' Share</button></div>' +
     '<div class="apl-b">' + (apl.fresh ? '<button class="linkbtn" type="button" data-act="aplopen">See the full workout</button>' : '<span></span>') + '<button class="linkbtn" type="button" data-act="close">Close</button></div></div>';
+  const nm = b.querySelector(".apl-map[data-map]");
+  if (nm && keep){ nm.replaceWith(keep); try { keep._map.invalidateSize(false); } catch(e){} } else if (nm) mountMaps();   // street map behind the route, same as the workout cards
   const sh = b.querySelector(".apls"); if (sh && st) sh.scrollTop = st;
 }
 async function aplShoe(){
@@ -3992,7 +3995,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "135";
+const APP_VERSION = "136";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
