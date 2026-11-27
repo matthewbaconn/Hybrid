@@ -27,6 +27,8 @@ const NEWS = [
 ];
 </script>`;
 const mock = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d); q.on("end", () => {
+  // a stale mail/outbox.json with this week's weekly id (the old Monday task's file): must never be sent while weeklyAuto is on
+  if (q.url.startsWith("/outbox")){ s.writeHead(200, {"Content-Type": "application/json"}); return s.end(JSON.stringify({id: "2026-11-30-weekly", subject: "Old outbox weekly", send_after: new Date(Date.now() - 60e3).toISOString(), message: "Hey {name},\n\nThis came from mail/outbox.json and must not go out.\n\nMatthew\nMileset"})); }
   if (q.url.startsWith("/news")){ s.writeHead(200, {"Content-Type": "text/html"}); return s.end(NEWS_PAGE); }
   if (q.url.startsWith("/emails")){ const j = JSON.parse(b); for (const m of Array.isArray(j) ? j : [j]) mails.push(m); s.writeHead(200, {"Content-Type": "application/json"}); return s.end(Array.isArray(j) ? '{"data":[]}' : '{"id":"x"}'); }
   seenAI.push(b); s.writeHead(200, {"Content-Type": "application/json"});
@@ -37,7 +39,7 @@ const sql = q => JSON.parse(execFileSync("npx", ["wrangler", "d1", "execute", "h
 execFileSync("npx", ["wrangler", "d1", "migrations", "apply", "hybrid", "--local", "--persist-to", dir], {stdio: "ignore", env: {...process.env, CI: "1"}});
 const M = "http://127.0.0.1:" + MOCK;
 const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--local-upstream", "127.0.0.1:" + PORT, "--persist-to", dir, "--test-scheduled",
-  "--var", "OUTBOX_URL:http://127.0.0.1:1/none", "--var", "WEEKLY_NOW:" + NOW, "--var", "NEWS_URL:" + M + "/news", "--var", "OWNER_EMAIL:" + OWNER,
+  "--var", "OUTBOX_URL:" + "http://127.0.0.1:" + MOCK + "/outbox", "--var", "WEEKLY_NOW:" + NOW, "--var", "NEWS_URL:" + M + "/news", "--var", "OWNER_EMAIL:" + OWNER,
   "--var", "ANTHROPIC_URL:" + M + "/v1/messages", "--var", "ANTHROPIC_API_KEY:test-key", "--var", "RESEND_API_KEY:test", "--var", "RESEND_URL:" + M + "/emails"],
   {stdio: process.env.WA_DEBUG ? "inherit" : "ignore", detached: true});
 const stop = () => { try { process.kill(-dev.pid); } catch(e){} mock.close(); rmSync(dir, {recursive: true, force: true}); };
@@ -63,6 +65,7 @@ try {
   ok(!/@wa\.test|@example\.com|Ana Runner|Ben/.test(ai), "no member's email or name is sent to the AI");
   ok(mails.length === 1 && mails[0].to[0] === OWNER && /^\[Test\] Your lifts, tracked/.test(mails[0].subject) && mails[0].text.includes("/api/weekly/" + d[0].token), "only Matthew gets a [Test] copy, with the private link");
   ok(!memberMails().length, "no member gets anything before the hold is over");
+  ok(!mails.some(m => m.subject === "Old outbox weekly"), "a mail/outbox.json with this week's weekly id is never sent while the Worker owns the weekly email");
 
   await tick();
   ok(drafts().length === 1 && mails.length === 1 && seenAI.length === 1, "a second tick doesn't write or send another draft");
@@ -101,7 +104,7 @@ try {
   ok(!sent.some(m => /ben-|@example\.com/.test(m.to[0])), "never to members who unsubscribed or test accounts");
   ok(drafts()[0].status === "sent" && sql("SELECT sent FROM mail_sent WHERE id = '2026-11-30-weekly'")[0].sent === 2, "marked sent once, under this week's id");
   await tick(); await tick();
-  ok(memberMails().length === 2, "never sent twice");
+  ok(memberMails().length === 2 && !mails.some(m => m.subject === "Old outbox weekly"), "never sent twice, and the stale outbox weekly never goes");
   ok(sql("SELECT COUNT(*) AS n FROM users")[0].n === membersBefore && sql("SELECT no_mail FROM users WHERE name = 'Ana Runner'")[0].no_mail === 0, "no member data changes");
 } finally { stop(); }
 console.log(failed ? `weekly auto: ${failed} FAILED` : "weekly auto: all checks pass");
