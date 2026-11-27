@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Start Mileset with a training partner</title>
+<meta name="description" content="The first four weeks decide whether a training habit sticks. Start your Mileset plan with one friend: same weeks, your own plans, free for the first 100 members.">
+<meta property="og:title" content="Start Mileset with a training partner">
+<meta property="og:description" content="Four weeks, two people, one plan each. Free for life for the first 100 members.">
+<meta property="og:image" content="https://milesetapp.com/plan.jpg">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://milesetapp.com/train-together">
+<link rel="icon" href="icon.png">
+<style>
+:root{--bg:#F8F7F4;--panel:#FFFFFF;--line:#E8E5DF;--ink:#1C1C1E;--muted:#6B6863;
+  --f:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,Roboto,sans-serif}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.55 var(--f);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{width:min(620px,100% - 32px);margin:0 auto;padding:44px 0 30px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:600;letter-spacing:.02em;margin-bottom:40px}
+.brand img{width:30px;height:30px;border-radius:8px}
+.eyebrow{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+h1{font-weight:600;font-size:clamp(32px,8vw,46px);line-height:1.08;letter-spacing:-.02em;margin:0 0 16px}
+h2{font-weight:600;font-size:22px;letter-spacing:-.01em;margin:44px 0 12px}
+p{margin:0 0 14px}
+.lead{font-size:19px;color:var(--muted)}
+ol{padding:0;margin:0;list-style:none;counter-reset:s}
+ol li{counter-increment:s;padding:16px 0 16px 46px;border-top:1px solid var(--line);position:relative}
+ol li:last-child{border-bottom:1px solid var(--line)}
+ol li::before{content:counter(s);position:absolute;left:0;top:15px;width:30px;height:30px;border:1px solid var(--ink);border-radius:50%;display:grid;place-items:center;font-size:14px}
+ol b{display:block;font-weight:600}
+.btn{display:flex;align-items:center;justify-content:center;min-height:54px;padding:0 22px;border-radius:999px;background:var(--ink);color:var(--bg);font:600 16px/1 var(--f);text-decoration:none;border:0;cursor:pointer;width:100%}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--ink);margin-top:10px}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 22px;margin:18px 0}
+.msg{white-space:pre-wrap;font-size:16px}
+.small{font-size:14px;color:var(--muted)}
+.cta{margin-top:48px;padding-top:28px;border-top:1px solid var(--line)}
+footer{color:var(--muted);font-size:13px;padding:34px 0 40px}
+footer a{color:var(--muted)}
+</style>
+</head>
+<body>
+<main class="wrap">
+<a class="brand" href="/"><img src="icon.png" alt="">Mileset</a>
+
+<p class="eyebrow">Train together</p>
+<h1>The first four weeks decide it. Don't do them alone.</h1>
+<p class="lead">Pick one friend you run or lift with. You each get your own plan, built around your own days. You start the same week and keep each other honest.</p>
+
+<h2>Why the first four weeks</h2>
+<p>A 2026 study followed 389,481 people logging strength workouts in a training app for a year. How consistently someone trained in their first 28 days was the strongest predictor of whether they were still training months later. Only about 1 in 10 beginners was still training weekly at the one-year mark.</p>
+<p class="small">Source: <a href="https://doi.org/10.3389/fspor.2026.1855668" rel="noopener">Predictors of long-term resistance exercise adherence, Frontiers in Sports and Active Living, Aug 2026</a>. An observational study of one app's users; it shows a link, not a guarantee.</p>
+
+<h2>How to start together</h2>
+<ol>
+<li><b>Send your partner the invite below</b>Text it, or drop it in the group chat you already train in.</li>
+<li><b>Both build a plan</b>Your goal and the days you can train: 5K to marathon, triathlon, HYROX, strength. Running and lifting sit in the same week.</li>
+<li><b>Do day one the same day</b>Then a quick check-in each morning. On a bad night of sleep, your plan eases off.</li>
+<li><b>Compare notes once a week</b>Four weeks, then decide if it's working for you.</li>
+</ol>
+
+<h2>The invite</h2>
+<div class="note"><div class="msg" id="msg">I'm starting a 4-week run + lift plan on Mileset. It's free, and the first 100 people are free for life. Want to start it with me this week? Pick your days and we'll do day one together:
+https://app.milesetapp.com/?src=together-invite</div></div>
+<button class="btn" id="share" type="button">Share the invite</button>
+<p class="small" id="done" role="status" style="margin-top:10px;text-align:center"></p>
+
+<section class="cta">
+<h2 style="margin-top:0">Founding 100</h2>
+<p>The first 100 members who join before Jan 1, 2027 keep Mileset free for life. No watch needed; Garmin, Strava and Apple Health work if you have them.</p>
+<a class="btn" href="https://app.milesetapp.com/?src=together">Build my free plan</a>
+<a class="btn ghost" href="/">What Mileset does</a>
+</section>
+
+<footer>Matthew, founder · <a href="mailto:milesetapp@gmail.com">milesetapp@gmail.com</a> · <a href="/privacy.html">Privacy</a> · <a href="/terms">Terms</a></footer>
+</main>
+<script>
+(function(){
+  var b=document.getElementById("share"),t=document.getElementById("msg").textContent,d=document.getElementById("done");
+  b.addEventListener("click",function(){
+    if(navigator.share){navigator.share({text:t}).catch(function(){});return;}
+    var ok=function(){d.textContent="Copied. Paste it to your training partner.";};
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(ok,function(){d.textContent="Press and hold the invite above to copy it.";});}
+    else{d.textContent="Press and hold the invite above to copy it.";}
+  });
+})();
+</script>
+</body>
+</html>
