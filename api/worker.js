@@ -74,7 +74,7 @@ async function askSource(env, user){
   if (!(await previewOk(env, user, "source"))) return false;
   try {
     const r = await env.DB.prepare("SELECT src, src_answer FROM users WHERE id = ?").bind(user.id).first();
-    return !!r && !r.src_answer && (!r.src || r.src === "unknown");
+    return !!r && !r.src_answer && (!r.src || r.src === "unknown" || r.src === "direct");
   } catch(e){ return false; }   // before migration 0030 runs
 }
 /* When the app last saw each member (Nov 17: "last active" only knew the last log-in, so anyone who stayed logged in
@@ -955,15 +955,30 @@ async function funnelCounts(env){
 
 // Today's counts into funnel_daily (one row per UTC day, totals only) so Vesper's reports can read them without
 // ever touching activities or Strava/Garmin tables.
+// Sign-ups and trained members per sign-up source (Nov 27 tracking audit, migration 0038). COUNTS only, same "trained"
+// rule as funnelCounts, so the per-source trained totals add up to funnel_daily.trained. A member with no tag who
+// answered "How did you hear about Mileset?" is counted under "said-<answer>" instead of "unknown".
+async function sourceCounts(env){
+  const P = "EXISTS(SELECT 1 FROM profiles p WHERE p.user_id = u.id)", D0 = "substr(u.created, 1, 10)";
+  const K = "CASE WHEN COALESCE(NULLIF(u.src, ''), 'unknown') IN ('unknown', 'direct') AND u.src_answer IS NOT NULL AND u.src_answer != 'skip' " +
+    "THEN 'said-' || u.src_answer ELSE COALESCE(NULLIF(u.src, ''), 'unknown') END";
+  const rows = (await env.DB.prepare("SELECT " + K + " AS k, COUNT(*) AS signed_up, SUM(" + P + " AND (EXISTS(SELECT 1 FROM done d WHERE d.user_id = u.id) OR " +
+    "EXISTS(SELECT 1 FROM activities a WHERE a.user_id = u.id AND a.date >= " + D0 + "))) AS trained FROM users u WHERE " + REAL("u.") + " GROUP BY 1").all()).results;
+  const out = {}; for (const r of rows) out[String(r.k).slice(0, 48)] = {signed_up: r.signed_up || 0, trained: r.trained || 0};
+  return out;
+}
 async function saveFunnelDaily(env){
   const f = await funnelCounts(env), now = new Date().toISOString();
+  let bySrc = null; try { bySrc = JSON.stringify(await sourceCounts(env)); } catch(e){ console.log("by_source", e && e.message); }
   const base = [now.slice(0, 10), f.signed_up, f.plan, f.checked_off, f.trained, f.trained_7d, f.d7_eligible, f.active_d7, f.returned, f.via_invite, f.referrers, f.act72_eligible, f.act72];
   const cols = "day, signed_up, plan, checked_off, trained, trained_7d, d7_eligible, active_d7, returned, via_invite, referrers, act72_eligible, act72";
   const stuck = [f.stuck, f.stuck_back, f.stuck_push, f.stuck_linked, f.stuck_nudged], sc = ", stuck, stuck_back, stuck_push, stuck_linked, stuck_nudged";
   const put = (extra, vals) => env.DB.prepare("INSERT OR REPLACE INTO funnel_daily (" + cols + extra + ", updated) VALUES (" + Array(base.length + vals.length + 1).fill("?").join(",") + ")").bind(...base, ...vals, now).run();
-  // before migration 0037 (partner ask) or 0036 (stuck split) runs, the older columns still get today's row
-  try { await put(sc + ", pm_shown, pm_sent, pm_skip", [...stuck, f.pm_shown, f.pm_sent, f.pm_skip]); }
-  catch(e){ try { await put(sc, stuck); } catch(e2){ await put("", []); } }
+  // before migration 0038 (by_source), 0037 (partner ask) or 0036 (stuck split) runs, the older columns still get today's row
+  const pmv = [...stuck, f.pm_shown, f.pm_sent, f.pm_skip];
+  try { await put(sc + ", pm_shown, pm_sent, pm_skip, by_source", [...pmv, bySrc]); }
+  catch(e0){ try { await put(sc + ", pm_shown, pm_sent, pm_skip", pmv); }
+  catch(e){ try { await put(sc, stuck); } catch(e2){ await put("", []); } } }
 }
 
 async function cron(env, ctx){
@@ -1430,7 +1445,9 @@ async function route(req, env, path, ctx){
       try { await env.DB.prepare("UPDATE users SET ref = (SELECT id FROM users WHERE substr(id, 1, 8) = ? AND id != ? LIMIT 1) WHERE id = ?").bind(ref, id, id).run(); } catch(e){ console.log("ref", e && e.message); }
     }
     // ?src=ambassador-<instagram handle> (Founding Ambassador links): same clean-up as the app ("." -> "-", no "@"), up to 48 chars
-    const src = String(b.src || "").trim().toLowerCase().replace(/@/g, "").replace(/\./g, "-").slice(0, 48) || (/^[a-f0-9]{8}$/.test(ref) ? "invite" : "");
+    // No ?src=/utm tag and no invite (typed the address, a Home Screen install, a link app that strips referrers):
+    // "direct", so every sign-up has a source and none land in "unknown" (Nov 27 tracking audit). A malformed tag is still dropped.
+    const src = String(b.src || "").trim().toLowerCase().replace(/@/g, "").replace(/\./g, "-").slice(0, 48) || (/^[a-f0-9]{8}$/.test(ref) ? "invite" : "direct");
     if (/^[a-z0-9_-]{1,48}$/.test(src)){   // first link source (?src=), for sign-ups by channel; never blocks the sign-up
       try { await env.DB.prepare("UPDATE users SET src = ? WHERE id = ?").bind(src, id).run(); } catch(e){ console.log("src", e && e.message); }
     }

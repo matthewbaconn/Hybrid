@@ -137,5 +137,22 @@ footer{color:var(--muted);font-size:13.5px;padding:30px 0 50px}
   calc();
 })();
 </script>
+<script>/* First-touch source (Nov 27 tracking audit): a visit that lands with ?src=, utm_source, fbclid or an invite ?ref= keeps it
+   (this site's localStorage, first one wins) and every "open the app" link carries it, so the app records the real channel
+   instead of this page's own tag. No tag: the page's own ?src= stays. Nothing but the tag is stored. tests/src_persist.mjs */
+(function(){ try {
+  var q = new URLSearchParams(location.search), L = localStorage;
+  var s = String(q.get("src") || q.get("utm_source") || (q.get("fbclid") ? "fb" : "") || "").trim().toLowerCase().replace(/@/g, "").replace(/\./g, "-");
+  var r = String(q.get("ref") || "").toLowerCase();
+  if (/^[a-z0-9_-]{1,48}$/.test(s) && !L.getItem("ms-src")) L.setItem("ms-src", s);
+  if (/^[a-f0-9]{8}$/.test(r) && !L.getItem("ms-ref")) L.setItem("ms-ref", r);
+  s = L.getItem("ms-src"); r = L.getItem("ms-ref"); if (!s && !r) return;
+  var a = document.querySelectorAll('a[href^="https://app.milesetapp.com/"]');
+  for (var i = 0; i < a.length; i++){
+    var u = new URL(a[i].href); if (!/^\/(index\.html)?$/.test(u.pathname)) continue;
+    if (s) u.searchParams.set("src", s); else if (r) u.searchParams.delete("src");   // invite with no channel tag: the app labels it "invite"
+    if (r) u.searchParams.set("ref", r); a[i].href = u.toString();
+  }
+} catch(e){} })();</script>
 </body>
 </html>
