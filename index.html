@@ -1115,6 +1115,15 @@ else if (location.hostname === "app.milesetapp.com" && !isStandalone && API && !
 let resetCode = null;
 if (/^#reset=[a-f0-9]{64}$/.test(location.hash)){ resetCode = location.hash.slice(7); try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} }
 let token = API ? tokenStore.get() : null, me = null, mode = API ? "none" : "local", loading = !!token, authv = null;
+// a plan built before signing up (plan first): kept across a reload until an account saves it
+let pendingProf = (() => { try { const x = JSON.parse(localStorage.getItem("hp-pending") || "null"); return x && x.goal ? x : null; } catch(e){ return null; } })(), pendingSetup = null;
+async function applyPending(){
+  if (!pendingProf || mode !== "account") return false;
+  if (plan){ pendingProf = null; try { localStorage.removeItem("hp-pending"); } catch(e){} return false; }   // they already have a plan: theirs wins
+  const prof = pendingProf; pendingProf = null; pendingSetup = null; try { localStorage.removeItem("hp-pending"); } catch(e){}
+  try { await api("PUT", "/api/profile", {profile: prof, resetFrom: TODAY}); } catch(e){ toast(e.message); return false; }
+  plan = buildPlan(prof); setup = null; setupDraft.clear(); render(); firstRemind(); return true;
+}
 if (resetCode && API){ token = null; loading = false; authv = {view: "reset", code: resetCode}; }
 addEventListener("hashchange", () => { if (/^#reset=[a-f0-9]{64}$/.test(location.hash)) location.reload(); });
 let S = API ? {} : (store.get() || {});
@@ -3524,7 +3533,7 @@ function renderSetup(){
       '<li><i style="--c:var(--lift)">' + ic("dumbbell") + '</i><div><b>Strength built in</b><span>Lifting days that don\'t wreck your runs.</span></div></li>' +
       '<li><i style="--c:var(--long)">' + ic("heart") + '</i><div><b>Adapts to recovery</b><span>Connect Garmin or Strava in the full app.</span></div></li></ul>' +
       (mode !== "account" ? foundBanner() : '') + '<div class="nav" style="flex-direction:column">' + (API && mode !== "account"
-        ? '<button class="btn primary block" type="button" data-act="authsignup">Create a free account</button><button class="btn block" type="button" data-act="authlogin">Log in</button>'
+        ? '<button class="btn primary block" type="button" data-act="next">Build my free plan</button><button class="btn block" type="button" data-act="authsignup">Create a free account</button><button class="btn block" type="button" data-act="authlogin">Log in</button>'
         : '<button class="btn primary block" type="button" data-act="next">Build my plan</button>') +
       '<button class="btn block" type="button" data-act="sample" style="background:transparent">Look around with a sample runner</button></div></section>';
   }
@@ -3639,6 +3648,7 @@ function renderAuth(){
     '<p class="err" role="alert">' + esc(a.err || "") + '</p><button class="btn primary block" type="submit"' + (a.busy ? ' disabled aria-busy="true"' : '') + '>' + (a.busy ? 'Saving…' : 'Save and log in') + '</button>' +
     '<button class="linkbtn" type="button" data-act="authback" style="justify-self:center;color:var(--muted)">Cancel</button></form>';
   return header() + '<form class="setup view" id="authform" novalidate><h2 class="sec-t">' + (up ? 'Create your account' : 'Welcome back') + '</h2>' +
+    (a.save && pendingProf ? '<p class="lead" id="a-saveplan">Your plan is ready. Create a free account to save it and start Day 1.</p>' : '') +
     (up ? foundBanner() : '') + (up ? '<div class="q"><label for="a-name">First name</label><input id="a-name" autocomplete="given-name" maxlength="30" value="' + esc(a.name || "") + '"></div>' : '') +
     '<div class="q"><label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" value="' + esc(a.email || "") + '"></div>' +
     '<div class="q"><label for="a-pass">Password</label><input id="a-pass" type="password" autocomplete="' + (up ? 'new-password' : 'current-password') + '" minlength="8">' + (up ? '<p class="hint" style="margin-top:0">At least 8 characters.</p>' : '') + '</div>' +
@@ -3679,7 +3689,8 @@ async function submitAuth(){
     const j = await api("POST", up ? "/api/signup" : "/api/login", up ? {email: a.email, password: pw, name: a.name, agree: true, ref: (() => { try { return localStorage.getItem("hp-ref") || undefined; } catch(e){ return undefined; } })(), src: (() => { try { return localStorage.getItem("hp-src") || undefined; } catch(e){ return undefined; } })()} : {email: a.email, password: pw});
     token = j.token; tokenStore.set(token); authv = null; loading = true; render();
     loadAccount(await api("GET", "/api/me")); loading = false; tab = "today"; render(); window.scrollTo(0, 0); autoSync(true);
-    if (!up) toast("Welcome back" + (me.name ? ", " + me.name.split(" ")[0] : "") + ".");
+    if (await applyPending()) toast("Your plan is saved. Day 1 is on Today.");
+    else if (!up) toast("Welcome back" + (me.name ? ", " + me.name.split(" ")[0] : "") + ".");
   } catch(e){ loading = false; if (authv){ authv.busy = false; authv.err = e.message; } else authv = {view: a.view, email: a.email, err: e.message}; render(); }
 }
 function render(){
@@ -4003,7 +4014,7 @@ function renderConsent(){
 }
 
 /* ---------- report a problem ---------- */
-const APP_VERSION = "137";
+const APP_VERSION = "138";
 let reportView = null, isOwner = false, reports = [], feat = {};
 /* AI coach: the member's own yes or no (Nov 17). aiSt comes from /api/me: on = AI may read their data; needs = they have a
    Garmin link and were never asked, so the coach is paused until they answer; available = the coach is set up at all. */
@@ -4534,6 +4545,13 @@ document.addEventListener("click", ev => {
         const want = (city.split(",")[1] || "").trim().toLowerCase(), list = j.results || [], g = list.find(x => want && ((x.admin1 || "").toLowerCase().startsWith(want) || (x.admin1_code || "").toLowerCase() === want || (x.country_code || "").toLowerCase() === want)) || list[0];
         if (g) setTimeout(() => setWxLoc(g.latitude, g.longitude, g.name + (g.admin1 ? ", " + g.admin1 : "")), 1200);
       }).catch(() => {});
+      // Plan first (Nov 27, Matthew: 559 site visits, ~0 sign-ups): a visitor builds the plan BEFORE making an account;
+      // the finished plan waits here and is saved to the account the moment they sign up or log in (applyPending).
+      if (API && mode === "none"){
+        pendingProf = prof; pendingSetup = {step: 3, p: setup.p};
+        try { localStorage.setItem("hp-pending", JSON.stringify(prof)); } catch(e){}
+        setup = null; authv = {view: "signup", save: true, name: prof.name || ""}; render(); window.scrollTo(0, 0); return;
+      }
       render();
       const wait = new Promise(r => setTimeout(r, 900));
       const saving = mode === "account" ? api("PUT", "/api/profile", {profile: prof, resetFrom: TODAY}) : Promise.resolve();
@@ -4798,8 +4816,8 @@ document.addEventListener("click", ev => {
     if (mode === "account") api("DELETE", "/api/food/" + gone.id).catch(e => { L.splice(i, 0, gone); render(); toast(e.message); });
     return;
   }
-  if (act === "authsignup" || act === "authlogin"){ closeMenu(); scr = null; authv = {view: act === "authsignup" ? "signup" : "login", email: authv ? authv.email : ""}; render(); window.scrollTo(0, 0); return; }
-  if (act === "authback"){ authv = null; render(); return; }
+  if (act === "authsignup" || act === "authlogin"){ closeMenu(); scr = null; authv = {view: act === "authsignup" ? "signup" : "login", email: authv ? authv.email : "", save: !!(authv && authv.save)}; render(); window.scrollTo(0, 0); return; }
+  if (act === "authback"){ const back = authv && authv.save && pendingSetup; authv = null; if (back) setup = pendingSetup; render(); return; }
   if (act === "authforgot"){ const em = ((document.getElementById("a-email") || {}).value || (authv && authv.email) || "").trim(); authv = {view: "forgot", email: em}; render(); window.scrollTo(0, 0); return; }
   if (act === "logout"){ closeMenu(); scr = null; setupDraft.clear(); const t = token; api("POST", "/api/logout").catch(() => {}).finally(() => { if (token === t) signedOut(); }); return; }
   if (act === "delacct"){
