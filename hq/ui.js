@@ -263,8 +263,21 @@ function vCompany(){ const sp = M.spend, g = M.P.g || {}, f = g.funnel || {}, li
     <div class="row"><div class="g"><b>Nightly full phone test</b><span>${night ? esc(ago(night.at)) : "Every night around 1:30am"}</span></div>${night ? chip(night.st === "success" ? "ok" : "alert", night.st === "success" ? "Passed" : "Failed") : chip("idle", "Loading")}</div>
     ${M.incidents.map(r => `<div class="row"><div class="g"><b>${esc(plain(r[5]))}</b><span>${esc(plain(r[6]))} · ${esc(plain(r[12] || r[2]))}</span></div>${chip(r[1] === "critical" ? "alert" : "waiting", r[2] === "fixing" ? "Fix in progress" : r[2] === "verifying" ? "Checking the fix" : "Open")}</div>`).join("")}</div>`;
   return h + `</section>`; }
+// Growth loop (Nov 27): what Vesper ranked for Duet today, this week's experiments vs the quota, wins and flops, and
+// who's stalled. Counts and short text only; the block is hidden until Vesper's feed carries it.
+function vLoop(){ const L = M.P.loop; if (!L) return "";
+  const wk = L.week || {}, row = x => `<div class="row"><div class="g"><b>${esc(cut(x.action || "", 80))}</b><span>${esc(x.tag || "")} · ${x.signed_up || 0} signed up · ${x.trained || 0} trained</span></div></div>`;
+  let h = `<section class="card glass wide" id="c-loop"><h2>Growth loop</h2><p class="sub">Vesper ranks the moves, Duet does them, and every tag is graded on real sign-ups after 7 days.</p>`;
+  h += `<div class="kpis"><div class="kpi"><span>Experiments this week</span><b>${wk.logged || 0} of ${wk.quota || 5}</b><em>${wk.behind ? wk.behind + " to go" : "quota met"}</em></div>` +
+       `<div class="kpi"><span>Still measuring</span><b>${L.measuring || 0}</b></div>` +
+       `<div class="kpi"><span>Stalled new members</span><b>${L.stalled == null ? "–" : L.stalled}</b><em>joined this week, no workout yet</em></div></div>`;
+  h += `<h3 class="cardh" style="margin:12px 0 4px">Today's moves</h3>` + ((L.moves || []).length ? `<div class="rows">${L.moves.map((m, i) => `<div class="row"><div class="g"><b>${i + 1}. ${esc(cut(m.move || "", 120))}</b><span>${esc(m.worker || "")} · tag ${esc(m.tag || "")}</span></div></div>`).join("")}</div>` : `<p class="mut sm">Nothing open right now.</p>`);
+  if ((L.won || []).length) h += `<h3 class="cardh" style="margin:12px 0 4px">Won</h3><div class="rows">${L.won.map(row).join("")}</div>`;
+  if ((L.flopped || []).length) h += `<h3 class="cardh" style="margin:12px 0 4px">Flopped</h3><div class="rows">${L.flopped.map(row).join("")}</div>`;
+  if ((L.heard || []).length) h += `<p class="mut sm" style="margin-top:10px">How new members heard of Mileset: ${L.heard.map(x => esc(x[0]) + " " + (+x[1] || 0)).join(" · ")}</p>`;
+  return h + `</section>`; }
 function vGrowth(){ const g = M.P.g || {}, h2 = M.h2, so = h2.social || null;
-  let h = `<section class="card glass wide" id="c-gctl"><h2>Growth controls</h2><p class="sub">Each one asks Vesper to act, after your Approve in Telegram. They use the AI (about $0.15 each), so they're never automatic.</p>
+  let h = vLoop() + `<section class="card glass wide" id="c-gctl"><h2>Growth controls</h2><p class="sub">Each one asks Vesper to act, after your Approve in Telegram. They use the AI (about $0.15 each), so they're never automatic.</p>
     <div class="qb" style="margin:0 0 10px"><input id="g-post" type="text" placeholder="Draft a post about… (e.g. fueling your first 20-miler)" autocomplete="off"><button class="btn go" data-gpost="1">Draft post</button></div>
     <div class="acts"><button class="btn warn" data-say="pause the Buffer queue: stop every scheduled Mileset post until I say resume" data-label="Pause the Buffer queue">Pause queue</button>
       <button class="btn warn" data-say="emergency: pause every active Meta ad campaign for Mileset now and confirm what you paused" data-label="Pause Meta campaigns">Pause campaign</button></div></section>`;
@@ -642,4 +655,5 @@ function openFrom(o){ if (o.startsWith("cmd:")){ show("ship"); const id = o.slic
 (() => { const o = HQ.OPEN; if (o){ try { history.replaceState(null, "", location.pathname + location.search + location.hash.replace(/[#&]?open=[A-Za-z0-9:_-]+/, "")); } catch(e){} }
   if (!(o && openFrom(o)) && HQ.keyStr()) show("overview"); })();
 HQ.start();
+HQ.test = {vLoop: () => { M = model(); return vLoop(); }, vGrowth: () => { M = model(); return vGrowth(); }};   // tests/hq_loop.mjs
 })();
